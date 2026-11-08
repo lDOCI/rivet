@@ -29,12 +29,22 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
 
     <div style="flex: 1; min-height: 0; display: grid; grid-template-columns: 220px 1fr; gap: 22px; align-items: center">
       <div aria-hidden="true" style="width: 220px; height: 220px; border-radius: 28px; background: radial-gradient(circle at 50% 40%, #1d2530 0%, #15181d 75%); display: flex; align-items: center; justify-content: center">
-        <svg width="150" height="150" viewBox="0 0 100 100" fill="none" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="28" y="30" width="44" height="38" rx="8" fill="#252a31"></rect>
-          <path d="M44 68v10l6 8 6-8V68" fill="#3a414a"></path>
-          <path d="M50 6v34" stroke="{{lineColor}}" stroke-width="5"></path>
-          <path d="m42 18 8-10 8 10" stroke="{{arrowColor}}" stroke-width="4" transform="rotate(180 50 13)"></path>
-          <circle cx="50" cy="92" r="4" fill="{{dropColor}}"></circle>
+        <svg width="170" height="190" viewBox="0 0 100 112" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <defs>
+            <linearGradient id="hot" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fbbf24"></stop><stop offset="1" stop-color="#f97316"></stop></linearGradient>
+            <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#f97316" stop-opacity="0.35"></stop><stop offset="1" stop-color="#f97316" stop-opacity="0"></stop></radialGradient>
+          </defs>
+          <ellipse cx="50" cy="80" rx="40" ry="22" fill="url(#glow)" opacity="{{glowOpacity}}"></ellipse>
+          <rect x="47.5" y="2" width="5" height="{{filLen}}" rx="2.5" fill="{{filColor}}"></rect>
+          <circle cx="38" cy="26" r="9" fill="#1f242b" stroke="{{gearInk}}" stroke-width="3" stroke-dasharray="2.4 2.2"></circle>
+          <circle cx="38" cy="26" r="2.5" fill="{{gearInk}}"></circle>
+          <circle cx="62" cy="26" r="9" fill="#1f242b" stroke="{{gearInk}}" stroke-width="3" stroke-dasharray="2.4 2.2"></circle>
+          <circle cx="62" cy="26" r="2.5" fill="{{gearInk}}"></circle>
+          <rect x="24" y="42" width="52" height="24" rx="7" fill="#252a31"></rect>
+          <path d="M30 49h40M30 54h40M30 59h40" stroke="#1a1e24" stroke-width="2"></path>
+          <rect x="30" y="68" width="40" height="15" rx="4" fill="{{heaterFill}}"></rect>
+          <path d="M43 83h14l-4 9h-6z" fill="#b8913f"></path>
+          <rect x="47.5" y="92" width="5" height="16" rx="2.5" fill="{{filColor}}" opacity="{{strandOpacity}}"></rect>
         </svg>
       </div>
       <div style="display: flex; flex-direction: column; gap: 12px">
@@ -82,9 +92,12 @@ class Component extends DCLogic {
       bar1: on(1), bar2: on(2), bar3: on(3),
       title: copy[0], text: copy[1], secondaryLabel: copy[2], primaryLabel: copy[3],
       isStep1: s.step === 1, showStatus: s.step > 1, temp: temps[s.mat],
-      lineColor: s.step >= 2 ? '#4466cc' : '#3a414a',
-      arrowColor: s.step === 2 ? '#2dd4bf' : '#3a414a',
-      dropColor: s.step === 3 ? '#4466cc' : 'transparent',
+      filColor: '#4466cc',
+      filLen: s.step === 1 ? 14 : 64,
+      gearInk: s.step === 2 ? '#2dd4bf' : '#4a525c',
+      heaterFill: s.step >= 1 ? 'url(#hot)' : '#3a414a',
+      glowOpacity: 1,
+      strandOpacity: s.step === 3 ? 1 : 0,
       materials: Object.keys(temps).map(function (k) {
         var sel = k === s.mat;
         return {
