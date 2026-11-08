@@ -18,7 +18,7 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
   <dc-import name="NavRail" active="home" hint-size="88px,480px"></dc-import>
   <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px 16px 0 16px; display: flex; flex-direction: column; gap: 10px">
     <div style="height: 64px; flex: none; display: flex; align-items: center; gap: 14px"><a href="Files.dc.html" aria-label="Назад" style="width: 64px; height: 64px; flex: none; border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></a><h1 style="margin: 0; flex: 1; font-size: 26px; font-weight: 800; letter-spacing: -0.02em">Очередь печати</h1></div>
-    <div style="flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-bottom: 16px">
+    <div style="flex: 1; min-height: 0; min-width: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-bottom: 16px">
       <sc-for list="{{rows}}" as="r" hint-placeholder-count="6">
         <sc-if value="{{r.isSection}}" hint-placeholder-val="{{ false }}"><span style="margin: 8px 4px 0; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; color: #66707b">{{r.title}}</span></sc-if>
         <sc-if value="{{r.isLink}}" hint-placeholder-val="{{ true }}">
@@ -59,9 +59,9 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
           </div>
         </sc-if>
         <sc-if value="{{r.isSeg}}" hint-placeholder-val="{{ false }}">
-          <div style="min-height: 84px; flex: none; border-radius: 20px; background: #15181d; padding: 10px 10px 10px 18px; box-sizing: border-box; display: flex; align-items: center; gap: 14px">
-            <span style="width: 170px; flex: none; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 18px; font-weight: 700">{{r.title}}</span><span style="font-size: 14px; color: #98a1ac">{{r.sub}}</span></span>
-            <div role="radiogroup" aria-label="{{r.title}}" style="flex: 1; display: flex; gap: 6px">
+          <div style="min-height: 84px; flex: none; border-radius: 20px; background: #15181d; padding: 10px 10px 10px 18px; box-sizing: border-box; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px">
+            <span style="flex: 1 1 150px; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 18px; font-weight: 700">{{r.title}}</span><span style="font-size: 14px; color: #98a1ac">{{r.sub}}</span></span>
+            <div role="radiogroup" aria-label="{{r.title}}" style="flex: 1 1 280px; display: flex; gap: 6px">
               <sc-for list="{{r.opts}}" as="o" hint-placeholder-count="3">
                 <button type="button" role="radio" aria-checked="{{o.checked}}" onClick="{{o.pick}}" style="flex: 1; height: 64px; border: 0; border-radius: 16px; background: {{o.bg}}; color: {{o.fg}}; font: 700 15px Inter, system-ui, sans-serif; cursor: pointer">{{o.label}}</button>
               </sc-for>
@@ -128,13 +128,13 @@ class Component extends DCLogic {
   }
   fromPointer(e, r) {
     var b = e.currentTarget.getBoundingClientRect();
-    var f = Math.max(0, Math.min(1, (e.clientX - b.left) / b.width));
+    var f = Math.max(0, Math.min(1, (b.bottom - e.clientY) / b.height));
     var v = r.min + f * (r.max - r.min);
     return Math.round(v / r.step) * r.step;
   }
   renderVals() {
     var self = this, s = this.state;
-    function fmt(r, v) { return (r.fmt === 'off0' && v === 0) ? 'Выкл.' : (r.dec ? v.toFixed(r.dec) : String(v)) + (r.unit || ''); }
+    function fmt(r, v) { if (r.fmt === 'off0' && v === 0) return 'Выкл.'; if (v >= 10000) return (v / 1000).toFixed(1).replace('.0', '') + 'k' + (r.unit || ''); return (r.dec ? v.toFixed(r.dec) : String(v)) + (r.unit || ''); }
     var rows = ROWS.map(function (r) {
       var o = { kind: r.kind, title: r.t || '', sub: r.sub || '', href: r.href || '#',
         isSection: r.kind === 'section', isLink: r.kind === 'link', isToggle: r.kind === 'toggle', isSlider: r.kind === 'slider',
@@ -152,6 +152,10 @@ class Component extends DCLogic {
         o.down = function (e) { if (e.currentTarget.setPointerCapture) e.currentTarget.setPointerCapture(e.pointerId); var n = { _drag: r.id }; n[r.id] = self.fromPointer(e, r); self.setState(n); };
         o.move = function (e) { if (self.state._drag !== r.id) return; var n = {}; n[r.id] = self.fromPointer(e, r); if (n[r.id] !== self.state[r.id]) self.setState(n); };
         o.up = function () { if (self.state._drag) self.setState({ _drag: null }); };
+        var big = r.bstep || Math.max(r.step, (r.max - r.min) / 10);
+        o.dec = function () { var n = {}; n[r.id] = Math.max(r.min, +(self.state[r.id] - big).toFixed(4)); self.setState(n); };
+        o.inc = function () { var n = {}; n[r.id] = Math.min(r.max, +(self.state[r.id] + big).toFixed(4)); self.setState(n); };
+        o.decAria = r.t + ': меньше на ' + big; o.incAria = r.t + ': больше на ' + big;
       }
       if (r.kind === 'stepper') {
         var w = s[r.id];
@@ -168,7 +172,8 @@ class Component extends DCLogic {
       }
       return o;
     });
-    return { rows: rows };
+    var bars = rows.filter(function (o) { return o.isSlider; });
+    return { rows: rows.filter(function (o) { return !o.isSlider; }), bars: bars };
   }
 }
 
