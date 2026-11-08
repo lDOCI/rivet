@@ -23,7 +23,6 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
         <h1 style="margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.02em">Подсветка</h1>
       </div>
       <span style="margin-top: 24px; font-size: 72px; font-weight: 800; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums">{{valueLabel}}</span>
-      <p style="margin: 0; font-size: 16px; line-height: 1.5; color: #98a1ac">Свет внутри принтера. Тяните полосу или жмите ±10.</p>
     </div>
     <div role="slider" aria-label="Подсветка" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{value}}" onPointerDown="{{dragStart}}" onPointerMove="{{dragMove}}" onPointerUp="{{dragEnd}}" onPointerCancel="{{dragEnd}}" style="position: relative; border-radius: 28px; background: #15181d; overflow: hidden; touch-action: none; cursor: grab">
       <span aria-hidden="true" style="position: absolute; left: 0; right: 0; bottom: 0; height: {{fillPct}}; background: linear-gradient(180deg, #5eead4, #2dd4bf)"></span>
