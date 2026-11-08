@@ -91,6 +91,10 @@ HEAD = '''<!doctype html>
 <style>
 body{margin:0}
 a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
+.scroll{overflow-y:scroll;scrollbar-width:thin;scrollbar-color:#4a525c #15181d;padding-right:10px}
+.scroll::-webkit-scrollbar{width:8px}
+.scroll::-webkit-scrollbar-track{background:#15181d;border-radius:4px}
+.scroll::-webkit-scrollbar-thumb{background:#4a525c;border-radius:4px}
 </style>
 </helmet>
 '''
@@ -252,7 +256,7 @@ def form(name, title, rail, back, rows, right='', intro=''):
     has_bars = any(r.get('kind') == 'slider' for r in rows)
     if has_bars:
         out += BARS_HTML
-    out += '''    <div style="flex: 1; min-height: 0; min-width: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-bottom: 16px">
+    out += '''    <div class="scroll" style="flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; padding-bottom: 16px">
       <sc-for list="{{rows}}" as="r" hint-placeholder-count="6">
         <sc-if value="{{r.isSection}}" hint-placeholder-val="{{ false }}"><span style="margin: 8px 4px 0; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; color: #66707b">{{r.title}}</span></sc-if>
         <sc-if value="{{r.isLink}}" hint-placeholder-val="{{ true }}">
