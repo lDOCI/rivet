@@ -195,45 +195,28 @@ def build_extra():
 
 
 def build_limits():
-    reset_icon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.3-5.7"></path><path d="M4 4v4h4"></path></svg>'
-    bars = """      <div style="flex: none; display: flex; gap: 12px">
-        <sc-for list="{{main}}" as="m" hint-placeholder-count="2">
-          <div style="width: 132px; display: flex; flex-direction: column; gap: 6px">
-            <span style="font-size: 14px; font-weight: 600; color: #98a1ac; text-align: center">{{m.title}}</span>
-            <button type="button" onClick="{{m.edit}}" aria-label="{{m.editAria}}" style="height: 40px; border: 0; background: transparent; color: {{m.valInk}}; font: 800 28px Inter, system-ui, sans-serif; font-variant-numeric: tabular-nums; cursor: pointer">{{m.value}}</button>
-            <div role="slider" aria-label="{{m.title}}" aria-valuemin="{{m.min}}" aria-valuemax="{{m.max}}" aria-valuenow="{{m.now}}" onPointerDown="{{m.down}}" onPointerMove="{{m.move}}" onPointerUp="{{m.up}}" onPointerCancel="{{m.up}}" style="flex: 1; position: relative; border-radius: 24px; background: #15181d; overflow: hidden; touch-action: none; cursor: grab">
-              <span aria-hidden="true" style="position: absolute; left: 0; right: 0; bottom: 0; height: {{m.pct}}; background: linear-gradient(180deg, #5eead4, #2dd4bf)"></span>
-              <span aria-hidden="true" style="position: absolute; left: 10px; right: 10px; bottom: {{m.cfgPct}}; height: 2px; border-radius: 1px; background: rgba(244, 246, 248, 0.55); opacity: {{m.markOpacity}}"></span>
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px">
-              <button type="button" onClick="{{m.dec}}" aria-label="{{m.decAria}}" style="height: 56px; border: 0; border-radius: 16px; background: #1f242b; color: #f4f6f8; font: 500 26px Inter, system-ui, sans-serif; cursor: pointer">−</button>
-              <button type="button" onClick="{{m.inc}}" aria-label="{{m.incAria}}" style="height: 56px; border: 0; border-radius: 16px; background: #1f242b; color: #f4f6f8; font: 500 26px Inter, system-ui, sans-serif; cursor: pointer">+</button>
+    card = """        <sc-for list="{{%s}}" as="m" hint-placeholder-count="2">
+          <div style="border-radius: 22px; background: #15181d; box-shadow: inset 0 0 0 2px {{m.ring}}; padding: 12px; display: flex; flex-direction: column; gap: 10px; %s">
+            <span style="min-height: 32px; padding: 0 6px; display: flex; align-items: center; gap: 8px"><span style="flex: 1; display: flex; align-items: baseline; gap: 8px; min-width: 0"><span style="font-size: %s; font-weight: 700">{{m.title}}</span><span style="font-size: 14px; font-weight: 600; color: #66707b; white-space: nowrap">{{m.unit}}</span></span><sc-if value="{{m.changed}}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{m.reset}}" aria-label="{{m.resetAria}}" style="height: 32px; padding: 0 12px; border: 0; border-radius: 16px; background: rgba(45, 212, 191, 0.13); color: #5eead4; font: 600 13px Inter, system-ui, sans-serif; display: flex; align-items: center; gap: 6px; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.3-5.7"></path><path d="M4 4v4h4"></path></svg>{{m.was}}</button></sc-if></span>
+            <span style="padding: 0 6px; margin-top: -6px; font-size: 14px; color: #98a1ac">{{m.hint}}</span>
+            <div style="display: flex; gap: 8px">
+              <button type="button" onClick="{{m.dec}}" aria-label="{{m.decAria}}" style="width: 72px; height: %s; flex: none; border: 0; border-radius: 18px; background: #1f242b; color: #f4f6f8; font: 500 30px Inter, system-ui, sans-serif; cursor: pointer">−</button>
+              <button type="button" onClick="{{m.edit}}" aria-label="{{m.editAria}}" style="flex: 1; height: %s; border: 0; border-radius: 18px; background: #0b0d10; color: {{m.valInk}}; font-family: Inter, system-ui, sans-serif; display: flex; align-items: center; justify-content: center; cursor: pointer"><span style="font-size: %s; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap">{{m.value}}</span></button>
+              <button type="button" onClick="{{m.inc}}" aria-label="{{m.incAria}}" style="width: 72px; height: %s; flex: none; border: 0; border-radius: 18px; background: #1f242b; color: #f4f6f8; font: 500 30px Inter, system-ui, sans-serif; cursor: pointer">+</button>
             </div>
           </div>
         </sc-for>
-      </div>
 """
-    rows = """        <sc-for list="{{fine}}" as="m" hint-placeholder-count="2">
-          <div style="min-height: 84px; flex: none; border-radius: 20px; background: #15181d; padding: 0 10px 0 18px; display: flex; align-items: center; gap: 10px">
-            <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 18px; font-weight: 700">{{m.title}}</span><span style="font-size: 14px; color: #98a1ac">{{m.hint}}</span></span>
-            <button type="button" onClick="{{m.dec}}" aria-label="{{m.decAria}}" style="width: 64px; height: 64px; flex: none; border: 0; border-radius: 18px; background: #1f242b; color: #f4f6f8; font: 500 30px Inter, system-ui, sans-serif; cursor: pointer">−</button>
-            <button type="button" onClick="{{m.edit}}" aria-label="{{m.editAria}}" style="width: 84px; height: 64px; flex: none; border: 0; border-radius: 18px; background: transparent; color: {{m.valInk}}; font: 800 24px Inter, system-ui, sans-serif; font-variant-numeric: tabular-nums; cursor: pointer">{{m.value}}</button>
-            <button type="button" onClick="{{m.inc}}" aria-label="{{m.incAria}}" style="width: 64px; height: 64px; flex: none; border: 0; border-radius: 18px; background: #1f242b; color: #f4f6f8; font: 500 30px Inter, system-ui, sans-serif; cursor: pointer">+</button>
-          </div>
-        </sc-for>
-"""
-    keys = """            <sc-for list="{{keys}}" as="k" hint-placeholder-count="12"><button type="button" onClick="{{k.press}}" aria-label="{{k.aria}}" style="border: 0; border-radius: 18px; background: {{k.bg}}; color: #f4f6f8; font: 700 28px Inter, system-ui, sans-serif; cursor: pointer">{{k.label}}</button></sc-for>
-"""
-    reset_btn = ('<sc-if value="{{anyChanged}}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{resetAll}}" style="height: 64px; padding: 0 18px; border: 0; border-radius: 20px; background: #15181d; color: #5eead4; font: 700 15px Inter, system-ui, sans-serif; display: flex; align-items: center; gap: 8px; cursor: pointer">'
-                 + reset_icon + 'Сбросить</button></sc-if>')
-    body = root_open('tools') + """  <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px; display: flex; flex-direction: column; gap: 12px">
-""" + header('Лимиты движения', 'Tools.dc.html', reset_btn) + """    <div style="flex: 1; min-height: 0; display: flex; gap: 16px">
-""" + bars + """      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px">
-        <span style="margin: 2px 4px 0; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; color: #66707b">ТОНКАЯ НАСТРОЙКА</span>
-""" + rows + """        <div style="flex: 1"></div>
-        <p style="margin: 0 4px; font-size: 15px; line-height: 1.45; color: #98a1ac">Меньше скорость и ускорение — тише и чище стенки. Изменения действуют до перезапуска Klipper.</p>
-      </div>
-    </div>
+    keys = ''.join(["""            <sc-for list="{{keys}}" as="k" hint-placeholder-count="12"><button type="button" onClick="{{k.press}}" aria-label="{{k.aria}}" style="border: 0; border-radius: 18px; background: {{k.bg}}; color: #f4f6f8; font: 700 28px Inter, system-ui, sans-serif; cursor: pointer">{{k.label}}</button></sc-for>
+"""])
+    body = root_open('tools') + """  <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+""" + header('Лимиты движения', 'Tools.dc.html', '<sc-if value="{{anyChanged}}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{resetAll}}" style="height: 64px; padding: 0 18px; border: 0; border-radius: 20px; background: #15181d; color: #5eead4; font: 700 15px Inter, system-ui, sans-serif; cursor: pointer">Сбросить всё</button></sc-if>') + """    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px">
+""" + card % ('main', '', '20px', '76px', '76px', '32px', '76px') + """    </div>
+    <span style="margin: 4px 4px 0; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; color: #66707b">ТОНКАЯ НАСТРОЙКА</span>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px">
+""" + card % ('fine', '', '17px', '64px', '64px', '24px', '64px') + """    </div>
+    <div style="flex: 1"></div>
+    <span style="font-size: 14px; color: #98a1ac">Действует до перезапуска Klipper.</span>
   </main>
   <sc-if value="{{padOpen}}" hint-placeholder-val="{{ false }}">
     <div role="dialog" aria-modal="true" aria-label="Ввести значение" style="position: absolute; inset: 0; background: rgba(5, 6, 8, 0.78); display: flex; align-items: center; justify-content: center">
@@ -253,45 +236,44 @@ def build_limits():
   </sc-if>
 </div>
 """
+    body = body.replace('<div style="position: relative; width: 800px;', '<div style="position: relative; width: 800px;', 1)
     js = r"""class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { v: { vel: 600, acc: 20000, scv: 25, mcr: 0.5 }, pad: null, entry: '', drag: null };
+    this.state = { v: { vel: 600, acc: 20000, scv: 25, mcr: 50 }, pad: null, entry: '' };
   }
   renderVals() {
     var self = this, st = this.state;
     var defs = {
-      vel: { title: 'Скорость, мм/с', short: 'Скорость', cfg: 600, min: 10, max: 600, step: 10, big: 50, dec: 0 },
-      acc: { title: 'Ускорение, мм/с²', short: 'Ускорение', cfg: 20000, min: 500, max: 20000, step: 500, big: 1000, dec: 0 },
-      scv: { title: 'Скорость в углах', hint: 'мм/с · выше — быстрее, углы круглее', cfg: 25, min: 1, max: 50, step: 1, big: 1, dec: 0 },
-      mcr: { title: 'Плавность разгона', hint: 'доля пути на полной скорости', cfg: 0.5, min: 0, max: 1, step: 0.05, big: 0.05, dec: 2 }
+      vel: { title: 'Скорость', hint: 'предел скорости головы', unit: 'мм/с', cfg: 600, min: 10, max: 600, step: 50, dec: 0 },
+      acc: { title: 'Ускорение', hint: 'меньше — тише и меньше ряби', unit: 'мм/с²', cfg: 20000, min: 500, max: 20000, step: 1000, dec: 0 },
+      scv: { title: 'Скорость в углах', hint: 'выше — быстрее, но углы круглее', unit: 'мм/с', cfg: 25, min: 1, max: 50, step: 1, dec: 0 },
+      mcr: { title: 'Плавность разгона', hint: 'сколько пути на полной скорости', unit: '%', cfg: 50, min: 0, max: 100, step: 5, dec: 0 }
     };
-    function show(d, x) { return d.dec ? x.toFixed(d.dec) : x.toLocaleString('ru-RU'); }
-    function setv(k, x) { var d = defs[k]; var n = Object.assign({}, self.state.v); n[k] = Math.min(d.max, Math.max(d.min, +(+x).toFixed(4))); self.setState({ v: n }); }
-    function frac(d, x) { return ((x - d.min) / (d.max - d.min) * 100).toFixed(1) + '%'; }
+    function setv(k, x) { var d = defs[k]; var n = Object.assign({}, self.state.v); n[k] = Math.min(d.max, Math.max(d.min, +x.toFixed(4))); self.setState({ v: n }); }
     function item(k) {
       var d = defs[k], x = st.v[k], changed = x !== d.cfg;
       return {
-        title: d.title, hint: d.hint || '', value: show(d, x), valInk: changed ? '#5eead4' : '#f4f6f8',
-        min: d.min, max: d.max, now: x, pct: frac(d, x), cfgPct: frac(d, d.cfg), markOpacity: changed ? 1 : 0,
-        dec: function () { setv(k, x - d.big); }, inc: function () { setv(k, x + d.big); },
-        decAria: d.title + ': меньше', incAria: d.title + ': больше', editAria: d.title + ': ' + show(d, x) + ', ввести число',
-        edit: function () { self.setState({ pad: k, entry: '' }); },
-        down: function (e) { if (e.currentTarget.setPointerCapture) e.currentTarget.setPointerCapture(e.pointerId); self.setState({ drag: k }); setv(k, self.pick(e, d)); },
-        move: function (e) { if (self.state.drag === k) setv(k, self.pick(e, d)); },
-        up: function () { if (self.state.drag) self.setState({ drag: null }); }
+        title: d.title, hint: d.hint, unit: d.unit, value: d.dec ? x.toFixed(d.dec) : x.toLocaleString('ru-RU'),
+        changed: changed, was: 'было ' + (d.dec ? d.cfg.toFixed(d.dec) : d.cfg.toLocaleString('ru-RU')),
+        reset: function () { setv(k, d.cfg); }, resetAria: d.title + ': вернуть ' + d.cfg,
+        ring: changed ? 'rgba(45, 212, 191, 0.45)' : 'transparent', valInk: changed ? '#5eead4' : '#f4f6f8',
+        dec: function () { setv(k, x - d.step); }, inc: function () { setv(k, x + d.step); },
+        decAria: d.title + ': меньше', incAria: d.title + ': больше', editAria: d.title + ': ввести число',
+        edit: function () { self.setState({ pad: k, entry: '' }); }
       };
     }
-    var any = Object.keys(defs).some(function (k) { return st.v[k] !== defs[k].cfg; });
+    var changedAny = Object.keys(defs).some(function (k) { return st.v[k] !== defs[k].cfg; });
     var pd = st.pad ? defs[st.pad] : null;
     var num = st.entry === '' ? NaN : parseFloat(st.entry.replace(',', '.'));
-    var valid = !!pd && !isNaN(num) && num >= pd.min && num <= pd.max;
+    var valid = pd && !isNaN(num) && num >= pd.min && num <= pd.max;
     return {
-      main: [item('vel'), item('acc')], fine: [item('scv'), item('mcr')], anyChanged: any,
-      resetAll: function () { self.setState({ v: { vel: 600, acc: 20000, scv: 25, mcr: 0.5 } }); },
-      padOpen: !!st.pad, padTitle: pd ? pd.title : '',
+      main: [item('vel'), item('acc')], fine: [item('scv'), item('mcr')],
+      anyChanged: changedAny,
+      resetAll: function () { self.setState({ v: { vel: 600, acc: 20000, scv: 25, mcr: 50 } }); },
+      padOpen: !!st.pad, padTitle: pd ? pd.title + ', ' + pd.unit : '',
       entryLabel: st.entry === '' ? '—' : st.entry, entryInk: st.entry === '' ? '#66707b' : '#f4f6f8',
-      padHint: pd ? 'от ' + show(pd, pd.min) + ' до ' + show(pd, pd.max) : '', hintInk: (pd && !isNaN(num) && !valid) ? '#fb7185' : '#98a1ac',
+      padHint: pd ? 'от ' + pd.min + ' до ' + pd.max.toLocaleString('ru-RU') : '', hintInk: (pd && !isNaN(num) && !valid) ? '#fb7185' : '#98a1ac',
       okBg: valid ? '#2dd4bf' : '#1f242b', okFg: valid ? '#042f2a' : '#66707b',
       padOk: function () { if (valid) { setv(st.pad, num); self.setState({ pad: null }); } },
       padCancel: function () { self.setState({ pad: null }); },
@@ -301,11 +283,6 @@ def build_limits():
       })
     };
   }
-  pick(e, d) {
-    var b = e.currentTarget.getBoundingClientRect();
-    var f = Math.max(0, Math.min(1, (b.bottom - e.clientY) / b.height));
-    return Math.round((d.min + f * (d.max - d.min)) / d.step) * d.step;
-  }
 }"""
     write('Limits', 'Лимиты движения', body, js)
     for lab, src in [('Скорость', 'toolhead.max_velocity; config: configfile.settings.printer.max_velocity'),
@@ -314,3 +291,4 @@ def build_limits():
                      ('Плавность разгона', 'toolhead.minimum_cruise_ratio'),
                      ('apply', 'SET_VELOCITY_LIMIT VELOCITY= ACCEL= SQUARE_CORNER_VELOCITY= MINIMUM_CRUISE_RATIO=')]:
         gen.note_src('Лимиты движения', lab, src)
+
