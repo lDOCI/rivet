@@ -1,0 +1,263 @@
+// List rows, hub tile, toggle, segmented. docs/ux/design-code.md §4.
+import { Tokens } from "tokens.slint";
+import { Icon } from "controls.slint";
+
+// Row that opens another screen: optional icon tile, title, caption, value, chevron.
+export component LinkRow inherits Rectangle {
+    in property <string> title;
+    in property <string> sub;
+    in property <string> value;
+    in property <string> icon;
+    callback clicked;
+    min-height: 72px;
+    border-radius: Tokens.r-m;
+    background: ta.pressed ? Tokens.surface-2 : Tokens.surface-1;
+    accessible-role: button;
+    accessible-label: root.title;
+    HorizontalLayout {
+        padding-left: 18px;
+        padding-right: 18px;
+        spacing: 14px;
+        if root.icon != "": Rectangle {
+            width: 44px;
+            height: 44px;
+            y: (parent.height - self.height) / 2;
+            border-radius: 14px;
+            background: Tokens.surface-2;
+            Icon { d: root.icon; color: Tokens.accent; size: 24px; }
+        }
+        VerticalLayout {
+            alignment: center;
+            spacing: 2px;
+            horizontal-stretch: 1;
+            Text { text: root.title; color: Tokens.text; font-size: Tokens.row-title; font-weight: 700; overflow: elide; }
+            if root.sub != "": Text { text: root.sub; color: Tokens.text-dim; font-size: Tokens.caption; overflow: elide; }
+        }
+        if root.value != "": Text {
+            text: root.value;
+            color: Tokens.text-2;
+            font-size: Tokens.body;
+            vertical-alignment: center;
+        }
+        Icon { d: "m9 6 6 6-6 6"; color: Tokens.text-faint; size: 20px; weight: 2.2; y: (parent.height - self.height) / 2; }
+    }
+    ta := TouchArea { clicked => { root.clicked(); } }
+}
+
+// Read-only fact: title, caption, value on the right.
+export component InfoRow inherits Rectangle {
+    in property <string> title;
+    in property <string> sub;
+    in property <string> value;
+    in property <color> value-color: Tokens.text;
+    min-height: Tokens.touch;
+    border-radius: Tokens.r-m;
+    background: Tokens.surface-1;
+    HorizontalLayout {
+        padding-left: 18px;
+        padding-right: 18px;
+        spacing: 14px;
+        VerticalLayout {
+            alignment: center;
+            spacing: 2px;
+            horizontal-stretch: 1;
+            Text { text: root.title; color: Tokens.text; font-size: 17px; font-weight: 600; overflow: elide; }
+            if root.sub != "": Text { text: root.sub; color: Tokens.text-dim; font-size: Tokens.caption; overflow: elide; }
+        }
+        Text {
+            text: root.value;
+            color: root.value-color;
+            font-size: 17px;
+            font-weight: 700;
+            vertical-alignment: center;
+        }
+    }
+}
+
+// Action in place (no chevron): accent text, or danger for destructive actions.
+export component ActionRow inherits Rectangle {
+    in property <string> title;
+    in property <string> sub;
+    in property <bool> danger;
+    callback clicked;
+    min-height: Tokens.touch;
+    border-radius: Tokens.r-m;
+    background: ta.pressed ? Tokens.surface-2 : Tokens.surface-1;
+    accessible-role: button;
+    accessible-label: root.title;
+    VerticalLayout {
+        padding-left: 18px;
+        padding-right: 18px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+        alignment: center;
+        spacing: 2px;
+        Text { text: root.title; color: root.danger ? Tokens.danger : Tokens.accent; font-size: 17px; font-weight: 700; }
+        if root.sub != "": Text { text: root.sub; color: Tokens.text-dim; font-size: Tokens.caption; }
+    }
+    ta := TouchArea { clicked => { root.clicked(); } }
+}
+
+export component Switch inherits Rectangle {
+    in property <bool> on;
+    width: 60px;
+    height: 34px;
+    border-radius: 17px;
+    background: root.on ? Tokens.accent : #3a414a;
+    animate background { duration: 120ms; }
+    Rectangle {
+        x: root.on ? 30px : 4px;
+        y: 4px;
+        width: 26px;
+        height: 26px;
+        border-radius: 13px;
+        background: white;
+        animate x { duration: 120ms; easing: ease-out; }
+    }
+}
+
+// The whole row is the switch.
+export component ToggleRow inherits Rectangle {
+    in property <string> title;
+    in property <string> sub;
+    in-out property <bool> checked;
+    callback toggled(bool);
+    min-height: 72px;
+    border-radius: Tokens.r-m;
+    background: Tokens.surface-1;
+    accessible-role: switch;
+    accessible-label: root.title;
+    accessible-checked: root.checked;
+    HorizontalLayout {
+        padding-left: 18px;
+        padding-right: 18px;
+        spacing: 14px;
+        VerticalLayout {
+            alignment: center;
+            spacing: 2px;
+            horizontal-stretch: 1;
+            Text { text: root.title; color: Tokens.text; font-size: Tokens.row-title; font-weight: 700; overflow: elide; }
+            if root.sub != "": Text { text: root.sub; color: Tokens.text-dim; font-size: Tokens.caption; overflow: elide; }
+        }
+        Switch { on: root.checked; y: (parent.height - self.height) / 2; }
+    }
+    TouchArea {
+        clicked => {
+            root.checked = !root.checked;
+            root.toggled(root.checked);
+        }
+    }
+}
+
+// Equal choices, selected one filled with accent.
+export component Segmented inherits HorizontalLayout {
+    in property <[string]> options;
+    in-out property <int> selected;
+    callback picked(int);
+    spacing: 6px;
+    for option[i] in root.options: Rectangle {
+        height: Tokens.touch;
+        horizontal-stretch: 1;
+        border-radius: Tokens.r-s;
+        background: i == root.selected ? Tokens.accent : ta.pressed ? Tokens.surface-3 : Tokens.surface-2;
+        accessible-role: button;
+        accessible-label: option;
+        accessible-checked: i == root.selected;
+        Text {
+            text: option;
+            color: i == root.selected ? Tokens.accent-ink : Tokens.text;
+            font-size: 15px;
+            font-weight: 700;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+        ta := TouchArea {
+            clicked => {
+                root.selected = i;
+                root.picked(i);
+            }
+        }
+    }
+}
+
+// Card with a label on the left and a segmented control (wraps when narrow is not needed at 800 px).
+export component SegmentedRow inherits Rectangle {
+    in property <string> title;
+    in property <string> sub;
+    in property <[string]> options;
+    in-out property <int> selected;
+    callback picked(int);
+    min-height: 84px;
+    border-radius: Tokens.r-m;
+    background: Tokens.surface-1;
+    HorizontalLayout {
+        padding: 10px;
+        padding-left: 18px;
+        spacing: 14px;
+        VerticalLayout {
+            alignment: center;
+            spacing: 2px;
+            min-width: 150px;
+            horizontal-stretch: 1;
+            Text { text: root.title; color: Tokens.text; font-size: Tokens.row-title; font-weight: 700; overflow: elide; }
+            if root.sub != "": Text { text: root.sub; color: Tokens.text-dim; font-size: Tokens.caption; overflow: elide; }
+        }
+        Segmented {
+            horizontal-stretch: 2;
+            options: root.options;
+            selected <=> root.selected;
+            picked(i) => { root.picked(i); }
+        }
+    }
+}
+
+// Hub tile: icon (or live widget via children), then title/value on a fixed
+// baseline and a two-line caption, so titles in a row line up.
+export component Tile inherits Rectangle {
+    in property <string> icon;
+    in property <string> value;  // live value; empty for tool tiles
+    in property <string> label;  // name, or caption under a value
+    in property <string> sub;    // caption for tool tiles
+    callback clicked;
+    // Equal cells in a grid, whatever the text inside.
+    preferred-width: 0px;
+    min-width: 0px;
+    horizontal-stretch: 1;
+    vertical-stretch: 1;
+    border-radius: Tokens.r-l;
+    background: ta.pressed ? Tokens.surface-2 : Tokens.surface-1;
+    accessible-role: button;
+    accessible-label: root.value != "" ? root.value + " " + root.label : root.label;
+    VerticalLayout {
+        padding: 16px;
+        // Wrapped: a fixed-width child would cap the column's width.
+        if root.icon != "": HorizontalLayout {
+            alignment: start;
+            Icon { d: root.icon; color: Tokens.accent; size: 42px; weight: 1.7; }
+        }
+        @children
+        Rectangle { vertical-stretch: 1; }
+        Rectangle {
+            height: 36px;
+            Text {
+                y: parent.height - self.height;
+                width: parent.width;
+                text: root.value != "" ? root.value : root.label;
+                color: Tokens.text;
+                font-size: root.value != "" ? 30px : 20px;
+                font-weight: 800;
+                overflow: elide;
+            }
+        }
+        Text {
+            height: 36px;
+            text: root.value != "" ? root.label : root.sub;
+            color: Tokens.text-dim;
+            font-size: Tokens.caption;
+            wrap: word-wrap;
+            overflow: elide;
+            vertical-alignment: top;
+        }
+    }
+    ta := TouchArea { clicked => { root.clicked(); } }
+}

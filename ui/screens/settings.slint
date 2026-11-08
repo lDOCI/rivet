@@ -1,0 +1,28 @@
+import { Tokens } from "../kit/tokens.slint";
+import { Icons } from "../kit/icons.slint";
+import { Header } from "../kit/controls.slint";
+import { LinkRow } from "../kit/rows.slint";
+import { ScrollList } from "../kit/scroll.slint";
+
+export component SettingsScreen inherits VerticalLayout {
+    horizontal-stretch: 1;
+    in property <string> network: "Wi-Fi HomeNet_5G · 192.168.1.42";
+    in property <string> versions: "Klipper v0.12.0 · Rivet 0.1.0";
+    callback open(string);
+    padding: Tokens.pad;
+    padding-bottom: 0;
+    spacing: Tokens.gap-s;
+    Header { title: @tr("Settings"); back: false; }
+    ScrollList {
+        vertical-stretch: 1;
+        LinkRow { icon: Icons.wifi; title: @tr("Network"); sub: root.network; clicked => { root.open("network"); } }
+        LinkRow { icon: Icons.screen; title: @tr("Screen"); sub: @tr("brightness 70% · sleep 10 min"); clicked => { root.open("screen"); } }
+        LinkRow { icon: Icons.lock; title: @tr("Lock and PIN"); sub: @tr("off"); clicked => { root.open("lock"); } }
+        LinkRow { icon: Icons.sound; title: @tr("Sound"); sub: @tr("beep when a print ends"); clicked => { root.open("sound"); } }
+        LinkRow { icon: Icons.lang; title: @tr("Language and time"); sub: "Русский · 24 ч · Europe/Moscow"; clicked => { root.open("language"); } }
+        LinkRow { icon: Icons.shield; title: @tr("Safety"); sub: @tr("confirmations"); clicked => { root.open("safety"); } }
+        LinkRow { icon: Icons.printer; title: @tr("Printers"); sub: @tr("1 connected"); clicked => { root.open("printers"); } }
+        LinkRow { icon: Icons.update; title: @tr("Updates"); sub: root.versions; clicked => { root.open("updates"); } }
+        LinkRow { icon: Icons.chip; title: @tr("System"); sub: @tr("restart, power off, about"); clicked => { root.open("system"); } }
+    }
+}

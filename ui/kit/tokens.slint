@@ -1,0 +1,49 @@
+// Design tokens. Source of truth: docs/ux/design-code.md §1–3.
+// Nothing outside ui/kit picks colours or sizes by hand.
+
+export global Tokens {
+    // Colour
+    out property <color> bg: #0b0d10;
+    out property <color> rail: #0f1215;
+    out property <color> surface-1: #15181d;
+    out property <color> surface-2: #1f242b;
+    out property <color> surface-3: #252a31;
+    out property <color> well: #0b0d10;
+    out property <color> text: #f4f6f8;
+    out property <color> text-2: #c7cdd4;
+    out property <color> text-dim: #98a1ac;
+    out property <color> text-faint: #66707b;
+    out property <color> accent: #2dd4bf;
+    out property <color> accent-hi: #5eead4;
+    out property <color> accent-ink: #042f2a;
+    out property <color> accent-soft: #2dd4bf21; // 13 %
+    out property <color> heat-1: #fbbf24;
+    out property <color> heat-2: #f97316;
+    out property <color> danger: #fb7185;
+    out property <color> danger-soft: #fb4b5e24; // 14 %
+    out property <color> danger-solid: #e11d48;
+    out property <color> warn: #fbbf24;
+    out property <color> warn-text: #fcd34d;
+
+    // Type (Inter, embedded)
+    out property <length> title: 26px;
+    out property <length> card-value: 30px;
+    out property <length> row-title: 18px;
+    out property <length> body: 16px;
+    out property <length> caption: 14px;
+    out property <length> section: 13px;
+
+    // Geometry
+    out property <length> pad: 16px;
+    out property <length> gap: 12px;
+    out property <length> gap-s: 8px;
+    out property <length> r-s: 16px;
+    out property <length> r-m: 20px;
+    out property <length> r-l: 24px;
+    out property <length> r-xl: 28px;
+    // Touch targets (§3): primary ≥ 76, anything tappable ≥ 64.
+    out property <length> touch: 64px;
+    out property <length> touch-primary: 76px;
+    out property <length> header: 64px;
+    out property <length> rail-width: 88px;
+}
