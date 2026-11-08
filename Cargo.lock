@@ -4581,6 +4581,7 @@ name = "ui-snapshot"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "fontique",
  "png 0.17.16",
  "rivet",
  "slint",
