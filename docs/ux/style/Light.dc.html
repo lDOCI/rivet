@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Подсветка — Rivet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
+</style>
+</helmet>
+<div style="width: 800px; height: 480px; display: flex; background: #0b0d10; color: #f4f6f8; font-family: Inter, system-ui, sans-serif; overflow: hidden">
+  <dc-import name="NavRail" active="control" hint-size="88px,480px"></dc-import>
+  <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px 20px 16px 16px; display: grid; grid-template-columns: 1fr 150px 120px; gap: 14px">
+    <div style="display: flex; flex-direction: column; gap: 16px; min-width: 0">
+      <div style="display: flex; align-items: center; gap: 14px">
+        <a href="Control.dc.html" aria-label="Назад" style="width: 64px; height: 64px; flex: none; border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></a>
+        <h1 style="margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.02em">Подсветка</h1>
+      </div>
+      <span style="margin-top: 24px; font-size: 72px; font-weight: 800; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums">{{valueLabel}}</span>
+      <p style="margin: 0; font-size: 16px; line-height: 1.5; color: #98a1ac">Свет внутри принтера. Тяните полосу или жмите ±10.</p>
+    </div>
+    <div role="slider" aria-label="Подсветка" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{value}}" onPointerDown="{{dragStart}}" onPointerMove="{{dragMove}}" onPointerUp="{{dragEnd}}" onPointerCancel="{{dragEnd}}" style="position: relative; border-radius: 28px; background: #15181d; overflow: hidden; touch-action: none; cursor: grab">
+      <span aria-hidden="true" style="position: absolute; left: 0; right: 0; bottom: 0; height: {{fillPct}}; background: linear-gradient(180deg, #5eead4, #2dd4bf)"></span>
+      <span aria-hidden="true" style="position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); color: {{iconInk}}; display: flex"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"></path><path d="M10 21h4"></path><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"></path></svg></span>
+    </div>
+    <div style="display: grid; grid-template-rows: repeat(4, minmax(0, 1fr)); gap: 10px">
+      <button type="button" onClick="{{full}}" style="border: 0; border-radius: 22px; background: #15181d; color: #f4f6f8; font: 700 19px Inter, system-ui, sans-serif; cursor: pointer">100%</button>
+      <button type="button" onClick="{{plus}}" aria-label="Плюс 10 процентов" style="border: 0; border-radius: 22px; background: #15181d; color: #f4f6f8; font: 800 24px Inter, system-ui, sans-serif; cursor: pointer">+10</button>
+      <button type="button" onClick="{{minus}}" aria-label="Минус 10 процентов" style="border: 0; border-radius: 22px; background: #15181d; color: #f4f6f8; font: 800 24px Inter, system-ui, sans-serif; cursor: pointer">−10</button>
+      <button type="button" onClick="{{off}}" style="border: 0; border-radius: 22px; background: #15181d; color: #f4f6f8; font: 700 18px Inter, system-ui, sans-serif; cursor: pointer">Выкл.</button>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":800,"height":480}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { value: 70, dragging: false };
+  }
+  valueFromPointer(e) {
+    var r = e.currentTarget.getBoundingClientRect();
+    var f = 1 - (e.clientY - r.top) / r.height;
+    return Math.max(0, Math.min(100, Math.round(f * 100 / 5) * 5));
+  }
+  renderVals() {
+    var self = this;
+    var v = this.state.value;
+    var set = function (n) { self.setState({ value: Math.max(0, Math.min(100, n)) }); };
+    return {
+      value: v,
+      valueLabel: v === 0 ? 'Выкл.' : v + '%',
+      fillPct: v + '%',
+      iconInk: v >= 12 ? '#042f2a' : '#98a1ac',
+      full: function () { set(100); },
+      plus: function () { set(Math.round(v / 10) * 10 + 10); },
+      minus: function () { set(Math.round(v / 10) * 10 - 10); },
+      off: function () { set(0); },
+      dragStart: function (e) {
+        if (e.currentTarget.setPointerCapture) e.currentTarget.setPointerCapture(e.pointerId);
+        self.setState({ dragging: true, value: self.valueFromPointer(e) });
+      },
+      dragMove: function (e) {
+        if (!self.state.dragging) return;
+        var n = self.valueFromPointer(e);
+        if (n !== self.state.value) self.setState({ value: n });
+      },
+      dragEnd: function () { if (self.state.dragging) self.setState({ dragging: false }); }
+    };
+  }
+}
+</script>
+</body>
+</html>
