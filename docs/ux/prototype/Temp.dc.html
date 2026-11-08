@@ -33,7 +33,7 @@ a{color:#2fbf62;text-decoration:none}a:hover{color:#5fd788}
         <div style="height: 64px; border-radius: 14px; background: #1a1d21; display: flex; align-items: center; justify-content: center; gap: 6px">
           <span style="font-size: 14px; color: #9aa1a9">цель</span>
           <span aria-live="polite" style="font-size: 40px; font-weight: 700; font-variant-numeric: tabular-nums; color: {{entryColor}}">{{entry}}°</span>
-          <span style="font-size: 13px; color: #9aa1a9">макс. {{max}}°</span>
+          <span style="font-size: 13px; color: {{limitColor}}">{{limitText}}</span>
         </div>
         <div style="flex: 1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px">
           <sc-for list="{{keys}}" as="k" hint-placeholder-count="12">
@@ -47,7 +47,7 @@ a{color:#2fbf62;text-decoration:none}a:hover{color:#5fd788}
         <sc-for list="{{presets}}" as="p" hint-placeholder-count="4">
           <button type="button" onClick="{{p.apply}}" style="height: 62px; border: 0; border-radius: 12px; background: #1a1d21; color: #f2f4f5; font: 700 16px Inter, system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer">{{p.name}}<span style="font-size: 13px; font-weight: 500; color: #9aa1a9">{{p.temps}}</span></button>
         </sc-for>
-        <button type="button" onClick="{{off}}" style="height: 52px; border: 0; border-radius: 12px; background: #262a30; color: #f2f4f5; font: 700 15px Inter, system-ui, sans-serif; cursor: pointer">Выключить всё</button>
+        <button type="button" onClick="{{off}}" style="height: 52px; border: 0; border-radius: 12px; background: #262a30; color: #f2f4f5; font: 700 15px Inter, system-ui, sans-serif; cursor: pointer">{{offLabel}}</button>
       </div>
     </main>
   </div>
@@ -91,7 +91,10 @@ class Component extends DCLogic {
       };
     });
     return {
-      entry: s.entry || '0', max: max,
+      entry: s.entry || '0',
+      limitText: tooHot ? (nozzle ? 'Сопло — не выше ' : 'Стол — не выше ') + max + '°' : 'сейчас ' + (nozzle ? 24 : 23) + '°',
+      limitColor: tooHot ? '#ff6b70' : '#9aa1a9',
+      offLabel: nozzle ? 'Выключить нагрев сопла' : 'Выключить нагрев стола',
       entryColor: tooHot ? '#ff6b70' : '#ff8a3d',
       keys: keys, presets: presets,
       nozzleSel: nozzle ? 'true' : 'false', bedSel: nozzle ? 'false' : 'true',

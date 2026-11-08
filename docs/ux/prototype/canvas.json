@@ -7,7 +7,7 @@
   "boards": {
     "Main.dc.html": { "x": 0, "y": 0, "w": 800, "h": 480, "title": "Главная · простой", "is_interactive": true, "radius": 12 },
     "Printing.dc.html": { "x": 880, "y": 0, "w": 800, "h": 480, "title": "Главная · печать", "is_interactive": true, "radius": 12 },
-    "Tune.dc.html": { "x": 1760, "y": 0, "w": 800, "h": 480, "title": "Тюнинг в печати", "is_interactive": true, "radius": 12 },
+    "Tune.dc.html": { "x": 1760, "y": 0, "w": 800, "h": 480, "title": "Подстройка печати", "is_interactive": true, "radius": 12 },
     "ConfirmStop.dc.html": { "x": 2640, "y": 0, "w": 800, "h": 480, "title": "Подтверждение отмены", "is_interactive": true, "radius": 12 },
     "Exclude.dc.html": { "x": 3520, "y": 0, "w": 800, "h": 480, "title": "Исключение объекта", "is_interactive": true, "radius": 12 },
 

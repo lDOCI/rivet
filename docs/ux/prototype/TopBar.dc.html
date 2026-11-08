@@ -14,9 +14,14 @@ body{margin:0}
 </style>
 </helmet>
 <header style="width: 704px; height: 48px; box-sizing: border-box; padding: 0 12px 0 16px; display: flex; align-items: center; gap: 14px; background: #0f1113; font-family: Inter, system-ui, sans-serif; color: #9aa1a9; font-size: 14px">
-  <div style="display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1">
-    <span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 5px; flex: none; background: {{dot}}"></span>
-    <span style="color: #f2f4f5; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{label}}</span>
+  <div style="display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1">
+    <span style="color: #f2f4f5; font-weight: 600; white-space: nowrap">AD5M</span>
+    <sc-if value="{{showStatus}}" hint-placeholder-val="{{ false }}">
+      <a href="Printing.dc.html" style="height: 32px; padding: 0 12px; border-radius: 16px; background: #1a1d21; color: #f2f4f5; text-decoration: none; display: flex; align-items: center; gap: 8px; font-weight: 600; white-space: nowrap">
+        <span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 4px; background: {{dot}}"></span>
+        {{label}}
+      </a>
+    </sc-if>
   </div>
   <div style="display: flex; align-items: center; gap: 6px; white-space: nowrap">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5a10 10 0 0 1 14 0"></path><path d="M8.5 16a5 5 0 0 1 7 0"></path><path d="M2 9a15 15 0 0 1 20 0"></path><circle cx="12" cy="19.5" r="0.8"></circle></svg>
@@ -29,19 +34,18 @@ body{margin:0}
   </button>
 </header>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"mode":{"editor":"enum","options":["ready","printing","paused","error","offline"],"default":"ready"},"$preview":{"width":704,"height":48}}'>
+<script type="text/x-dc" data-dc-script data-props='{"mode":{"editor":"enum","options":["plain","printing","paused"],"default":"plain"},"$preview":{"width":704,"height":48}}'>
 class Component extends DCLogic {
   renderVals() {
-    var mode = this.props.mode ?? 'ready';
+    // Status appears only where the screen itself doesn't already say it:
+    // a print in progress, seen from Files, Control, Settings and so on.
+    var mode = this.props.mode ?? 'plain';
     var map = {
-      ready: ['#2fbf62', 'Готов'],
-      printing: ['#4c9aff', 'Печать · 42%'],
-      paused: ['#f5a623', 'Пауза · 42%'],
-      error: ['#e5484d', 'Ошибка Klipper'],
-      offline: ['#e5484d', 'Нет связи с принтером']
+      printing: ['#4c9aff', 'Печать · 42% · 48 мин'],
+      paused: ['#f5a623', 'Пауза · 42%']
     };
-    var m = map[mode] || map.ready;
-    return { dot: m[0], label: m[1] };
+    var m = map[mode];
+    return { showStatus: !!m, dot: m ? m[0] : '', label: m ? m[1] : '' };
   }
 }
 </script>

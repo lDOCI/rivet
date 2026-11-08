@@ -17,7 +17,7 @@ a{color:#2fbf62;text-decoration:none}a:hover{color:#5fd788}
 <div style="width: 800px; height: 480px; display: flex; background: #0f1113; color: #f2f4f5; font-family: Inter, system-ui, sans-serif; overflow: hidden">
   <dc-import name="NavRail" active="home" hint-size="96px,480px"></dc-import>
   <div style="flex: 1; display: flex; flex-direction: column; min-width: 0">
-    <dc-import name="TopBar" mode="{{topMode}}" hint-size="704px,48px"></dc-import>
+    <dc-import name="TopBar" mode="plain" hint-size="704px,48px"></dc-import>
     <main style="flex: 1; box-sizing: border-box; padding: 4px 16px 16px; display: flex; flex-direction: column; gap: 12px; min-height: 0">
 
       <section aria-label="Текущая печать" style="flex: 1; min-height: 0; border-radius: 16px; background: #1a1d21; padding: 16px; box-sizing: border-box; display: flex; gap: 18px">
@@ -48,7 +48,7 @@ a{color:#2fbf62;text-decoration:none}a:hover{color:#5fd788}
 
       <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px">
         <button type="button" onClick="{{togglePause}}" style="height: 60px; border: 0; border-radius: 12px; background: {{pauseBg}}; color: {{pauseFg}}; font: 700 16px Inter, system-ui, sans-serif; cursor: pointer">{{pauseLabel}}</button>
-        <a href="Tune.dc.html" style="height: 60px; border-radius: 12px; background: #262a30; color: #f2f4f5; font-weight: 700; font-size: 16px; display: flex; align-items: center; justify-content: center">Тюнинг</a>
+        <a href="Tune.dc.html" style="height: 60px; border-radius: 12px; background: #262a30; color: #f2f4f5; font-weight: 700; font-size: 16px; display: flex; align-items: center; justify-content: center">Подстройка</a>
         <a href="Exclude.dc.html" style="height: 60px; border-radius: 12px; background: #262a30; color: #f2f4f5; font-weight: 700; font-size: 16px; display: flex; align-items: center; justify-content: center">Объекты</a>
         <a href="ConfirmStop.dc.html" style="height: 60px; border-radius: 12px; background: #262a30; color: #ff6b70; font-weight: 700; font-size: 16px; display: flex; align-items: center; justify-content: center">Отменить</a>
       </div>
