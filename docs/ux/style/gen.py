@@ -7,7 +7,9 @@ Every row that shows a value carries `src`: where the real app reads it.
 """
 import json, os, sys
 
-OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'project')
+_HERE = os.path.dirname(os.path.abspath(__file__))
+# Scratch layout keeps screens in ./project; the repo copy keeps them next to the script.
+OUT = os.path.join(_HERE, 'project') if os.path.isdir(os.path.join(_HERE, 'project')) else _HERE
 
 # --- icons (24px stroke) -----------------------------------------------------
 C = "M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18"

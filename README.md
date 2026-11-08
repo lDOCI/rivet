@@ -4,7 +4,7 @@ Lightweight touch UI for Klipper/Moonraker, written in Rust + [Slint](https://sl
 First target: Flashforge Adventurer 5M / 5M Pro running [Klipper Mod](https://github.com/xblax/flashforge_ad5m_klipper_mod)
 (Allwinner T113-S3, 128 MB RAM, 4.3" 800×480).
 
-Status: early prototype (milestone M0). Roadmap: [ROADMAP.md](ROADMAP.md). Architecture: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Status: M0 foundation done on Mac, D1 design closed (68-screen prototype, design code); next is M1. Roadmap: [ROADMAP.md](ROADMAP.md). Architecture: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ![Home screen while printing](docs/screenshots/home-printing.png)
 
