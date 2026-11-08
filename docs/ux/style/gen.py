@@ -531,13 +531,6 @@ def build():
         L('Драйверы TMC', 'ток, режимы', 'Tmc', icon='driver', src='tmc2209 <stepper>.*'),
         L('Тензодатчик', 'обнулить, если врёт касание', 'Calibrate', icon='scale', src='only when gcode_macro LOAD_CELL_TARE exists (AD5M)'),
     ])
-    form('Screws', 'Винты стола', 'tools', 'Calibrate.dc.html', [
-        I('Задний левый', 'опорный', 'не крутить'),
-        I('Задний правый', '↻ 00:15', 'по часовой, четверть оборота', src='SCREWS_TILT_CALCULATE result (gcode response)', tone='accent'),
-        I('Передний левый', '↺ 00:05', 'против часовой', tone='accent'),
-        I('Передний правый', '✓ ровно', 'меньше 00:03'),
-        A('Проверить снова', 'щуп коснётся у каждого винта', tone='accent'),
-    ], intro='00:15 = 15 минут на циферблате, то есть четверть оборота.')
     form('ProbeZ', 'Z-offset', 'tools', 'Calibrate.dc.html', [
         I('Сейчас', '−0.12 мм', 'сохранён в конфиге', src='gcode_move.homing_origin[2]; configfile.settings.probe.z_offset'),
         A('Точная подстройка', 'на тестовом слое', 'ZWizard', tone='accent'),
@@ -574,18 +567,6 @@ def build():
         I('Мотор Z', '0.60 А', 'TMC2209'),
         I('Экструдер', '0.50 А', 'TMC2209'),
     ])
-    form('Macros', 'Макросы', 'tools', 'Tools.dc.html', [
-        S('ИЗБРАННЫЕ'),
-        L('LOAD_FILAMENT', 'Manual filament loading', 'MacroRun', src='gcode_macro *.description via configfile'),
-        L('AUTO_BED_LEVEL', 'BED_TEMP, EXTRUDER_TEMP, PROFILE', 'MacroRun'),
-        S('ВСЕ'),
-        L('AIR_CIRCULATION_INTERNAL', 'Turn on internal air circulation', 'MacroRun'),
-        L('PURGE_FILAMENT', '', 'MacroRun'),
-        L('LCD_ON', 'BACKLIGHT', 'MacroRun'),
-        L('PLAY_MIDI', 'FILE', 'MacroRun'),
-        L('SHUTDOWN', '', 'MacroRun'),
-        T('Показывать скрытые (_)', 'служебные макросы', False),
-    ])
     form('MacroRun', 'AUTO_BED_LEVEL', 'tools', 'Macros.dc.html', [
         ST('BED_TEMP', 'по умолчанию 60', 60, 0, 130, 5, '°'),
         ST('EXTRUDER_TEMP', 'по умолчанию 200', 200, 0, 350, 5, '°'),
@@ -611,22 +592,6 @@ def build():
         I('TVOC (AD5M Pro)', '12', 'качество воздуха', src='temperature_sensor TVOC_Level'),
         I('Тензодатчик', '−3 г', '', src='temperature_sensor Load_Cell'),
     ])
-    form('Maintenance', 'Сервис', 'tools', 'Tools.dc.html', [
-        I('Фильтр HEPA', '82 / 300 ч', 'заменить через 218 ч', src='Rivet: print hours from server.history since reset'),
-        I('Сопло', '311 / 500 ч', ''),
-        I('Направляющие', '44 / 100 ч', 'смазать'),
-        ST('Интервал фильтра', '', 300, 50, 1000, 50, ' ч'),
-        A('Отметить: фильтр заменён', 'сбросит счётчик'),
-    ])
-    form('Camera', 'Камера', 'tools', 'Tools.dc.html', [
-        I('Камера', 'не подключена', 'добавьте камеру в Moonraker — появится здесь', src='server.webcams.list'),
-        S('ТАЙМЛАПС'),
-        T('Записывать таймлапс', 'видео всей печати', False, src='machine.timelapse.settings'),
-        SG('Режим', '', ['По слоям', 'По времени'], 0),
-        ST('Кадров в секунду', '', 30, 10, 60, 5, ''),
-        L('Видео', '3 файла', 'Camera', src='server.files.list root=timelapse'),
-    ])
-
     # ---------- Settings ----------
     form('Settings', 'Настройки', 'settings', None, [
         L('Сеть', 'Wi-Fi HomeNet_5G · 192.168.1.42', 'Network', icon='wifi', src='host: wpa_supplicant/NetworkManager; machine.system_info.network'),
@@ -759,7 +724,6 @@ def build():
         ST('Пауза на слое', 'вставить магнит, сменить цвет', 120, 77, 180, 1, ''),
         A('Поставить паузу', '', tone='accent'),
         A('На следующем слое', ''),
-        A('Снять запланированную паузу', '', tone='danger'),
     ], intro='')
 
     # ---------- more Control ----------

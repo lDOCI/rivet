@@ -172,16 +172,21 @@ def build_graphs():
         # smooth attenuation centred on the shaper frequency
         return lambda f: _psd(f, peaks) * (1 - 0.9 * math.exp(-((f - fs) / (0.45 * fs)) ** 2))
     graphs = {}
-    for ax, peaks, fs in (('x', px, 54.2), ('y', py, 41.8)):
-        graphs[ax] = (_poly(lambda f: _psd(f, peaks), X0, Y0, W, H), _poly(shaped(peaks, fs), X0, Y0, W, H))
+    table = {
+        'x': [['MZV', '54.2', '1%', '7 400', True], ['EI', '62.0', '0%', '6 100', False], ['ZV', '58.6', '4%', '11 200', False], ['2HUMP_EI', '74.4', '0%', '4 900', False], ['3HUMP_EI', '89.2', '0%', '4 300', False]],
+        'y': [['MZV', '40.4', '3%', '4 100', False], ['EI', '41.8', '1%', '5 900', True], ['ZV', '44.0', '7%', '6 700', False], ['2HUMP_EI', '55.6', '0%', '2 800', False], ['3HUMP_EI', '66.8', '0%', '2 400', False]],
+    }
+    for ax, peaks in (('x', px), ('y', py)):
+        graphs[ax] = (_poly(lambda f: _psd(f, peaks), X0, Y0, W, H),
+                      [_poly(shaped(peaks, float(r[1])), X0, Y0, W, H) for r in table[ax]])
     svg_tpl = ('<svg role="img" aria-label="{{graphAria}}" viewBox="0 0 440 260" style="width: 100%%; height: 100%%">%s'
                '<polyline points="{{raw}}" fill="none" stroke="#98a1ac" stroke-width="2" stroke-dasharray="4 4" stroke-linejoin="round"></polyline>'
                '<polyline points="{{shapedPts}}" fill="none" stroke="#2dd4bf" stroke-width="3" stroke-linejoin="round"></polyline>'
                '<path d="M{{peakX}} 10 V240" stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="3 3"></path></svg>') % _axes(X0, Y0, W, H)
     rows = """          <sc-for list="{{shapers}}" as="t" hint-placeholder-count="5">
-            <div style="height: 40px; flex: none; border-radius: 12px; background: {{t.bg}}; padding: 0 10px; display: grid; grid-template-columns: 1.7fr 0.9fr 0.8fr 1.1fr; align-items: center; font-size: 13px; font-variant-numeric: tabular-nums; color: {{t.fg}}">
+            <button type="button" role="radio" aria-checked="{{t.checked}}" onClick="{{t.pick}}" style="height: 44px; flex: none; border: 0; border-radius: 12px; background: {{t.bg}}; box-shadow: inset 0 0 0 2px {{t.ring}}; padding: 0 10px; display: grid; grid-template-columns: 1.7fr 0.9fr 0.8fr 1.1fr; align-items: center; font: 400 13px Inter, system-ui, sans-serif; font-variant-numeric: tabular-nums; color: {{t.fg}}; text-align: left; cursor: pointer">
               <span style="font-weight: 800">{{t.name}}</span><span>{{t.freq}}</span><span>{{t.vib}}</span><span>{{t.acc}}</span>
-            </div>
+            </button>
           </sc-for>
 """
     body = root_open('tools') + """  <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px; display: flex; flex-direction: column; gap: 10px">
@@ -199,24 +204,27 @@ def build_graphs():
   </main>
 </div>
 """
-    data = {
-        'x': {'peak': '54.2', 'peakF': 54.2, 'raw': graphs['x'][0], 'shaped': graphs['x'][1],
-              'rows': [['MZV', '54.2', '1%', '7 400', True], ['EI', '62.0', '0%', '6 100', False], ['ZV', '58.6', '4%', '11 200', False], ['2HUMP_EI', '74.4', '0%', '4 900', False], ['3HUMP_EI', '89.2', '0%', '4 300', False]]},
-        'y': {'peak': '41.8', 'peakF': 41.8, 'raw': graphs['y'][0], 'shaped': graphs['y'][1],
-              'rows': [['MZV', '40.4', '3%', '4 100', False], ['EI', '41.8', '1%', '5 900', True], ['ZV', '44.0', '7%', '6 700', False], ['2HUMP_EI', '55.6', '0%', '2 800', False], ['3HUMP_EI', '66.8', '0%', '2 400', False]]},
-    }
+    data = {}
+    for ax, pk in (('x', 54.2), ('y', 41.8)):
+        data[ax] = {'peak': str(pk), 'peakF': pk, 'raw': graphs[ax][0], 'curves': graphs[ax][1], 'rows': table[ax]}
     import json as _json
     js = """var DATA = """ + _json.dumps(data, ensure_ascii=False) + """;
 class Component extends DCLogic {
-  constructor(props) { super(props); this.state = { ax: 'x' }; }
+  constructor(props) { super(props); this.state = { ax: 'x', pick: { x: 0, y: 1 } }; }
   renderVals() {
-    var self = this, d = DATA[this.state.ax];
-    var chosen = d.rows.filter(function (r) { return r[4]; })[0];
+    var self = this, st = this.state, d = DATA[st.ax], sel = st.pick[st.ax];
+    var rec = d.rows.map(function (r) { return r[4]; }).indexOf(true);
+    var chosen = d.rows[sel];
     return {
-      raw: d.raw, shapedPts: d.shaped, peak: d.peak, peakX: (10 + (d.peakF - 5) / 145 * 420).toFixed(1), chosen: chosen[0],
-      graphAria: 'Ось ' + this.state.ax.toUpperCase() + ': резонанс ' + d.peak + ' герц, рекомендовано ' + chosen[0],
-      axes: ['x', 'y'].map(function (a) { var on = a === self.state.ax; return { label: a.toUpperCase(), sel: on ? 'true' : 'false', bg: on ? '#2dd4bf' : 'transparent', fg: on ? '#042f2a' : '#c7cdd4', pick: function () { self.setState({ ax: a }); } }; }),
-      shapers: d.rows.map(function (r) { return { name: r[0], freq: r[1], vib: r[2], acc: r[3], bg: r[4] ? 'rgba(45, 212, 191, 0.13)' : '#15181d', fg: r[4] ? '#5eead4' : '#c7cdd4' }; })
+      raw: d.raw, shapedPts: d.curves[sel], peak: d.peak, peakX: (10 + (d.peakF - 5) / 145 * 420).toFixed(1), chosen: chosen[0],
+      graphAria: 'Ось ' + st.ax.toUpperCase() + ': резонанс ' + d.peak + ' герц, выбран ' + chosen[0],
+      axes: ['x', 'y'].map(function (a) { var on = a === st.ax; return { label: a.toUpperCase(), sel: on ? 'true' : 'false', bg: on ? '#2dd4bf' : 'transparent', fg: on ? '#042f2a' : '#c7cdd4', pick: function () { self.setState({ ax: a }); } }; }),
+      shapers: d.rows.map(function (r, i) {
+        var on = i === sel;
+        return { name: r[0] + (i === rec ? ' ★' : ''), freq: r[1], vib: r[2], acc: r[3], checked: on ? 'true' : 'false',
+          bg: on ? 'rgba(45, 212, 191, 0.13)' : '#15181d', ring: on ? 'rgba(45, 212, 191, 0.5)' : 'transparent', fg: on ? '#5eead4' : '#c7cdd4',
+          pick: function () { var p = Object.assign({}, st.pick); p[st.ax] = i; self.setState({ pick: p }); } };
+      })
     };
   }
 }"""
@@ -249,3 +257,121 @@ class Component extends DCLogic {
 """
     write('Belts', 'Ремни', body, EMPTY)
     gen.note_src('Ремни', 'curves', 'TEST_RESONANCES AXIS=1,1 and AXIS=1,-1 OUTPUT=raw_data (core Klipper); Rivet computes PSD of /tmp/raw_data_*.csv and compares — no custom macros')
+
+
+ROW_LINK = """        <a href="{href}" style="min-height: 72px; flex: none; border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; gap: 14px; padding: 0 18px">
+          <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 17px; font-weight: 700">{t}</span><span style="font-size: 14px; color: #98a1ac">{d}</span></span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#66707b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
+        </a>
+"""
+
+
+def build_leftovers():
+    # ---- Service: progress bars instead of "82 / 300 ч"
+    items = [('Фильтр HEPA', 82, 300, 'заменить через 218 ч', '#2dd4bf'),
+             ('Сопло', 311, 500, 'заменить через 189 ч', '#2dd4bf'),
+             ('Направляющие', 96, 100, 'пора смазать', '#fbbf24')]
+    rows = ''
+    for name, used, every, note, col in items:
+        pct = min(100, used * 100 // every)
+        rows += """        <div style="flex: none; border-radius: 20px; background: #15181d; padding: 14px 18px; display: flex; flex-direction: column; gap: 10px">
+          <div style="display: flex; align-items: baseline; gap: 10px"><span style="flex: 1; font-size: 17px; font-weight: 700">%s</span><span style="font-size: 14px; color: %s; font-weight: 600">%s</span></div>
+          <div role="progressbar" aria-label="%s" aria-valuenow="%d" aria-valuemin="0" aria-valuemax="%d" style="height: 10px; border-radius: 5px; background: #252a31; overflow: hidden"><span style="display: block; height: 10px; width: %d%%; border-radius: 5px; background: %s"></span></div>
+          <div style="display: flex; align-items: center; gap: 10px"><span style="flex: 1; font-size: 13px; color: #98a1ac; font-variant-numeric: tabular-nums">%d из %d ч печати</span><button type="button" style="height: 44px; padding: 0 14px; border: 0; border-radius: 14px; background: #1f242b; color: #2dd4bf; font: 700 14px Inter, system-ui, sans-serif; cursor: pointer">Заменил</button></div>
+        </div>
+""" % (name, '#fcd34d' if col == '#fbbf24' else '#98a1ac', note, name, used, every, pct, col, used, every)
+    body = root_open('tools') + """  <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px 16px 0; display: flex; flex-direction: column; gap: 10px">
+""" + header('Сервис', 'Tools.dc.html') + """    <div class="scroll" style="flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; padding-bottom: 16px">
+""" + rows + """        <span style="margin: 4px 4px 0; font-size: 14px; color: #98a1ac">Часы считаются по истории печати. Интервал меняется тапом по строке.</span>
+    </div>
+  </main>
+</div>
+"""
+    write('Maintenance', 'Сервис', body, EMPTY)
+    gen.note_src('Сервис', 'hours', 'Rivet: sum of print_duration from server.history since the last «Заменил»; stored in Moonraker database')
+
+    # ---- Camera: real empty state, timelapse only when a camera exists
+    body = root_open('tools') + """  <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+""" + header('Камера', 'Tools.dc.html') + """    <div style="flex: 1; border-radius: 24px; background: #15181d; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 24px">
+      <span aria-hidden="true" style="width: 72px; height: 72px; border-radius: 24px; background: #1f242b; color: #98a1ac; display: flex; align-items: center; justify-content: center">""" + svg('camera', 36) + """</span>
+      <span style="font-size: 24px; font-weight: 800">Камера не подключена</span>
+      <span style="max-width: 440px; font-size: 16px; line-height: 1.5; color: #98a1ac">Добавьте камеру в Moonraker — здесь появится картинка с принтера, а в печати — таймлапс.</span>
+    </div>
+  </main>
+</div>
+"""
+    write('Camera', 'Камера', body, EMPTY)
+    gen.note_src('Камера', 'stream', 'server.webcams.list; timelapse settings only when a webcam and moonraker-timelapse exist')
+
+    # ---- Bed screws: top view with a badge per screw
+    def screw(pos, title, val, note, kind):
+        col = {'ref': ('#1f242b', '#98a1ac'), 'cw': ('#123a35', '#5eead4'), 'ok': ('#182320', '#98a1ac')}[kind]
+        return """        <div style="position: absolute; %s; width: 150px; border-radius: 16px; background: %s; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px">
+          <span style="font-size: 13px; color: #98a1ac">%s</span><span style="font-size: 20px; font-weight: 800; color: %s; font-variant-numeric: tabular-nums">%s</span><span style="font-size: 12px; color: #98a1ac">%s</span>
+        </div>
+""" % (pos, col[0], title, col[1], val, note)
+    body = root_open('tools') + """  <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+""" + header('Винты стола', 'Calibrate.dc.html') + """    <div style="flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 230px; gap: 14px">
+      <div role="img" aria-label="Стол сверху: задний левый опорный, задний правый четверть оборота по часовой, передний левый треть оборота против, передний правый ровно" style="position: relative; border-radius: 24px; background: #15181d">
+        <div aria-hidden="true" style="position: absolute; inset: 40px 70px; border-radius: 14px; border: 2px dashed #2a3038"></div>
+        <span aria-hidden="true" style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 13px; color: #66707b">стол, вид сверху</span>
+""" + screw('left: 14px; top: 14px', 'Задний левый', 'опорный', 'не крутить', 'ref') + screw('right: 14px; top: 14px', 'Задний правый', '↻ ¼', 'по часовой', 'cw') + screw('left: 14px; bottom: 14px', 'Передний левый', '↺ ⅓', 'против часовой', 'cw') + screw('right: 14px; bottom: 14px', 'Передний правый', '✓', 'ровно', 'ok') + """      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px">
+        <span style="font-size: 15px; line-height: 1.5; color: #c7cdd4">Подкрутите винты на столько, сколько показано, и проверьте снова. Повторять, пока все не станут «ровно».</span>
+        <div style="flex: 1"></div>
+        <a href="Screws.dc.html" style="height: 80px; border-radius: 22px; background: #2dd4bf; color: #042f2a; font-size: 18px; font-weight: 800; display: flex; flex-direction: column; align-items: center; justify-content: center"><span>Проверить снова</span><span style="font-size: 12px; font-weight: 600; opacity: 0.75">датчик коснётся у каждого винта</span></a>
+      </div>
+    </div>
+  </main>
+</div>
+"""
+    write('Screws', 'Винты стола', body, EMPTY)
+    gen.note_src('Винты стола', 'turns', 'SCREWS_TILT_CALCULATE response (00:15 = quarter turn); only when [screws_tilt_adjust] exists')
+
+    # ---- Macros: run simple macros straight from the list, with confirm
+    body = root_open('tools') + """  <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px 16px 0; display: flex; flex-direction: column; gap: 10px">
+""" + header('Макросы', 'Tools.dc.html') + """    <div class="scroll" style="flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; padding-bottom: 16px">
+      <sc-for list="{{groups}}" as="g" hint-placeholder-count="2">
+        <span style="margin: 6px 4px 0; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; color: #66707b">{{g.title}}</span>
+        <sc-for list="{{g.items}}" as="m" hint-placeholder-count="3">
+          <div style="min-height: 72px; flex: none; border-radius: 20px; background: #15181d; display: flex; align-items: center; gap: 10px; padding: 0 8px 0 18px">
+            <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 16px; font-weight: 700; font-family: ui-monospace, Menlo, monospace">{{m.name}}</span><span style="font-size: 14px; color: #98a1ac">{{m.desc}}</span></span>
+            <sc-if value="{{m.hasParams}}" hint-placeholder-val="{{ false }}"><a href="MacroRun.dc.html" aria-label="{{m.openAria}}" style="height: 56px; padding: 0 16px; border-radius: 16px; background: #1f242b; color: #f4f6f8; font-size: 15px; font-weight: 700; display: flex; align-items: center">Параметры ›</a></sc-if>
+            <sc-if value="{{m.simple}}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{m.run}}" aria-label="{{m.runAria}}" style="height: 56px; padding: 0 18px; border: 0; border-radius: 16px; background: rgba(45, 212, 191, 0.13); color: #2dd4bf; font: 800 15px Inter, system-ui, sans-serif; cursor: pointer">Запустить</button></sc-if>
+          </div>
+        </sc-for>
+      </sc-for>
+    </div>
+  </main>
+  <sc-if value="{{confirmOpen}}" hint-placeholder-val="{{ false }}">
+    <div role="alertdialog" aria-modal="true" aria-labelledby="mt" style="position: absolute; inset: 0; background: rgba(5, 6, 8, 0.78); display: flex; align-items: center; justify-content: center">
+      <div style="width: 520px; border-radius: 28px; background: #15181d; padding: 24px; display: flex; flex-direction: column; gap: 12px">
+        <h2 id="mt" style="margin: 0; font-size: 24px; font-weight: 800">Запустить {{pending}}?</h2>
+        <p style="margin: 0; font-size: 15px; color: #98a1ac">Подтверждение можно выключить: Настройки › Безопасность.</p>
+        <div style="display: grid; grid-template-columns: 1fr 1.3fr; gap: 10px; margin-top: 6px">
+          <button type="button" onClick="{{cancel}}" style="height: 76px; border: 0; border-radius: 20px; background: #1f242b; color: #f4f6f8; font: 700 17px Inter, system-ui, sans-serif; cursor: pointer">Отмена</button>
+          <button type="button" onClick="{{confirm}}" style="height: 76px; border: 0; border-radius: 20px; background: #2dd4bf; color: #042f2a; font: 800 17px Inter, system-ui, sans-serif; cursor: pointer">Запустить</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+"""
+    js = """class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { pending: null }; }
+  renderVals() {
+    var self = this;
+    var fav = [['LOAD_FILAMENT', 'Manual filament loading', false], ['AUTO_BED_LEVEL', 'BED_TEMP · EXTRUDER_TEMP · PROFILE', true]];
+    var all = [['AIR_CIRCULATION_INTERNAL', 'Turn on internal air circulation', false], ['PURGE_FILAMENT', 'выдавить 25 мм', false], ['LCD_ON', 'BACKLIGHT', true], ['PLAY_MIDI', 'FILE', true]];
+    function map(list) { return list.map(function (m) { return { name: m[0], desc: m[1], hasParams: m[2], simple: !m[2],
+      openAria: m[0] + ': параметры', runAria: 'Запустить ' + m[0], run: function () { self.setState({ pending: m[0] }); } }; }); }
+    return {
+      groups: [{ title: 'ИЗБРАННЫЕ', items: map(fav) }, { title: 'ВСЕ', items: map(all) }],
+      confirmOpen: !!this.state.pending, pending: this.state.pending || '',
+      cancel: function () { self.setState({ pending: null }); },
+      confirm: function () { self.setState({ pending: null }); }
+    };
+  }
+}"""
+    write('Macros', 'Макросы', body, js)
+    gen.note_src('Макросы', 'list', 'printer.objects.list → gcode_macro * (hidden: names starting with _); params parsed from the macro gcode (params.X)')

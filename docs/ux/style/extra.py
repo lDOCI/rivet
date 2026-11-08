@@ -49,6 +49,7 @@ def build_extra():
     import more
     more.build_more()
     more.build_graphs()
+    more.build_leftovers()
     # E-stop result: one tap on Стоп stops immediately, this is what you see after
     body = root_open('none') + '''  <main role="alert" style="flex: 1; box-sizing: border-box; padding: 28px 40px; display: flex; flex-direction: column; justify-content: center; gap: 14px">
     <span aria-hidden="true" style="width: 72px; height: 72px; border-radius: 24px; background: rgba(251, 75, 94, 0.16); color: #fb7185; display: flex; align-items: center; justify-content: center"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5h8l5.5 5.5v8L16 21.5H8L2.5 16V8z"></path><path d="M12 7.5v5.5"></path><path d="M12 16.5v.5"></path></svg></span>
