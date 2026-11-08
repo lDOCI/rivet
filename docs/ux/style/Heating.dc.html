@@ -80,7 +80,7 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
   </sc-if>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":800,"height":480}}'>
+<script type="text/x-dc" data-dc-script data-props='{"maxTemp":{"editor":"int","default":350,"min":100,"max":500},"$preview":{"width":800,"height":480}}'>
 class Component extends DCLogic {
   constructor(props) {
     super(props);
@@ -93,17 +93,18 @@ class Component extends DCLogic {
     // 0 at the start of the arc (bottom-left), 270 at its end (bottom-right).
     var a = (Math.atan2(y, x) * 180 / Math.PI - 135 + 720) % 360;
     if (a > 270) return null;
-    return Math.min(280, Math.max(0, Math.round(a / 270 * 300 / 5) * 5));
+    var max = this.props.maxTemp ?? 350;
+    return Math.min(max, Math.max(0, Math.round(a / 270 * max / 5) * 5));
   }
   renderVals() {
     var self = this;
     var t = this.state.target;
     var arc = 565.5;
-    var max = 300;
+    var max = this.props.maxTemp ?? 350;
     var cur = 187;
     var entry = this.state.entry;
     var padNum = entry === '' ? -1 : parseInt(entry, 10);
-    var padValid = padNum >= 0 && padNum <= 280;
+    var padValid = padNum >= 0 && padNum <= max;
     var tf = Math.min(1, t / max);
     var a = (135 + tf * 270) * Math.PI / 180;
     return {
@@ -112,7 +113,7 @@ class Component extends DCLogic {
       tx: (150 + 120 * Math.cos(a)).toFixed(1),
       ty: (150 + 120 * Math.sin(a)).toFixed(1),
       down: function () { self.setState({ target: Math.max(0, t - 5) }); },
-      up: function () { self.setState({ target: Math.min(280, t + 5) }); },
+      up: function () { self.setState({ target: Math.min(max, t + 5) }); },
       off: function () { self.setState({ target: 0 }); },
       padOpen: this.state.pad,
       openPad: function () { self.setState({ pad: true, entry: '' }); },
@@ -120,8 +121,8 @@ class Component extends DCLogic {
       padOk: function () { if (padValid) self.setState({ pad: false, target: padNum }); },
       entryLabel: entry === '' ? '—' : entry + '°',
       entryInk: entry === '' ? '#66707b' : '#f4f6f8',
-      hint: padNum > 280 ? 'максимум 280°' : 'от 0 до 280°',
-      hintInk: padNum > 280 ? '#fb7185' : '#98a1ac',
+      hint: padNum > max ? 'максимум ' + max + '° (max_temp)' : 'от 0 до ' + max + '°',
+      hintInk: padNum > max ? '#fb7185' : '#98a1ac',
       okDisabled: !padValid,
       okBg: padValid ? '#2dd4bf' : '#1f242b',
       okFg: padValid ? '#042f2a' : '#66707b',
