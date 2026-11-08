@@ -154,16 +154,16 @@ def hub(name, title, rail, tiles, cols=4, back=None):
         big = t.get('value')
         val = ''
         if big:
-            val = ('<span style="font-size: %dpx; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums">%s</span>'
-                   % (30 if len(big) <= 6 else 22, big))
+            val = ('<span style="height: 36px; display: flex; align-items: flex-end; font-size: %dpx; line-height: 1; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; white-space: nowrap">%s</span>'
+                   % (30 if len(big) <= 6 else 24, big))
         else:
-            val = '<span style="font-size: 20px; font-weight: 800; letter-spacing: -0.02em">%s</span>' % t['label']
+            val = '<span style="height: 36px; display: flex; align-items: flex-end; font-size: 20px; line-height: 1.1; font-weight: 800; letter-spacing: -0.02em; white-space: nowrap">%s</span>' % t['label']
         subline = t['label'] if big else t.get('sub', '')
         icon = t.get('icon_html') or svg(t['icon'], 30, '#2dd4bf')
         out += ('      <a href="%s" style="border-radius: 24px; background: #15181d; color: #f4f6f8; padding: 16px; box-sizing: border-box; '
                 'display: flex; flex-direction: column; justify-content: space-between; min-width: 0">%s'
                 '<span style="display: flex; flex-direction: column; gap: 2px; min-width: 0">%s'
-                '<span style="font-size: 14px; line-height: 1.3; color: #98a1ac; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden">%s</span></span></a>\n') % (
+                '<span style="height: 36px; font-size: 14px; line-height: 18px; color: #98a1ac; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden">%s</span></span></a>\n') % (
             t['href'], icon, val, subline)
         note_src(title, t['label'], t.get('src'))
     out += '    </div>\n  </main>\n</div>\n'
