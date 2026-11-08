@@ -86,9 +86,8 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
           <a href="{{r.href}}" style="min-height: 76px; flex: none; border-radius: 20px; background: #2dd4bf; color: #042f2a; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 8px 18px; box-sizing: border-box; text-align: center"><span style="font-size: 18px; font-weight: 800">{{r.title}}</span><span style="font-size: 13px; opacity: 0.75">{{r.sub}}</span></a>
         </sc-if>
         <sc-if value="{{r.isSecondary}}" hint-placeholder-val="{{ false }}">
-          <a href="{{r.href}}" style="min-height: 64px; flex: none; border-radius: 20px; background: #15181d; color: {{r.actInk}}; display: flex; align-items: center; gap: 14px; padding: 10px 18px; box-sizing: border-box">
-            <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 17px; font-weight: 700">{{r.title}}</span><span style="font-size: 14px; color: #98a1ac">{{r.sub}}</span></span>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" opacity="0.7"><path d="M5 12h14"></path><path d="m13 6 6 6-6 6"></path></svg>
+          <a href="{{r.href}}" style="min-height: 64px; flex: none; border-radius: 20px; background: #15181d; color: {{r.actInk}}; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 10px 18px; box-sizing: border-box">
+            <span style="font-size: 17px; font-weight: 700">{{r.title}}</span><span style="font-size: 14px; color: #98a1ac">{{r.sub}}</span>
           </a>
         </sc-if>
       </sc-for>
@@ -189,7 +188,7 @@ class Component extends DCLogic {
     var rows = ROWS.map(function (r) {
       var o = { kind: r.kind, title: r.t || '', sub: r.sub || '', href: r.href || '#',
         isSection: r.kind === 'section', isLink: r.kind === 'link', isToggle: r.kind === 'toggle', isSlider: r.kind === 'slider',
-        isSeg: r.kind === 'seg', isStepper: r.kind === 'stepper', isFine: r.kind === 'fine', isPrimary: r.kind === 'action' && r.tone === 'accent', isSecondary: r.kind === 'action' && r.tone !== 'accent', isInfo: r.kind === 'info', actInk: r.tone === 'danger' ? '#fb7185' : '#f4f6f8',
+        isSeg: r.kind === 'seg', isStepper: r.kind === 'stepper', isFine: r.kind === 'fine', isPrimary: r.kind === 'action' && r.tone === 'accent', isSecondary: r.kind === 'action' && r.tone !== 'accent', isInfo: r.kind === 'info', actInk: r.tone === 'danger' ? '#fb7185' : '#2dd4bf',
         value: r.value || '', hasIcon: !!r.ic, p0: (r.ic || [])[0] || '', p1: (r.ic || [])[1] || '', p2: (r.ic || [])[2] || '', p3: (r.ic || [])[3] || '', p4: (r.ic || [])[4] || '', p5: (r.ic || [])[5] || '', tone: r.tone === 'danger' ? '#fb7185' : r.tone === 'accent' ? '#2dd4bf' : '#f4f6f8',
         actBg: r.tone === 'accent' ? '#2dd4bf' : '#1f242b', actFg: r.tone === 'accent' ? '#042f2a' : (r.tone === 'danger' ? '#fb7185' : '#f4f6f8') };
       if (r.kind === 'toggle') {
