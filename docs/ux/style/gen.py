@@ -188,11 +188,11 @@ class Component extends DCLogic {
   }
   renderVals() {
     var self = this, s = this.state;
-    function fmt(r, v) { if (r.fmt === 'off0' && v === 0) return 'Выкл.'; if (v >= 10000) return (v / 1000).toFixed(1).replace('.0', '') + 'k' + (r.unit || ''); return (r.dec ? v.toFixed(r.dec) : String(v)) + (r.unit || ''); }
+    function fmt(r, v) { if (r.fmt === 'off0' && v === 0) return 'Выкл.'; if (v >= 10000) return (v / 1000).toFixed(1).replace('.0', '') + 'k' + (r.unit || ''); return (r.dec ? v.toFixed(r.dec) : String(v)).replace('-', '−') + (r.unit || ''); }
     var rows = ROWS.map(function (r) {
       var o = { kind: r.kind, title: r.t || '', sub: r.sub || '', href: r.href || '#',
         isSection: r.kind === 'section', isLink: r.kind === 'link', isToggle: r.kind === 'toggle', isSlider: r.kind === 'slider',
-        isSeg: r.kind === 'seg', isStepper: r.kind === 'stepper', isPrimary: r.kind === 'action' && r.tone === 'accent', isSecondary: r.kind === 'action' && r.tone !== 'accent', isInfo: r.kind === 'info', actInk: r.tone === 'danger' ? '#fb7185' : '#f4f6f8',
+        isSeg: r.kind === 'seg', isStepper: r.kind === 'stepper', isFine: r.kind === 'fine', isPrimary: r.kind === 'action' && r.tone === 'accent', isSecondary: r.kind === 'action' && r.tone !== 'accent', isInfo: r.kind === 'info', actInk: r.tone === 'danger' ? '#fb7185' : '#f4f6f8',
         value: r.value || '', hasIcon: !!r.ic, p0: (r.ic || [])[0] || '', p1: (r.ic || [])[1] || '', p2: (r.ic || [])[2] || '', p3: (r.ic || [])[3] || '', p4: (r.ic || [])[4] || '', p5: (r.ic || [])[5] || '', tone: r.tone === 'danger' ? '#fb7185' : r.tone === 'accent' ? '#2dd4bf' : '#f4f6f8',
         actBg: r.tone === 'accent' ? '#2dd4bf' : '#1f242b', actFg: r.tone === 'accent' ? '#042f2a' : (r.tone === 'danger' ? '#fb7185' : '#f4f6f8') };
       if (r.kind === 'toggle') {
@@ -218,6 +218,18 @@ class Component extends DCLogic {
         o.inc = function () { var n = {}; n[r.id] = Math.min(r.max, +(w + r.step).toFixed(4)); self.setState(n); };
         o.edit = function () { self.setState({ _pad: r.id, _entry: '' }); };
         o.editAria = r.t + ': ' + fmt(r, w) + ', ввести число';
+      }
+      if (r.kind === 'fine') {
+        var fv = s[r.id], big = r.steps[0], small = r.steps[1];
+        var setf = function (x) { var n = {}; n[r.id] = Math.min(r.max, Math.max(r.min, +x.toFixed(4))); self.setState(n); };
+        o.label = fmt(r, fv); o.valInk = fv !== r.def ? '#5eead4' : '#f4f6f8'; o.ring = fv !== r.def ? 'rgba(45, 212, 191, 0.4)' : 'transparent';
+        o.sub = fv !== r.def ? 'было ' + fmt(r, r.def) : (r.sub || '');
+        o.decBig = function () { setf(fv - big); }; o.decSmall = function () { setf(fv - small); };
+        o.incSmall = function () { setf(fv + small); }; o.incBig = function () { setf(fv + big); };
+        o.decBigLabel = '−' + big; o.decSmallLabel = '−' + small; o.incSmallLabel = '+' + small; o.incBigLabel = '+' + big;
+        o.decBigAria = r.t + ' минус ' + big; o.decSmallAria = r.t + ' минус ' + small; o.incSmallAria = r.t + ' плюс ' + small; o.incBigAria = r.t + ' плюс ' + big;
+        o.edit = function () { self.setState({ _pad: r.id, _entry: '' }); };
+        o.editAria = r.t + ': ' + fmt(r, fv) + ', ввести число';
       }
       if (r.kind === 'seg') {
         o.opts = r.opts.map(function (lab, i) {
@@ -331,6 +343,16 @@ def form(name, title, rail, back, rows, right='', intro=''):
             <span style="width: 86px; flex: none; text-align: right; font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums">{{r.label}}</span>
           </div>
         </sc-if>
+        <sc-if value="{{r.isFine}}" hint-placeholder-val="{{ false }}">
+          <div style="min-height: 92px; flex: none; border-radius: 20px; background: #15181d; box-shadow: inset 0 0 0 2px {{r.ring}}; padding: 0 10px 0 18px; display: flex; align-items: center; gap: 8px">
+            <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 18px; font-weight: 700">{{r.title}}</span><span style="font-size: 14px; color: #98a1ac">{{r.sub}}</span></span>
+            <button type="button" onClick="{{r.decBig}}" aria-label="{{r.decBigAria}}" style="width: 64px; height: 64px; border: 0; border-radius: 16px; background: #1f242b; color: #f4f6f8; font: 700 16px Inter, system-ui, sans-serif; cursor: pointer">{{r.decBigLabel}}</button>
+            <button type="button" onClick="{{r.decSmall}}" aria-label="{{r.decSmallAria}}" style="width: 64px; height: 64px; border: 0; border-radius: 16px; background: #252a31; color: #f4f6f8; font: 700 16px Inter, system-ui, sans-serif; cursor: pointer">{{r.decSmallLabel}}</button>
+            <button type="button" onClick="{{r.edit}}" aria-label="{{r.editAria}}" style="width: 104px; height: 64px; border: 0; border-radius: 16px; background: transparent; color: {{r.valInk}}; font: 800 26px Inter, system-ui, sans-serif; font-variant-numeric: tabular-nums; white-space: nowrap; cursor: pointer">{{r.label}}</button>
+            <button type="button" onClick="{{r.incSmall}}" aria-label="{{r.incSmallAria}}" style="width: 64px; height: 64px; border: 0; border-radius: 16px; background: #252a31; color: #f4f6f8; font: 700 16px Inter, system-ui, sans-serif; cursor: pointer">{{r.incSmallLabel}}</button>
+            <button type="button" onClick="{{r.incBig}}" aria-label="{{r.incBigAria}}" style="width: 64px; height: 64px; border: 0; border-radius: 16px; background: #1f242b; color: #f4f6f8; font: 700 16px Inter, system-ui, sans-serif; cursor: pointer">{{r.incBigLabel}}</button>
+          </div>
+        </sc-if>
         <sc-if value="{{r.isStepper}}" hint-placeholder-val="{{ false }}">
           <div style="min-height: 84px; flex: none; border-radius: 20px; background: #15181d; padding: 0 10px 0 18px; display: flex; align-items: center; gap: 10px">
             <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 18px; font-weight: 700">{{r.title}}</span><span style="font-size: 14px; color: #98a1ac">{{r.sub}}</span></span>
@@ -393,6 +415,9 @@ def SL(t, sub, v, mn, mx, step, unit='', src=None, fmt=None, dec=0):
     return d
 def ST(t, sub, v, mn, mx, step, unit='', dec=0, src=None):
     return dict(kind='stepper', t=t, sub=sub, v=v, min=mn, max=mx, step=step, unit=unit, dec=dec, src=src)
+def FS(t, sub, v, mn, mx, steps, unit='%', src=None, dec=0):
+    d = dict(kind='fine', t=t, sub=sub, v=v, min=mn, max=mx, steps=steps, unit=unit, src=src, dec=dec); d['def'] = v; return d
+    return dict(kind='fine', t=t, sub=sub, v=v, min=mn, max=mx, steps=steps, unit=unit, src=src)
 def SG(t, sub, opts, v, src=None):
     return dict(kind='seg', t=t, sub=sub, opts=opts, v=v, src=src)
 def A(t, sub='', href='@', tone=None):
@@ -696,9 +721,9 @@ def build():
 
     # ---------- Printing ----------
     form('PrintTune', 'Подстройка печати', 'home', 'Printing.dc.html', [
-        SL('Скорость', '', 100, 50, 200, 5, '%', src='gcode_move.speed_factor'),
-        SL('Поток', '', 100, 50, 200, 1, '%', src='gcode_move.extrude_factor'),
-        ST('Z-offset', 'меняется сразу', -0.12, -2, 2, 0.01, ' мм', 2, src='gcode_move.homing_origin[2]'),
+        FS('Скорость', 'от слайсера', 100, 10, 300, [10, 1], src='gcode_move.speed_factor'),
+        FS('Поток', 'сколько пластика', 100, 50, 150, [5, 1], src='gcode_move.extrude_factor'),
+        FS('Z-offset, мм', 'меняется сразу', -0.12, -2, 2, [0.05, 0.01], '', src='gcode_move.homing_origin[2]', dec=2),
         A('Сохранить Z-offset', 'запишется после печати'),
         ST('PA', 'pressure advance', 0.04, 0, 1, 0.005, '', 3, src='extruder.pressure_advance'),
         L('Температуры', 'сопло 240° · стол 80°', 'Heating'),
@@ -736,8 +761,8 @@ def build():
         T('Включать при старте', '', True),
     ])
     form('Speed', 'Скорость и поток', 'control', 'Control.dc.html', [
-        SL('Скорость', '', 100, 50, 200, 5, '%', src='gcode_move.speed_factor'),
-        SL('Поток', '', 100, 50, 200, 1, '%', src='gcode_move.extrude_factor'),
+        FS('Скорость', 'от слайсера', 100, 10, 300, [10, 1], src='gcode_move.speed_factor'),
+        FS('Поток', 'сколько пластика', 100, 50, 150, [5, 1], src='gcode_move.extrude_factor'),
         A('Вернуть 100% / 100%', ''),
         I('Сейчас', '86 мм/с', 'реальная скорость головы', src='motion_report.live_velocity'),
     ], intro='Выше 150% качество и прочность обычно падают.')

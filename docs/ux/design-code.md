@@ -58,8 +58,9 @@ Units never sit next to a large number in the same line box; they go in the titl
 | List row | 72 px min, optional 44 px icon tile, title + caption, value right, chevron |
 | Toggle row | whole row is the switch; 60×34 switch on the right |
 | Segmented | equal buttons 64 px tall, selected = accent fill |
-| Range value | **vertical bar** (drag) + − / + under it; value above; never horizontal sliders |
+| Range value | **vertical bar** (drag) + − / + under it; value above; never horizontal sliders. Not for values tuned during a print |
 | Exact number | − · value · + ; tap the value → numeric keypad |
+| Fine-tuned in print (speed, flow, Z-offset) | two step sizes each side: −10 −1 · value · +1 +10 (flow ±5/±1, Z ±0.05/±0.01); changed value turns accent with «было X» |
 | Text input | tap field → on-screen keyboard; never a bare input |
 | Primary button | accent fill, 76–80 px, one per screen |
 | Destructive | danger text on soft red; confirm dialog with solid red button |
