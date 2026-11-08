@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Экран — Rivet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
+</style>
+</helmet>
+<div style="width: 800px; height: 480px; display: flex; background: #0b0d10; color: #f4f6f8; font-family: Inter, system-ui, sans-serif; overflow: hidden">
+  <dc-import name="NavRail" active="settings" hint-size="88px,480px"></dc-import>
+  <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px 20px 16px 16px; display: flex; flex-direction: column; gap: 10px">
+    <div style="height: 64px; flex: none; display: flex; align-items: center; gap: 14px">
+      <a href="Settings.dc.html" aria-label="Назад" style="width: 64px; height: 64px; flex: none; border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></a>
+      <h1 style="margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.02em">Экран</h1>
+    </div>
+
+    <div style="flex: 1; border-radius: 22px; background: #15181d; padding: 0 18px; display: flex; align-items: center; gap: 18px">
+      <span style="width: 150px; flex: none; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 18px; font-weight: 700">Яркость</span><span style="font-size: 14px; color: #98a1ac; font-variant-numeric: tabular-nums">{{brightLabel}}</span></span>
+      <div role="slider" aria-label="Яркость" aria-valuemin="10" aria-valuemax="100" aria-valuenow="{{bright}}" onPointerDown="{{dragStart}}" onPointerMove="{{dragMove}}" onPointerUp="{{dragEnd}}" onPointerCancel="{{dragEnd}}" style="flex: 1; height: 64px; border-radius: 20px; background: #1f242b; position: relative; overflow: hidden; touch-action: none; cursor: grab">
+        <span aria-hidden="true" style="position: absolute; left: 0; top: 0; bottom: 0; width: {{brightPct}}; background: linear-gradient(90deg, #2dd4bf, #5eead4)"></span>
+        <span aria-hidden="true" style="position: absolute; left: 18px; top: 50%; transform: translateY(-50%); color: #042f2a; display: flex"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 8a4 4 0 1 0 0 8a4 4 0 1 0 0-8"></path><path d="M12 2v2M12 20v2M2 12h2M20 12h2"></path></svg></span>
+      </div>
+    </div>
+
+    <div style="flex: 1; border-radius: 22px; background: #15181d; padding: 0 10px 0 18px; display: flex; align-items: center; gap: 18px">
+      <span style="width: 150px; flex: none; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 18px; font-weight: 700">Гасить через</span><span style="font-size: 14px; color: #98a1ac">без касаний</span></span>
+      <div role="radiogroup" aria-label="Гасить экран через" style="flex: 1; height: 64px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px">
+        <sc-for list="{{sleeps}}" as="o" hint-placeholder-count="5">
+          <button type="button" role="radio" aria-checked="{{o.checked}}" onClick="{{o.pick}}" style="border: 0; border-radius: 18px; background: {{o.bg}}; color: {{o.fg}}; font: 700 16px Inter, system-ui, sans-serif; cursor: pointer">{{o.label}}</button>
+        </sc-for>
+      </div>
+    </div>
+
+    <button type="button" role="switch" aria-checked="{{ambientOn}}" onClick="{{toggleAmbient}}" style="flex: 1; border: 0; border-radius: 22px; background: #15181d; color: #f4f6f8; padding: 0 18px; display: flex; align-items: center; gap: 18px; font-family: Inter, system-ui, sans-serif; text-align: left; cursor: pointer">
+      <span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 18px; font-weight: 700">Во время печати — заставка</span><span style="font-size: 14px; color: #98a1ac">вместо чёрного экрана: прогресс крупно, видно издалека</span></span>
+      <span aria-hidden="true" style="width: 60px; height: 34px; flex: none; border-radius: 17px; background: {{ambientTrack}}; position: relative"><span style="position: absolute; top: 4px; left: {{ambientKnob}}; width: 26px; height: 26px; border-radius: 13px; background: #ffffff"></span></span>
+    </button>
+
+    <button type="button" role="switch" aria-checked="{{lockOn}}" onClick="{{toggleLock}}" style="flex: 1; border: 0; border-radius: 22px; background: #15181d; color: #f4f6f8; padding: 0 18px; display: flex; align-items: center; gap: 18px; font-family: Inter, system-ui, sans-serif; text-align: left; cursor: pointer">
+      <span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 18px; font-weight: 700">Блокировка во время печати</span><span style="font-size: 14px; color: #98a1ac">разблокировать — провести пальцем; кнопка «Стоп» работает всегда</span></span>
+      <span aria-hidden="true" style="width: 60px; height: 34px; flex: none; border-radius: 17px; background: {{lockTrack}}; position: relative"><span style="position: absolute; top: 4px; left: {{lockKnob}}; width: 26px; height: 26px; border-radius: 13px; background: #ffffff"></span></span>
+    </button>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":800,"height":480}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { bright: 70, dragging: false, sleep: '10', ambient: true, lock: false };
+  }
+  brightFromPointer(e) {
+    var r = e.currentTarget.getBoundingClientRect();
+    var f = (e.clientX - r.left) / r.width;
+    return Math.max(10, Math.min(100, Math.round(f * 100 / 5) * 5));
+  }
+  renderVals() {
+    var self = this;
+    var st = this.state;
+    var sw = function (on) { return { track: on ? '#2dd4bf' : '#3a414a', knob: on ? '30px' : '4px', aria: on ? 'true' : 'false' }; };
+    var a = sw(st.ambient), l = sw(st.lock);
+    return {
+      bright: st.bright, brightLabel: st.bright + '%', brightPct: st.bright + '%',
+      dragStart: function (e) {
+        if (e.currentTarget.setPointerCapture) e.currentTarget.setPointerCapture(e.pointerId);
+        self.setState({ dragging: true, bright: self.brightFromPointer(e) });
+      },
+      dragMove: function (e) {
+        if (!self.state.dragging) return;
+        var n = self.brightFromPointer(e);
+        if (n !== self.state.bright) self.setState({ bright: n });
+      },
+      dragEnd: function () { if (self.state.dragging) self.setState({ dragging: false }); },
+      sleeps: [['1', '1 мин'], ['5', '5 мин'], ['10', '10 мин'], ['30', '30 мин'], ['never', 'Никогда']].map(function (o) {
+        var on = o[0] === st.sleep;
+        return { label: o[1], checked: on ? 'true' : 'false', bg: on ? '#2dd4bf' : '#1f242b', fg: on ? '#042f2a' : '#f4f6f8', pick: function () { self.setState({ sleep: o[0] }); } };
+      }),
+      ambientOn: a.aria, ambientTrack: a.track, ambientKnob: a.knob,
+      lockOn: l.aria, lockTrack: l.track, lockKnob: l.knob,
+      toggleAmbient: function () { self.setState({ ambient: !st.ambient }); },
+      toggleLock: function () { self.setState({ lock: !st.lock }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

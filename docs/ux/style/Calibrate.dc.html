@@ -21,13 +21,11 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
       <a href="Settings.dc.html" aria-label="Назад" style="width: 64px; height: 64px; flex: none; border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></a>
       <h1 style="margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.02em">Калибровка</h1>
     </div>
-    <div style="flex: 1; display: grid; grid-template-rows: repeat(4, minmax(0, 1fr)); gap: 10px">
-      <sc-for list="{{items}}" as="c" hint-placeholder-count="4">
-        <a href="{{c.href}}" style="border-radius: 22px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; gap: 16px; padding: 0 18px">
-          <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px"><span style="font-size: 19px; font-weight: 700">{{c.title}}</span><span style="font-size: 14px; color: #98a1ac">{{c.desc}}</span></span>
-          <span style="height: 32px; padding: 0 12px; border-radius: 16px; background: {{c.tint}}; color: {{c.ink}}; font-size: 14px; font-weight: 600; display: flex; align-items: center; white-space: nowrap">{{c.state}}</span>
-          <span style="width: 64px; text-align: right; font-size: 14px; color: #98a1ac; font-variant-numeric: tabular-nums">{{c.time}}</span>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#66707b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
+    <div style="flex: 1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(3, minmax(0, 1fr)); gap: 10px">
+      <sc-for list="{{items}}" as="c" hint-placeholder-count="6">
+        <a href="{{c.href}}" style="border-radius: 22px; background: #15181d; color: #f4f6f8; display: flex; flex-direction: column; justify-content: center; gap: 8px; padding: 0 18px; min-width: 0">
+          <span style="display: flex; align-items: center; gap: 10px"><span style="flex: 1; font-size: 19px; font-weight: 700">{{c.title}}</span><span style="height: 28px; padding: 0 10px; border-radius: 14px; background: {{c.tint}}; color: {{c.ink}}; font-size: 13px; font-weight: 600; display: flex; align-items: center; white-space: nowrap">{{c.state}}</span></span>
+          <span style="font-size: 14px; color: #98a1ac; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{c.desc}}</span>
         </a>
       </sc-for>
     </div>
@@ -40,14 +38,16 @@ class Component extends DCLogic {
     var ok = ['rgba(45, 212, 191, 0.13)', '#5eead4'];
     var never = ['rgba(251, 191, 36, 0.13)', '#fcd34d'];
     var items = [
-      ['Карта стола', 'неровность стола, 25 точек', '0.18 мм · 3 дня назад', ok, '~3 мин', 'BedMesh.dc.html'],
-      ['Z-offset', 'зазор сопла над столом, с листом бумаги', '−0.12 мм', ok, '~2 мин', 'ZOffset.dc.html'],
-      ['Температура', 'PID сопла и стола — стабильный нагрев', '±0.4°', ok, '~6 мин', 'Calibrate.dc.html'],
-      ['Вибрации', 'input shaper — меньше ряби на стенках', 'ни разу', never, '~5 мин', 'Calibrate.dc.html']
+      ['Карта стола', 'тензодатчик, 5×5 точек · ~4 мин', '0.18 мм · 3 дня', ok, 'BedMesh.dc.html'],
+      ['Z-offset', 'высота первого слоя · на тестовой печати', '−0.12 мм', ok, 'ZOffset.dc.html'],
+      ['Вибрации', 'input shaper, встроенный датчик · ~5 мин', 'ни разу', never, 'Calibrate.dc.html'],
+      ['Ремни', 'сравнить натяжение двух ремней · ~3 мин', 'ни разу', never, 'Calibrate.dc.html'],
+      ['Нагрев', 'PID сопла и стола · ~6 мин', '±0.4°', ok, 'Calibrate.dc.html'],
+      ['Тензодатчик', 'обнулить, если стол «чувствует» вес · 5 с', 'норма', ok, 'Calibrate.dc.html']
     ];
     return {
       items: items.map(function (i) {
-        return { title: i[0], desc: i[1], state: i[2], tint: i[3][0], ink: i[3][1], time: i[4], href: i[5] };
+        return { title: i[0], desc: i[1], state: i[2], tint: i[3][0], ink: i[3][1], href: i[4] };
       })
     };
   }

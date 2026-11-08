@@ -22,8 +22,15 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
         <a href="Control.dc.html" aria-label="Назад" style="width: 64px; height: 64px; flex: none; border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></a>
         <h1 style="margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.02em">Обдув модели</h1>
       </div>
-      <span style="margin-top: 24px; font-size: 72px; font-weight: 800; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums">{{valueLabel}}</span>
-      <p style="margin: 0; font-size: 16px; line-height: 1.5; color: #98a1ac">Тяните полосу или жмите ±10. Слайсер может поменять обдув на следующем слое командой из G-code.</p>
+      <span style="margin-top: 12px; font-size: 72px; font-weight: 800; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums">{{valueLabel}}</span>
+      <p style="margin: 0; font-size: 16px; line-height: 1.5; color: #98a1ac">Слайсер может поменять обдув на следующем слое.</p>
+      <div style="flex: 1"></div>
+      <span style="font-size: 14px; font-weight: 600; color: #98a1ac">Воздух в камере · AD5M Pro</span>
+      <div role="radiogroup" aria-label="Воздух в камере" style="height: 76px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px">
+        <sc-for list="{{airModes}}" as="o" hint-placeholder-count="3">
+          <button type="button" role="radio" aria-checked="{{o.checked}}" onClick="{{o.pick}}" style="border: 0; border-radius: 20px; background: {{o.bg}}; color: {{o.fg}}; font-family: Inter, system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer"><span style="font-size: 16px; font-weight: 700">{{o.label}}</span><span style="font-size: 12px; font-weight: 600; opacity: 0.7">{{o.sub}}</span></button>
+        </sc-for>
+      </div>
     </div>
     <div role="slider" aria-label="Обдув модели" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{value}}" onPointerDown="{{dragStart}}" onPointerMove="{{dragMove}}" onPointerUp="{{dragEnd}}" onPointerCancel="{{dragEnd}}" style="position: relative; border-radius: 28px; background: #15181d; overflow: hidden; touch-action: none; cursor: grab">
       <span aria-hidden="true" style="position: absolute; left: 0; right: 0; bottom: 0; height: {{fillPct}}; background: linear-gradient(180deg, #5eead4, #2dd4bf)"></span>
@@ -42,7 +49,7 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { value: 60, dragging: false };
+    this.state = { value: 60, dragging: false, air: 'off' };
   }
   valueFromPointer(e) {
     var r = e.currentTarget.getBoundingClientRect();
@@ -55,6 +62,10 @@ class Component extends DCLogic {
     var set = function (n) { self.setState({ value: Math.max(0, Math.min(100, n)) }); };
     return {
       value: v,
+      airModes: [['off', 'Выкл.', ''], ['in', 'Фильтр', 'по кругу'], ['out', 'Наружу', 'вытяжка']].map(function (o) {
+        var on = o[0] === self.state.air;
+        return { label: o[1], sub: o[2], checked: on ? 'true' : 'false', bg: on ? '#2dd4bf' : '#15181d', fg: on ? '#042f2a' : '#f4f6f8', pick: function () { self.setState({ air: o[0] }); } };
+      }),
       valueLabel: v === 0 ? 'Выкл.' : v + '%',
       fillPct: v + '%',
       iconInk: v >= 12 ? '#042f2a' : '#98a1ac',

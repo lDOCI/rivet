@@ -205,6 +205,15 @@
       "title": "Подсветка",
       "is_interactive": true,
       "radius": 16
+    },
+    "Screen.dc.html": {
+      "x": 3520,
+      "y": 2700,
+      "w": 800,
+      "h": 480,
+      "title": "Настройки экрана",
+      "is_interactive": true,
+      "radius": 16
     }
   },
   "order": [
@@ -227,6 +236,7 @@
     "Calibrate.dc.html",
     "BedMesh.dc.html",
     "Messages.dc.html",
+    "Screen.dc.html",
     "KlipperError.dc.html",
     "Offline.dc.html",
     "NavRail.dc.html"
@@ -258,7 +268,7 @@
       "y": 2440,
       "text": "Настройки и сообщения",
       "kind": "title1",
-      "maxW": 3440
+      "maxW": 4320
     },
     "rowStates": {
       "x": 0,
