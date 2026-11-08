@@ -69,6 +69,10 @@ ICONS = {
     'save': ["M5 4h11l3 3v13H5z", "M8 4v5h7V4", "M8 20v-6h8v6"],
     'pin': ["M12 3v10", "M8 13h8", "M12 13v8"],
     'dryer': ["M4 18h16", "M7 14c0-2 2-2 2-4s-2-2-2-4", "M12 14c0-2 2-2 2-4s-2-2-2-4", "M17 14c0-2 2-2 2-4s-2-2-2-4"],
+    'load': ["M12 3v9", "m8 8 4 4 4-4", "M8 15h8l-2 4h-4z"],
+    'unload': ["M12 12V3", "m8 7 4-4 4 4", "M8 15h8l-2 4h-4z"],
+    'swap': ["M4 9h13", "m14 5 4 4-4 4", "M20 15H7", "m10 19-4-4 4-4"],
+    'service': ["M4 6h16v14H4z", "M8 3v4M16 3v4", "M4 10h16", "m9 15 2 2 4-4"],
     'filter': ["M3 5h18l-7 8v6l-4 2v-8z"],
 }
 
@@ -379,7 +383,7 @@ def build():
         dict(icon='history', label='История', sub='142 печати', href='History.dc.html', src='server.history.totals'),
         dict(icon='limits', label='Лимиты', sub='скорость, ускорение', href='Limits.dc.html'),
         dict(icon='sensor', label='Датчики', sub='обрыв нити, температуры', href='Sensors.dc.html'),
-        dict(icon='wrench', label='Обслуживание', sub='фильтр, сопло, рельсы', href='Maintenance.dc.html'),
+        dict(icon='service', label='Обслуживание', sub='фильтр, сопло, рельсы', href='Maintenance.dc.html'),
         dict(icon='camera', label='Камера', sub='и таймлапс', href='Camera.dc.html'),
     ])
 
@@ -391,10 +395,10 @@ def build():
         A('Выдавить 25 мм', '5 мм/с', tone='accent'),
         A('Втянуть 25 мм', '5 мм/с'),
         S('ФИЛАМЕНТ'),
-        L('Заправить / сменить пруток', 'мастер: нагрев, протяжка, проверка цвета', 'FilamentLoad', icon='spool'),
-        L('Выгрузить пруток', 'нагреет и вытянет', 'FilamentLoad', icon='retract', src='UNLOAD_FILAMENT macro if present, else G1 E−'),
+        L('Заправить / сменить пруток', 'мастер: нагрев, протяжка, проверка цвета', 'FilamentLoad', icon='load'),
+        L('Выгрузить пруток', 'нагреет и вытянет', 'FilamentLoad', icon='unload', src='UNLOAD_FILAMENT macro if present, else G1 E−'),
         L('Катушки Spoolman', 'активная: PETG синий · 640 г', 'Spools', icon='spool', src='server.spoolman.get_spool_id + Spoolman API'),
-        L('Ретракт прошивки', 'длина 0.8 мм', 'Retraction', icon='retract', src='firmware_retraction.*'),
+        L('Ретракт прошивки', 'длина 0.8 мм', 'Retraction', icon='swap', src='firmware_retraction.*'),
         L('Сушка филамента на столе', 'стол как сушилка', 'Dryer', icon='dryer'),
     ])
     form('Retraction', 'Ретракт прошивки', 'control', 'Extruder.dc.html', [
@@ -569,7 +573,7 @@ def build():
         L('Язык и время', 'Русский · 24 ч · Europe/Moscow', 'LangTime', icon='lang'),
         L('Безопасность', 'подтверждения', 'Safety', icon='shield'),
         L('Принтеры', '1 подключён', 'Printers', icon='printer'),
-        L('Обновления', 'всё актуально', 'Updates', icon='update', src='machine.update.status'),
+        L('Обновления', 'Klipper v0.12.0 · Rivet 0.1.0', 'Updates', icon='update', src='printer.info.software_version; machine.update.status if available'),
         L('Система', 'перезапуск, выключение, о системе', 'System', icon='chip'),
     ])
     form('Network', 'Сеть', 'settings', 'Settings.dc.html', [
@@ -627,11 +631,13 @@ def build():
         A('Добавить принтер', 'адрес Moonraker и порт', tone='accent'),
     ])
     form('Updates', 'Обновления', 'settings', 'Settings.dc.html', [
-        I('Klipper', 'v0.12.0-xblax', 'актуально', src='machine.update.status.version_info.klipper'),
-        I('Moonraker', 'v0.9.3', 'актуально'),
-        I('Rivet', '0.1.0', 'актуально'),
-        A('Проверить обновления', ''),
-        I('KlipperMod', 'обновляется образом с USB', 'не через этот экран'),
+        S('ВЕРСИИ'),
+        I('Klipper', 'v0.12.0-208', '', src='printer.info.software_version'),
+        I('Moonraker', 'v0.9.3-31', '', src='server.info.moonraker_version'),
+        I('Rivet', '0.1.0', '', src='Rivet build'),
+        S('ОБНОВЛЕНИЯ'),
+        I('KlipperMod', 'образом с USB', 'Moonraker на этой прошивке не обновляет компоненты', src='no [update_manager] in KlipperMod moonraker.conf'),
+        I('На обычном Klipper', 'здесь появится список', 'компонент · версия · есть ли новая · кнопка «Обновить»', src='machine.update.status (only when [update_manager] exists)'),
     ])
     form('System', 'Система', 'settings', 'Settings.dc.html', [
         S('ПЕРЕЗАПУСК'),
