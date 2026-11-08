@@ -3,6 +3,48 @@
 Цель — перестать придумывать интерфейс из головы и опереться на решения, которые уже проверены на тысячах пользователей.
 Дата: 2026-11-08.
 
+## Что нужно людям от экрана принтера
+
+Из форумов Bambu, Creality, GitHub-обсуждений KlipperScreen и обзоров:
+
+| Наблюдение | Источник | Что значит для нас |
+|---|---|---|
+| Экраном пользуются редко: настройка, а дальше — когда ПК/телефона нет под рукой | [Bambu forum: P1S Control Panel](https://forum.bambulab.com/t/p1s-control-panel/21641), [Color touchscreen for P1P/P1S](https://forum.bambulab.com/t/color-touchscreen-for-p1p-p1s/39038) | Экран должен отвечать на 3 вопроса за секунду: что печатается, сколько осталось, всё ли в порядке. Остальное — на второй уровень |
+| Запуск печати с экрана, когда приложение не работает (LAN) | там же | Файлы и «повторить последнюю» — первый уровень |
+| Хотят видеть прогресс **издалека**: светодиодная полоса H2D хвалят «для взгляда через комнату», но её трудно читать, люди ставят моды с делениями по 25% | [Micro Center](https://www.microcenter.com/site/mc-news/article/hands-on-bambu-h2d.aspx), [MakerWorld моды](https://makerworld.com/en/models/570064-3d-printer-progress-led-bar), [Bambu forum](https://forum.bambulab.com/t/is-there-a-way-to-stop-the-h2d-status-led-bar-pulsing-when-idle/190350) | Во время печати экран-заставка с огромными % и временем, читаемая с 2–3 м |
+| Защита от случайных касаний: «никакой защиты от случайного ввода» | [Bambu: Child Lock / Screen Lock](https://forum.bambulab.com/t/feature-request-child-lock-screen-lock-on-touchscreen-models/251483) | Блокировка экрана во время печати (снимается свайпом/удержанием) |
+| Длинный сон экрана: 1 ч, 4 ч, никогда | [Bambu: VOTE Feature Request](https://forum.bambulab.com/t/vote-feature-request-suggestions-for-improvement/57634) | Варианты сна до «никогда»; во время печати — заставка вместо чёрного |
+| Миниатюры файлов — ключевая просьба | [P3D: Panda Touch](https://p3d.mx/blogs/3d-printer-review/upgrade-bambu-lab-with-btt-panda-touch) | Везде, где файл, — миниатюра крупно |
+| Папки/коллекции проектов на экране | [Creality forum: K2 interface](https://forum.creality.com/t/my-thoughts-so-far-and-some-ideas-on-the-k2-interface-and-cfs-system/25232), [Bambu: Collections](https://forum.bambulab.com/t/add-collections-to-x1c-touchscreen-so-we-don-t-have-to-use-phone/31933) | Папки Moonraker в «Файлах», «Избранное» |
+| Медленный отклик на касание раздражает | [Creality forum](https://forum.creality.com/t/my-thoughts-so-far-and-some-ideas-on-the-k2-interface-and-cfs-system/25232) | Мгновенный визуальный отклик нажатия (подсветка), даже если команда идёт дольше |
+| Непонятный выход с экрана («тапнуть между слайдерами») | [Creality GitHub #126](https://github.com/orgs/CrealityOfficial/discussions/126) | «Назад» всегда в одном месте и крупно |
+| KlipperScreen на маленьких экранах: мелкие иконки и шрифты, кнопки в углах не попасть, «Назад» особенно | [KlipperScreen #61](https://github.com/KlipperScreen/KlipperScreen/issues/61), [#30](https://github.com/KlipperScreen/KlipperScreen/discussions/30), [#805](https://github.com/KlipperScreen/KlipperScreen/issues/805) | Никаких целей в углах экрана, крупная навигация |
+| Форм 4 хвалят за то, что экран «объясняет каждое действие», и за проверку расходников перед печатью | [Tom's Hardware](https://www.tomshardware.com/3d-printing/formlabs-form-4-review), [3DPI](https://3dprintingindustry.com/news/review-high-speed-resin-3d-printing-with-the-formlabs-form-4-236448/), [Formlabs](https://formlabs.com/support/Starting-a-print-job-on-the-printer-touchscreen/) | Перед стартом: проверка (катушка, стол чистый, файл под AD5M); пошаговые мастера |
+| Elegoo Centauri Carbon (экран 4.3″, как у нас) — «интуитивно, минимум копаний» | [Tom's Hardware](https://www.tomshardware.com/3d-printing/elegoo-centauri-carbon-review) | 4.3″ достаточно, если не перегружать |
+| Snapmaker U1 — «один из самых удобных UI», «менее перегружен, чем KlipperScreen», ведёт по шагам с прогрессом и временем | [3DPrint.com](https://3dprint.com/322447/snapmaker-u1-tool-changing-for-the-masses/), [3Dnatives](https://www.3dnatives.com/en/3dnatives-lab-snapmaker-u1-26032026/) | Меньше, но продуманнее |
+
+## Эталоны вне 3D-печати
+
+**Thermomix TM6** — интерфейс получил [iF Design Award](https://ifdesign.com/en/winner-ranking/project/ux-design-fur-thermomix-tm6/280242) и [Red Dot](https://red-dot.org/project/thermomix-tm6-41286). Бытовой прибор с нагревом, таймером и процессом — ближайший аналог принтера. Что у них сделано хорошо:
+
+- **Круглые шкалы**: время, температура, скорость — дуга показывает текущее и целевое значение, нагрев видно без чтения цифр;
+- **один шаг — одна инструкция** крупным текстом («Добавьте 200 г йогурта»), тонкая полоса прогресса «5/30» сверху;
+- **одно главное действие** («Далее») всегда в одном месте — правый верхний угол, цветом бренда;
+- крупные числа, много воздуха, один акцентный цвет, фото продукта как главный визуал.
+
+**UltiMaker S5** — «отмеченный наградами тач-интерфейс», обзоры: снижает порог входа ([MatterHackers](https://matterhackers.com/articles/tech-breakdown-ultimaker-s5-3d-printer), [TechRadar](https://www.techradar.com/reviews/ultimaker-s5)); минус — плохо читается под углом сверху → высокий контраст важнее тонких оттенков.
+
+## Визуальный язык Rivet
+
+1. **Графитовый тёмный фон, глубина слоями**, а не рамками: фон → поверхность → приподнятая поверхность. Без обводок у карточек.
+2. **Один акцент для действий** — бирюзовый (не зелёный Bambu), **тепло — тёплый градиент** от жёлтого к оранжевому, только на шкалах нагрева. Красный — только опасность.
+3. **Числа — главные герои**: температуры и проценты крупно, моноширинные цифры, единицы мельче и тусклее.
+4. **Круглые шкалы для нагревателей** (как у Thermomix): дуга 270°, заливка до текущей, метка цели. Нагрев виден издалека.
+5. **Кольцо прогресса вокруг миниатюры модели** на экране печати.
+6. **Иконки одной системы**: линия 2 px, скругления, 24-сетка (стиль Lucide/Material Rounded).
+7. **Заставка печати** для взгляда через комнату: % на пол-экрана, время до конца, этап; тап — обычный экран.
+8. **Мгновенный отклик**: нажатая кнопка светлеет сразу.
+
 ## Что смотрели
 
 | Источник | Что взяли | Оценка рынка |
