@@ -19,16 +19,16 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
   <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px 20px 16px 16px; display: flex; flex-direction: column; gap: 4px">
     <div style="height: 64px; flex: none; display: flex; align-items: center; gap: 14px">
       <a href="Control.dc.html" aria-label="Назад" style="width: 64px; height: 64px; flex: none; border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></a>
-      <div role="tablist" aria-label="Нагреватель" style="flex: 1; height: 64px; box-sizing: border-box; padding: 5px; border-radius: 20px; background: #15181d; display: flex; gap: 4px"><button type="button" role="tab" aria-selected="true" style="flex: 1; border: 0; border-radius: 15px; background: #2dd4bf; color: #042f2a; font: 700 17px Inter, system-ui, sans-serif; cursor: pointer">Сопло</button><button type="button" role="tab" aria-selected="false" style="flex: 1; border: 0; border-radius: 15px; background: transparent; color: #c7cdd4; font: 700 17px Inter, system-ui, sans-serif; cursor: pointer">Стол · 23°</button></div>
-      <span style="height: 36px; padding: 0 14px; border-radius: 18px; background: rgba(249, 115, 22, 0.13); color: #fdba74; font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px">
+      <div role="tablist" aria-label="Нагреватель" style="flex: 1; height: 64px; box-sizing: border-box; padding: 5px; border-radius: 20px; background: #15181d; display: flex; gap: 4px"><sc-for list="{{tabs}}" as="tb" hint-placeholder-count="2"><button type="button" role="tab" aria-selected="{{tb.sel}}" onClick="{{tb.pick}}" style="flex: 1; border: 0; border-radius: 15px; background: {{tb.bg}}; color: {{tb.fg}}; font: 700 17px Inter, system-ui, sans-serif; cursor: pointer">{{tb.label}}</button></sc-for></div>
+      <span style="height: 36px; padding: 0 14px; border-radius: 18px; background: {{chipBg}}; color: {{chipFg}}; font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c2 3 5 5 5 9a5 5 0 0 1-10 0c0-2 1-3.5 2-4.5 0 2 1 3 2 3 0-3-1-5 1-7.5z"></path></svg>
-        нагревается · ещё ~40 с
+        {{chip}}
       </span>
     </div>
 
     <div style="flex: 1; min-height: 0; display: grid; grid-template-columns: 330px 1fr; gap: 16px; align-items: center">
       <div style="position: relative; width: 320px; height: 320px; justify-self: center">
-        <svg width="320" height="320" viewBox="0 0 300 300" role="img" aria-label="Сейчас 187 градусов, цель {{target}}. Перетащите точку, чтобы изменить цель" onPointerDown="{{dragStart}}" onPointerMove="{{dragMove}}" onPointerUp="{{dragEnd}}" onPointerCancel="{{dragEnd}}" style="touch-action: none; cursor: grab">
+        <svg width="320" height="320" viewBox="0 0 300 300" role="img" aria-label="{{arcAria}}" onPointerDown="{{dragStart}}" onPointerMove="{{dragMove}}" onPointerUp="{{dragEnd}}" onPointerCancel="{{dragEnd}}" style="touch-action: none; cursor: grab">
           <defs>
             <linearGradient id="heat" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#fbbf24"></stop><stop offset="1" stop-color="#f97316"></stop></linearGradient>
           </defs>
@@ -39,7 +39,7 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
           <circle cx="{{tx}}" cy="{{ty}}" r="10" fill="#f4f6f8"></circle>
         </svg>
         <div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px">
-          <span style="font-size: 76px; font-weight: 800; line-height: 1; letter-spacing: -0.04em; font-variant-numeric: tabular-nums">187°</span>
+          <span style="font-size: 76px; font-weight: 800; line-height: 1; letter-spacing: -0.04em; font-variant-numeric: tabular-nums">{{curLabel}}</span>
           <span style="font-size: 16px; color: #98a1ac">сейчас</span>
         </div>
       </div>
@@ -62,7 +62,7 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
           <a href="TempGraph.dc.html" style="height: 56px; border-radius: 16px; background: #15181d; color: #c7cdd4; font-size: 14px; font-weight: 600; display: flex; align-items: center; justify-content: center">График</a>
           <a href="PidCal.dc.html" style="height: 56px; border-radius: 16px; background: #15181d; color: #c7cdd4; font-size: 14px; font-weight: 600; display: flex; align-items: center; justify-content: center">PID</a>
         </div>
-        <button type="button" onClick="{{off}}" style="height: 56px; border: 0; border-radius: 16px; background: transparent; color: #fb7185; font: 600 16px Inter, system-ui, sans-serif; cursor: pointer">Выключить · остудить всё</button>
+        <button type="button" onClick="{{off}}" style="height: 56px; border: 0; border-radius: 16px; background: transparent; color: #fb7185; font: 600 16px Inter, system-ui, sans-serif; cursor: pointer">{{offLabel}}</button>
       </div>
     </div>
   </main>
@@ -70,7 +70,7 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
     <div role="dialog" aria-modal="true" aria-label="Ввести температуру сопла" style="position: absolute; inset: 0; background: rgba(5, 6, 8, 0.78); display: flex; align-items: center; justify-content: center">
       <div style="width: 680px; height: 420px; box-sizing: border-box; border-radius: 28px; background: #15181d; padding: 20px; display: grid; grid-template-columns: 240px 1fr; gap: 20px">
         <div style="display: flex; flex-direction: column; gap: 8px">
-          <span style="font-size: 15px; font-weight: 600; color: #98a1ac">Сопло, нагреть до</span>
+          <span style="font-size: 15px; font-weight: 600; color: #98a1ac">{{padTitle}}</span>
           <span aria-live="polite" style="height: 96px; border-radius: 20px; background: #0b0d10; display: flex; align-items: center; justify-content: center; font-size: 56px; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; color: {{entryInk}}">{{entryLabel}}</span>
           <span style="font-size: 14px; color: {{hintInk}}; text-align: center">{{hint}}</span>
           <div style="flex: 1"></div>
@@ -91,7 +91,7 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { target: 240, dragging: false, pad: false, entry: '' };
+    this.state = { heater: 'n', targets: { n: 240, b: 0 }, dragging: false, pad: false, entry: '' };
   }
   targetFromPointer(e) {
     var r = e.currentTarget.getBoundingClientRect();
@@ -100,15 +100,18 @@ class Component extends DCLogic {
     // 0 at the start of the arc (bottom-left), 270 at its end (bottom-right).
     var a = (Math.atan2(y, x) * 180 / Math.PI - 135 + 720) % 360;
     if (a > 270) return null;
-    var max = this.props.maxTemp ?? 350;
+    var max = this.state.heater === 'b' ? 130 : (this.props.maxTemp ?? 350);
     return Math.min(max, Math.max(0, Math.round(a / 270 * max / 5) * 5));
   }
   renderVals() {
     var self = this;
-    var t = this.state.target;
+    var h = this.state.heater;
+    var t = this.state.targets[h];
     var arc = 565.5;
-    var max = this.props.maxTemp ?? 350;
-    var cur = 187;
+    var max = h === 'b' ? 130 : (this.props.maxTemp ?? 350);
+    var cur = h === 'b' ? 23 : 187;
+    var setT = function (v, extra) { var tg = Object.assign({}, self.state.targets); tg[self.state.heater] = v; self.setState(Object.assign({ targets: tg }, extra || {})); };
+    var heating = t > cur + 2, cooling = t === 0 && cur > 40;
     var entry = this.state.entry;
     var padNum = entry === '' ? -1 : parseInt(entry, 10);
     var padValid = padNum >= 0 && padNum <= max;
@@ -116,17 +119,24 @@ class Component extends DCLogic {
     var a = (135 + tf * 270) * Math.PI / 180;
     return {
       target: t,
+      tabs: [['n', 'Сопло · ' + (h === 'n' ? cur : 187) + '°'], ['b', 'Стол · ' + (h === 'b' ? cur : 23) + '°']].map(function (x) { var on = x[0] === h; return { label: x[1], sel: on ? 'true' : 'false', bg: on ? '#2dd4bf' : 'transparent', fg: on ? '#042f2a' : '#c7cdd4', pick: function () { self.setState({ heater: x[0], pad: false }); } }; }),
+      curLabel: cur + '°',
+      chip: t === 0 ? 'выключен' : heating ? 'нагревается · ещё ~' + Math.max(10, Math.round((t - cur) / 1.4)) + ' с' : 'держит температуру',
+      chipBg: t === 0 ? '#15181d' : 'rgba(249, 115, 22, 0.13)', chipFg: t === 0 ? '#98a1ac' : '#fdba74',
+      arcAria: (h === 'b' ? 'Стол' : 'Сопло') + ': сейчас ' + cur + ' градусов, цель ' + t + '. Перетащите точку, чтобы изменить цель',
+      padTitle: (h === 'b' ? 'Стол' : 'Сопло') + ', нагреть до',
+      offLabel: h === 'b' ? 'Выключить нагрев стола' : 'Выключить нагрев сопла',
       currentDash: (arc * cur / max).toFixed(1) + ' 754',
       tx: (150 + 120 * Math.cos(a)).toFixed(1),
       ty: (150 + 120 * Math.sin(a)).toFixed(1),
-      down: function () { self.setState({ target: Math.max(0, t - 5) }); },
-      up: function () { self.setState({ target: Math.min(max, t + 5) }); },
-      off: function () { self.setState({ target: 0 }); },
-      presets: [['PLA', 210], ['PETG', 240], ['ABS', 250], ['TPU', 225]].map(function (p) { return { name: p[0], temp: p[1], pick: function () { self.setState({ target: p[1] }); } }; }),
+      down: function () { setT(Math.max(0, t - 5)); },
+      up: function () { setT(Math.min(max, t + 5)); },
+      off: function () { setT(0); },
+      presets: (h === 'b' ? [['PLA', 60], ['PETG', 80], ['ABS', 100], ['TPU', 50]] : [['PLA', 210], ['PETG', 240], ['ABS', 250], ['TPU', 225]]).map(function (p) { return { name: p[0], temp: p[1], pick: function () { setT(p[1]); } }; }),
       padOpen: this.state.pad,
       openPad: function () { self.setState({ pad: true, entry: '' }); },
       padCancel: function () { self.setState({ pad: false }); },
-      padOk: function () { if (padValid) self.setState({ pad: false, target: padNum }); },
+      padOk: function () { if (padValid) setT(padNum, { pad: false }); },
       entryLabel: entry === '' ? '—' : entry + '°',
       entryInk: entry === '' ? '#66707b' : '#f4f6f8',
       hint: padNum > max ? 'максимум ' + max + '°' : 'от 0 до ' + max + '°',
@@ -152,12 +162,12 @@ class Component extends DCLogic {
         var v = self.targetFromPointer(e);
         if (v === null) return;
         if (e.currentTarget.setPointerCapture) e.currentTarget.setPointerCapture(e.pointerId);
-        self.setState({ dragging: true, target: v });
+        setT(v, { dragging: true });
       },
       dragMove: function (e) {
         if (!self.state.dragging) return;
         var v = self.targetFromPointer(e);
-        if (v !== null && v !== self.state.target) self.setState({ target: v });
+        if (v !== null && v !== self.state.target) setT(v);
       },
       dragEnd: function () { if (self.state.dragging) self.setState({ dragging: false }); }
     };
