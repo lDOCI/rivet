@@ -159,7 +159,7 @@ def hub(name, title, rail, tiles, cols=4, back=None):
         else:
             val = '<span style="height: 36px; display: flex; align-items: flex-end; font-size: 20px; line-height: 1.1; font-weight: 800; letter-spacing: -0.02em; white-space: nowrap">%s</span>' % t['label']
         subline = t['label'] if big else t.get('sub', '')
-        icon = t.get('icon_html') or svg(t['icon'], 30, '#2dd4bf')
+        icon = t.get('icon_html') or svg(t['icon'], 42, '#2dd4bf', '1.7')
         out += ('      <a href="%s" style="border-radius: 24px; background: #15181d; color: #f4f6f8; padding: 16px; box-sizing: border-box; '
                 'display: flex; flex-direction: column; justify-content: space-between; min-width: 0">%s'
                 '<span style="display: flex; flex-direction: column; gap: 2px; min-width: 0">%s'
@@ -429,7 +429,7 @@ def S(t):
 def build():
     # ---------- hubs ----------
     gauge = lambda cur, tgt, color: (
-        '<svg width="44" height="44" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="48" fill="none" stroke="#232831" '
+        '<svg width="48" height="48" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="48" fill="none" stroke="#232831" '
         'stroke-width="14" stroke-linecap="round" stroke-dasharray="226 302" transform="rotate(135 60 60)"></circle><circle cx="60" cy="60" '
         'r="48" fill="none" stroke="%s" stroke-width="14" stroke-linecap="round" stroke-dasharray="%d 302" transform="rotate(135 60 60)"></circle></svg>'
         % (color, cur))
