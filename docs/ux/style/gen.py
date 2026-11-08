@@ -464,7 +464,7 @@ def build():
         dict(icon='move', label='Движение', sub='оси, парковка, моторы', href='Motion.dc.html'),
         dict(icon='extruder', label='Экструдер', sub='выдавить, заправка', href='Extruder.dc.html'),
         dict(icon='fan', value='60%', label='Обдув', href='Fan.dc.html', src='fan.speed (part fan); fan_generic/*.speed'),
-        dict(icon='bulb', value='70%', label='Свет', href='Light.dc.html', src='led <name>.color_data[0][3] (white channel)'),
+        dict(icon='bulb', value='80%', label='Свет', href='Light.dc.html', src='led <name>.color_data[0][3] (white channel)'),
         dict(icon='gauge', value='100%', label='Скорость', href='Speed.dc.html',
              src='gcode_move.speed_factor ×100, gcode_move.extrude_factor ×100'),
         dict(icon='zoff', value='−0.12', label='Z-offset, мм', href='ZOffset.dc.html', src='gcode_move.homing_origin[2]'),
@@ -523,13 +523,13 @@ def build():
 
     # ---------- Tools children ----------
     form('Calibrate', 'Калибровки', 'tools', 'Tools.dc.html', [
-        L('Карта стола', 'профиль «default» · разброс 0.18 мм', 'BedMesh', icon='mesh', src='bed_mesh.profile_name, bed_mesh.mesh_matrix (max−min)'),
+        L('Карта стола', 'профиль «auto» · не загружен', 'BedMesh', icon='mesh', src='bed_mesh.profile_name, bed_mesh.mesh_matrix (max−min)'),
         L('Винты стола', 'сколько крутить каждый винт', 'Screws', icon='screw', src='screws_tilt_adjust (only if configured)'),
         L('Z-offset', 'точная подстройка, проверка датчика', 'ProbeZ', icon='probe', src='probe.*, configfile.settings.probe.z_offset'),
-        L('Вибрации', 'MZV 54.2 Гц / EI 41.8 Гц', 'InputShaper', icon='wave', src='configfile.settings.input_shaper.shaper_type_x/freq_x/…'),
+        L('Вибрации', 'X: MZV 56.4 Гц · Y: ZV 46.0 Гц', 'InputShaper', icon='wave', src='configfile.settings.input_shaper.shaper_type_x/freq_x/…'),
         L('Ремни', 'сравнить два ремня', 'Belts', icon='belt', src='requires resonance_tester + accel chip'),
         L('Нагрев (PID)', 'сопло и стол', 'PidCal', icon='thermo', src='configfile.settings.extruder.control/pid_kp…'),
-        L('Pressure advance', '0.040', 'PressureAdvance', icon='pa', src='extruder.pressure_advance'),
+        L('Pressure advance', '0.035', 'PressureAdvance', icon='pa', src='extruder.pressure_advance'),
         L('Драйверы TMC', 'ток, режимы', 'Tmc', icon='driver', src='tmc2209 <stepper>.*'),
         L('Тензодатчик', 'обнулить, если врёт касание', 'Calibrate', icon='scale', src='only when gcode_macro LOAD_CELL_TARE exists (AD5M)'),
     ])
@@ -543,8 +543,8 @@ def build():
         I('Касаний на точку', '1', '', src='configfile.settings.probe.samples'),
     ])
     form('InputShaper', 'Вибрации', 'tools', 'Calibrate.dc.html', [
-        I('Ось X', 'MZV · 54.2 Гц', 'макс. ускорение 7 400', src='configfile.settings.input_shaper.shaper_type_x/shaper_freq_x'),
-        I('Ось Y', 'EI · 41.8 Гц', 'макс. ускорение 5 900', src='configfile.settings.input_shaper.*_y'),
+        I('Ось X', 'MZV · 56.4 Гц', 'из printer.cfg', src='configfile.settings.input_shaper.shaper_type_x/shaper_freq_x'),
+        I('Ось Y', 'ZV · 46.0 Гц', 'из printer.cfg', src='configfile.settings.input_shaper.*_y'),
         SG('Что измерить', '', ['Обе оси', 'X', 'Y'], 0),
         A('Измерить', 'не трогайте принтер во время замера', tone='accent'),
         L('Последний замер', 'графики и все варианты сглаживания', 'ShaperResult', 'вчера'),
@@ -577,8 +577,8 @@ def build():
         A('Запустить', '', tone='accent'),
     ], intro='Нагрев, протирка сопла и карта стола.')
     form('History', 'История', 'tools', 'Tools.dc.html', [
-        I('Всего печатей', '142', '128 успешно · 90%', src='server.history.totals'),
-        I('Время печати', '311 ч', 'филамент 8.4 кг', src='server.history.totals.total_print_time/total_filament_used'),
+        I('Всего печатей', '770', 'с первого запуска Moonraker', src='server.history.totals'),
+        I('Время печати', '999 ч', 'филамент 8.1 км', src='server.history.totals.total_print_time/total_filament_used'),
         S('ПОСЛЕДНИЕ'),
         L('Корпус вентилятора №2', 'вчера · 1 ч 23 мин · PETG', 'FileDetail', '✓', src='server.history.list'),
         L('Benchy', 'вчера · остановлена на 63%', 'FileDetail', '■'),
@@ -588,11 +588,10 @@ def build():
     form('Sensors', 'Датчики', 'tools', 'Tools.dc.html', [
         S('ФИЛАМЕНТ'),
         T('Датчик обрыва', 'сейчас: пруток есть', True, src='filament_switch_sensor runout_sensor.enabled/filament_detected'),
-        S('ТЕМПЕРАТУРЫ'),
-        I('MCU', '41°', '', src='temperature_sensor mcu_temp.temperature'),
-        I('Хост (T113)', '52°', '', src='temperature_sensor host_temp'),
-        I('TVOC (AD5M Pro)', '12', 'качество воздуха', src='temperature_sensor TVOC_Level'),
-        I('Тензодатчик', '−3 г', '', src='temperature_sensor Load_Cell'),
+        S('ДРУГИЕ ДАТЧИКИ'),
+        I('Качество воздуха', 'нет данных', 'AD5M Pro · TVOC, CO₂, формальдегид', src='flashforge_tvoc.tvoc/co2/hcho/status (status "unknown" until the sensor reports)'),
+        I('Тензодатчик', '−40 г', 'нагрузка на сопло', src='flashforge_loadcell.force_g'),
+        I('Температура MCU и хоста', 'нет датчиков', 'на AD5M не настроены', src='temperature_sensor mcu_temp / host_temp — absent on AD5M, row hidden in the app'),
     ])
     # ---------- Settings ----------
     form('Settings', 'Настройки', 'settings', None, [
@@ -603,7 +602,7 @@ def build():
         L('Язык и время', 'Русский · 24 ч · Europe/Moscow', 'LangTime', icon='lang'),
         L('Безопасность', 'подтверждения', 'Safety', icon='shield'),
         L('Принтеры', '1 подключён', 'Printers', icon='printer'),
-        L('Обновления', 'Klipper v0.12.0 · Rivet 0.1.0', 'Updates', icon='update', src='printer.info.software_version; machine.update.status if available'),
+        L('Обновления', 'Klipper v0.13.0 · Mainsail, Fluidd', 'Updates', icon='update', src='printer.info.software_version; machine.update.status if available'),
         L('Система', 'перезапуск, выключение, о системе', 'System', icon='chip'),
     ])
     form('Network', 'Сеть', 'settings', 'Settings.dc.html', [
@@ -661,11 +660,13 @@ def build():
     ])
     form('Updates', 'Обновления', 'settings', 'Settings.dc.html', [
         S('ВЕРСИИ'),
-        I('Klipper', 'v0.12.0-208', '', src='printer.info.software_version'),
-        I('Moonraker', 'v0.9.3-31', '', src='server.info.moonraker_version'),
+        I('Klipper', 'v0.13.0-285', 'обновляется образом KlipperMod с USB', src='printer.info.software_version; update_manager has no version for klipper on KlipperMod'),
+        I('Moonraker', 'v0.9.3', 'обновляется образом KlipperMod с USB', src='server.info.moonraker_version'),
         I('Rivet', '0.1.0', '', src='Rivet build'),
-        S('ОБНОВЛЕНИЯ'),
-        I('KlipperMod', 'образом с USB', 'Moonraker на этой прошивке не обновляет компоненты', src='no [update_manager] in KlipperMod moonraker.conf'),
+        S('ВЕБ-ИНТЕРФЕЙСЫ'),
+        I('Mainsail', 'v2.19.0', 'актуально', src='machine.update.status.version_info.mainsail (version == remote_version)'),
+        I('Fluidd', 'v1.37.7', 'актуально', src='machine.update.status.version_info.fluidd'),
+        A('Проверить обновления', ''),
     ])
     form('System', 'Система', 'settings', 'Settings.dc.html', [
         S('ПЕРЕЗАПУСК'),
@@ -739,7 +740,7 @@ def build():
     ], intro='Слайсер может поменять обдув модели на следующем слое.')
     form('Light', 'Свет', 'control', 'Control.dc.html', [
         T('Подсветка', '', True, src='led chamber_led.color_data'),
-        SL('Яркость', '', 70, 0, 100, 5, '%', src='led chamber_led.color_data[0][3]', fmt='off0'),
+        SL('Яркость', '', 80, 0, 100, 5, '%', src='led chamber_led.color_data[0][3]', fmt='off0'),
         T('Включать при старте', '', True),
     ])
     form('Speed', 'Скорость и поток', 'control', 'Control.dc.html', [
@@ -752,8 +753,8 @@ def build():
         S('ПАРКОВКА'),
         A('Все оси', ''), A('Только XY', ''), A('Только Z', ''),
         S('ПЕРЕЙТИ В ТОЧКУ'),
-        ST('X', '−110 … 110', 0, -110, 110, 1, ' мм', src='toolhead.axis_minimum/axis_maximum'),
-        ST('Y', '−110 … 110', 0, -110, 110, 1, ' мм'),
+        ST('X', '−112 … 112', 0, -112, 112, 1, ' мм', src='toolhead.axis_minimum/axis_maximum'),
+        ST('Y', '−112 … 112', 0, -112, 112, 1, ' мм'),
         ST('Z', '−10 … 230', 10, -10, 230, 1, ' мм'),
         A('Поехать', '', tone='accent'),
         S('НАСТРОЙКИ ДЖОЙСТИКА'),
