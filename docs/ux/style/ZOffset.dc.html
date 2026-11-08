@@ -23,16 +23,18 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
         <h1 style="margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.02em">Z-offset</h1>
       </div>
       <span aria-live="polite" style="margin-top: 14px; font-size: 72px; font-weight: 800; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; line-height: 1">{{value}}<span style="font-size: 26px; color: #98a1ac; letter-spacing: 0"> мм</span></span>
-      <p style="margin: 0; font-size: 16px; line-height: 1.5; color: #c7cdd4">Не липнет первый слой — опустите сопло. Сопло царапает или слой прозрачный — поднимите. Можно менять прямо во время печати, сохраняется сразу.</p>
+      <p style="margin: 0; font-size: 16px; line-height: 1.5; color: #c7cdd4">Не липнет первый слой — опустите сопло. Сопло царапает или слой прозрачный — поднимите. Меняется сразу, в том числе во время печати. Чтобы осталось после перезапуска — «Сохранить».</p>
     </div>
-    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto repeat(2, minmax(0, 1fr)) 72px; gap: 10px">
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto repeat(2, minmax(0, 1fr)) 64px 64px; gap: 10px">
       <span style="font-size: 15px; font-weight: 600; color: #98a1ac; text-align: center">Поднять сопло</span>
       <span style="font-size: 15px; font-weight: 600; color: #98a1ac; text-align: center">Опустить сопло</span>
       <button type="button" onClick="{{up5}}" aria-label="Поднять на 0.05 мм" style="border: 0; border-radius: 22px; background: #252a31; color: #f4f6f8; font: 800 26px Inter, system-ui, sans-serif; cursor: pointer">+0.05</button>
       <button type="button" onClick="{{dn5}}" aria-label="Опустить на 0.05 мм" style="border: 0; border-radius: 22px; background: #252a31; color: #f4f6f8; font: 800 26px Inter, system-ui, sans-serif; cursor: pointer">−0.05</button>
       <button type="button" onClick="{{up1}}" aria-label="Поднять на 0.01 мм" style="border: 0; border-radius: 22px; background: #181c21; color: #c7cdd4; font: 700 24px Inter, system-ui, sans-serif; cursor: pointer">+0.01</button>
       <button type="button" onClick="{{dn1}}" aria-label="Опустить на 0.01 мм" style="border: 0; border-radius: 22px; background: #181c21; color: #c7cdd4; font: 700 24px Inter, system-ui, sans-serif; cursor: pointer">−0.01</button>
-      <button type="button" onClick="{{reset}}" style="grid-column: 1 / span 2; border: 1px solid #252a31; border-radius: 20px; background: transparent; color: #c7cdd4; font: 600 16px Inter, system-ui, sans-serif; cursor: pointer">{{resetLabel}}</button>
+      <button type="button" onClick="{{reset}}" style=" border: 1px solid #252a31; border-radius: 20px; background: transparent; color: #c7cdd4; font: 600 16px Inter, system-ui, sans-serif; cursor: pointer">{{resetLabel}}</button>
+      <a href="ZWizard.dc.html" style="border-radius: 20px; background: #15181d; color: #c7cdd4; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center">Мастер</a>
+      <button type="button" style="grid-column: 1 / span 2; border: 0; border-radius: 20px; background: #2dd4bf; color: #042f2a; font: 800 17px Inter, system-ui, sans-serif; cursor: pointer">Сохранить · Z_OFFSET_APPLY_PROBE</button>
     </div>
   </main>
 </div>

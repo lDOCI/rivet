@@ -14,82 +14,179 @@ body{margin:0}
 a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
 </style>
 </helmet>
-<div style="width: 800px; height: 480px; display: flex; background: #0b0d10; color: #f4f6f8; font-family: Inter, system-ui, sans-serif; overflow: hidden">
+<div style="position: relative; width: 800px; height: 480px; display: flex; background: #0b0d10; color: #f4f6f8; font-family: Inter, system-ui, sans-serif; overflow: hidden">
   <dc-import name="NavRail" active="settings" hint-size="88px,480px"></dc-import>
-  <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px 20px 16px 16px; display: flex; flex-direction: column; gap: 10px">
-    <div style="height: 64px; flex: none; display: flex; align-items: center; gap: 14px">
-      <a href="Settings.dc.html" aria-label="Назад" style="width: 64px; height: 64px; flex: none; border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></a>
-      <h1 style="margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.02em">Экран</h1>
+  <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px 16px 0 16px; display: flex; flex-direction: column; gap: 10px">
+    <div style="height: 64px; flex: none; display: flex; align-items: center; gap: 14px"><a href="Settings.dc.html" aria-label="Назад" style="width: 64px; height: 64px; flex: none; border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></a><h1 style="margin: 0; flex: 1; font-size: 26px; font-weight: 800; letter-spacing: -0.02em">Экран</h1></div>
+    <div style="flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-bottom: 16px">
+      <sc-for list="{{rows}}" as="r" hint-placeholder-count="6">
+        <sc-if value="{{r.isSection}}" hint-placeholder-val="{{ false }}"><span style="margin: 8px 4px 0; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; color: #66707b">{{r.title}}</span></sc-if>
+        <sc-if value="{{r.isLink}}" hint-placeholder-val="{{ true }}">
+          <a href="{{r.href}}" style="min-height: 72px; flex: none; border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; gap: 14px; padding: 0 18px">
+            <sc-if value="{{r.hasIcon}}" hint-placeholder-val="{{ false }}"><span aria-hidden="true" style="width: 44px; height: 44px; flex: none; border-radius: 14px; background: #1f242b; color: #2dd4bf; display: flex; align-items: center; justify-content: center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{r.p0}}"></path><path d="{{r.p1}}"></path><path d="{{r.p2}}"></path><path d="{{r.p3}}"></path><path d="{{r.p4}}"></path><path d="{{r.p5}}"></path></svg></span></sc-if>
+            <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 18px; font-weight: 700">{{r.title}}</span><span style="font-size: 14px; color: #98a1ac">{{r.sub}}</span></span>
+            <span style="font-size: 16px; color: #c7cdd4; white-space: nowrap">{{r.value}}</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#66707b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
+          </a>
+        </sc-if>
+        <sc-if value="{{r.isInfo}}" hint-placeholder-val="{{ false }}">
+          <div style="min-height: 64px; flex: none; border-radius: 20px; background: #15181d; display: flex; align-items: center; gap: 14px; padding: 0 18px">
+            <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 17px; font-weight: 600">{{r.title}}</span><span style="font-size: 14px; color: #98a1ac">{{r.sub}}</span></span>
+            <span style="font-size: 17px; font-weight: 700; color: {{r.tone}}; font-variant-numeric: tabular-nums; white-space: nowrap">{{r.value}}</span>
+          </div>
+        </sc-if>
+        <sc-if value="{{r.isToggle}}" hint-placeholder-val="{{ false }}">
+          <button type="button" role="switch" aria-checked="{{r.aria}}" onClick="{{r.flip}}" style="min-height: 72px; flex: none; border: 0; border-radius: 20px; background: #15181d; color: #f4f6f8; padding: 0 18px; display: flex; align-items: center; gap: 14px; font-family: Inter, system-ui, sans-serif; text-align: left; cursor: pointer">
+            <span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 18px; font-weight: 700">{{r.title}}</span><span style="font-size: 14px; color: #98a1ac">{{r.sub}}</span></span>
+            <span aria-hidden="true" style="width: 60px; height: 34px; flex: none; border-radius: 17px; background: {{r.track}}; position: relative"><span style="position: absolute; top: 4px; left: {{r.knob}}; width: 26px; height: 26px; border-radius: 13px; background: #ffffff"></span></span>
+          </button>
+        </sc-if>
+        <sc-if value="{{r.isSlider}}" hint-placeholder-val="{{ false }}">
+          <div style="min-height: 84px; flex: none; border-radius: 20px; background: #15181d; padding: 0 12px 0 18px; display: flex; align-items: center; gap: 16px">
+            <span style="width: 170px; flex: none; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 18px; font-weight: 700">{{r.title}}</span><span style="font-size: 14px; color: #98a1ac">{{r.sub}}</span></span>
+            <div role="slider" aria-label="{{r.title}}" aria-valuemin="{{r.min}}" aria-valuemax="{{r.max}}" aria-valuenow="{{r.now}}" onPointerDown="{{r.down}}" onPointerMove="{{r.move}}" onPointerUp="{{r.up}}" onPointerCancel="{{r.up}}" style="flex: 1; height: 60px; border-radius: 18px; background: #1f242b; position: relative; overflow: hidden; touch-action: none; cursor: grab">
+              <span aria-hidden="true" style="position: absolute; left: 0; top: 0; bottom: 0; width: {{r.pct}}; background: linear-gradient(90deg, #2dd4bf, #5eead4)"></span>
+            </div>
+            <span style="width: 86px; flex: none; text-align: right; font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums">{{r.label}}</span>
+          </div>
+        </sc-if>
+        <sc-if value="{{r.isStepper}}" hint-placeholder-val="{{ false }}">
+          <div style="min-height: 84px; flex: none; border-radius: 20px; background: #15181d; padding: 0 10px 0 18px; display: flex; align-items: center; gap: 10px">
+            <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 18px; font-weight: 700">{{r.title}}</span><span style="font-size: 14px; color: #98a1ac">{{r.sub}}</span></span>
+            <button type="button" onClick="{{r.dec}}" aria-label="Меньше" style="width: 64px; height: 64px; border: 0; border-radius: 18px; background: #1f242b; color: #f4f6f8; font: 500 30px Inter, system-ui, sans-serif; cursor: pointer">−</button>
+            <span style="width: 120px; text-align: center; font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums">{{r.label}}</span>
+            <button type="button" onClick="{{r.inc}}" aria-label="Больше" style="width: 64px; height: 64px; border: 0; border-radius: 18px; background: #1f242b; color: #f4f6f8; font: 500 30px Inter, system-ui, sans-serif; cursor: pointer">+</button>
+          </div>
+        </sc-if>
+        <sc-if value="{{r.isSeg}}" hint-placeholder-val="{{ false }}">
+          <div style="min-height: 84px; flex: none; border-radius: 20px; background: #15181d; padding: 10px 10px 10px 18px; box-sizing: border-box; display: flex; align-items: center; gap: 14px">
+            <span style="width: 170px; flex: none; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 18px; font-weight: 700">{{r.title}}</span><span style="font-size: 14px; color: #98a1ac">{{r.sub}}</span></span>
+            <div role="radiogroup" aria-label="{{r.title}}" style="flex: 1; display: flex; gap: 6px">
+              <sc-for list="{{r.opts}}" as="o" hint-placeholder-count="3">
+                <button type="button" role="radio" aria-checked="{{o.checked}}" onClick="{{o.pick}}" style="flex: 1; height: 64px; border: 0; border-radius: 16px; background: {{o.bg}}; color: {{o.fg}}; font: 700 15px Inter, system-ui, sans-serif; cursor: pointer">{{o.label}}</button>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{r.isAction}}" hint-placeholder-val="{{ false }}">
+          <a href="{{r.href}}" style="min-height: 72px; flex: none; border-radius: 20px; background: {{r.actBg}}; color: {{r.actFg}}; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 8px 18px; box-sizing: border-box; text-align: center"><span style="font-size: 18px; font-weight: 800">{{r.title}}</span><span style="font-size: 13px; opacity: 0.75">{{r.sub}}</span></a>
+        </sc-if>
+      </sc-for>
     </div>
-
-    <div style="flex: 1; border-radius: 22px; background: #15181d; padding: 0 18px; display: flex; align-items: center; gap: 18px">
-      <span style="width: 150px; flex: none; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 18px; font-weight: 700">Яркость</span><span style="font-size: 14px; color: #98a1ac; font-variant-numeric: tabular-nums">{{brightLabel}}</span></span>
-      <div role="slider" aria-label="Яркость" aria-valuemin="10" aria-valuemax="100" aria-valuenow="{{bright}}" onPointerDown="{{dragStart}}" onPointerMove="{{dragMove}}" onPointerUp="{{dragEnd}}" onPointerCancel="{{dragEnd}}" style="flex: 1; height: 64px; border-radius: 20px; background: #1f242b; position: relative; overflow: hidden; touch-action: none; cursor: grab">
-        <span aria-hidden="true" style="position: absolute; left: 0; top: 0; bottom: 0; width: {{brightPct}}; background: linear-gradient(90deg, #2dd4bf, #5eead4)"></span>
-        <span aria-hidden="true" style="position: absolute; left: 18px; top: 50%; transform: translateY(-50%); color: #042f2a; display: flex"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 8a4 4 0 1 0 0 8a4 4 0 1 0 0-8"></path><path d="M12 2v2M12 20v2M2 12h2M20 12h2"></path></svg></span>
-      </div>
-    </div>
-
-    <div style="flex: 1; border-radius: 22px; background: #15181d; padding: 0 10px 0 18px; display: flex; align-items: center; gap: 18px">
-      <span style="width: 150px; flex: none; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 18px; font-weight: 700">Гасить через</span><span style="font-size: 14px; color: #98a1ac">без касаний</span></span>
-      <div role="radiogroup" aria-label="Гасить экран через" style="flex: 1; height: 64px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px">
-        <sc-for list="{{sleeps}}" as="o" hint-placeholder-count="5">
-          <button type="button" role="radio" aria-checked="{{o.checked}}" onClick="{{o.pick}}" style="border: 0; border-radius: 18px; background: {{o.bg}}; color: {{o.fg}}; font: 700 16px Inter, system-ui, sans-serif; cursor: pointer">{{o.label}}</button>
-        </sc-for>
-      </div>
-    </div>
-
-    <button type="button" role="switch" aria-checked="{{ambientOn}}" onClick="{{toggleAmbient}}" style="flex: 1; border: 0; border-radius: 22px; background: #15181d; color: #f4f6f8; padding: 0 18px; display: flex; align-items: center; gap: 18px; font-family: Inter, system-ui, sans-serif; text-align: left; cursor: pointer">
-      <span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 18px; font-weight: 700">Во время печати — заставка</span><span style="font-size: 14px; color: #98a1ac">вместо чёрного экрана: прогресс крупно, видно издалека</span></span>
-      <span aria-hidden="true" style="width: 60px; height: 34px; flex: none; border-radius: 17px; background: {{ambientTrack}}; position: relative"><span style="position: absolute; top: 4px; left: {{ambientKnob}}; width: 26px; height: 26px; border-radius: 13px; background: #ffffff"></span></span>
-    </button>
-
-    <button type="button" role="switch" aria-checked="{{lockOn}}" onClick="{{toggleLock}}" style="flex: 1; border: 0; border-radius: 22px; background: #15181d; color: #f4f6f8; padding: 0 18px; display: flex; align-items: center; gap: 18px; font-family: Inter, system-ui, sans-serif; text-align: left; cursor: pointer">
-      <span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 18px; font-weight: 700">Блокировка во время печати</span><span style="font-size: 14px; color: #98a1ac">разблокировать — провести пальцем; кнопка «Стоп» работает всегда</span></span>
-      <span aria-hidden="true" style="width: 60px; height: 34px; flex: none; border-radius: 17px; background: {{lockTrack}}; position: relative"><span style="position: absolute; top: 4px; left: {{lockKnob}}; width: 26px; height: 26px; border-radius: 13px; background: #ffffff"></span></span>
-    </button>
   </main>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":800,"height":480}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 800, "height": 480}}'>
+var ROWS = [
+ {
+  "kind": "slider",
+  "t": "Яркость",
+  "sub": "подсветка экрана",
+  "v": 70,
+  "min": 10,
+  "max": 100,
+  "step": 5,
+  "unit": "%",
+  "dec": 0,
+  "id": "r0"
+ },
+ {
+  "kind": "seg",
+  "t": "Гасить через",
+  "sub": "без касаний",
+  "opts": [
+   "1 мин",
+   "5 мин",
+   "10 мин",
+   "30 мин",
+   "Никогда"
+  ],
+  "v": 2,
+  "id": "r1"
+ },
+ {
+  "kind": "toggle",
+  "t": "Не гасить во время печати",
+  "sub": "показывать заставку с прогрессом",
+  "v": true,
+  "id": "r2"
+ },
+ {
+  "kind": "seg",
+  "t": "Поворот",
+  "sub": "",
+  "opts": [
+   "0°",
+   "90°",
+   "180°",
+   "270°"
+  ],
+  "v": 0,
+  "id": "r3"
+ },
+ {
+  "kind": "action",
+  "t": "Калибровка тача",
+  "sub": "коснуться 4 точек",
+  "href": "Screen.dc.html",
+  "id": "r4"
+ }
+];
+
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { bright: 70, dragging: false, sleep: '10', ambient: true, lock: false };
+    var st = {};
+    ROWS.forEach(function (r) { if (r.v !== undefined) st[r.id] = r.v; });
+    st._drag = null;
+    this.state = st;
   }
-  brightFromPointer(e) {
-    var r = e.currentTarget.getBoundingClientRect();
-    var f = (e.clientX - r.left) / r.width;
-    return Math.max(10, Math.min(100, Math.round(f * 100 / 5) * 5));
+  fromPointer(e, r) {
+    var b = e.currentTarget.getBoundingClientRect();
+    var f = Math.max(0, Math.min(1, (e.clientX - b.left) / b.width));
+    var v = r.min + f * (r.max - r.min);
+    return Math.round(v / r.step) * r.step;
   }
   renderVals() {
-    var self = this;
-    var st = this.state;
-    var sw = function (on) { return { track: on ? '#2dd4bf' : '#3a414a', knob: on ? '30px' : '4px', aria: on ? 'true' : 'false' }; };
-    var a = sw(st.ambient), l = sw(st.lock);
-    return {
-      bright: st.bright, brightLabel: st.bright + '%', brightPct: st.bright + '%',
-      dragStart: function (e) {
-        if (e.currentTarget.setPointerCapture) e.currentTarget.setPointerCapture(e.pointerId);
-        self.setState({ dragging: true, bright: self.brightFromPointer(e) });
-      },
-      dragMove: function (e) {
-        if (!self.state.dragging) return;
-        var n = self.brightFromPointer(e);
-        if (n !== self.state.bright) self.setState({ bright: n });
-      },
-      dragEnd: function () { if (self.state.dragging) self.setState({ dragging: false }); },
-      sleeps: [['1', '1 мин'], ['5', '5 мин'], ['10', '10 мин'], ['30', '30 мин'], ['never', 'Никогда']].map(function (o) {
-        var on = o[0] === st.sleep;
-        return { label: o[1], checked: on ? 'true' : 'false', bg: on ? '#2dd4bf' : '#1f242b', fg: on ? '#042f2a' : '#f4f6f8', pick: function () { self.setState({ sleep: o[0] }); } };
-      }),
-      ambientOn: a.aria, ambientTrack: a.track, ambientKnob: a.knob,
-      lockOn: l.aria, lockTrack: l.track, lockKnob: l.knob,
-      toggleAmbient: function () { self.setState({ ambient: !st.ambient }); },
-      toggleLock: function () { self.setState({ lock: !st.lock }); }
-    };
+    var self = this, s = this.state;
+    function fmt(r, v) { return (r.fmt === 'off0' && v === 0) ? 'Выкл.' : (r.dec ? v.toFixed(r.dec) : String(v)) + (r.unit || ''); }
+    var rows = ROWS.map(function (r) {
+      var o = { kind: r.kind, title: r.t || '', sub: r.sub || '', href: r.href || '#',
+        isSection: r.kind === 'section', isLink: r.kind === 'link', isToggle: r.kind === 'toggle', isSlider: r.kind === 'slider',
+        isSeg: r.kind === 'seg', isStepper: r.kind === 'stepper', isAction: r.kind === 'action', isInfo: r.kind === 'info',
+        value: r.value || '', hasIcon: !!r.ic, p0: (r.ic || [])[0] || '', p1: (r.ic || [])[1] || '', p2: (r.ic || [])[2] || '', p3: (r.ic || [])[3] || '', p4: (r.ic || [])[4] || '', p5: (r.ic || [])[5] || '', tone: r.tone === 'danger' ? '#fb7185' : r.tone === 'accent' ? '#2dd4bf' : '#f4f6f8',
+        actBg: r.tone === 'accent' ? '#2dd4bf' : '#1f242b', actFg: r.tone === 'accent' ? '#042f2a' : (r.tone === 'danger' ? '#fb7185' : '#f4f6f8') };
+      if (r.kind === 'toggle') {
+        var on = !!s[r.id];
+        o.aria = on ? 'true' : 'false'; o.track = on ? '#2dd4bf' : '#3a414a'; o.knob = on ? '30px' : '4px';
+        o.flip = function () { var n = {}; n[r.id] = !on; self.setState(n); };
+      }
+      if (r.kind === 'slider') {
+        var v = s[r.id];
+        o.label = fmt(r, v); o.pct = ((v - r.min) / (r.max - r.min) * 100).toFixed(1) + '%'; o.min = r.min; o.max = r.max; o.now = v;
+        o.down = function (e) { if (e.currentTarget.setPointerCapture) e.currentTarget.setPointerCapture(e.pointerId); var n = { _drag: r.id }; n[r.id] = self.fromPointer(e, r); self.setState(n); };
+        o.move = function (e) { if (self.state._drag !== r.id) return; var n = {}; n[r.id] = self.fromPointer(e, r); if (n[r.id] !== self.state[r.id]) self.setState(n); };
+        o.up = function () { if (self.state._drag) self.setState({ _drag: null }); };
+      }
+      if (r.kind === 'stepper') {
+        var w = s[r.id];
+        o.label = fmt(r, w);
+        o.dec = function () { var n = {}; n[r.id] = Math.max(r.min, +(w - r.step).toFixed(4)); self.setState(n); };
+        o.inc = function () { var n = {}; n[r.id] = Math.min(r.max, +(w + r.step).toFixed(4)); self.setState(n); };
+      }
+      if (r.kind === 'seg') {
+        o.opts = r.opts.map(function (lab, i) {
+          var sel = s[r.id] === i;
+          return { label: lab, checked: sel ? 'true' : 'false', bg: sel ? '#2dd4bf' : '#1f242b', fg: sel ? '#042f2a' : '#f4f6f8',
+            pick: function () { var n = {}; n[r.id] = i; self.setState(n); } };
+        });
+      }
+      return o;
+    });
+    return { rows: rows };
   }
 }
+
 </script>
 </body>
 </html>

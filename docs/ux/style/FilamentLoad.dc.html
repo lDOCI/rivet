@@ -18,7 +18,7 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
   <dc-import name="NavRail" active="control" hint-size="88px,480px"></dc-import>
   <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px 20px 16px 16px; display: flex; flex-direction: column; gap: 14px">
     <div style="height: 64px; flex: none; display: flex; align-items: center; gap: 14px">
-      <a href="Control.dc.html" aria-label="Отменить загрузку" style="width: 64px; height: 64px; flex: none; border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; justify-content: center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></a>
+      <a href="Extruder.dc.html" aria-label="Отменить загрузку" style="width: 64px; height: 64px; flex: none; border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; justify-content: center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></a>
       <div style="flex: 1; display: flex; flex-direction: column; gap: 8px">
         <span style="font-size: 15px; font-weight: 600; color: #98a1ac">{{stepLabel}}</span>
         <div aria-hidden="true" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px">
@@ -71,9 +71,9 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
     </div>
 
     <div style="display: grid; grid-template-columns: 1fr 1.4fr; gap: 10px">
-      <sc-if value="{{isStep1}}" hint-placeholder-val="{{ true }}"><a href="Control.dc.html" style="height: 80px; border-radius: 22px; background: #15181d; color: #f4f6f8; font-size: 18px; font-weight: 700; display: flex; align-items: center; justify-content: center">Отмена</a></sc-if>
+      <sc-if value="{{isStep1}}" hint-placeholder-val="{{ true }}"><a href="Extruder.dc.html" style="height: 80px; border-radius: 22px; background: #15181d; color: #f4f6f8; font-size: 18px; font-weight: 700; display: flex; align-items: center; justify-content: center">Отмена</a></sc-if>
       <sc-if value="{{notStep1}}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{secondary}}" style="height: 80px; border: 0; border-radius: 22px; background: #15181d; color: #f4f6f8; font: 700 18px Inter, system-ui, sans-serif; cursor: pointer">{{secondaryLabel}}</button></sc-if>
-      <sc-if value="{{isStep3}}" hint-placeholder-val="{{ false }}"><a href="Control.dc.html" style="height: 80px; border-radius: 22px; background: #2dd4bf; color: #042f2a; font-size: 19px; font-weight: 800; display: flex; align-items: center; justify-content: center">Да, готово</a></sc-if>
+      <sc-if value="{{isStep3}}" hint-placeholder-val="{{ false }}"><a href="Extruder.dc.html" style="height: 80px; border-radius: 22px; background: #2dd4bf; color: #042f2a; font-size: 19px; font-weight: 800; display: flex; align-items: center; justify-content: center">Да, готово</a></sc-if>
       <sc-if value="{{notStep3}}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{primary}}" style="height: 80px; border: 0; border-radius: 22px; background: #2dd4bf; color: #042f2a; font: 800 19px Inter, system-ui, sans-serif; cursor: pointer">{{primaryLabel}}</button></sc-if>
     </div>
   </main>

@@ -45,7 +45,10 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
       <button type="button" onClick="{{z1}}" aria-label="Стол вниз на 1 мм" style="flex: 1; border: 0; border-radius: 20px; background: #181c21; color: #c7cdd4; font: 600 17px Inter, system-ui, sans-serif; cursor: pointer">↓ 1</button>
       <button type="button" onClick="{{zm1}}" aria-label="Стол вверх на 1 мм" style="flex: 1; border: 0; border-radius: 20px; background: #181c21; color: #c7cdd4; font: 600 17px Inter, system-ui, sans-serif; cursor: pointer">↑ 1</button>
       <button type="button" onClick="{{zm10}}" aria-label="Стол вверх на 10 мм" style="flex: 1; border: 0; border-radius: 20px; background: #252a31; color: #f4f6f8; font: 700 18px Inter, system-ui, sans-serif; cursor: pointer">Стол ↑ 10</button>
-      <button type="button" onClick="{{motorsOff}}" style="height: 64px; flex: none; border: 1px solid #2a3038; border-radius: 20px; background: transparent; color: #c7cdd4; font: 600 16px Inter, system-ui, sans-serif; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 11V7a5 5 0 0 1 9.9-1"></path><path d="M6 11h12a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2z"></path></svg>Отключить моторы</button>
+      <div style="height: 64px; flex: none; display: grid; grid-template-columns: 1.3fr 1fr; gap: 7px">
+        <button type="button" onClick="{{motorsOff}}" style="height: 64px; border: 1px solid #2a3038; border-radius: 20px; background: transparent; color: #c7cdd4; font: 600 16px Inter, system-ui, sans-serif; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 11V7a5 5 0 0 1 9.9-1"></path><path d="M6 11h12a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2z"></path></svg>Моторы выкл.</button>
+        <a href="MotionAdvanced.dc.html" style="border-radius: 20px; background: #15181d; color: #f4f6f8; font-size: 16px; font-weight: 600; display: flex; align-items: center; justify-content: center">Ещё…</a>
+      </div>
     </section>
   </main>
 </div>
@@ -54,7 +57,7 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { x: 110, y: 110, z: 10, free: false };
+    this.state = { x: 0, y: 0, z: 10, free: false };
   }
   renderVals() {
     var self = this;
@@ -63,7 +66,8 @@ class Component extends DCLogic {
       return function () {
         if (s.free) return;
         var n = {};
-        n[axis] = Math.min(220, Math.max(0, s[axis] + d));
+        var lim = { x: [-110, 110], y: [-110, 110], z: [-10, 230] }[axis];
+        n[axis] = Math.min(lim[1], Math.max(lim[0], s[axis] + d));
         self.setState(n);
       };
     }
@@ -74,7 +78,7 @@ class Component extends DCLogic {
       x1: mv('x', 1), x10: mv('x', 10), xm1: mv('x', -1), xm10: mv('x', -10),
       y1: mv('y', 1), y10: mv('y', 10), ym1: mv('y', -1), ym10: mv('y', -10),
       z1: mv('z', 1), z10: mv('z', 10), zm1: mv('z', -1), zm10: mv('z', -10),
-      home: function () { self.setState({ x: 0, y: 0, z: 0, free: false }); }
+      home: function () { self.setState({ x: 110, y: 110, z: 220, free: false }); }
     };
   }
 }

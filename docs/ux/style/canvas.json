@@ -16,8 +16,8 @@
       "w": 800,
       "h": 480,
       "title": "Главная",
-      "is_interactive": true,
-      "radius": 16
+      "radius": 16,
+      "is_interactive": true
     },
     "Printing.dc.html": {
       "x": 880,
@@ -25,218 +25,659 @@
       "w": 800,
       "h": 480,
       "title": "Печать",
-      "is_interactive": true,
-      "radius": 16
+      "radius": 16,
+      "is_interactive": true
     },
-    "Ambient.dc.html": {
+    "PrintTune.dc.html": {
       "x": 1760,
       "y": 0,
       "w": 800,
       "h": 480,
-      "title": "Заставка во время печати",
-      "is_interactive": true,
-      "radius": 16
+      "title": "Подстройка печати",
+      "radius": 16,
+      "is_interactive": true
     },
-    "ConfirmStop.dc.html": {
+    "PrintMore.dc.html": {
       "x": 2640,
       "y": 0,
       "w": 800,
       "h": 480,
-      "title": "Остановить печать?",
-      "is_interactive": true,
-      "radius": 16
+      "title": "Ещё",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "LayerPause.dc.html": {
+      "x": 3520,
+      "y": 0,
+      "w": 800,
+      "h": 480,
+      "title": "Пауза на слое",
+      "radius": 16,
+      "is_interactive": true
     },
     "Exclude.dc.html": {
-      "x": 3520,
+      "x": 4400,
       "y": 0,
       "w": 800,
       "h": 480,
       "title": "Пропуск объектов",
-      "is_interactive": true,
-      "radius": 16
+      "radius": 16,
+      "is_interactive": true
     },
-    "Control.dc.html": {
-      "x": 0,
-      "y": 900,
-      "w": 800,
-      "h": 480,
-      "title": "Управление",
-      "is_interactive": true,
-      "radius": 16
-    },
-    "Heating.dc.html": {
-      "x": 880,
-      "y": 900,
-      "w": 800,
-      "h": 480,
-      "title": "Нагрев сопла",
-      "is_interactive": true,
-      "radius": 16
-    },
-    "Speed.dc.html": {
-      "x": 1760,
-      "y": 900,
-      "w": 800,
-      "h": 480,
-      "title": "Скорость",
-      "is_interactive": true,
-      "radius": 16
-    },
-    "Motion.dc.html": {
-      "x": 2640,
-      "y": 900,
-      "w": 800,
-      "h": 480,
-      "title": "Движение",
-      "is_interactive": true,
-      "radius": 16
-    },
-    "Fan.dc.html": {
-      "x": 3520,
-      "y": 900,
-      "w": 800,
-      "h": 480,
-      "title": "Обдув модели",
-      "is_interactive": true,
-      "radius": 16
-    },
-    "ZOffset.dc.html": {
-      "x": 4400,
-      "y": 900,
-      "w": 800,
-      "h": 480,
-      "title": "Z-offset",
-      "is_interactive": true,
-      "radius": 16
-    },
-    "FilamentLoad.dc.html": {
+    "Ambient.dc.html": {
       "x": 5280,
-      "y": 900,
+      "y": 0,
       "w": 800,
       "h": 480,
-      "title": "Загрузка филамента по шагам",
-      "is_interactive": true,
-      "radius": 16
+      "title": "Заставка печати",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "ConfirmStop.dc.html": {
+      "x": 6160,
+      "y": 0,
+      "w": 800,
+      "h": 480,
+      "title": "Остановить печать?",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "PrintDone.dc.html": {
+      "x": 0,
+      "y": 600,
+      "w": 800,
+      "h": 480,
+      "title": "Печать завершена",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "Runout.dc.html": {
+      "x": 880,
+      "y": 600,
+      "w": 800,
+      "h": 480,
+      "title": "Закончился филамент",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "Lock.dc.html": {
+      "x": 1760,
+      "y": 600,
+      "w": 800,
+      "h": 480,
+      "title": "Блокировка",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "Prompt.dc.html": {
+      "x": 2640,
+      "y": 600,
+      "w": 800,
+      "h": 480,
+      "title": "Диалог макроса",
+      "radius": 16,
+      "is_interactive": true
     },
     "Files.dc.html": {
       "x": 0,
-      "y": 1800,
+      "y": 1620,
       "w": 800,
       "h": 480,
       "title": "Файлы",
-      "is_interactive": true,
-      "radius": 16
+      "radius": 16,
+      "is_interactive": true
     },
     "FileDetail.dc.html": {
       "x": 880,
-      "y": 1800,
+      "y": 1620,
       "w": 800,
       "h": 480,
       "title": "Файл перед печатью",
-      "is_interactive": true,
-      "radius": 16
+      "radius": 16,
+      "is_interactive": true
     },
-    "Settings.dc.html": {
-      "x": 0,
-      "y": 2700,
+    "FileActions.dc.html": {
+      "x": 1760,
+      "y": 1620,
       "w": 800,
       "h": 480,
-      "title": "Настройки",
-      "is_interactive": true,
-      "radius": 16
+      "title": "Корпус вентилятора №2",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "JobQueue.dc.html": {
+      "x": 2640,
+      "y": 1620,
+      "w": 800,
+      "h": 480,
+      "title": "Очередь печати",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "Control.dc.html": {
+      "x": 0,
+      "y": 2640,
+      "w": 800,
+      "h": 480,
+      "title": "Управление",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "Heating.dc.html": {
+      "x": 880,
+      "y": 2640,
+      "w": 800,
+      "h": 480,
+      "title": "Нагрев сопла",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "HeatPresets.dc.html": {
+      "x": 1760,
+      "y": 2640,
+      "w": 800,
+      "h": 480,
+      "title": "Пресеты нагрева",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "TempGraph.dc.html": {
+      "x": 2640,
+      "y": 2640,
+      "w": 800,
+      "h": 480,
+      "title": "График температур",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "Motion.dc.html": {
+      "x": 3520,
+      "y": 2640,
+      "w": 800,
+      "h": 480,
+      "title": "Движение",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "MotionAdvanced.dc.html": {
+      "x": 4400,
+      "y": 2640,
+      "w": 800,
+      "h": 480,
+      "title": "Движение · ещё",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "Extruder.dc.html": {
+      "x": 5280,
+      "y": 2640,
+      "w": 800,
+      "h": 480,
+      "title": "Экструдер",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "FilamentLoad.dc.html": {
+      "x": 6160,
+      "y": 2640,
+      "w": 800,
+      "h": 480,
+      "title": "Загрузка филамента",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "Spools.dc.html": {
+      "x": 0,
+      "y": 3240,
+      "w": 800,
+      "h": 480,
+      "title": "Катушки",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "Retraction.dc.html": {
+      "x": 880,
+      "y": 3240,
+      "w": 800,
+      "h": 480,
+      "title": "Ретракт прошивки",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "Dryer.dc.html": {
+      "x": 1760,
+      "y": 3240,
+      "w": 800,
+      "h": 480,
+      "title": "Сушка филамента",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "Fan.dc.html": {
+      "x": 2640,
+      "y": 3240,
+      "w": 800,
+      "h": 480,
+      "title": "Вентиляторы",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "Light.dc.html": {
+      "x": 3520,
+      "y": 3240,
+      "w": 800,
+      "h": 480,
+      "title": "Свет",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "Speed.dc.html": {
+      "x": 4400,
+      "y": 3240,
+      "w": 800,
+      "h": 480,
+      "title": "Скорость и поток",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "ZOffset.dc.html": {
+      "x": 5280,
+      "y": 3240,
+      "w": 800,
+      "h": 480,
+      "title": "Z-offset",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "Devices.dc.html": {
+      "x": 6160,
+      "y": 3240,
+      "w": 800,
+      "h": 480,
+      "title": "Устройства",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "Tools.dc.html": {
+      "x": 0,
+      "y": 4260,
+      "w": 800,
+      "h": 480,
+      "title": "Инструменты",
+      "radius": 16,
+      "is_interactive": true
     },
     "Calibrate.dc.html": {
       "x": 880,
-      "y": 2700,
+      "y": 4260,
       "w": 800,
       "h": 480,
-      "title": "Калибровка",
-      "is_interactive": true,
-      "radius": 16
+      "title": "Калибровки",
+      "radius": 16,
+      "is_interactive": true
     },
     "BedMesh.dc.html": {
       "x": 1760,
-      "y": 2700,
+      "y": 4260,
       "w": 800,
       "h": 480,
       "title": "Карта стола",
-      "is_interactive": true,
-      "radius": 16
+      "radius": 16,
+      "is_interactive": true
+    },
+    "Screws.dc.html": {
+      "x": 2640,
+      "y": 4260,
+      "w": 800,
+      "h": 480,
+      "title": "Винты стола",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "ProbeZ.dc.html": {
+      "x": 3520,
+      "y": 4260,
+      "w": 800,
+      "h": 480,
+      "title": "Щуп и Z",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "ZWizard.dc.html": {
+      "x": 4400,
+      "y": 4260,
+      "w": 800,
+      "h": 480,
+      "title": "Z-offset бумагой",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "InputShaper.dc.html": {
+      "x": 5280,
+      "y": 4260,
+      "w": 800,
+      "h": 480,
+      "title": "Вибрации",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "Belts.dc.html": {
+      "x": 6160,
+      "y": 4260,
+      "w": 800,
+      "h": 480,
+      "title": "Ремни",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "PidCal.dc.html": {
+      "x": 0,
+      "y": 4860,
+      "w": 800,
+      "h": 480,
+      "title": "Нагрев (PID)",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "PressureAdvance.dc.html": {
+      "x": 880,
+      "y": 4860,
+      "w": 800,
+      "h": 480,
+      "title": "Pressure advance",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "Tmc.dc.html": {
+      "x": 1760,
+      "y": 4860,
+      "w": 800,
+      "h": 480,
+      "title": "Драйверы TMC",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "Limits.dc.html": {
+      "x": 2640,
+      "y": 4860,
+      "w": 800,
+      "h": 480,
+      "title": "Лимиты",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "Macros.dc.html": {
+      "x": 3520,
+      "y": 4860,
+      "w": 800,
+      "h": 480,
+      "title": "Макросы",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "MacroRun.dc.html": {
+      "x": 4400,
+      "y": 4860,
+      "w": 800,
+      "h": 480,
+      "title": "AUTO_BED_LEVEL",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "Console.dc.html": {
+      "x": 5280,
+      "y": 4860,
+      "w": 800,
+      "h": 480,
+      "title": "Консоль",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "History.dc.html": {
+      "x": 6160,
+      "y": 4860,
+      "w": 800,
+      "h": 480,
+      "title": "История",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "Sensors.dc.html": {
+      "x": 0,
+      "y": 5460,
+      "w": 800,
+      "h": 480,
+      "title": "Датчики",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "Maintenance.dc.html": {
+      "x": 880,
+      "y": 5460,
+      "w": 800,
+      "h": 480,
+      "title": "Обслуживание",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "Camera.dc.html": {
+      "x": 1760,
+      "y": 5460,
+      "w": 800,
+      "h": 480,
+      "title": "Камера",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "Settings.dc.html": {
+      "x": 0,
+      "y": 6480,
+      "w": 800,
+      "h": 480,
+      "title": "Настройки",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "Network.dc.html": {
+      "x": 880,
+      "y": 6480,
+      "w": 800,
+      "h": 480,
+      "title": "Сеть",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "WifiJoin.dc.html": {
+      "x": 1760,
+      "y": 6480,
+      "w": 800,
+      "h": 480,
+      "title": "HomeNet",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "Screen.dc.html": {
+      "x": 2640,
+      "y": 6480,
+      "w": 800,
+      "h": 480,
+      "title": "Экран",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "LockSettings.dc.html": {
+      "x": 3520,
+      "y": 6480,
+      "w": 800,
+      "h": 480,
+      "title": "Блокировка и PIN",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "Sound.dc.html": {
+      "x": 4400,
+      "y": 6480,
+      "w": 800,
+      "h": 480,
+      "title": "Звук",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "LangTime.dc.html": {
+      "x": 5280,
+      "y": 6480,
+      "w": 800,
+      "h": 480,
+      "title": "Язык и время",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "Safety.dc.html": {
+      "x": 6160,
+      "y": 6480,
+      "w": 800,
+      "h": 480,
+      "title": "Безопасность",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "Printers.dc.html": {
+      "x": 0,
+      "y": 7080,
+      "w": 800,
+      "h": 480,
+      "title": "Принтеры",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "Updates.dc.html": {
+      "x": 880,
+      "y": 7080,
+      "w": 800,
+      "h": 480,
+      "title": "Обновления",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "System.dc.html": {
+      "x": 1760,
+      "y": 7080,
+      "w": 800,
+      "h": 480,
+      "title": "Система",
+      "radius": 16,
+      "is_interactive": true
     },
     "Messages.dc.html": {
-      "x": 2640,
-      "y": 2700,
+      "x": 0,
+      "y": 8100,
       "w": 800,
       "h": 480,
       "title": "Сообщения",
-      "is_interactive": true,
-      "radius": 16
+      "radius": 16,
+      "is_interactive": true
     },
-    "KlipperError.dc.html": {
-      "x": 0,
-      "y": 3600,
+    "EStop.dc.html": {
+      "x": 880,
+      "y": 8100,
       "w": 800,
       "h": 480,
-      "title": "Принтер остановлен (ошибка Klipper)",
-      "is_interactive": true,
-      "radius": 16
+      "title": "Аварийная остановка",
+      "radius": 16,
+      "is_interactive": true
+    },
+    "KlipperError.dc.html": {
+      "x": 1760,
+      "y": 8100,
+      "w": 800,
+      "h": 480,
+      "title": "Klipper остановлен",
+      "radius": 16,
+      "is_interactive": true
     },
     "Offline.dc.html": {
-      "x": 880,
-      "y": 3600,
+      "x": 2640,
+      "y": 8100,
       "w": 800,
       "h": 480,
       "title": "Нет связи",
-      "is_interactive": true,
-      "radius": 16
+      "radius": 16,
+      "is_interactive": true
     },
     "NavRail.dc.html": {
       "x": 0,
-      "y": 4500,
+      "y": 9120,
       "w": 88,
       "h": 480,
-      "title": "Компонент · меню"
-    },
-    "Light.dc.html": {
-      "x": 6160,
-      "y": 900,
-      "w": 800,
-      "h": 480,
-      "title": "Подсветка",
-      "is_interactive": true,
-      "radius": 16
-    },
-    "Screen.dc.html": {
-      "x": 3520,
-      "y": 2700,
-      "w": 800,
-      "h": 480,
-      "title": "Настройки экрана",
-      "is_interactive": true,
+      "title": "Меню",
       "radius": 16
     }
   },
   "order": [
     "Main.dc.html",
     "Printing.dc.html",
+    "PrintTune.dc.html",
+    "PrintMore.dc.html",
+    "LayerPause.dc.html",
+    "Exclude.dc.html",
     "Ambient.dc.html",
     "ConfirmStop.dc.html",
-    "Exclude.dc.html",
-    "Control.dc.html",
-    "Heating.dc.html",
-    "Speed.dc.html",
-    "Motion.dc.html",
-    "Fan.dc.html",
-    "ZOffset.dc.html",
-    "FilamentLoad.dc.html",
-    "Light.dc.html",
+    "PrintDone.dc.html",
+    "Runout.dc.html",
+    "Lock.dc.html",
+    "Prompt.dc.html",
     "Files.dc.html",
     "FileDetail.dc.html",
-    "Settings.dc.html",
+    "FileActions.dc.html",
+    "JobQueue.dc.html",
+    "Control.dc.html",
+    "Heating.dc.html",
+    "HeatPresets.dc.html",
+    "TempGraph.dc.html",
+    "Motion.dc.html",
+    "MotionAdvanced.dc.html",
+    "Extruder.dc.html",
+    "FilamentLoad.dc.html",
+    "Spools.dc.html",
+    "Retraction.dc.html",
+    "Dryer.dc.html",
+    "Fan.dc.html",
+    "Light.dc.html",
+    "Speed.dc.html",
+    "ZOffset.dc.html",
+    "Devices.dc.html",
+    "Tools.dc.html",
     "Calibrate.dc.html",
     "BedMesh.dc.html",
-    "Messages.dc.html",
+    "Screws.dc.html",
+    "ProbeZ.dc.html",
+    "ZWizard.dc.html",
+    "InputShaper.dc.html",
+    "Belts.dc.html",
+    "PidCal.dc.html",
+    "PressureAdvance.dc.html",
+    "Tmc.dc.html",
+    "Limits.dc.html",
+    "Macros.dc.html",
+    "MacroRun.dc.html",
+    "Console.dc.html",
+    "History.dc.html",
+    "Sensors.dc.html",
+    "Maintenance.dc.html",
+    "Camera.dc.html",
+    "Settings.dc.html",
+    "Network.dc.html",
+    "WifiJoin.dc.html",
     "Screen.dc.html",
+    "LockSettings.dc.html",
+    "Sound.dc.html",
+    "LangTime.dc.html",
+    "Safety.dc.html",
+    "Printers.dc.html",
+    "Updates.dc.html",
+    "System.dc.html",
+    "Messages.dc.html",
+    "EStop.dc.html",
     "KlipperError.dc.html",
     "Offline.dc.html",
     "NavRail.dc.html"
@@ -247,42 +688,49 @@
       "y": -260,
       "text": "Печать",
       "kind": "title1",
-      "maxW": 4320
-    },
-    "rowControl": {
-      "x": 0,
-      "y": 640,
-      "text": "Управление",
-      "kind": "title1",
       "maxW": 6960
     },
     "rowFiles": {
       "x": 0,
-      "y": 1540,
+      "y": 1360,
       "text": "Файлы",
       "kind": "title1",
-      "maxW": 1680
+      "maxW": 6960
+    },
+    "rowControl": {
+      "x": 0,
+      "y": 2380,
+      "text": "Управление",
+      "kind": "title1",
+      "maxW": 6960
+    },
+    "rowTools": {
+      "x": 0,
+      "y": 4000,
+      "text": "Инструменты",
+      "kind": "title1",
+      "maxW": 6960
     },
     "rowSettings": {
       "x": 0,
-      "y": 2440,
-      "text": "Настройки и сообщения",
+      "y": 6220,
+      "text": "Настройки",
       "kind": "title1",
-      "maxW": 4320
+      "maxW": 6960
     },
     "rowStates": {
       "x": 0,
-      "y": 3340,
-      "text": "Аварийные состояния",
+      "y": 7840,
+      "text": "Сообщения и аварийные состояния",
       "kind": "title1",
-      "maxW": 1680
+      "maxW": 6960
     },
     "rowComponents": {
       "x": 0,
-      "y": 4240,
+      "y": 8860,
       "text": "Общие компоненты",
       "kind": "title1",
-      "maxW": 1680
+      "maxW": 6960
     }
   },
   "designSystems": []

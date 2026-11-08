@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Консоль — Rivet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
+</style>
+</helmet>
+<div style="position: relative; width: 800px; height: 480px; display: flex; background: #0b0d10; color: #f4f6f8; font-family: Inter, system-ui, sans-serif; overflow: hidden">
+  <dc-import name="NavRail" active="tools" hint-size="88px,480px"></dc-import>
+  <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+    <div style="height: 64px; flex: none; display: flex; align-items: center; gap: 14px"><a href="Tools.dc.html" aria-label="Назад" style="width: 64px; height: 64px; flex: none; border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></a><h1 style="margin: 0; flex: 1; font-size: 26px; font-weight: 800; letter-spacing: -0.02em">Консоль</h1><button type="button" style="height: 64px; padding: 0 18px; border: 0; border-radius: 20px; background: #15181d; color: #c7cdd4; font: 600 15px Inter, system-ui, sans-serif; cursor: pointer">Очистить</button></div>
+    <div role="log" aria-label="Ответы Klipper" style="flex: 1; min-height: 0; overflow-y: auto; border-radius: 20px; background: #070809; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; font: 15px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace"><span style="color: #5eead4">> G28</span><span style="color: #98a1ac">ok</span><span style="color: #5eead4">> QUERY_ENDSTOPS</span><span style="color: #c7cdd4">x:open y:open z:TRIGGERED</span><span style="color: #5eead4">> M105</span><span style="color: #c7cdd4">ok T:24.1 /0.0 B:23.4 /0.0</span><span style="color: #fcd34d">// Notice: z-offset should not be saved to endstop</span><span style="color: #fb7185">!! Move out of range: 0.000 0.000 -12.000</span></div>
+    <div style="display: flex; gap: 8px; overflow-x: auto"><button type="button" style="height: 56px; padding: 0 16px; border: 0; border-radius: 16px; background: #15181d; color: #f4f6f8; font: 600 15px ui-monospace, Menlo, monospace; cursor: pointer">G28</button><button type="button" style="height: 56px; padding: 0 16px; border: 0; border-radius: 16px; background: #15181d; color: #f4f6f8; font: 600 15px ui-monospace, Menlo, monospace; cursor: pointer">M105</button><button type="button" style="height: 56px; padding: 0 16px; border: 0; border-radius: 16px; background: #15181d; color: #f4f6f8; font: 600 15px ui-monospace, Menlo, monospace; cursor: pointer">QUERY_ENDSTOPS</button><button type="button" style="height: 56px; padding: 0 16px; border: 0; border-radius: 16px; background: #15181d; color: #f4f6f8; font: 600 15px ui-monospace, Menlo, monospace; cursor: pointer">STATUS</button><button type="button" style="height: 56px; padding: 0 16px; border: 0; border-radius: 16px; background: #15181d; color: #f4f6f8; font: 600 15px ui-monospace, Menlo, monospace; cursor: pointer">SAVE_CONFIG</button></div>
+    <div style="display: flex; gap: 8px">
+      <label style="flex: 1; height: 64px; border-radius: 20px; background: #15181d; display: flex; align-items: center; padding: 0 18px"><span style="position: absolute; left: -9999px">Команда</span><input type="text" placeholder="G-code или макрос" style="flex: 1; border: 0; background: transparent; color: #f4f6f8; font: 17px ui-monospace, Menlo, monospace; outline: none"></label>
+      <button type="button" style="width: 120px; border: 0; border-radius: 20px; background: #2dd4bf; color: #042f2a; font: 800 17px Inter, system-ui, sans-serif; cursor: pointer">Отправить</button>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 800, "height": 480}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

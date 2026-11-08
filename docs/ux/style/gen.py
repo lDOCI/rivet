@@ -1,0 +1,743 @@
+#!/usr/bin/env python3
+"""Generates the Rivet prototype screens that share one structure.
+
+Each screen is a spec: header (title, back target, rail item) plus rows.
+Every row that shows a value carries `src`: where the real app reads it.
+`data-sources.md` is produced from the same specs.
+"""
+import json, os, sys
+
+OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'project')
+
+# --- icons (24px stroke) -----------------------------------------------------
+C = "M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18"
+ICONS = {
+    'home': ["M3.5 10.2 12 3.5l8.5 6.7V19a1.5 1.5 0 0 1-1.5 1.5h-4v-6h-6v6H5A1.5 1.5 0 0 1 3.5 19z"],
+    'control': ["M4 7h10", "M18 7h2", "M16 5a2 2 0 1 0 0 4a2 2 0 1 0 0-4", "M4 17h2", "M10 17h10", "M8 15a2 2 0 1 0 0 4a2 2 0 1 0 0-4"],
+    'tools': ["M14.7 6.3a4 4 0 0 0-5.4 5.2L3.5 17.3a1.8 1.8 0 0 0 2.5 2.5l5.8-5.8a4 4 0 0 0 5.2-5.4l-2.4 2.4-2.3-.4-.4-2.3z"],
+    'settings': ["M12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6", "M19.4 13.5a7.6 7.6 0 0 0 0-3l2-1.6-2-3.4-2.4.9a7.5 7.5 0 0 0-2.6-1.5L14 2.5h-4l-.4 2.4A7.5 7.5 0 0 0 7 6.4l-2.4-.9-2 3.4 2 1.6a7.6 7.6 0 0 0 0 3l-2 1.6 2 3.4 2.4-.9a7.5 7.5 0 0 0 2.6 1.5l.4 2.4h4l.4-2.4a7.5 7.5 0 0 0 2.6-1.5l2.4.9 2-3.4z"],
+    'bell': ["M6 8a6 6 0 1 1 12 0c0 7 3 8.5 3 8.5H3S6 15 6 8", "M10 20a2 2 0 0 0 4 0"],
+    'flame': ["M12 3c2 3 5 5 5 9a5 5 0 0 1-10 0c0-2 1-3.5 2-4.5 0 2 1 3 2 3 0-3-1-5 1-7.5z"],
+    'move': ["M12 3v18", "M3 12h18", "m9 6 3-3 3 3", "m9 18 3 3 3-3", "m6 9-3 3 3 3", "m18 9 3 3-3 3"],
+    'extruder': ["M8 3h8v7H8z", "M10 10v4l2 3 2-3v-4", "M12 17v4"],
+    'fan': ["M12 10.2a1.8 1.8 0 1 0 0 3.6a1.8 1.8 0 1 0 0-3.6", "M12 10.2c0-4 1-6.7 3.4-6.7 2.3 0 2.6 3.2.2 5.2", "M13.6 12.9c3.5 2 5.3 4.2 4.1 6.3-1.2 2-4.1.7-4.7-2.4", "M10.4 12.9c-3.5 2-6.4 2.5-7.5.4-1.2-2 1.4-3.9 4.4-2.9"],
+    'bulb': ["M9 18h6", "M10 21h4", "M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"],
+    'gauge': ["M12 13.5 16 9", "M4.2 17.5a9 9 0 1 1 15.6 0"],
+    'zoff': ["M9 3h6", "M10 3v6l2 3 2-3V3", "M3 19h18", "M12 14v2"],
+    'plug': ["M9 2v6", "M15 2v6", "M6 8h12v4a6 6 0 0 1-12 0z", "M12 18v4"],
+    'calib': [C, "M12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6", "M12 1v4M12 19v4M1 12h4M19 12h4"],
+    'macro': ["M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z", "m7 9 3 3-3 3", "M13 15h4"],
+    'console': ["M4 5h16v14H4z", "m7 10 2 2-2 2", "M11 14h5"],
+    'history': ["M3 12a9 9 0 1 0 3-6.7", "M3 4v4h4", "M12 7v5l3 2"],
+    'camera': ["M4 7h3l2-2h6l2 2h3v12H4z", "M12 10a3 3 0 1 0 0 6a3 3 0 1 0 0-6"],
+    'film': ["M4 4h16v16H4z", "M8 4v16M16 4v16M4 8h4M4 12h4M4 16h4M16 8h4M16 12h4M16 16h4"],
+    'wrench': ["M14.7 6.3a4 4 0 0 0-5.4 5.2L3.5 17.3a1.8 1.8 0 0 0 2.5 2.5l5.8-5.8a4 4 0 0 0 5.2-5.4l-2.4 2.4-2.3-.4-.4-2.3z"],
+    'sensor': ["M12 14V4a2 2 0 0 0-4 0v10a4 4 0 1 0 4 0", "M16 6h4M16 10h4"],
+    'limits': ["M4 18a8 8 0 1 1 16 0", "M12 18l4-6", "M4 18h16"],
+    'drop': ["M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"],
+    'wifi': ["M5 12.5a10 10 0 0 1 14 0", "M8.5 16a5 5 0 0 1 7 0", "M2 9a15 15 0 0 1 20 0", "M12 19.5h.01"],
+    'screen': ["M12 8a4 4 0 1 0 0 8a4 4 0 1 0 0-8", "M12 2v2M12 20v2M2 12h2M20 12h2", "M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"],
+    'lock': ["M7 11h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2z", "M8 11V7a4 4 0 0 1 8 0v4"],
+    'sound': ["M11 5 6 9H3v6h3l5 4z", "M15.5 8.5a5 5 0 0 1 0 7", "M18.5 5.5a9 9 0 0 1 0 13"],
+    'lang': [C, "M3 12h18", "M12 3c2.5 2.5 3.8 5.5 3.8 9s-1.3 6.5-3.8 9c-2.5-2.5-3.8-5.5-3.8-9s1.3-6.5 3.8-9z"],
+    'shield': ["M12 3 4 6v6c0 4.5 3.4 8 8 9 4.6-1 8-4.5 8-9V6z", "m9 12 2 2 4-4"],
+    'printer': ["M6 9V3h12v6", "M6 18H4v-7h16v7h-2", "M6 14h12v7H6z"],
+    'update': ["M12 19V5", "m6 11 6-6 6 6", "M5 21h14"],
+    'chip': ["M8 6h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z", "M9.5 2v4M14.5 2v4M9.5 18v4M14.5 18v4", "M2 9.5h4M2 14.5h4M18 9.5h4M18 14.5h4"],
+    'info': [C, "M12 11v6", "M12 7.5h.01"],
+    'mesh': ["M3 7l9-4 9 4-9 4z", "M3 12l9 4 9-4", "M3 17l9 4 9-4"],
+    'screw': ["M12 3a4 4 0 1 0 0 8a4 4 0 1 0 0-8", "M12 11v10", "M10 14h4M10 17h4"],
+    'probe': ["M10 3h4v8l-2 3-2-3z", "M4 20h16", "M12 16v1"],
+    'wave': ["M2 12c2-6 4-6 6 0s4 6 6 0 4-6 6 0"],
+    'belt': ["M5 8a4 4 0 1 0 0 8", "M19 8a4 4 0 1 1 0 8", "M5 8h14M5 16h14"],
+    'pa': ["M4 18 10 6l4 8 2-4 4 8"],
+    'scale': ["M4 20h16", "M6 20l2-9h8l2 9", "M12 11V5", "M9 5h6"],
+    'driver': ["M5 5h14v14H5z", "M9 9h6v6H9z", "M3 9h2M3 15h2M19 9h2M19 15h2"],
+    'power': ["M12 3v8", "M6.3 7.3a8 8 0 1 0 11.4 0"],
+    'trash': ["M4 7h16", "M9 7V4h6v3", "M6 7l1 13h10l1-13"],
+    'folder': ["M3.5 7.5A2 2 0 0 1 5.5 5.5h4l2 2.5h7a2 2 0 0 1 2 2v7.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"],
+    'queue': ["M4 6h16M4 12h16M4 18h10"],
+    'pause': ["M8 5v14M16 5v14"],
+    'layers': ["M12 3 3 8l9 5 9-5z", "M3 13l9 5 9-5"],
+    'spool': [C, "M12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6", "M12 3v6M12 15v6"],
+    'thermo': ["M12 14V4a2 2 0 0 0-4 0v10a4 4 0 1 0 4 0"],
+    'graph': ["M3 3v18h18", "M7 15l4-5 3 3 5-6"],
+    'stop': ["M8 7h8a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z"],
+    'check': ["M5 12.5l4.5 4.5L19 7"],
+    'warn': ["M12 3 2 20h20z", "M12 10v4", "M12 17h.01"],
+    'retract': ["M12 20V8", "m7 12 5-5 5 5", "M5 4h14"],
+    'save': ["M5 4h11l3 3v13H5z", "M8 4v5h7V4", "M8 20v-6h8v6"],
+    'pin': ["M12 3v10", "M8 13h8", "M12 13v8"],
+    'dryer': ["M4 18h16", "M7 14c0-2 2-2 2-4s-2-2-2-4", "M12 14c0-2 2-2 2-4s-2-2-2-4", "M17 14c0-2 2-2 2-4s-2-2-2-4"],
+    'filter': ["M3 5h18l-7 8v6l-4 2v-8z"],
+}
+
+def svg(name, size=26, color='currentColor', sw='1.9'):
+    paths = ''.join('<path d="%s"></path>' % d for d in ICONS[name])
+    return ('<svg width="%d" height="%d" viewBox="0 0 24 24" fill="none" stroke="%s" stroke-width="%s" '
+            'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">%s</svg>') % (size, size, color, sw, paths)
+
+HEAD = '''<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>%s — Rivet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
+</style>
+</helmet>
+'''
+
+TAIL = '''</x-dc>
+<script type="text/x-dc" data-dc-script data-props='%s'>
+%s
+</script>
+</body>
+</html>
+'''
+
+def root_open(rail):
+    return ('<div style="position: relative; width: 800px; height: 480px; display: flex; background: #0b0d10; color: #f4f6f8; '
+            'font-family: Inter, system-ui, sans-serif; overflow: hidden">\n'
+            '  <dc-import name="NavRail" active="%s" hint-size="88px,480px"></dc-import>\n') % rail
+
+def header(title, back, right=''):
+    b = ''
+    if back:
+        b = ('<a href="%s" aria-label="Назад" style="width: 64px; height: 64px; flex: none; border-radius: 20px; background: #15181d; '
+             'color: #f4f6f8; display: flex; align-items: center; justify-content: center">'
+             '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" '
+             'stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></a>') % back
+    return ('    <div style="height: 64px; flex: none; display: flex; align-items: center; gap: 14px">%s'
+            '<h1 style="margin: 0; flex: 1; font-size: 26px; font-weight: 800; letter-spacing: -0.02em">%s</h1>%s</div>\n') % (b, title, right)
+
+def write(name, title, body, js, props=None):
+    p = {'$preview': {'width': 800, 'height': 480}}
+    if props:
+        p = dict(props, **p)
+    html = HEAD % title + body + TAIL % (json.dumps(p, ensure_ascii=False).replace("'", '&#39;'), js)
+    with open(os.path.join(OUT, name + '.dc.html'), 'w') as f:
+        f.write(html)
+
+SOURCES = []  # (screen, label, source)
+
+def note_src(screen, label, src):
+    if src:
+        SOURCES.append((screen, label, src))
+
+# --- hub screens (tile grids) ------------------------------------------------
+def hub(name, title, rail, tiles, cols=4, back=None):
+    """tiles: dict(icon, value, label, href, src, live)"""
+    rows = (len(tiles) + cols - 1) // cols
+    out = root_open(rail)
+    out += ('  <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px; display: flex; flex-direction: column; gap: 12px">\n')
+    out += header(title, back)
+    out += ('    <div style="flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(%d, minmax(0, 1fr)); '
+            'grid-template-rows: repeat(%d, minmax(0, 1fr)); gap: 12px">\n') % (cols, rows)
+    for t in tiles:
+        big = t.get('value')
+        val = ''
+        if big:
+            val = ('<span style="font-size: %dpx; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums">%s</span>'
+                   % (30 if len(big) <= 6 else 22, big))
+        else:
+            val = '<span style="font-size: 20px; font-weight: 800; letter-spacing: -0.02em">%s</span>' % t['label']
+        sub = t.get('sub') if big else t.get('sub', '')
+        lab = t['label'] if big else ''
+        subline = ' · '.join(x for x in [lab, sub] if x)
+        icon = t.get('icon_html') or svg(t['icon'], 30, '#2dd4bf')
+        out += ('      <a href="%s" style="border-radius: 24px; background: #15181d; color: #f4f6f8; padding: 16px; box-sizing: border-box; '
+                'display: flex; flex-direction: column; justify-content: space-between; min-width: 0">%s'
+                '<span style="display: flex; flex-direction: column; gap: 2px; min-width: 0">%s'
+                '<span style="font-size: 14px; color: #98a1ac; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">%s</span></span></a>\n') % (
+            t['href'], icon, val, subline)
+        note_src(title, t['label'], t.get('src'))
+    out += '    </div>\n  </main>\n</div>\n'
+    write(name, title, out, 'class Component extends DCLogic {\n  renderVals() {\n    return {};\n  }\n}')
+
+# --- generic form screen -----------------------------------------------------
+# row kinds: section, link, toggle, slider, seg, stepper, action, info
+FORM_JS = r'''
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    var st = {};
+    ROWS.forEach(function (r) { if (r.v !== undefined) st[r.id] = r.v; });
+    st._drag = null;
+    this.state = st;
+  }
+  fromPointer(e, r) {
+    var b = e.currentTarget.getBoundingClientRect();
+    var f = Math.max(0, Math.min(1, (e.clientX - b.left) / b.width));
+    var v = r.min + f * (r.max - r.min);
+    return Math.round(v / r.step) * r.step;
+  }
+  renderVals() {
+    var self = this, s = this.state;
+    function fmt(r, v) { return (r.fmt === 'off0' && v === 0) ? 'Выкл.' : (r.dec ? v.toFixed(r.dec) : String(v)) + (r.unit || ''); }
+    var rows = ROWS.map(function (r) {
+      var o = { kind: r.kind, title: r.t || '', sub: r.sub || '', href: r.href || '#',
+        isSection: r.kind === 'section', isLink: r.kind === 'link', isToggle: r.kind === 'toggle', isSlider: r.kind === 'slider',
+        isSeg: r.kind === 'seg', isStepper: r.kind === 'stepper', isAction: r.kind === 'action', isInfo: r.kind === 'info',
+        value: r.value || '', hasIcon: !!r.ic, p0: (r.ic || [])[0] || '', p1: (r.ic || [])[1] || '', p2: (r.ic || [])[2] || '', p3: (r.ic || [])[3] || '', p4: (r.ic || [])[4] || '', p5: (r.ic || [])[5] || '', tone: r.tone === 'danger' ? '#fb7185' : r.tone === 'accent' ? '#2dd4bf' : '#f4f6f8',
+        actBg: r.tone === 'accent' ? '#2dd4bf' : '#1f242b', actFg: r.tone === 'accent' ? '#042f2a' : (r.tone === 'danger' ? '#fb7185' : '#f4f6f8') };
+      if (r.kind === 'toggle') {
+        var on = !!s[r.id];
+        o.aria = on ? 'true' : 'false'; o.track = on ? '#2dd4bf' : '#3a414a'; o.knob = on ? '30px' : '4px';
+        o.flip = function () { var n = {}; n[r.id] = !on; self.setState(n); };
+      }
+      if (r.kind === 'slider') {
+        var v = s[r.id];
+        o.label = fmt(r, v); o.pct = ((v - r.min) / (r.max - r.min) * 100).toFixed(1) + '%'; o.min = r.min; o.max = r.max; o.now = v;
+        o.down = function (e) { if (e.currentTarget.setPointerCapture) e.currentTarget.setPointerCapture(e.pointerId); var n = { _drag: r.id }; n[r.id] = self.fromPointer(e, r); self.setState(n); };
+        o.move = function (e) { if (self.state._drag !== r.id) return; var n = {}; n[r.id] = self.fromPointer(e, r); if (n[r.id] !== self.state[r.id]) self.setState(n); };
+        o.up = function () { if (self.state._drag) self.setState({ _drag: null }); };
+      }
+      if (r.kind === 'stepper') {
+        var w = s[r.id];
+        o.label = fmt(r, w);
+        o.dec = function () { var n = {}; n[r.id] = Math.max(r.min, +(w - r.step).toFixed(4)); self.setState(n); };
+        o.inc = function () { var n = {}; n[r.id] = Math.min(r.max, +(w + r.step).toFixed(4)); self.setState(n); };
+      }
+      if (r.kind === 'seg') {
+        o.opts = r.opts.map(function (lab, i) {
+          var sel = s[r.id] === i;
+          return { label: lab, checked: sel ? 'true' : 'false', bg: sel ? '#2dd4bf' : '#1f242b', fg: sel ? '#042f2a' : '#f4f6f8',
+            pick: function () { var n = {}; n[r.id] = i; self.setState(n); } };
+        });
+      }
+      return o;
+    });
+    return { rows: rows };
+  }
+}
+'''
+
+def form(name, title, rail, back, rows, right='', intro=''):
+    out = root_open(rail)
+    out += ('  <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px 16px 0 16px; display: flex; flex-direction: column; gap: 10px">\n')
+    out += header(title, back, right)
+    if intro:
+        out += '    <p style="margin: 0; font-size: 15px; line-height: 1.45; color: #98a1ac">%s</p>\n' % intro
+    out += '''    <div style="flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-bottom: 16px">
+      <sc-for list="{{rows}}" as="r" hint-placeholder-count="6">
+        <sc-if value="{{r.isSection}}" hint-placeholder-val="{{ false }}"><span style="margin: 8px 4px 0; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; color: #66707b">{{r.title}}</span></sc-if>
+        <sc-if value="{{r.isLink}}" hint-placeholder-val="{{ true }}">
+          <a href="{{r.href}}" style="min-height: 72px; flex: none; border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; gap: 14px; padding: 0 18px">
+            <sc-if value="{{r.hasIcon}}" hint-placeholder-val="{{ false }}"><span aria-hidden="true" style="width: 44px; height: 44px; flex: none; border-radius: 14px; background: #1f242b; color: #2dd4bf; display: flex; align-items: center; justify-content: center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{r.p0}}"></path><path d="{{r.p1}}"></path><path d="{{r.p2}}"></path><path d="{{r.p3}}"></path><path d="{{r.p4}}"></path><path d="{{r.p5}}"></path></svg></span></sc-if>
+            <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 18px; font-weight: 700">{{r.title}}</span><span style="font-size: 14px; color: #98a1ac">{{r.sub}}</span></span>
+            <span style="font-size: 16px; color: #c7cdd4; white-space: nowrap">{{r.value}}</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#66707b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
+          </a>
+        </sc-if>
+        <sc-if value="{{r.isInfo}}" hint-placeholder-val="{{ false }}">
+          <div style="min-height: 64px; flex: none; border-radius: 20px; background: #15181d; display: flex; align-items: center; gap: 14px; padding: 0 18px">
+            <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 17px; font-weight: 600">{{r.title}}</span><span style="font-size: 14px; color: #98a1ac">{{r.sub}}</span></span>
+            <span style="font-size: 17px; font-weight: 700; color: {{r.tone}}; font-variant-numeric: tabular-nums; white-space: nowrap">{{r.value}}</span>
+          </div>
+        </sc-if>
+        <sc-if value="{{r.isToggle}}" hint-placeholder-val="{{ false }}">
+          <button type="button" role="switch" aria-checked="{{r.aria}}" onClick="{{r.flip}}" style="min-height: 72px; flex: none; border: 0; border-radius: 20px; background: #15181d; color: #f4f6f8; padding: 0 18px; display: flex; align-items: center; gap: 14px; font-family: Inter, system-ui, sans-serif; text-align: left; cursor: pointer">
+            <span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 18px; font-weight: 700">{{r.title}}</span><span style="font-size: 14px; color: #98a1ac">{{r.sub}}</span></span>
+            <span aria-hidden="true" style="width: 60px; height: 34px; flex: none; border-radius: 17px; background: {{r.track}}; position: relative"><span style="position: absolute; top: 4px; left: {{r.knob}}; width: 26px; height: 26px; border-radius: 13px; background: #ffffff"></span></span>
+          </button>
+        </sc-if>
+        <sc-if value="{{r.isSlider}}" hint-placeholder-val="{{ false }}">
+          <div style="min-height: 84px; flex: none; border-radius: 20px; background: #15181d; padding: 0 12px 0 18px; display: flex; align-items: center; gap: 16px">
+            <span style="width: 170px; flex: none; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 18px; font-weight: 700">{{r.title}}</span><span style="font-size: 14px; color: #98a1ac">{{r.sub}}</span></span>
+            <div role="slider" aria-label="{{r.title}}" aria-valuemin="{{r.min}}" aria-valuemax="{{r.max}}" aria-valuenow="{{r.now}}" onPointerDown="{{r.down}}" onPointerMove="{{r.move}}" onPointerUp="{{r.up}}" onPointerCancel="{{r.up}}" style="flex: 1; height: 60px; border-radius: 18px; background: #1f242b; position: relative; overflow: hidden; touch-action: none; cursor: grab">
+              <span aria-hidden="true" style="position: absolute; left: 0; top: 0; bottom: 0; width: {{r.pct}}; background: linear-gradient(90deg, #2dd4bf, #5eead4)"></span>
+            </div>
+            <span style="width: 86px; flex: none; text-align: right; font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums">{{r.label}}</span>
+          </div>
+        </sc-if>
+        <sc-if value="{{r.isStepper}}" hint-placeholder-val="{{ false }}">
+          <div style="min-height: 84px; flex: none; border-radius: 20px; background: #15181d; padding: 0 10px 0 18px; display: flex; align-items: center; gap: 10px">
+            <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 18px; font-weight: 700">{{r.title}}</span><span style="font-size: 14px; color: #98a1ac">{{r.sub}}</span></span>
+            <button type="button" onClick="{{r.dec}}" aria-label="Меньше" style="width: 64px; height: 64px; border: 0; border-radius: 18px; background: #1f242b; color: #f4f6f8; font: 500 30px Inter, system-ui, sans-serif; cursor: pointer">−</button>
+            <span style="width: 120px; text-align: center; font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums">{{r.label}}</span>
+            <button type="button" onClick="{{r.inc}}" aria-label="Больше" style="width: 64px; height: 64px; border: 0; border-radius: 18px; background: #1f242b; color: #f4f6f8; font: 500 30px Inter, system-ui, sans-serif; cursor: pointer">+</button>
+          </div>
+        </sc-if>
+        <sc-if value="{{r.isSeg}}" hint-placeholder-val="{{ false }}">
+          <div style="min-height: 84px; flex: none; border-radius: 20px; background: #15181d; padding: 10px 10px 10px 18px; box-sizing: border-box; display: flex; align-items: center; gap: 14px">
+            <span style="width: 170px; flex: none; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 18px; font-weight: 700">{{r.title}}</span><span style="font-size: 14px; color: #98a1ac">{{r.sub}}</span></span>
+            <div role="radiogroup" aria-label="{{r.title}}" style="flex: 1; display: flex; gap: 6px">
+              <sc-for list="{{r.opts}}" as="o" hint-placeholder-count="3">
+                <button type="button" role="radio" aria-checked="{{o.checked}}" onClick="{{o.pick}}" style="flex: 1; height: 64px; border: 0; border-radius: 16px; background: {{o.bg}}; color: {{o.fg}}; font: 700 15px Inter, system-ui, sans-serif; cursor: pointer">{{o.label}}</button>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{r.isAction}}" hint-placeholder-val="{{ false }}">
+          <a href="{{r.href}}" style="min-height: 72px; flex: none; border-radius: 20px; background: {{r.actBg}}; color: {{r.actFg}}; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 8px 18px; box-sizing: border-box; text-align: center"><span style="font-size: 18px; font-weight: 800">{{r.title}}</span><span style="font-size: 13px; opacity: 0.75">{{r.sub}}</span></a>
+        </sc-if>
+      </sc-for>
+    </div>
+  </main>
+</div>
+'''
+    clean = []
+    for i, r in enumerate(rows):
+        r = dict(r)
+        r.setdefault('id', 'r%d' % i)
+        note_src(title, r.get('t', ''), r.pop('src', None))
+        if r.get('href', '').startswith('@'):
+            r['href'] = name + '.dc.html'
+        clean.append(r)
+    js = 'var ROWS = ' + json.dumps(clean, ensure_ascii=False, indent=1) + ';\n' + FORM_JS
+    write(name, title, out, js)
+
+# =============================================================================
+#                                  SCREENS
+# =============================================================================
+def L(t, sub, href, value='', src=None, icon=None):
+    d = dict(kind='link', t=t, sub=sub, href=href + '.dc.html' if href and not href.endswith('.html') and href != '@' else href, value=value, src=src)
+    if icon: d['ic'] = ICONS[icon]
+    return d
+def I(t, value, sub='', src=None, tone=None):
+    d = dict(kind='info', t=t, value=value, sub=sub, src=src)
+    if tone: d['tone'] = tone
+    return d
+def T(t, sub, v, src=None):
+    return dict(kind='toggle', t=t, sub=sub, v=v, src=src)
+def SL(t, sub, v, mn, mx, step, unit='', src=None, fmt=None, dec=0):
+    d = dict(kind='slider', t=t, sub=sub, v=v, min=mn, max=mx, step=step, unit=unit, src=src, dec=dec)
+    if fmt: d['fmt'] = fmt
+    return d
+def ST(t, sub, v, mn, mx, step, unit='', dec=0, src=None):
+    return dict(kind='stepper', t=t, sub=sub, v=v, min=mn, max=mx, step=step, unit=unit, dec=dec, src=src)
+def SG(t, sub, opts, v, src=None):
+    return dict(kind='seg', t=t, sub=sub, opts=opts, v=v, src=src)
+def A(t, sub='', href='@', tone=None):
+    d = dict(kind='action', t=t, sub=sub, href=href if href == '@' or href.endswith('.html') else href + '.dc.html')
+    if tone: d['tone'] = tone
+    return d
+def S(t):
+    return dict(kind='section', t=t)
+
+def build():
+    # ---------- hubs ----------
+    gauge = lambda cur, tgt, color: (
+        '<svg width="44" height="44" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="48" fill="none" stroke="#232831" '
+        'stroke-width="14" stroke-linecap="round" stroke-dasharray="226 302" transform="rotate(135 60 60)"></circle><circle cx="60" cy="60" '
+        'r="48" fill="none" stroke="%s" stroke-width="14" stroke-linecap="round" stroke-dasharray="%d 302" transform="rotate(135 60 60)"></circle></svg>'
+        % (color, cur))
+    hub('Control', 'Управление', 'control', [
+        dict(icon_html=gauge(18, 0, '#4a525c'), value='24°', label='Нагрев', sub='сопло выкл. · стол 23°', href='Heating.dc.html',
+             src='printer.objects: extruder.temperature/target, heater_bed.temperature/target'),
+        dict(icon='move', label='Движение', sub='оси, парковка, моторы', href='Motion.dc.html'),
+        dict(icon='extruder', label='Экструдер', sub='выдавить, заправка', href='Extruder.dc.html'),
+        dict(icon='fan', value='60%', label='Вентиляторы', sub='обдув модели', href='Fan.dc.html', src='fan.speed (part fan); fan_generic/*.speed'),
+        dict(icon='bulb', value='70%', label='Свет', sub='подсветка', href='Light.dc.html', src='led <name>.color_data[0][3] (white channel)'),
+        dict(icon='gauge', value='100%', label='Скорость и поток', sub='поток 100%', href='Speed.dc.html',
+             src='gcode_move.speed_factor ×100, gcode_move.extrude_factor ×100'),
+        dict(icon='zoff', value='−0.12', label='Z-offset, мм', href='ZOffset.dc.html', src='gcode_move.homing_origin[2]'),
+        dict(icon='plug', label='Устройства', sub='питание, пины', href='Devices.dc.html'),
+    ])
+    hub('Tools', 'Инструменты', 'tools', [
+        dict(icon='calib', label='Калибровки', sub='стол, щуп, вибрации…', href='Calibrate.dc.html'),
+        dict(icon='macro', label='Макросы', sub='12 макросов', href='Macros.dc.html', src='printer.objects.list → gcode_macro *'),
+        dict(icon='console', label='Консоль', sub='G-code вручную', href='Console.dc.html'),
+        dict(icon='history', label='История', sub='142 печати', href='History.dc.html', src='server.history.totals'),
+        dict(icon='limits', label='Лимиты', sub='скорость, ускорение', href='Limits.dc.html'),
+        dict(icon='sensor', label='Датчики', sub='обрыв нити, температуры', href='Sensors.dc.html'),
+        dict(icon='wrench', label='Обслуживание', sub='фильтр, сопло, рельсы', href='Maintenance.dc.html'),
+        dict(icon='camera', label='Камера', sub='и таймлапс', href='Camera.dc.html'),
+    ])
+
+    # ---------- Control children ----------
+    form('Extruder', 'Экструдер', 'control', 'Control.dc.html', [
+        I('Сопло', '240° / 240°', 'для выдавливания нужно ≥ 170°', src='extruder.temperature/target; extruder.can_extrude; configfile.settings.extruder.min_extrude_temp'),
+        SG('Длина', 'за одно нажатие', ['5 мм', '10 мм', '25 мм', '50 мм', '100 мм'], 2, src='max: configfile.settings.extruder.max_extrude_only_distance'),
+        SG('Скорость', 'мм/с', ['2', '5', '10', '15'], 1, src='max: configfile.settings.extruder.max_extrude_only_velocity'),
+        A('Выдавить 25 мм', 'G1 E25 F300', tone='accent'),
+        A('Втянуть 25 мм', 'G1 E−25 F300'),
+        S('ФИЛАМЕНТ'),
+        L('Заправить / сменить пруток', 'мастер: нагрев, протяжка, проверка цвета', 'FilamentLoad', icon='spool'),
+        L('Выгрузить пруток', 'нагреет и вытянет', 'FilamentLoad', icon='retract', src='UNLOAD_FILAMENT macro if present, else G1 E−'),
+        L('Катушки Spoolman', 'активная: PETG синий · 640 г', 'Spools', icon='spool', src='server.spoolman.get_spool_id + Spoolman API'),
+        L('Ретракт прошивки', 'G10/G11: 0.8 мм', 'Retraction', icon='retract', src='firmware_retraction.*'),
+        L('Сушка филамента на столе', 'стол как сушилка', 'Dryer', icon='dryer'),
+    ])
+    form('Retraction', 'Ретракт прошивки', 'control', 'Extruder.dc.html', [
+        ST('Длина ретракта', 'директ 0.4–2 мм', 0.8, 0, 6, 0.1, ' мм', 1, src='firmware_retraction.retract_length'),
+        ST('Скорость ретракта', '', 40, 5, 120, 5, ' мм/с', src='firmware_retraction.retract_speed'),
+        ST('Доп. подача', 'после возврата', 0, 0, 2, 0.05, ' мм', 2, src='firmware_retraction.unretract_extra_length'),
+        ST('Скорость подачи', '', 30, 5, 120, 5, ' мм/с', src='firmware_retraction.unretract_speed'),
+        I('Применяется сразу', 'до перезапуска', 'чтобы навсегда — правьте printer.cfg'),
+    ], intro='Действует, только если слайсер шлёт G10/G11.')
+    form('Spools', 'Катушки', 'control', 'Extruder.dc.html', [
+        I('Активная', 'PETG · синий', 'Polymaker · 640 из 1000 г', src='server.spoolman.get_spool_id → Spoolman /api/v1/spool/{id}'),
+        S('ВСЕ КАТУШКИ'),
+        L('PETG · синий', 'Polymaker · 640 г · #12', '@', 'активна'),
+        L('PLA · белый', 'eSun · 910 г · #9', '@'),
+        L('PLA · чёрный', 'eSun · 210 г · #4', '@'),
+        L('TPU · красный', 'Overture · 450 г · #15', '@'),
+        A('Снять активную катушку', 'server.spoolman.post_spool_id без id'),
+    ])
+    form('Dryer', 'Сушка филамента', 'control', 'Extruder.dc.html', [
+        SG('Материал', 'температура стола', ['PLA 50°', 'PETG 65°', 'ABS 80°', 'TPU 55°'], 1),
+        ST('Время', '', 4, 1, 12, 1, ' ч'),
+        I('Как', 'катушку на стол, сверху короб', 'стол держит температуру, моторы выключены'),
+        A('Начать сушку', 'M140 + таймер, выключит сам', tone='accent'),
+    ])
+    form('Devices', 'Устройства', 'control', 'Control.dc.html', [
+        S('ПИТАНИЕ · MOONRAKER'),
+        T('Принтер', 'реле основного питания', True, src='machine.device_power.devices'),
+        T('Камера-свет', 'умная розетка', False, src='machine.device_power.devices'),
+        S('ВЫХОДЫ KLIPPER'),
+        SL('beeper', 'output_pin', 0, 0, 100, 5, '%', src='output_pin <name>.value', fmt='off0'),
+        T('caselight_relay', 'output_pin, вкл./выкл.', True, src='output_pin <name>.value'),
+    ], intro='Показываются только устройства, которые есть в конфиге Moonraker и Klipper.')
+
+    # ---------- Tools children ----------
+    form('Calibrate', 'Калибровки', 'tools', 'Tools.dc.html', [
+        L('Карта стола', 'профиль «default» · разброс 0.18 мм', 'BedMesh', icon='mesh', src='bed_mesh.profile_name, bed_mesh.mesh_matrix (max−min)'),
+        L('Винты стола', 'сколько крутить каждый винт', 'Screws', icon='screw', src='screws_tilt_adjust (only if configured)'),
+        L('Щуп и Z', 'Z-offset бумагой, точность щупа', 'ProbeZ', icon='probe', src='probe.*, configfile.settings.probe.z_offset'),
+        L('Вибрации', 'MZV 54.2 Гц / EI 41.8 Гц', 'InputShaper', icon='wave', src='configfile.settings.input_shaper.shaper_type_x/freq_x/…'),
+        L('Ремни', 'сравнить два ремня', 'Belts', icon='belt', src='requires resonance_tester + accel chip'),
+        L('Нагрев (PID)', 'сопло и стол', 'PidCal', icon='thermo', src='configfile.settings.extruder.control/pid_kp…'),
+        L('Pressure advance', '0.040', 'PressureAdvance', icon='pa', src='extruder.pressure_advance'),
+        L('Драйверы TMC', 'ток, режимы', 'Tmc', icon='driver', src='tmc2209 <stepper>.*'),
+        L('Тензодатчик', 'обнулить, если врёт касание · LOAD_CELL_TARE', 'Calibrate', icon='scale', src='only when gcode_macro LOAD_CELL_TARE exists (AD5M)'),
+    ])
+    form('Screws', 'Винты стола', 'tools', 'Calibrate.dc.html', [
+        I('Задний левый', 'опорный', 'не крутить'),
+        I('Задний правый', '↻ 00:15', 'по часовой, четверть оборота', src='SCREWS_TILT_CALCULATE result (gcode response)', tone='accent'),
+        I('Передний левый', '↺ 00:05', 'против часовой', tone='accent'),
+        I('Передний правый', '✓ ровно', 'меньше 00:03'),
+        A('Проверить снова', 'SCREWS_TILT_CALCULATE', tone='accent'),
+    ], intro='00:15 = 15 минут на циферблате, то есть четверть оборота.')
+    form('ProbeZ', 'Щуп и Z', 'tools', 'Calibrate.dc.html', [
+        I('Z-offset щупа', '0.000 мм', 'из конфига', src='configfile.settings.probe.z_offset'),
+        A('Калибровка бумагой', 'PROBE_CALIBRATE → мастер', 'ZWizard', tone='accent'),
+        A('Проверить точность щупа', 'PROBE_ACCURACY · 10 касаний'),
+        I('Последняя проверка', 'разброс 0.004 мм', 'норма до 0.01', src='PROBE_ACCURACY gcode response'),
+        S('НАСТРОЙКИ ЩУПА'),
+        I('Смещение X / Y', '0 / 0 мм', '', src='configfile.settings.probe.x_offset/y_offset'),
+        I('Касаний на точку', '1', '', src='configfile.settings.probe.samples'),
+    ])
+    form('ZWizard', 'Z-offset бумагой', 'tools', 'ProbeZ.dc.html', [
+        I('1', 'Принтер паркуется и касается стола', ''),
+        I('2', 'Положите лист бумаги под сопло', ''),
+        I('3', 'Опускайте, пока бумага не начнёт цепляться', ''),
+        SG('Шаг', '', ['0.005', '0.01', '0.05', '0.1', '1'], 2),
+        A('Сопло ↑ на шаг', 'TESTZ Z=+шаг'),
+        A('Сопло ↓ на шаг', 'TESTZ Z=−шаг'),
+        A('Принять и сохранить', 'ACCEPT → SAVE_CONFIG, Klipper перезапустится', tone='accent'),
+        A('Отменить', 'ABORT', tone='danger'),
+    ])
+    form('InputShaper', 'Вибрации', 'tools', 'Calibrate.dc.html', [
+        I('Ось X', 'MZV · 54.2 Гц', 'макс. ускорение 7 400', src='configfile.settings.input_shaper.shaper_type_x/shaper_freq_x'),
+        I('Ось Y', 'EI · 41.8 Гц', 'макс. ускорение 5 900', src='configfile.settings.input_shaper.*_y'),
+        A('Измерить обе оси', 'SHAPER_CALIBRATE · ~5 мин · не трогать принтер', tone='accent'),
+        A('Только X', 'SHAPER_CALIBRATE AXIS=X'),
+        A('Только Y', 'SHAPER_CALIBRATE AXIS=Y'),
+        A('Проверить датчик', 'MEASURE_AXES_NOISE'),
+    ], intro='Датчик: adxl345. После замера покажем график и предложим сохранить (SAVE_CONFIG).')
+    form('Belts', 'Ремни', 'tools', 'Calibrate.dc.html', [
+        I('Похожесть ремней', '87%', 'выше 90% — хорошо', src='TEST_RESONANCES AXIS=1,1 / 1,-1 → compare csv'),
+        A('Проверить ремни', 'по диагоналям · ~3 мин', tone='accent'),
+        I('Совет', 'подтяните ремень B', 'на четверть оборота натяжителя'),
+    ])
+    form('PidCal', 'Нагрев (PID)', 'tools', 'Calibrate.dc.html', [
+        SG('Нагреватель', '', ['Сопло', 'Стол'], 0, src='heaters.available_heaters'),
+        ST('Температура', 'как при обычной печати', 220, 40, 350, 5, '°', src='max: configfile.settings.<heater>.max_temp'),
+        SL('Обдув во время', 'как при печати', 50, 0, 100, 10, '%', fmt='off0'),
+        I('Текущие', 'Kp 22.3 · Ki 1.1 · Kd 114', '', src='configfile.settings.extruder.pid_kp/ki/kd'),
+        A('Запустить', 'PID_CALIBRATE · 3–5 мин · потом SAVE_CONFIG', tone='accent'),
+    ])
+    form('PressureAdvance', 'Pressure advance', 'tools', 'Calibrate.dc.html', [
+        ST('Pressure advance', 'сейчас', 0.04, 0, 1, 0.005, '', 3, src='extruder.pressure_advance'),
+        ST('Smooth time', '', 0.04, 0, 0.2, 0.005, ' с', 3, src='extruder.smooth_time'),
+        A('Применить', 'SET_PRESSURE_ADVANCE · до перезапуска', tone='accent'),
+        A('Тестовая башня', 'печать с PA 0→0.1 по высоте, потом ввести высоту лучшего слоя'),
+    ])
+    form('Tmc', 'Драйверы TMC', 'tools', 'Calibrate.dc.html', [
+        I('stepper_x', '0.80 А · stealthChop', 'tmc2209', src='tmc2209 stepper_x.run_current, drv_status'),
+        I('stepper_y', '0.80 А · stealthChop', 'tmc2209'),
+        I('stepper_z', '0.60 А', 'tmc2209'),
+        I('extruder', '0.50 А', 'tmc2209'),
+        ST('Ток stepper_x', 'SET_TMC_CURRENT, до перезапуска', 0.8, 0.1, 2, 0.05, ' А', 2),
+    ])
+    form('Limits', 'Лимиты', 'tools', 'Tools.dc.html', [
+        SL('Скорость', 'макс. мм/с', 600, 50, 600, 10, '', src='toolhead.max_velocity (max from configfile.settings.printer.max_velocity)'),
+        SL('Ускорение', 'мм/с²', 20000, 1000, 20000, 500, '', src='toolhead.max_accel'),
+        SL('Cruise ratio', 'мин. доля крейсерской', 0.5, 0, 1, 0.05, '', src='toolhead.minimum_cruise_ratio', dec=2),
+        SL('Углы', 'square corner velocity', 25, 1, 50, 1, '', src='toolhead.square_corner_velocity'),
+        A('Вернуть из конфига', 'SET_VELOCITY_LIMIT значениями из printer.cfg'),
+    ], intro='Меняется сразу и сбрасывается после перезапуска Klipper.')
+    form('Macros', 'Макросы', 'tools', 'Tools.dc.html', [
+        S('ИЗБРАННЫЕ'),
+        L('LOAD_FILAMENT', 'Manual filament loading', 'MacroRun', src='gcode_macro *.description via configfile'),
+        L('AUTO_BED_LEVEL', 'BED_TEMP, EXTRUDER_TEMP, PROFILE', 'MacroRun'),
+        S('ВСЕ'),
+        L('AIR_CIRCULATION_INTERNAL', 'Turn on internal air circulation', 'MacroRun'),
+        L('PURGE_FILAMENT', '', 'MacroRun'),
+        L('LCD_ON', 'BACKLIGHT', 'MacroRun'),
+        L('PLAY_MIDI', 'FILE', 'MacroRun'),
+        L('SHUTDOWN', '', 'MacroRun'),
+        T('Показывать скрытые (_)', 'служебные макросы', False),
+    ])
+    form('MacroRun', 'AUTO_BED_LEVEL', 'tools', 'Macros.dc.html', [
+        I('Описание', 'нагрев, протирка, карта стола', '', src='configfile.config["gcode_macro X"].description; params parsed from gcode'),
+        ST('BED_TEMP', 'по умолчанию 60', 60, 0, 130, 5, '°'),
+        ST('EXTRUDER_TEMP', 'по умолчанию 200', 200, 0, 350, 5, '°'),
+        SG('PROFILE', '', ['auto', 'default', 'новый'], 0),
+        T('В избранное', 'кнопка на «Инструментах»', True),
+        A('Запустить', 'AUTO_BED_LEVEL BED_TEMP=60 EXTRUDER_TEMP=200 PROFILE=auto', tone='accent'),
+    ])
+    form('History', 'История', 'tools', 'Tools.dc.html', [
+        I('Всего печатей', '142', '128 успешно · 90%', src='server.history.totals'),
+        I('Время печати', '311 ч', 'филамент 8.4 кг', src='server.history.totals.total_print_time/total_filament_used'),
+        S('ПОСЛЕДНИЕ'),
+        L('Корпус вентилятора №2', 'вчера · 1 ч 23 мин · PETG', 'FileDetail', '✓', src='server.history.list'),
+        L('Benchy', 'вчера · остановлена на 63%', 'FileDetail', '■'),
+        L('Держатель катушки v3', '3 дня · 3 ч 05 мин', 'FileDetail', '✓'),
+        A('Очистить историю', 'server.history.delete_job all=true', tone='danger'),
+    ])
+    form('Sensors', 'Датчики', 'tools', 'Tools.dc.html', [
+        S('ФИЛАМЕНТ'),
+        T('Датчик обрыва', 'runout_sensor · есть пруток', True, src='filament_switch_sensor runout_sensor.enabled/filament_detected'),
+        S('ТЕМПЕРАТУРЫ'),
+        I('MCU', '41°', '', src='temperature_sensor mcu_temp.temperature'),
+        I('Хост (T113)', '52°', '', src='temperature_sensor host_temp'),
+        I('TVOC (AD5M Pro)', '12', 'качество воздуха', src='temperature_sensor TVOC_Level'),
+        I('Тензодатчик', '−3 г', '', src='temperature_sensor Load_Cell'),
+    ])
+    form('Maintenance', 'Обслуживание', 'tools', 'Tools.dc.html', [
+        I('Фильтр HEPA', '82 / 300 ч', 'заменить через 218 ч', src='Rivet: print hours from server.history since reset'),
+        I('Сопло', '311 / 500 ч', ''),
+        I('Направляющие', '44 / 100 ч', 'смазать'),
+        ST('Интервал фильтра', '', 300, 50, 1000, 50, ' ч'),
+        A('Отметить: фильтр заменён', 'сбросит счётчик'),
+    ])
+    form('Camera', 'Камера', 'tools', 'Tools.dc.html', [
+        I('Камера', 'нет потока', 'появится, если в Moonraker есть webcam', src='server.webcams.list'),
+        S('ТАЙМЛАПС'),
+        T('Записывать таймлапс', 'плагин moonraker-timelapse', False, src='machine.timelapse.settings'),
+        SG('Режим', '', ['По слоям', 'По времени'], 0),
+        ST('Кадров в секунду', '', 30, 10, 60, 5, ''),
+        L('Видео', '3 файла', 'Camera', src='server.files.list root=timelapse'),
+    ])
+
+    # ---------- Settings ----------
+    form('Settings', 'Настройки', 'settings', None, [
+        L('Сеть', 'Wi-Fi HomeNet_5G · 192.168.1.42', 'Network', icon='wifi', src='host: wpa_supplicant/NetworkManager; machine.system_info.network'),
+        L('Экран', 'яркость 70% · сон 10 мин', 'Screen', icon='screen'),
+        L('Блокировка и PIN', 'выкл.', 'LockSettings', icon='lock'),
+        L('Звук', 'сигнал в конце печати', 'Sound', icon='sound'),
+        L('Язык и время', 'Русский · 24 ч · Europe/Moscow', 'LangTime', icon='lang'),
+        L('Безопасность', 'подтверждения', 'Safety', icon='shield'),
+        L('Принтеры', '1 подключён', 'Printers', icon='printer'),
+        L('Обновления', 'всё актуально', 'Updates', icon='update', src='machine.update.status'),
+        L('Система', 'перезапуск, выключение, о системе', 'System', icon='chip'),
+    ])
+    form('Network', 'Сеть', 'settings', 'Settings.dc.html', [
+        T('Wi-Fi', 'wlan0 · MAC 2C:05:47:…', True, src='host wpa_supplicant'),
+        I('Подключено', 'HomeNet_5G', '192.168.1.42 · сигнал −54 дБм', src='machine.system_info.network.wlan0'),
+        S('ДОСТУПНЫЕ СЕТИ'),
+        L('HomeNet_5G', '5 ГГц · WPA2', 'WifiJoin', 'подключено'),
+        L('HomeNet', '2.4 ГГц · WPA2', 'WifiJoin'),
+        L('Guest', 'открытая', 'WifiJoin'),
+        L('Скрытая сеть', 'ввести имя вручную', 'WifiJoin'),
+        S('ПРОЧЕЕ'),
+        I('Имя хоста', 'ad5m', '', src='machine.system_info.network / hostname'),
+        I('Ethernet', 'не подключён', ''),
+    ])
+    form('WifiJoin', 'HomeNet', 'settings', 'Network.dc.html', [
+        I('Пароль', '••••••••', 'нажмите, чтобы ввести — откроется клавиатура'),
+        T('Подключаться автоматически', '', True),
+        A('Подключиться', 'wpa_cli', tone='accent'),
+        A('Забыть сеть', '', tone='danger'),
+    ])
+    form('Screen', 'Экран', 'settings', 'Settings.dc.html', [
+        SL('Яркость', 'подсветка экрана', 70, 10, 100, 5, '%', src='AD5M: LCD_ON BACKLIGHT=<pct>; generic: /sys/class/backlight'),
+        SG('Гасить через', 'без касаний', ['1 мин', '5 мин', '10 мин', '30 мин', 'Никогда'], 2),
+        T('Не гасить во время печати', 'показывать заставку с прогрессом', True),
+        SG('Поворот', '', ['0°', '90°', '180°', '270°'], 0),
+        A('Калибровка тача', 'коснуться 4 точек'),
+    ])
+    form('LockSettings', 'Блокировка и PIN', 'settings', 'Settings.dc.html', [
+        T('Блокировка во время печати', 'разблокировать — провести пальцем', False),
+        T('PIN-код', '4–6 цифр', False),
+        SG('Автоблокировка', 'без касаний', ['Нет', '5 мин', '15 мин', '30 мин'], 0),
+        I('Стоп', 'работает всегда', 'даже на заблокированном экране'),
+    ])
+    form('Sound', 'Звук', 'settings', 'Settings.dc.html', [
+        T('Звуки', 'бипер принтера', True, src='M300 (AD5M macro) / output_pin beeper'),
+        SL('Громкость', '', 60, 0, 100, 10, '%', fmt='off0'),
+        T('Мелодия в конце печати', 'PLAY_MIDI', True, src='gcode_macro PLAY_MIDI (KlipperMod)'),
+        T('Звук касаний', '', False),
+        A('Проверить', 'M300 S1000 P200'),
+    ])
+    form('LangTime', 'Язык и время', 'settings', 'Settings.dc.html', [
+        SG('Язык', '', ['Русский', 'English'], 0),
+        SG('Формат времени', '', ['24 ч', '12 ч'], 0),
+        L('Часовой пояс', 'для «готово в 15:20»', '@', 'Europe/Moscow', src='host timezone'),
+    ])
+    form('Safety', 'Безопасность', 'settings', 'Settings.dc.html', [
+        T('Подтверждать аварийную остановку', 'E-stop с подтверждением', True),
+        T('Отмена не сработала → E-stop', 'если CANCEL_PRINT висит', True),
+        ST('Ждать перед E-stop', '', 15, 5, 60, 5, ' с'),
+        T('Подтверждать запуск макросов', '', False),
+        SG('Всплывающие уведомления', 'с какого уровня', ['Все', 'Предупреждения', 'Ошибки'], 1),
+    ])
+    form('Printers', 'Принтеры', 'settings', 'Settings.dc.html', [
+        L('AD5M', 'localhost:7125 · подключён', '@', '✓', src='Rivet config: list of Moonraker URLs'),
+        A('Добавить принтер', 'адрес Moonraker и порт', tone='accent'),
+    ])
+    form('Updates', 'Обновления', 'settings', 'Settings.dc.html', [
+        I('Klipper', 'v0.12.0-xblax', 'актуально', src='machine.update.status.version_info.klipper'),
+        I('Moonraker', 'v0.9.3', 'актуально'),
+        I('Rivet', '0.1.0', 'актуально'),
+        A('Проверить', 'machine.update.refresh'),
+        I('KlipperMod', 'обновляется образом с USB', 'не через этот экран'),
+    ])
+    form('System', 'Система', 'settings', 'Settings.dc.html', [
+        S('ПЕРЕЗАПУСК'),
+        A('Перезапустить Klipper', 'RESTART'),
+        A('Перезапустить прошивку', 'FIRMWARE_RESTART'),
+        A('Перезапустить Moonraker', 'machine.services.restart'),
+        A('Перезапустить экран', 'Rivet'),
+        S('ПИТАНИЕ'),
+        T('Выключить после печати', 'когда остынет ниже 50°', False, src='AUTO_SHUTDOWN (KlipperMod)'),
+        A('Перезагрузить', 'machine.reboot'),
+        A('Выключить', 'SHUTDOWN (KlipperMod) / machine.shutdown', tone='danger'),
+        A('Загрузить стоковую прошивку', 'REBOOT_STOCK_SYSTEM · только KlipperMod'),
+        S('О СИСТЕМЕ'),
+        I('Процессор', 'T113-S3 · 2 ядра · 18%', '', src='machine.system_info.cpu_info; machine.proc_stats'),
+        I('Память', '54 / 128 МБ', '', src='machine.proc_stats.system_memory'),
+        I('Диск', '1.2 / 7.1 ГБ', '', src='server.files.get_directory → disk_usage'),
+        SG('Логи', 'уровень', ['Ошибки', 'Инфо', 'Отладка'], 1),
+        A('Очистить место', 'старые логи, таймлапсы, кэш миниатюр'),
+        A('Сбросить настройки Rivet', 'Klipper не трогает', tone='danger'),
+    ])
+
+    # ---------- Files ----------
+    form('JobQueue', 'Очередь печати', 'home', 'Files.dc.html', [
+        I('Очередь', 'готова', '2 задания', src='server.job_queue.status'),
+        L('Benchy', '52 мин · PLA', 'FileDetail', '1'),
+        L('Крышка электроники', '41 мин · PLA', 'FileDetail', '2'),
+        T('Пауза очереди', 'не начинать следующее', False),
+        A('Очистить очередь', '', tone='danger'),
+    ])
+    form('FileActions', 'Корпус вентилятора №2', 'home', 'FileDetail.dc.html', [
+        A('Добавить в очередь', 'server.job_queue.post_job', tone='accent'),
+        A('Переименовать', 'server.files.move'),
+        A('Переместить в папку', 'server.files.move'),
+        A('Скопировать с USB на принтер', 'server.files.copy'),
+        A('Удалить', 'server.files.delete_file', tone='danger'),
+    ])
+
+    # ---------- Printing ----------
+    form('PrintTune', 'Подстройка печати', 'home', 'Printing.dc.html', [
+        SL('Скорость', 'M220', 100, 10, 300, 5, '%', src='gcode_move.speed_factor'),
+        SL('Поток', 'M221', 100, 75, 125, 1, '%', src='gcode_move.extrude_factor'),
+        ST('Z-offset', 'на лету · SET_GCODE_OFFSET', -0.12, -2, 2, 0.01, ' мм', 2, src='gcode_move.homing_origin[2]'),
+        A('Сохранить Z-offset', 'Z_OFFSET_APPLY_PROBE + SAVE_CONFIG после печати'),
+        ST('Pressure advance', '', 0.04, 0, 1, 0.005, '', 3, src='extruder.pressure_advance'),
+        L('Температуры', 'сопло 240° · стол 80°', 'Heating'),
+        L('Вентиляторы', 'обдув 60%', 'Fan'),
+        A('Сбросить скорость и поток', 'M220 S100, M221 S100'),
+    ])
+    form('PrintMore', 'Ещё', 'home', 'Printing.dc.html', [
+        L('Пауза на слое', 'следующий или выбранный', 'LayerPause', src='print_stats.info.current_layer/total_layer; SET_PAUSE_AT_LAYER'),
+        L('Пропуск объектов', '4 детали', 'Exclude', src='exclude_object.objects'),
+        L('Камера', '', 'Camera'),
+        T('Свет', '', True, src='led chamber_led'),
+        T('Таймлапс', 'пишется', True),
+        T('Выключить после печати', '', False),
+    ])
+    form('LayerPause', 'Пауза на слое', 'home', 'PrintMore.dc.html', [
+        I('Сейчас', 'слой 76 из 180', '', src='print_stats.info.current_layer/total_layer'),
+        A('На следующем слое', 'SET_PAUSE_NEXT_LAYER ENABLE=1', tone='accent'),
+        ST('На слое', '', 120, 77, 180, 1, ''),
+        A('Поставить паузу на 120', 'SET_PAUSE_AT_LAYER LAYER=120 · для вставки магнита, смены цвета'),
+        A('Снять запланированную паузу', '', tone='danger'),
+    ], intro='Нужен макрос SET_PAUSE_AT_LAYER (есть в Mainsail/Fluidd-конфиге).')
+
+    # ---------- more Control ----------
+    form('Fan', 'Вентиляторы', 'control', 'Control.dc.html', [
+        SL('Обдув модели', 'fan · M106', 60, 0, 100, 5, '%', src='fan.speed', fmt='off0'),
+        SL('Камера', 'fan_generic chamber_fan', 0, 0, 100, 5, '%', src='fan_generic chamber_fan.speed', fmt='off0'),
+        SG('Воздух в камере', 'AD5M Pro', ['Выкл.', 'Фильтр', 'Вытяжка'], 0, src='only when AIR_CIRCULATION_* macros exist'),
+        S('АВТОМАТИЧЕСКИЕ'),
+        I('Хотэнд', '100%', 'heater_fan · включается от 50°', src='heater_fan hotend_fan.speed'),
+        I('Драйверы', '0%', 'controller_fan · пока двигаются моторы', src='controller_fan stepper_driver_fan.speed'),
+    ], intro='Слайсер может поменять обдув модели на следующем слое.')
+    form('Light', 'Свет', 'control', 'Control.dc.html', [
+        T('Подсветка', 'chamber_led', True, src='led chamber_led.color_data'),
+        SL('Яркость', '', 70, 0, 100, 5, '%', src='led chamber_led.color_data[0][3]', fmt='off0'),
+        SG('Быстро', '', ['10%', '25%', '50%', '75%', '100%'], 3),
+        S('ЦВЕТ · ТОЛЬКО ДЛЯ RGB(W) ЛЕНТ'),
+        SL('Красный', '', 100, 0, 100, 5, '%', src='led/neopixel color_data[0][0]'),
+        SL('Зелёный', '', 100, 0, 100, 5, '%'),
+        SL('Синий', '', 100, 0, 100, 5, '%'),
+        S('АВТОМАТИКА'),
+        T('Включать при старте', '', True),
+        T('Цвет по состоянию', 'печать, ошибка, готово', False),
+    ])
+    form('Speed', 'Скорость и поток', 'control', 'Control.dc.html', [
+        SL('Скорость', 'M220 · от скорости в слайсере', 100, 10, 300, 5, '%', src='gcode_move.speed_factor'),
+        SL('Поток', 'M221 · сколько пластика', 100, 75, 125, 1, '%', src='gcode_move.extrude_factor'),
+        A('Вернуть 100% / 100%', 'M220 S100, M221 S100'),
+        I('Сейчас', '86 мм/с', 'реальная скорость головы', src='motion_report.live_velocity'),
+    ], intro='Выше 150% качество и прочность обычно падают.')
+    form('HeatPresets', 'Пресеты нагрева', 'control', 'Heating.dc.html', [
+        S('PLA'), ST('Сопло', '', 210, 0, 350, 5, '°'), ST('Стол', '', 60, 0, 130, 5, '°'),
+        S('PETG'), ST('Сопло', '', 240, 0, 350, 5, '°'), ST('Стол', '', 80, 0, 130, 5, '°'),
+        S('ABS'), ST('Сопло', '', 250, 0, 350, 5, '°'), ST('Стол', '', 100, 0, 130, 5, '°'),
+        S('TPU'), ST('Сопло', '', 225, 0, 350, 5, '°'), ST('Стол', '', 50, 0, 130, 5, '°'),
+        A('Добавить материал', ''),
+    ], intro='Кнопки быстрого нагрева на экране «Нагрев». Хранятся в Moonraker database, max — max_temp из конфига.')
+    form('MotionAdvanced', 'Движение · ещё', 'control', 'Motion.dc.html', [
+        S('ПАРКОВКА'),
+        A('Всё (G28)', '', tone='accent'), A('Только XY', 'G28 X Y'), A('Только Z', 'G28 Z'),
+        S('ПЕРЕЙТИ В ТОЧКУ'),
+        ST('X', '−110 … 110', 0, -110, 110, 1, ' мм', src='toolhead.axis_minimum/axis_maximum'),
+        ST('Y', '−110 … 110', 0, -110, 110, 1, ' мм'),
+        ST('Z', '−10 … 230', 10, -10, 230, 1, ' мм'),
+        A('Поехать', 'G90 G1 X0 Y0 Z10'),
+        S('НАСТРОЙКИ ДЖОЙСТИКА'),
+        ST('Скорость XY', '', 100, 10, 600, 10, ' мм/с', src='max: toolhead.max_velocity'),
+        ST('Скорость Z', '', 10, 1, 25, 1, ' мм/с', src='max: configfile.settings.printer.max_z_velocity'),
+        T('Инвертировать X', 'только на экране', False), T('Инвертировать Y', '', False), T('Инвертировать Z', '', False),
+        A('Проверить концевики', 'QUERY_ENDSTOPS'),
+    ])
+    # ---------- printing extras ----------
+    form('PrintDone', 'Печать завершена', 'home', 'Main.dc.html', [
+        I('Корпус вентилятора №2', '✓ готово', '1 ч 23 мин · 18 г PETG', src='print_stats.state=complete, print_duration, filament_used', tone='accent'),
+        A('Печатать снова', '', 'FileDetail', tone='accent'),
+        A('К файлам', '', 'Files'),
+        I('Снимите деталь', 'стол 61°', 'PETG лучше снимать, когда стол остынет'),
+    ])
+    form('Runout', 'Закончился филамент', 'home', 'Printing.dc.html', [
+        I('Печать на паузе', 'слой 76 из 180', 'датчик обрыва сработал', src='filament_switch_sensor.filament_detected=false; print_stats.state=paused', tone='danger'),
+        A('Выгрузить остаток', 'UNLOAD_FILAMENT'),
+        A('Заправить новый', 'мастер загрузки', 'FilamentLoad'),
+        A('Прочистить 25 мм', 'PURGE_FILAMENT'),
+        A('Продолжить печать', 'RESUME', 'Printing', tone='accent'),
+        A('Отменить печать', '', 'ConfirmStop', tone='danger'),
+    ])
+
+if __name__ == '__main__':
+    build()
+    # write sources doc
+    doc = sys.argv[1] if len(sys.argv) > 1 else None
+    if doc:
+        with open(doc, 'w') as f:
+            f.write('# Data sources (generated)\n\nEvery value shown on generated screens and where Rivet reads it. '
+                    'Produced by `docs/ux/style/gen.py`.\n\n| Screen | Item | Source |\n|---|---|---|\n')
+            for sc, lab, src in SOURCES:
+                f.write('| %s | %s | `%s` |\n' % (sc, lab.replace('|', '/'), src.replace('|', '/')))
+    print('ok', len(SOURCES))

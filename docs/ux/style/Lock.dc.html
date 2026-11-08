@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Блокировка — Rivet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
+</style>
+</helmet>
+<div style="width: 800px; height: 480px; box-sizing: border-box; padding: 28px 36px; display: grid; grid-template-columns: 1fr 300px; gap: 36px; background: #0b0d10; color: #f4f6f8; font-family: Inter, system-ui, sans-serif">
+  <div style="display: flex; flex-direction: column; justify-content: center; gap: 10px">
+    <span aria-hidden="true" style="color: #98a1ac"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 11h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2z"></path><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg></span>
+    <span style="font-size: 30px; font-weight: 800">Экран заблокирован</span>
+    <span style="font-size: 17px; color: #98a1ac">Печать идёт: 42% · осталось 48 мин</span>
+    <div style="margin-top: 14px; display: flex; gap: 12px" aria-label="Введено 2 цифры из 4"><span style="width: 18px; height: 18px; border-radius: 9px; background: #2dd4bf"></span><span style="width: 18px; height: 18px; border-radius: 9px; background: #2dd4bf"></span><span style="width: 18px; height: 18px; border-radius: 9px; background: #2a3038"></span><span style="width: 18px; height: 18px; border-radius: 9px; background: #2a3038"></span></div>
+    <div style="flex: 1"></div>
+    <a href="EStop.dc.html" style="align-self: flex-start; height: 64px; padding: 0 22px; border-radius: 20px; background: rgba(251, 75, 94, 0.16); color: #fb7185; font-size: 16px; font-weight: 800; display: flex; align-items: center">СТОП работает и здесь</a>
+  </div>
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(4, minmax(0, 1fr)); gap: 8px"><button type="button" style="border: 0; border-radius: 18px; background: #1b1f25; color: #f4f6f8; font: 700 26px Inter, system-ui, sans-serif; cursor: pointer">1</button><button type="button" style="border: 0; border-radius: 18px; background: #1b1f25; color: #f4f6f8; font: 700 26px Inter, system-ui, sans-serif; cursor: pointer">2</button><button type="button" style="border: 0; border-radius: 18px; background: #1b1f25; color: #f4f6f8; font: 700 26px Inter, system-ui, sans-serif; cursor: pointer">3</button><button type="button" style="border: 0; border-radius: 18px; background: #1b1f25; color: #f4f6f8; font: 700 26px Inter, system-ui, sans-serif; cursor: pointer">4</button><button type="button" style="border: 0; border-radius: 18px; background: #1b1f25; color: #f4f6f8; font: 700 26px Inter, system-ui, sans-serif; cursor: pointer">5</button><button type="button" style="border: 0; border-radius: 18px; background: #1b1f25; color: #f4f6f8; font: 700 26px Inter, system-ui, sans-serif; cursor: pointer">6</button><button type="button" style="border: 0; border-radius: 18px; background: #1b1f25; color: #f4f6f8; font: 700 26px Inter, system-ui, sans-serif; cursor: pointer">7</button><button type="button" style="border: 0; border-radius: 18px; background: #1b1f25; color: #f4f6f8; font: 700 26px Inter, system-ui, sans-serif; cursor: pointer">8</button><button type="button" style="border: 0; border-radius: 18px; background: #1b1f25; color: #f4f6f8; font: 700 26px Inter, system-ui, sans-serif; cursor: pointer">9</button><span></span><button type="button" style="border: 0; border-radius: 18px; background: #1b1f25; color: #f4f6f8; font: 700 26px Inter, system-ui, sans-serif; cursor: pointer">0</button><button type="button" style="border: 0; border-radius: 18px; background: #1b1f25; color: #f4f6f8; font: 700 26px Inter, system-ui, sans-serif; cursor: pointer">⌫</button></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 800, "height": 480}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>
