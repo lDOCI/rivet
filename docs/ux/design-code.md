@@ -80,4 +80,4 @@ Units never sit next to a large number in the same line box; they go in the titl
 
 - Commands go out on release, not on every drag tick.
 - Live values update in place; stale values are hidden, not shown.
-- Destructive or irreversible actions always confirm; E-stop confirms unless turned off in Безопасность.
+- Destructive or irreversible actions always confirm. The one exception is E-stop: one tap stops at once (optional 1 s hold in Безопасность).

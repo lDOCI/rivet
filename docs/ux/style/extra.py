@@ -48,16 +48,16 @@ def build_extra():
     build_limits()
     import more
     more.build_more()
-    # E-stop confirm
-    body = root_open('none') + '''  <main role="alertdialog" aria-labelledby="t" style="flex: 1; box-sizing: border-box; padding: 28px 40px; display: flex; flex-direction: column; justify-content: center; gap: 14px">
-    <span aria-hidden="true" style="width: 72px; height: 72px; border-radius: 24px; background: rgba(251, 75, 94, 0.16); color: #fb7185; display: flex; align-items: center; justify-content: center">''' + svg('warn', 36) + '''</span>
-    <h1 id="t" style="margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.02em">Аварийная остановка?</h1>
-    <p style="margin: 0; max-width: 560px; font-size: 18px; line-height: 1.5; color: #c7cdd4">Klipper сразу выключит нагрев и моторы. Печать продолжить не получится, потом нужен перезапуск прошивки.</p>
-    <div style="margin-top: 12px; display: grid; grid-template-columns: 1fr 1.3fr; gap: 12px">
-      <a href="Main.dc.html" style="height: 84px; border-radius: 22px; background: #15181d; color: #f4f6f8; font-size: 18px; font-weight: 700; display: flex; align-items: center; justify-content: center">Отмена</a>
-      <a href="KlipperError.dc.html" style="height: 84px; border-radius: 22px; background: #e11d48; color: #ffffff; font-size: 19px; font-weight: 800; display: flex; align-items: center; justify-content: center">Остановить всё</a>
+    # E-stop result: one tap on Стоп stops immediately, this is what you see after
+    body = root_open('none') + '''  <main role="alert" style="flex: 1; box-sizing: border-box; padding: 28px 40px; display: flex; flex-direction: column; justify-content: center; gap: 14px">
+    <span aria-hidden="true" style="width: 72px; height: 72px; border-radius: 24px; background: rgba(251, 75, 94, 0.16); color: #fb7185; display: flex; align-items: center; justify-content: center"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5h8l5.5 5.5v8L16 21.5H8L2.5 16V8z"></path><path d="M12 7.5v5.5"></path><path d="M12 16.5v.5"></path></svg></span>
+    <h1 style="margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.02em">Аварийная остановка</h1>
+    <p style="margin: 0; max-width: 560px; font-size: 18px; line-height: 1.5; color: #c7cdd4">Нагрев и моторы выключены. Печать прервана на 42% — продолжить её нельзя.</p>
+    <div style="margin-top: 12px; display: grid; grid-template-columns: 1.3fr 1fr; gap: 12px">
+      <a href="Main.dc.html" style="height: 84px; border-radius: 22px; background: #2dd4bf; color: #042f2a; font-size: 19px; font-weight: 800; display: flex; align-items: center; justify-content: center">Перезапустить прошивку</a>
+      <a href="Console.dc.html" style="height: 84px; border-radius: 22px; background: #15181d; color: #f4f6f8; font-size: 18px; font-weight: 700; display: flex; align-items: center; justify-content: center">Журнал</a>
     </div>
-    <span style="font-size: 14px; color: #66707b">Подтверждение можно отключить: Настройки › Безопасность.</span>
+    <span style="font-size: 14px; color: #66707b">Нагреватели остывают сами. Перезапуск займёт около 10 секунд.</span>
   </main>
 </div>
 '''
