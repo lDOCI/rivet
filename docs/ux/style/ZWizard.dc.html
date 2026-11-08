@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>Z-offset бумагой — Rivet</title>
+<title>Точная подстройка Z — Rivet</title>
 <script src="./support.js"></script>
 </head>
 <body>
@@ -21,19 +21,19 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
 <div style="position: relative; width: 800px; height: 480px; display: flex; background: #0b0d10; color: #f4f6f8; font-family: Inter, system-ui, sans-serif; overflow: hidden">
   <dc-import name="NavRail" active="tools" hint-size="88px,480px"></dc-import>
   <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px; display: flex; flex-direction: column; gap: 12px">
-    <div style="height: 64px; flex: none; display: flex; align-items: center; gap: 14px"><a href="ProbeZ.dc.html" aria-label="Назад" style="width: 64px; height: 64px; flex: none; border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></a><h1 style="margin: 0; flex: 1; font-size: 26px; font-weight: 800; letter-spacing: -0.02em">Z-offset бумагой</h1></div>
+    <div style="height: 64px; flex: none; display: flex; align-items: center; gap: 14px"><a href="ProbeZ.dc.html" aria-label="Назад" style="width: 64px; height: 64px; flex: none; border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></a><h1 style="margin: 0; flex: 1; font-size: 26px; font-weight: 800; letter-spacing: -0.02em">Точная подстройка Z</h1></div>
     <div style="flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 260px; gap: 16px">
       <div style="display: flex; flex-direction: column; gap: 12px; min-width: 0">
-        <p style="margin: 0; font-size: 17px; line-height: 1.5; color: #c7cdd4">Лист бумаги под сопло. Опускайте, пока бумага не начнёт цепляться, но ещё двигается.</p>
-        <div style="border-radius: 22px; background: #15181d; padding: 14px 18px; display: flex; align-items: center; gap: 10px"><span style="font-size: 15px; color: #98a1ac">Сопло над столом, мм</span><span style="flex: 1"></span><span style="font-size: 40px; font-weight: 800; font-variant-numeric: tabular-nums">{{zLabel}}</span></div>
+        <p style="margin: 0; font-size: 17px; line-height: 1.5; color: #c7cdd4">Принтер печатает тестовый слой. Линии рвутся и тонкие — опустите сопло. Наплывы и волны — поднимите.</p>
+        <div style="border-radius: 22px; background: #15181d; padding: 14px 18px; display: flex; align-items: center; gap: 10px"><span style="font-size: 15px; color: #98a1ac">Z-offset, мм</span><span style="flex: 1"></span><span style="font-size: 40px; font-weight: 800; font-variant-numeric: tabular-nums">{{zLabel}}</span></div>
         <span style="font-size: 14px; font-weight: 600; color: #98a1ac">Шаг, мм</span>
         <div role="radiogroup" aria-label="Шаг" style="display: flex; gap: 6px">
           <sc-for list="{{steps}}" as="o" hint-placeholder-count="5"><button type="button" role="radio" aria-checked="{{o.checked}}" onClick="{{o.pick}}" style="flex: 1; height: 64px; border: 0; border-radius: 16px; background: {{o.bg}}; color: {{o.fg}}; font: 700 16px Inter, system-ui, sans-serif; cursor: pointer">{{o.label}}</button></sc-for>
         </div>
         <div style="flex: 1"></div>
         <div style="display: grid; grid-template-columns: 1fr 1.4fr; gap: 10px">
-          <a href="ProbeZ.dc.html" style="height: 76px; border-radius: 20px; background: rgba(251, 75, 94, 0.14); color: #fb7185; font-size: 17px; font-weight: 700; display: flex; align-items: center; justify-content: center">Отменить</a>
-          <a href="ProbeZ.dc.html" style="height: 76px; border-radius: 20px; background: #2dd4bf; color: #042f2a; font-size: 17px; font-weight: 800; display: flex; flex-direction: column; align-items: center; justify-content: center"><span>Принять</span><span style="font-size: 12px; font-weight: 600; opacity: 0.75">Klipper перезапустится</span></a>
+          <a href="ProbeZ.dc.html" style="height: 76px; border-radius: 20px; background: rgba(251, 75, 94, 0.14); color: #fb7185; font-size: 17px; font-weight: 700; display: flex; align-items: center; justify-content: center">Прервать тест</a>
+          <a href="ProbeZ.dc.html" style="height: 76px; border-radius: 20px; background: #2dd4bf; color: #042f2a; font-size: 17px; font-weight: 800; display: flex; flex-direction: column; align-items: center; justify-content: center"><span>Сохранить</span><span style="font-size: 12px; font-weight: 600; opacity: 0.75">после теста</span></a>
         </div>
       </div>
       <div style="display: grid; grid-template-rows: 1fr 1fr; gap: 10px">
@@ -46,14 +46,14 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 800, "height": 480}}'>
 class Component extends DCLogic {
-  constructor(props) { super(props); this.state = { z: 0.45, step: 0.05 }; }
+  constructor(props) { super(props); this.state = { z: -0.12, step: 0.01 }; }
   renderVals() {
     var self = this, st = this.state;
     var opts = [0.005, 0.01, 0.05, 0.1, 1];
     return {
-      zLabel: st.z.toFixed(3).replace('.', ','),
+      zLabel: st.z.toFixed(3).replace('.', ',').replace('-', '−'),
       upZ: function () { self.setState({ z: +(st.z + st.step).toFixed(3) }); },
-      downZ: function () { self.setState({ z: Math.max(0, +(st.z - st.step).toFixed(3)) }); },
+      downZ: function () { self.setState({ z: +(st.z - st.step).toFixed(3) }); },
       steps: opts.map(function (v) { var on = v === st.step; return { label: String(v).replace('.', ','), checked: on ? 'true' : 'false', bg: on ? '#2dd4bf' : '#15181d', fg: on ? '#042f2a' : '#f4f6f8', pick: function () { self.setState({ step: v }); } }; })
     };
   }

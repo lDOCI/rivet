@@ -20,217 +20,29 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
 </helmet>
 <div style="position: relative; width: 800px; height: 480px; display: flex; background: #0b0d10; color: #f4f6f8; font-family: Inter, system-ui, sans-serif; overflow: hidden">
   <dc-import name="NavRail" active="tools" hint-size="88px,480px"></dc-import>
-  <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px 16px 0 16px; display: flex; flex-direction: column; gap: 10px">
+  <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px; display: flex; flex-direction: column; gap: 10px">
     <div style="height: 64px; flex: none; display: flex; align-items: center; gap: 14px"><a href="Calibrate.dc.html" aria-label="Назад" style="width: 64px; height: 64px; flex: none; border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></a><h1 style="margin: 0; flex: 1; font-size: 26px; font-weight: 800; letter-spacing: -0.02em">Ремни</h1></div>
-    <div class="scroll" style="flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; padding-bottom: 16px">
-      <sc-for list="{{rows}}" as="r" hint-placeholder-count="6">
-        <sc-if value="{{r.isSection}}" hint-placeholder-val="{{ false }}"><span style="margin: 8px 4px 0; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; color: #66707b">{{r.title}}</span></sc-if>
-        <sc-if value="{{r.isLink}}" hint-placeholder-val="{{ true }}">
-          <a href="{{r.href}}" style="min-height: 72px; flex: none; border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; gap: 14px; padding: 0 18px">
-            <sc-if value="{{r.hasIcon}}" hint-placeholder-val="{{ false }}"><span aria-hidden="true" style="width: 44px; height: 44px; flex: none; border-radius: 14px; background: #1f242b; color: #2dd4bf; display: flex; align-items: center; justify-content: center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{r.p0}}"></path><path d="{{r.p1}}"></path><path d="{{r.p2}}"></path><path d="{{r.p3}}"></path><path d="{{r.p4}}"></path><path d="{{r.p5}}"></path></svg></span></sc-if>
-            <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 18px; font-weight: 700">{{r.title}}</span><span style="font-size: 14px; color: #98a1ac">{{r.sub}}</span></span>
-            <span style="font-size: 16px; color: #c7cdd4; white-space: nowrap">{{r.value}}</span>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#66707b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
-          </a>
-        </sc-if>
-        <sc-if value="{{r.isInfo}}" hint-placeholder-val="{{ false }}">
-          <div style="min-height: 64px; flex: none; border-radius: 20px; background: #15181d; display: flex; align-items: center; gap: 14px; padding: 0 18px">
-            <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 17px; font-weight: 600">{{r.title}}</span><span style="font-size: 14px; color: #98a1ac">{{r.sub}}</span></span>
-            <span style="font-size: 17px; font-weight: 700; color: {{r.tone}}; font-variant-numeric: tabular-nums; white-space: nowrap">{{r.value}}</span>
-          </div>
-        </sc-if>
-        <sc-if value="{{r.isToggle}}" hint-placeholder-val="{{ false }}">
-          <button type="button" role="switch" aria-checked="{{r.aria}}" onClick="{{r.flip}}" style="min-height: 72px; flex: none; border: 0; border-radius: 20px; background: #15181d; color: #f4f6f8; padding: 0 18px; display: flex; align-items: center; gap: 14px; font-family: Inter, system-ui, sans-serif; text-align: left; cursor: pointer">
-            <span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 18px; font-weight: 700">{{r.title}}</span><span style="font-size: 14px; color: #98a1ac">{{r.sub}}</span></span>
-            <span aria-hidden="true" style="width: 60px; height: 34px; flex: none; border-radius: 17px; background: {{r.track}}; position: relative"><span style="position: absolute; top: 4px; left: {{r.knob}}; width: 26px; height: 26px; border-radius: 13px; background: #ffffff"></span></span>
-          </button>
-        </sc-if>
-        <sc-if value="{{r.isSlider}}" hint-placeholder-val="{{ false }}">
-          <div style="min-height: 84px; flex: none; border-radius: 20px; background: #15181d; padding: 0 12px 0 18px; display: flex; align-items: center; gap: 16px">
-            <span style="width: 170px; flex: none; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 18px; font-weight: 700">{{r.title}}</span><span style="font-size: 14px; color: #98a1ac">{{r.sub}}</span></span>
-            <div role="slider" aria-label="{{r.title}}" aria-valuemin="{{r.min}}" aria-valuemax="{{r.max}}" aria-valuenow="{{r.now}}" onPointerDown="{{r.down}}" onPointerMove="{{r.move}}" onPointerUp="{{r.up}}" onPointerCancel="{{r.up}}" style="flex: 1; height: 60px; border-radius: 18px; background: #1f242b; position: relative; overflow: hidden; touch-action: none; cursor: grab">
-              <span aria-hidden="true" style="position: absolute; left: 0; top: 0; bottom: 0; width: {{r.pct}}; background: linear-gradient(90deg, #2dd4bf, #5eead4)"></span>
-            </div>
-            <span style="width: 86px; flex: none; text-align: right; font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums">{{r.label}}</span>
-          </div>
-        </sc-if>
-        <sc-if value="{{r.isFine}}" hint-placeholder-val="{{ false }}">
-          <div style="min-height: 92px; flex: none; border-radius: 20px; background: #15181d; box-shadow: inset 0 0 0 2px {{r.ring}}; padding: 0 10px 0 18px; display: flex; align-items: center; gap: 8px">
-            <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 18px; font-weight: 700">{{r.title}}</span><span style="font-size: 14px; color: #98a1ac">{{r.sub}}</span></span>
-            <button type="button" onClick="{{r.decBig}}" aria-label="{{r.decBigAria}}" style="width: 64px; height: 64px; border: 0; border-radius: 16px; background: #1f242b; color: #f4f6f8; font: 700 16px Inter, system-ui, sans-serif; cursor: pointer">{{r.decBigLabel}}</button>
-            <button type="button" onClick="{{r.decSmall}}" aria-label="{{r.decSmallAria}}" style="width: 64px; height: 64px; border: 0; border-radius: 16px; background: #252a31; color: #f4f6f8; font: 700 16px Inter, system-ui, sans-serif; cursor: pointer">{{r.decSmallLabel}}</button>
-            <button type="button" onClick="{{r.edit}}" aria-label="{{r.editAria}}" style="width: 104px; height: 64px; border: 0; border-radius: 16px; background: transparent; color: {{r.valInk}}; font: 800 26px Inter, system-ui, sans-serif; font-variant-numeric: tabular-nums; white-space: nowrap; cursor: pointer">{{r.label}}</button>
-            <button type="button" onClick="{{r.incSmall}}" aria-label="{{r.incSmallAria}}" style="width: 64px; height: 64px; border: 0; border-radius: 16px; background: #252a31; color: #f4f6f8; font: 700 16px Inter, system-ui, sans-serif; cursor: pointer">{{r.incSmallLabel}}</button>
-            <button type="button" onClick="{{r.incBig}}" aria-label="{{r.incBigAria}}" style="width: 64px; height: 64px; border: 0; border-radius: 16px; background: #1f242b; color: #f4f6f8; font: 700 16px Inter, system-ui, sans-serif; cursor: pointer">{{r.incBigLabel}}</button>
-          </div>
-        </sc-if>
-        <sc-if value="{{r.isStepper}}" hint-placeholder-val="{{ false }}">
-          <div style="min-height: 84px; flex: none; border-radius: 20px; background: #15181d; padding: 0 10px 0 18px; display: flex; align-items: center; gap: 10px">
-            <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 18px; font-weight: 700">{{r.title}}</span><span style="font-size: 14px; color: #98a1ac">{{r.sub}}</span></span>
-            <button type="button" onClick="{{r.dec}}" aria-label="Меньше" style="width: 64px; height: 64px; border: 0; border-radius: 18px; background: #1f242b; color: #f4f6f8; font: 500 30px Inter, system-ui, sans-serif; cursor: pointer">−</button>
-            <button type="button" onClick="{{r.edit}}" aria-label="{{r.editAria}}" style="width: 120px; height: 64px; border: 0; border-radius: 18px; background: transparent; color: #f4f6f8; font: 800 22px Inter, system-ui, sans-serif; font-variant-numeric: tabular-nums; white-space: nowrap; cursor: pointer">{{r.label}}</button>
-            <button type="button" onClick="{{r.inc}}" aria-label="Больше" style="width: 64px; height: 64px; border: 0; border-radius: 18px; background: #1f242b; color: #f4f6f8; font: 500 30px Inter, system-ui, sans-serif; cursor: pointer">+</button>
-          </div>
-        </sc-if>
-        <sc-if value="{{r.isSeg}}" hint-placeholder-val="{{ false }}">
-          <div style="min-height: 84px; flex: none; border-radius: 20px; background: #15181d; padding: 10px 10px 10px 18px; box-sizing: border-box; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px">
-            <span style="flex: 1 1 150px; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 18px; font-weight: 700">{{r.title}}</span><span style="font-size: 14px; color: #98a1ac">{{r.sub}}</span></span>
-            <div role="radiogroup" aria-label="{{r.title}}" style="flex: 1 1 280px; display: flex; gap: 6px">
-              <sc-for list="{{r.opts}}" as="o" hint-placeholder-count="3">
-                <button type="button" role="radio" aria-checked="{{o.checked}}" onClick="{{o.pick}}" style="flex: 1; height: 64px; border: 0; border-radius: 16px; background: {{o.bg}}; color: {{o.fg}}; font: 700 15px Inter, system-ui, sans-serif; cursor: pointer">{{o.label}}</button>
-              </sc-for>
-            </div>
-          </div>
-        </sc-if>
-        <sc-if value="{{r.isPrimary}}" hint-placeholder-val="{{ false }}">
-          <a href="{{r.href}}" style="min-height: 76px; flex: none; border-radius: 20px; background: #2dd4bf; color: #042f2a; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 8px 18px; box-sizing: border-box; text-align: center"><span style="font-size: 18px; font-weight: 800">{{r.title}}</span><span style="font-size: 13px; opacity: 0.75">{{r.sub}}</span></a>
-        </sc-if>
-        <sc-if value="{{r.isSecondary}}" hint-placeholder-val="{{ false }}">
-          <a href="{{r.href}}" style="min-height: 64px; flex: none; border-radius: 20px; background: #15181d; color: {{r.actInk}}; display: flex; align-items: center; gap: 14px; padding: 10px 18px; box-sizing: border-box">
-            <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 17px; font-weight: 700">{{r.title}}</span><span style="font-size: 14px; color: #98a1ac">{{r.sub}}</span></span>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" opacity="0.7"><path d="M5 12h14"></path><path d="m13 6 6 6-6 6"></path></svg>
-          </a>
-        </sc-if>
-      </sc-for>
-    </div>
-  </main>
-  <sc-if value="{{padOpen}}" hint-placeholder-val="{{ false }}">
-    <div role="dialog" aria-modal="true" aria-label="Ввести число" style="position: absolute; inset: 0; background: rgba(5, 6, 8, 0.78); display: flex; align-items: center; justify-content: center">
-      <div style="width: 680px; height: 420px; box-sizing: border-box; border-radius: 28px; background: #15181d; padding: 20px; display: grid; grid-template-columns: 240px 1fr; gap: 20px">
-        <div style="display: flex; flex-direction: column; gap: 8px">
-          <span style="font-size: 15px; font-weight: 600; color: #98a1ac">{{padTitle}}</span>
-          <div style="height: 96px; border-radius: 20px; background: #0b0d10; display: flex; align-items: center; gap: 6px; padding: 0 8px 0 16px">
-            <span aria-live="polite" style="flex: 1; text-align: center; font-size: 40px; font-weight: 800; font-variant-numeric: tabular-nums; color: {{entryInk}}">{{entryLabel}}</span>
-            <button type="button" onClick="{{backspace}}" aria-label="Стереть" style="width: 56px; height: 64px; border: 0; border-radius: 16px; background: #1f242b; color: #f4f6f8; font: 600 22px Inter, system-ui, sans-serif; cursor: pointer">⌫</button>
-          </div>
-          <span style="font-size: 14px; color: {{hintInk}}; text-align: center">{{padHint}}</span>
-          <div style="flex: 1"></div>
-          <button type="button" onClick="{{padOk}}" style="height: 80px; border: 0; border-radius: 22px; background: {{okBg}}; color: {{okFg}}; font: 800 19px Inter, system-ui, sans-serif; cursor: pointer">Готово</button>
-          <button type="button" onClick="{{padCancel}}" style="height: 64px; border: 0; border-radius: 20px; background: #1f242b; color: #f4f6f8; font: 600 16px Inter, system-ui, sans-serif; cursor: pointer">Отмена</button>
-        </div>
-        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(4, minmax(0, 1fr)); gap: 8px">
-          <sc-for list="{{keys}}" as="k" hint-placeholder-count="12"><button type="button" onClick="{{k.press}}" aria-label="{{k.aria}}" style="border: 0; border-radius: 18px; background: {{k.bg}}; color: #f4f6f8; font: 700 28px Inter, system-ui, sans-serif; cursor: pointer">{{k.label}}</button></sc-for>
-        </div>
+    <div style="flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 250px; gap: 12px">
+      <div style="border-radius: 20px; background: #15181d; padding: 8px; display: flex; flex-direction: column; min-height: 0">
+        <div style="flex: 1; min-height: 0"><svg role="img" aria-label="Ремень A: пик 78 герц, ремень B: пик 71 герц" viewBox="0 0 440 260" style="width: 100%; height: 100%"><path d="M67.9 10 V240" stroke="#1f242b" stroke-width="1"></path><text x="67.9" y="254" fill="#66707b" font-size="11" text-anchor="middle" font-family="Inter, sans-serif">25</text><path d="M140.3 10 V240" stroke="#1f242b" stroke-width="1"></path><text x="140.3" y="254" fill="#66707b" font-size="11" text-anchor="middle" font-family="Inter, sans-serif">50</text><path d="M212.8 10 V240" stroke="#1f242b" stroke-width="1"></path><text x="212.8" y="254" fill="#66707b" font-size="11" text-anchor="middle" font-family="Inter, sans-serif">75</text><path d="M285.2 10 V240" stroke="#1f242b" stroke-width="1"></path><text x="285.2" y="254" fill="#66707b" font-size="11" text-anchor="middle" font-family="Inter, sans-serif">100</text><path d="M357.6 10 V240" stroke="#1f242b" stroke-width="1"></path><text x="357.6" y="254" fill="#66707b" font-size="11" text-anchor="middle" font-family="Inter, sans-serif">125</text><text x="430" y="254" fill="#66707b" font-size="11" text-anchor="end" font-family="Inter, sans-serif">Гц</text><polyline points="10.0,230.4 12.8,230.4 15.6,230.4 18.4,230.3 21.2,230.3 24.0,230.2 26.8,230.2 29.6,230.1 32.4,230.1 35.2,230.0 38.0,230.0 40.8,229.9 43.6,229.8 46.4,229.8 49.2,229.7 52.0,229.6 54.8,229.6 57.6,229.5 60.4,229.4 63.2,229.3 66.0,229.2 68.8,229.1 71.6,229.0 74.4,228.9 77.2,228.8 80.0,228.7 82.8,228.6 85.6,228.4 88.4,228.3 91.2,228.1 94.0,228.0 96.8,227.8 99.6,227.6 102.4,227.4 105.2,227.2 108.0,227.0 110.8,226.8 113.6,226.5 116.4,226.2 119.2,225.9 122.0,225.6 124.8,225.2 127.6,224.9 130.4,224.5 133.2,224.0 136.0,223.5 138.8,223.0 141.6,222.4 144.4,221.7 147.2,221.0 150.0,220.2 152.8,219.3 155.6,218.3 158.4,217.2 161.2,215.9 164.0,214.5 166.8,212.9 169.6,211.0 172.4,208.9 175.2,206.4 178.0,203.6 180.8,200.2 183.6,196.3 186.4,191.6 189.2,186.0 192.0,179.4 194.8,171.3 197.6,161.6 200.4,149.8 203.2,135.7 206.0,119.1 208.8,100.0 211.6,79.3 214.4,58.9 217.2,41.9 220.0,31.9 222.8,31.7 225.6,41.2 228.4,57.9 231.2,78.2 234.0,98.7 236.8,117.8 239.6,134.3 242.4,148.4 245.2,160.1 248.0,169.7 250.8,177.6 253.6,184.2 256.4,189.6 259.2,194.1 262.0,197.9 264.8,201.0 267.6,203.6 270.4,205.9 273.2,207.7 276.0,209.3 278.8,210.5 281.6,211.6 284.4,212.4 287.2,213.1 290.0,213.6 292.8,213.9 295.6,214.0 298.4,214.0 301.2,213.7 304.0,213.3 306.8,212.7 309.6,211.9 312.4,210.8 315.2,209.4 318.0,207.7 320.8,205.5 323.6,202.9 326.4,199.8 329.2,196.1 332.0,191.8 334.8,187.0 337.6,181.8 340.4,176.8 343.2,172.4 346.0,169.4 348.8,168.3 351.6,169.5 354.4,172.8 357.2,177.4 360.0,182.7 362.8,188.2 365.6,193.4 368.4,198.1 371.2,202.2 374.0,205.7 376.8,208.8 379.6,211.4 382.4,213.6 385.2,215.5 388.0,217.1 390.8,218.5 393.6,219.7 396.4,220.8 399.2,221.7 402.0,222.5 404.8,223.2 407.6,223.9 410.4,224.4 413.2,224.9 416.0,225.4 418.8,225.8 421.6,226.2 424.4,226.5 427.2,226.8 430.0,227.1" fill="none" stroke="#2dd4bf" stroke-width="3" stroke-linejoin="round"></polyline><polyline points="10.0,230.3 12.8,230.3 15.6,230.3 18.4,230.2 21.2,230.1 24.0,230.1 26.8,230.0 29.6,230.0 32.4,229.9 35.2,229.8 38.0,229.8 40.8,229.7 43.6,229.6 46.4,229.5 49.2,229.5 52.0,229.4 54.8,229.3 57.6,229.2 60.4,229.1 63.2,229.0 66.0,228.8 68.8,228.7 71.6,228.6 74.4,228.4 77.2,228.3 80.0,228.1 82.8,228.0 85.6,227.8 88.4,227.6 91.2,227.4 94.0,227.2 96.8,226.9 99.6,226.6 102.4,226.4 105.2,226.1 108.0,225.7 110.8,225.4 113.6,225.0 116.4,224.5 119.2,224.1 122.0,223.5 124.8,223.0 127.6,222.3 130.4,221.6 133.2,220.8 136.0,219.9 138.8,218.9 141.6,217.8 144.4,216.6 147.2,215.1 150.0,213.5 152.8,211.6 155.6,209.4 158.4,206.8 161.2,203.8 164.0,200.3 166.8,196.1 169.6,191.1 172.4,185.1 175.2,177.8 178.0,169.1 180.8,158.5 183.6,145.9 186.4,131.0 189.2,114.2 192.0,96.3 194.8,79.1 197.6,65.7 200.4,59.0 203.2,60.9 206.0,70.8 208.8,86.2 211.6,103.9 214.4,121.4 217.2,137.3 220.0,151.0 222.8,162.6 225.6,172.2 228.4,180.1 231.2,186.6 234.0,192.0 236.8,196.4 239.6,200.2 242.4,203.3 245.2,205.9 248.0,208.0 250.8,209.9 253.6,211.4 256.4,212.7 259.2,213.8 262.0,214.7 264.8,215.4 267.6,216.0 270.4,216.4 273.2,216.7 276.0,216.9 278.8,216.9 281.6,216.8 284.4,216.6 287.2,216.3 290.0,215.7 292.8,215.0 295.6,214.1 298.4,213.0 301.2,211.6 304.0,209.9 306.8,207.9 309.6,205.4 312.4,202.4 315.2,198.9 318.0,194.7 320.8,190.0 323.6,184.7 326.4,179.1 329.2,173.7 332.0,169.1 334.8,166.1 337.6,165.3 340.4,166.8 343.2,170.4 346.0,175.5 348.8,181.2 351.6,187.0 354.4,192.4 357.2,197.3 360.0,201.5 362.8,205.2 365.6,208.4 368.4,211.1 371.2,213.4 374.0,215.3 376.8,217.0 379.6,218.4 382.4,219.7 385.2,220.8 388.0,221.7 390.8,222.5 393.6,223.3 396.4,223.9 399.2,224.5 402.0,225.0 404.8,225.5 407.6,225.9 410.4,226.2 413.2,226.6 416.0,226.9 418.8,227.2 421.6,227.4 424.4,227.7 427.2,227.9 430.0,228.1" fill="none" stroke="#f97316" stroke-width="3" stroke-linejoin="round"></polyline></svg></div>
+        <div style="display: flex; gap: 16px; padding: 4px 8px 2px; font-size: 13px; color: #98a1ac"><span><b style="color: #2dd4bf">—</b> ремень A · пик 78 Гц</span><span><b style="color: #f97316">—</b> ремень B · пик 71 Гц</span></div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px">
+        <div style="border-radius: 20px; background: #15181d; padding: 14px 16px; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 13px; color: #98a1ac">Похожесть</span><span style="font-size: 36px; font-weight: 800; color: #fcd34d">87%</span><span style="font-size: 13px; color: #98a1ac">хорошо — от 90%</span></div>
+        <div style="border-radius: 20px; background: rgba(251, 191, 36, 0.08); padding: 14px 16px; font-size: 15px; line-height: 1.45; color: #e2e6ea">Ремень <b>B</b> слабее: его пик ниже. Подтяните натяжитель B на четверть оборота и проверьте снова.</div>
+        <div style="flex: 1"></div>
+        <a href="Belts.dc.html" style="height: 76px; border-radius: 20px; background: #2dd4bf; color: #042f2a; font-size: 17px; font-weight: 800; display: flex; flex-direction: column; align-items: center; justify-content: center"><span>Проверить снова</span><span style="font-size: 12px; font-weight: 600; opacity: 0.75">~3 мин · не трогайте принтер</span></a>
       </div>
     </div>
-  </sc-if>
+  </main>
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 800, "height": 480}}'>
-var ROWS = [
- {
-  "kind": "info",
-  "t": "Похожесть ремней",
-  "value": "87%",
-  "sub": "выше 90% — хорошо",
-  "id": "r0"
- },
- {
-  "kind": "action",
-  "t": "Проверить ремни",
-  "sub": "по диагоналям · ~3 мин",
-  "href": "Belts.dc.html",
-  "tone": "accent",
-  "id": "r1"
- },
- {
-  "kind": "info",
-  "t": "Совет",
-  "value": "подтяните ремень B",
-  "sub": "на четверть оборота натяжителя",
-  "id": "r2"
- }
-];
-
 class Component extends DCLogic {
-  constructor(props) {
-    super(props);
-    var st = {};
-    ROWS.forEach(function (r) { if (r.v !== undefined) st[r.id] = r.v; });
-    st._drag = null;
-    this.state = st;
-  }
-  fromPointer(e, r) {
-    var b = e.currentTarget.getBoundingClientRect();
-    var f = Math.max(0, Math.min(1, (b.bottom - e.clientY) / b.height));
-    var v = r.min + f * (r.max - r.min);
-    return Math.round(v / r.step) * r.step;
-  }
   renderVals() {
-    var self = this, s = this.state;
-    function fmt(r, v) { if (r.fmt === 'off0' && v === 0) return 'Выкл.'; if (v >= 10000) return (v / 1000).toFixed(1).replace('.0', '') + 'k' + (r.unit || ''); return (r.dec ? v.toFixed(r.dec) : String(v)).replace('-', '−') + (r.unit || ''); }
-    var rows = ROWS.map(function (r) {
-      var o = { kind: r.kind, title: r.t || '', sub: r.sub || '', href: r.href || '#',
-        isSection: r.kind === 'section', isLink: r.kind === 'link', isToggle: r.kind === 'toggle', isSlider: r.kind === 'slider',
-        isSeg: r.kind === 'seg', isStepper: r.kind === 'stepper', isFine: r.kind === 'fine', isPrimary: r.kind === 'action' && r.tone === 'accent', isSecondary: r.kind === 'action' && r.tone !== 'accent', isInfo: r.kind === 'info', actInk: r.tone === 'danger' ? '#fb7185' : '#f4f6f8',
-        value: r.value || '', hasIcon: !!r.ic, p0: (r.ic || [])[0] || '', p1: (r.ic || [])[1] || '', p2: (r.ic || [])[2] || '', p3: (r.ic || [])[3] || '', p4: (r.ic || [])[4] || '', p5: (r.ic || [])[5] || '', tone: r.tone === 'danger' ? '#fb7185' : r.tone === 'accent' ? '#2dd4bf' : '#f4f6f8',
-        actBg: r.tone === 'accent' ? '#2dd4bf' : '#1f242b', actFg: r.tone === 'accent' ? '#042f2a' : (r.tone === 'danger' ? '#fb7185' : '#f4f6f8') };
-      if (r.kind === 'toggle') {
-        var on = !!s[r.id];
-        o.aria = on ? 'true' : 'false'; o.track = on ? '#2dd4bf' : '#3a414a'; o.knob = on ? '30px' : '4px';
-        o.flip = function () { var n = {}; n[r.id] = !on; self.setState(n); };
-      }
-      if (r.kind === 'slider') {
-        var v = s[r.id];
-        o.label = fmt(r, v); o.pct = ((v - r.min) / (r.max - r.min) * 100).toFixed(1) + '%'; o.min = r.min; o.max = r.max; o.now = v;
-        o.down = function (e) { if (e.currentTarget.setPointerCapture) e.currentTarget.setPointerCapture(e.pointerId); var n = { _drag: r.id }; n[r.id] = self.fromPointer(e, r); self.setState(n); };
-        o.move = function (e) { if (self.state._drag !== r.id) return; var n = {}; n[r.id] = self.fromPointer(e, r); if (n[r.id] !== self.state[r.id]) self.setState(n); };
-        o.up = function () { if (self.state._drag) self.setState({ _drag: null }); };
-        var big = r.bstep || Math.max(r.step, (r.max - r.min) / 10);
-        o.dec = function () { var n = {}; n[r.id] = Math.max(r.min, +(self.state[r.id] - big).toFixed(4)); self.setState(n); };
-        o.inc = function () { var n = {}; n[r.id] = Math.min(r.max, +(self.state[r.id] + big).toFixed(4)); self.setState(n); };
-        o.decAria = r.t + ': меньше на ' + big; o.incAria = r.t + ': больше на ' + big;
-      }
-      if (r.kind === 'stepper') {
-        var w = s[r.id];
-        o.label = fmt(r, w);
-        o.dec = function () { var n = {}; n[r.id] = Math.max(r.min, +(w - r.step).toFixed(4)); self.setState(n); };
-        o.inc = function () { var n = {}; n[r.id] = Math.min(r.max, +(w + r.step).toFixed(4)); self.setState(n); };
-        o.edit = function () { self.setState({ _pad: r.id, _entry: '' }); };
-        o.editAria = r.t + ': ' + fmt(r, w) + ', ввести число';
-      }
-      if (r.kind === 'fine') {
-        var fv = s[r.id], big = r.steps[0], small = r.steps[1];
-        var setf = function (x) { var n = {}; n[r.id] = Math.min(r.max, Math.max(r.min, +x.toFixed(4))); self.setState(n); };
-        o.label = fmt(r, fv); o.valInk = fv !== r.def ? '#5eead4' : '#f4f6f8'; o.ring = fv !== r.def ? 'rgba(45, 212, 191, 0.4)' : 'transparent';
-        o.sub = fv !== r.def ? 'было ' + fmt(r, r.def) : (r.sub || '');
-        o.decBig = function () { setf(fv - big); }; o.decSmall = function () { setf(fv - small); };
-        o.incSmall = function () { setf(fv + small); }; o.incBig = function () { setf(fv + big); };
-        o.decBigLabel = '−' + big; o.decSmallLabel = '−' + small; o.incSmallLabel = '+' + small; o.incBigLabel = '+' + big;
-        o.decBigAria = r.t + ' минус ' + big; o.decSmallAria = r.t + ' минус ' + small; o.incSmallAria = r.t + ' плюс ' + small; o.incBigAria = r.t + ' плюс ' + big;
-        o.edit = function () { self.setState({ _pad: r.id, _entry: '' }); };
-        o.editAria = r.t + ': ' + fmt(r, fv) + ', ввести число';
-      }
-      if (r.kind === 'seg') {
-        o.opts = r.opts.map(function (lab, i) {
-          var sel = s[r.id] === i;
-          return { label: lab, checked: sel ? 'true' : 'false', bg: sel ? '#2dd4bf' : '#1f242b', fg: sel ? '#042f2a' : '#f4f6f8',
-            pick: function () { var n = {}; n[r.id] = i; self.setState(n); } };
-        });
-      }
-      return o;
-    });
-    var pr = null; ROWS.forEach(function (r) { if (r.id === s._pad) pr = r; });
-    var e = s._entry || '';
-    var num = e === '' || e === '-' ? NaN : parseFloat(e.replace(',', '.'));
-    var ok = !!pr && !isNaN(num) && num >= pr.min && num <= pr.max;
-    var keys = (pr && pr.min < 0) ? ['1', '2', '3', '4', '5', '6', '7', '8', '9', '±', '0', ','] : ['1', '2', '3', '4', '5', '6', '7', '8', '9', ',', '0', 'C'];
-    var bars = rows.filter(function (o) { return o.isSlider; });
-    return { rows: rows.filter(function (o) { return !o.isSlider; }), bars: bars,
-      padOpen: !!pr, padTitle: pr ? pr.t + (pr.unit ? ', ' + pr.unit.trim() : '') : '',
-      entryLabel: e === '' ? '—' : e, entryInk: e === '' ? '#66707b' : '#f4f6f8',
-      padHint: pr ? 'от ' + pr.min + ' до ' + pr.max : '', hintInk: (pr && !isNaN(num) && !ok) ? '#fb7185' : '#98a1ac',
-      okBg: ok ? '#2dd4bf' : '#1f242b', okFg: ok ? '#042f2a' : '#66707b',
-      padOk: function () { if (ok) { var n = { _pad: null }; n[pr.id] = num; self.setState(n); } },
-      padCancel: function () { self.setState({ _pad: null }); },
-      backspace: function () { self.setState({ _entry: (self.state._entry || '').slice(0, -1) }); },
-      keys: keys.map(function (k) {
-        return { label: k, aria: k === 'C' ? 'Очистить' : k === '±' ? 'Сменить знак' : k, bg: (k === 'C' || k === '±') ? '#1f242b' : '#252a31',
-          press: function () { var t = self.state._entry || ''; if (k === 'C') t = ''; else if (k === '±') t = t.charAt(0) === '-' ? t.slice(1) : '-' + t; else if (k === ',') { if (t.indexOf(',') < 0) t = (t === '' ? '0' : t) + ','; } else if (t.replace('-', '').length < 7) t = t + k; self.setState({ _entry: t }); } };
-      }) };
+    return {};
   }
 }
-
 </script>
 </body>
 </html>

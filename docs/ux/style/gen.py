@@ -503,7 +503,7 @@ def build():
     form('Calibrate', 'Калибровки', 'tools', 'Tools.dc.html', [
         L('Карта стола', 'профиль «default» · разброс 0.18 мм', 'BedMesh', icon='mesh', src='bed_mesh.profile_name, bed_mesh.mesh_matrix (max−min)'),
         L('Винты стола', 'сколько крутить каждый винт', 'Screws', icon='screw', src='screws_tilt_adjust (only if configured)'),
-        L('Щуп и Z', 'Z-offset бумагой, точность щупа', 'ProbeZ', icon='probe', src='probe.*, configfile.settings.probe.z_offset'),
+        L('Z-offset', 'точная подстройка, проверка датчика', 'ProbeZ', icon='probe', src='probe.*, configfile.settings.probe.z_offset'),
         L('Вибрации', 'MZV 54.2 Гц / EI 41.8 Гц', 'InputShaper', icon='wave', src='configfile.settings.input_shaper.shaper_type_x/freq_x/…'),
         L('Ремни', 'сравнить два ремня', 'Belts', icon='belt', src='requires resonance_tester + accel chip'),
         L('Нагрев (PID)', 'сопло и стол', 'PidCal', icon='thermo', src='configfile.settings.extruder.control/pid_kp…'),
@@ -518,12 +518,12 @@ def build():
         I('Передний правый', '✓ ровно', 'меньше 00:03'),
         A('Проверить снова', 'щуп коснётся у каждого винта', tone='accent'),
     ], intro='00:15 = 15 минут на циферблате, то есть четверть оборота.')
-    form('ProbeZ', 'Щуп и Z', 'tools', 'Calibrate.dc.html', [
-        I('Z-offset щупа', '0.000 мм', 'из конфига', src='configfile.settings.probe.z_offset'),
-        A('Калибровка бумагой', 'пошагово, с листом бумаги', 'ZWizard', tone='accent'),
-        A('Проверить точность щупа', '10 касаний в одной точке'),
+    form('ProbeZ', 'Z-offset', 'tools', 'Calibrate.dc.html', [
+        I('Сейчас', '−0.12 мм', 'сохранён в конфиге', src='gcode_move.homing_origin[2]; configfile.settings.probe.z_offset'),
+        A('Точная подстройка', 'на тестовом слое', 'ZWizard', tone='accent'),
+        A('Проверить точность датчика', '10 касаний в одной точке'),
         I('Последняя проверка', 'разброс 0.004 мм', 'норма до 0.01', src='PROBE_ACCURACY gcode response'),
-        S('НАСТРОЙКИ ЩУПА'),
+        S('ДАТЧИК'),
         I('Смещение X / Y', '0 / 0 мм', '', src='configfile.settings.probe.x_offset/y_offset'),
         I('Касаний на точку', '1', '', src='configfile.settings.probe.samples'),
     ])
@@ -532,12 +532,8 @@ def build():
         I('Ось Y', 'EI · 41.8 Гц', 'макс. ускорение 5 900', src='configfile.settings.input_shaper.*_y'),
         SG('Что измерить', '', ['Обе оси', 'X', 'Y'], 0),
         A('Измерить', 'не трогайте принтер во время замера', tone='accent'),
+        L('Последний замер', 'графики и все варианты сглаживания', 'ShaperResult', 'вчера'),
         A('Проверить датчик', 'шум акселерометра'),
-    ], intro='После замера покажем график и предложим сохранить.')
-    form('Belts', 'Ремни', 'tools', 'Calibrate.dc.html', [
-        I('Похожесть ремней', '87%', 'выше 90% — хорошо', src='TEST_RESONANCES AXIS=1,1 / 1,-1 → compare csv'),
-        A('Проверить ремни', 'по диагоналям · ~3 мин', tone='accent'),
-        I('Совет', 'подтяните ремень B', 'на четверть оборота натяжителя'),
     ])
     form('PidCal', 'Нагрев (PID)', 'tools', 'Calibrate.dc.html', [
         SG('Нагреватель', '', ['Сопло', 'Стол'], 0, src='heaters.available_heaters'),

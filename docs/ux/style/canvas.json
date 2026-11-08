@@ -339,7 +339,7 @@
       "y": 4260,
       "w": 800,
       "h": 480,
-      "title": "Щуп и Z",
+      "title": "Z-offset",
       "radius": 16,
       "is_interactive": true
     },
@@ -348,7 +348,7 @@
       "y": 4260,
       "w": 800,
       "h": 480,
-      "title": "Z-offset бумагой",
+      "title": "Точная подстройка Z",
       "radius": 16,
       "is_interactive": true
     },
@@ -611,6 +611,15 @@
       "h": 480,
       "title": "Меню",
       "radius": 16
+    },
+    "ShaperResult.dc.html": {
+      "x": 2640,
+      "y": 5460,
+      "w": 800,
+      "h": 480,
+      "title": "Вибрации · замер",
+      "is_interactive": true,
+      "radius": 16
     }
   },
   "order": [
@@ -653,6 +662,7 @@
     "ProbeZ.dc.html",
     "ZWizard.dc.html",
     "InputShaper.dc.html",
+    "ShaperResult.dc.html",
     "Belts.dc.html",
     "PidCal.dc.html",
     "PressureAdvance.dc.html",
