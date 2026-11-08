@@ -58,7 +58,7 @@ On the device it draws to `/dev/fb0` and reads touch from evdev. Overrides: `RIV
 | `crates/fbdev-platform` | Slint platform for the printer: `/dev/fb0` + evdev touch, pure Rust |
 | `crates/mock-moonraker` | fake Moonraker for development |
 | `ui/` | `.slint` theme, components, screens |
-| `assets/fonts` | Inter (SIL OFL 1.1), embedded into the binary |
+| `assets/fonts` | Inter (SIL OFL 1.1), subset to Latin + Cyrillic by `tools/subset-fonts.sh`, embedded into the binary |
 
 ## License
 

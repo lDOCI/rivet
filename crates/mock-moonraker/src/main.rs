@@ -5,7 +5,7 @@
 //! JSON-RPC API for Rivet.
 //!
 //! Run: `cargo run -p mock-moonraker` then `cargo run -p rivet`.
-//! Commands typed into the mock's terminal: `print`, `shutdown`, `ready`.
+//! Commands typed into the mock's terminal: `print [file name]`, `shutdown`, `ready`.
 
 use std::{
     net::SocketAddr,
@@ -114,10 +114,10 @@ impl Sim {
         }
     }
 
-    fn start_print(&mut self, delta: &mut Value) {
+    fn start_print(&mut self, filename: &str, delta: &mut Value) {
         self.set(
             json!({
-                "print_stats": { "state": "printing", "filename": "benchy_0.2mm_PLA_AD5M.gcode" },
+                "print_stats": { "state": "printing", "filename": filename },
                 "virtual_sdcard": { "progress": 0.0, "is_active": true },
                 "extruder": { "target": 210.0 },
                 "heater_bed": { "target": 60.0 },
@@ -168,7 +168,9 @@ async fn main() -> anyhow::Result<()> {
         .unwrap_or_else(|_| "127.0.0.1:7125".into())
         .parse()?;
     let listener = TcpListener::bind(addr).await?;
-    tracing::info!("mock Moonraker on ws://{addr}/websocket (type: print | shutdown | ready)");
+    tracing::info!(
+        "mock Moonraker on ws://{addr}/websocket (type: print [file] | shutdown | ready)"
+    );
 
     let sim: Shared = Arc::new(Mutex::new(Sim::new()));
     let (push_tx, _) = broadcast::channel::<Push>(64);
@@ -197,10 +199,16 @@ async fn main() -> anyhow::Result<()> {
             let mut lines = BufReader::new(tokio::io::stdin()).lines();
             while let Ok(Some(line)) = lines.next_line().await {
                 let mut sim = sim.lock().unwrap();
-                match line.trim() {
+                let line = line.trim();
+                let (cmd, arg) = line.split_once(' ').unwrap_or((line, ""));
+                match cmd {
                     "print" => {
+                        let filename = match arg.trim() {
+                            "" => "benchy_0.2mm_PLA_AD5M.gcode",
+                            name => name,
+                        };
                         let mut delta = json!({});
-                        sim.start_print(&mut delta);
+                        sim.start_print(filename, &mut delta);
                         let _ = push_tx.send(Push::Status(delta));
                     }
                     "shutdown" => {
