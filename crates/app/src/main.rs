@@ -1,11 +1,11 @@
-slint::include_modules!();
-
 #[cfg(all(feature = "fbdev", not(target_os = "linux")))]
 compile_error!("the `fbdev` backend is Linux-only: build it for the printer with `cargo printer`");
 
-mod engine;
-
-use engine::Command;
+use rivet::{
+    engine::{self, Command},
+    AppWindow,
+};
+use slint::ComponentHandle;
 use tokio::sync::mpsc;
 
 const DEFAULT_URL: &str = "ws://127.0.0.1:7125/websocket";

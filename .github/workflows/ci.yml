@@ -38,6 +38,18 @@ jobs:
       - name: tests
         run: cargo test --workspace
 
+      - name: render screens (software renderer, 800x480)
+        run: cargo run -q -p ui-snapshot -- snapshots
+
+      - name: upload screens
+        if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: screens
+          path: snapshots/*.png
+          retention-days: 7
+
   printer:
     name: printer build (armv7 musl)
     runs-on: ubuntu-24.04

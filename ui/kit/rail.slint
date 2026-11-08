@@ -1,0 +1,82 @@
+// Navigation rail: five sections and the emergency stop. design-code §4.
+import { Tokens } from "tokens.slint";
+import { Icons } from "icons.slint";
+import { Icon } from "controls.slint";
+
+component RailItem inherits Rectangle {
+    in property <string> label;
+    in property <string> icon;
+    in property <bool> active;
+    in property <bool> badge;
+    callback clicked;
+    height: 74px;
+    border-radius: 18px;
+    background: root.active ? Tokens.accent-soft : ta.pressed ? Tokens.surface-1 : transparent;
+    accessible-role: tab;
+    accessible-label: root.label;
+    accessible-checked: root.active;
+    VerticalLayout {
+        alignment: center;
+        spacing: 4px;
+        HorizontalLayout {
+            alignment: center;
+            Icon { d: root.icon; size: 28px; color: root.active ? Tokens.accent : #7d8792; }
+        }
+        Text {
+            text: root.label;
+            color: root.active ? Tokens.accent : #7d8792;
+            font-size: 11px;
+            font-weight: 600;
+            horizontal-alignment: center;
+        }
+    }
+    if root.badge: Rectangle {
+        x: parent.width - 26px;
+        y: 10px;
+        width: 10px;
+        height: 10px;
+        border-radius: 5px;
+        background: #fb4b5e;
+        border-width: 3px;
+        border-color: Tokens.rail;
+    }
+    ta := TouchArea { clicked => { root.clicked(); } }
+}
+
+export component Rail inherits Rectangle {
+    // "home" | "control" | "tools" | "settings" | "messages"
+    in property <string> active: "home";
+    in property <bool> unread;
+    callback navigate(string);
+    // One tap, no confirm (D-012).
+    callback emergency-stop;
+    width: Tokens.rail-width;
+    background: Tokens.rail;
+    VerticalLayout {
+        padding: 8px;
+        spacing: 4px;
+        RailItem { label: @tr("Home"); icon: Icons.home; active: root.active == "home"; clicked => { root.navigate("home"); } }
+        RailItem { label: @tr("Control"); icon: Icons.control; active: root.active == "control"; clicked => { root.navigate("control"); } }
+        RailItem { label: @tr("Tools"); icon: Icons.tools; active: root.active == "tools"; clicked => { root.navigate("tools"); } }
+        RailItem { label: @tr("Settings"); icon: Icons.settings; active: root.active == "settings"; clicked => { root.navigate("settings"); } }
+        RailItem { label: @tr("Messages"); icon: Icons.bell; active: root.active == "messages"; badge: root.unread; clicked => { root.navigate("messages"); } }
+        Rectangle { vertical-stretch: 1; }
+        Rectangle {
+            height: 74px;
+            border-radius: 18px;
+            background: stop.pressed ? #fb4b5e40 : Tokens.danger-soft;
+            accessible-role: button;
+            accessible-label: @tr("Emergency stop");
+            VerticalLayout {
+                alignment: center;
+                spacing: 4px;
+                HorizontalLayout {
+                    alignment: center;
+                    Icon { d: "M8 2.5h8l5.5 5.5v8L16 21.5H8L2.5 16V8z M12 7.5v5.5 M12 16.5v.5"; size: 28px; weight: 2; color: Tokens.danger; }
+                }
+                Text { text: @tr("Stop"); color: Tokens.danger; font-size: 11px; font-weight: 700; horizontal-alignment: center; }
+            }
+            stop := TouchArea { clicked => { root.emergency-stop(); } }
+        }
+    }
+}

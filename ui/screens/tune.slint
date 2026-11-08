@@ -1,0 +1,99 @@
+// Fans (range bars) and print tuning (fine steppers): the two value patterns.
+import { Tokens } from "../kit/tokens.slint";
+import { Header, SectionLabel } from "../kit/controls.slint";
+import { InfoRow, SegmentedRow, ActionRow, LinkRow } from "../kit/rows.slint";
+import { VBar, FineStepper } from "../kit/values.slint";
+import { ScrollList } from "../kit/scroll.slint";
+
+export component FansScreen inherits VerticalLayout {
+    horizontal-stretch: 1;
+    in-out property <float> part-fan: 60;
+    in-out property <float> chamber-fan: 0;
+    in property <bool> has-air-modes: true;
+    in-out property <int> air-mode: 0;
+    callback back;
+    callback set-fan(string, float);
+    padding: Tokens.pad;
+    padding-bottom: 0;
+    spacing: 10px;
+    Header { title: @tr("Fans"); back-clicked => { root.back(); } }
+    Text { text: @tr("The slicer may change the part fan on the next layer."); color: Tokens.text-dim; font-size: 15px; }
+    HorizontalLayout {
+        spacing: 16px;
+        vertical-stretch: 1;
+        HorizontalLayout {
+            spacing: 10px;
+            padding-bottom: Tokens.pad;
+            VBar { label: @tr("Part fan"); value <=> root.part-fan; off-at-zero: true; committed(v) => { root.set-fan("fan", v); } }
+            VBar { label: @tr("Chamber"); value <=> root.chamber-fan; off-at-zero: true; committed(v) => { root.set-fan("chamber_fan", v); } }
+        }
+        ScrollList {
+            horizontal-stretch: 1;
+            if root.has-air-modes: SegmentedRow {
+                title: @tr("Chamber air");
+                sub: "AD5M Pro";
+                options: [@tr("Off"), @tr("Filter"), @tr("Exhaust")];
+                selected <=> root.air-mode;
+            }
+            SectionLabel { text: @tr("AUTOMATIC"); }
+            InfoRow { title: @tr("Hotend"); sub: @tr("turns on by itself from 50°"); value: "100%"; }
+            InfoRow { title: @tr("Drivers"); sub: @tr("runs while the motors are on"); value: "0%"; }
+        }
+    }
+}
+
+export component PrintTuneScreen inherits VerticalLayout {
+    horizontal-stretch: 1;
+    in-out property <float> speed: 100;
+    in-out property <float> flow: 100;
+    in-out property <float> z-offset: -0.12;
+    in property <float> z-saved: -0.12;
+    callback back;
+    callback edit(string);
+    padding: Tokens.pad;
+    padding-bottom: 0;
+    spacing: 10px;
+
+    pure function signed(v: float, digits: int) -> string {
+        return (v < 0 ? "−" : "") + round(abs(v) * pow(10, digits)) / pow(10, digits);
+    }
+
+    Header { title: @tr("Print tuning"); back-clicked => { root.back(); } }
+    ScrollList {
+        vertical-stretch: 1;
+        FineStepper {
+            title: @tr("Speed");
+            sub: @tr("of the slicer speed");
+            label: round(root.speed) + "%";
+            changed: root.speed != 100;
+            was: "100%";
+            big: "10"; small: "1"; big-step: 10; small-step: 1;
+            step(d) => { root.speed = max(10, min(300, root.speed + d)); }
+            edit => { root.edit("speed"); }
+        }
+        FineStepper {
+            title: @tr("Flow");
+            sub: @tr("how much plastic");
+            label: round(root.flow) + "%";
+            changed: root.flow != 100;
+            was: "100%";
+            big: "5"; small: "1"; big-step: 5; small-step: 1;
+            step(d) => { root.flow = max(50, min(150, root.flow + d)); }
+            edit => { root.edit("flow"); }
+        }
+        FineStepper {
+            title: @tr("Z-offset, mm");
+            sub: @tr("applies at once");
+            label: root.signed(root.z-offset, 2);
+            changed: root.z-offset != root.z-saved;
+            was: root.signed(root.z-saved, 2);
+            big: "0.05"; small: "0.01"; big-step: 0.05; small-step: 0.01;
+            step(d) => { root.z-offset = round((root.z-offset + d) * 1000) / 1000; }
+            edit => { root.edit("z"); }
+        }
+        ActionRow { title: @tr("Save Z-offset"); sub: @tr("written after the print"); }
+        LinkRow { title: @tr("Temperatures"); sub: "сопло 240° · стол 80°"; }
+        LinkRow { title: @tr("Fans"); sub: "обдув 60%"; }
+        ActionRow { title: @tr("Reset speed and flow"); sub: @tr("back to 100%"); clicked => { root.speed = 100; root.flow = 100; } }
+    }
+}

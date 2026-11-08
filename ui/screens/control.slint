@@ -1,0 +1,92 @@
+import { Tokens } from "../kit/tokens.slint";
+import { Icons } from "../kit/icons.slint";
+import { Header } from "../kit/controls.slint";
+import { Tile } from "../kit/rows.slint";
+
+// Live mini gauge for the heating tile: arc, current value inside, name under.
+component MiniGauge inherits VerticalLayout {
+    in property <float> current;
+    in property <float> target;
+    in property <float> maximum;
+    in property <string> name;
+    spacing: 2px;
+    Rectangle {
+        width: 56px;
+        height: 56px;
+        Path {
+            width: 56px;
+            height: 56px;
+            viewbox-width: 120;
+            viewbox-height: 120;
+            stroke: #232831;
+            stroke-width: 6px;
+            stroke-line-cap: round;
+            // 270° arc, start bottom-left.
+            commands: "M26.06 93.94 A48 48 0 1 1 93.94 93.94";
+        }
+        Path {
+            width: 56px;
+            height: 56px;
+            viewbox-width: 120;
+            viewbox-height: 120;
+            stroke: root.target > 0 ? Tokens.heat-2 : #4a525c;
+            stroke-width: 6px;
+            stroke-line-cap: round;
+            // Sweep proportional to current/maximum.
+            property <float> f: max(0.001, min(1, root.current / root.maximum));
+            property <angle> end: 135deg + self.f * 270deg;
+            commands: "M26.06 93.94 A48 48 0 " + (self.f > 0.6667 ? "1" : "0") + " 1 " + (60 + 48 * cos(self.end)) + " " + (60 + 48 * sin(self.end));
+        }
+        Text {
+            text: round(root.current) + "°";
+            color: Tokens.text;
+            font-size: 15px;
+            font-weight: 800;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+    }
+    Text { text: root.name; color: Tokens.text-dim; font-size: 12px; font-weight: 600; horizontal-alignment: center; }
+}
+
+export component ControlScreen inherits VerticalLayout {
+    horizontal-stretch: 1;
+    in property <float> nozzle: 187;
+    in property <float> nozzle-target: 240;
+    in property <float> bed: 23;
+    in property <float> bed-target: 0;
+    in property <int> fan-percent: 60;
+    in property <int> light-percent: 70;
+    in property <int> speed-percent: 100;
+    in property <string> z-offset: "−0.12";
+    callback open(string);
+    padding: Tokens.pad;
+    spacing: Tokens.gap;
+    Header { title: @tr("Control"); back: false; }
+    GridLayout {
+        spacing: Tokens.gap;
+        vertical-stretch: 1;
+        Row {
+            Tile {
+                label: @tr("Heating");
+                sub: root.nozzle-target > 0 ? @tr("nozzle heating to {}°", round(root.nozzle-target)) : @tr("off");
+                clicked => { root.open("heating"); }
+                HorizontalLayout {
+                    spacing: 8px;
+                    alignment: start;
+                    MiniGauge { current: root.nozzle; target: root.nozzle-target; maximum: 350; name: @tr("nozzle"); }
+                    MiniGauge { current: root.bed; target: root.bed-target; maximum: 130; name: @tr("bed"); }
+                }
+            }
+            Tile { icon: Icons.move; label: @tr("Motion"); sub: @tr("axes, homing, motors"); clicked => { root.open("motion"); } }
+            Tile { icon: Icons.extruder; label: @tr("Extruder"); sub: @tr("extrude, load filament"); clicked => { root.open("extruder"); } }
+            Tile { icon: Icons.fan; value: root.fan-percent + "%"; label: @tr("Part fan"); clicked => { root.open("fans"); } }
+        }
+        Row {
+            Tile { icon: Icons.bulb; value: root.light-percent + "%"; label: @tr("Light"); clicked => { root.open("light"); } }
+            Tile { icon: Icons.gauge; value: root.speed-percent + "%"; label: @tr("Speed"); clicked => { root.open("speed"); } }
+            Tile { icon: Icons.zoff; value: root.z-offset; label: @tr("Z-offset, mm"); clicked => { root.open("zoffset"); } }
+            Tile { icon: Icons.plug; label: @tr("Devices"); sub: @tr("power, outputs"); clicked => { root.open("devices"); } }
+        }
+    }
+}

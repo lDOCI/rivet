@@ -1,0 +1,14 @@
+[package]
+name = "ui-snapshot"
+description = "Render Rivet screens to PNG at 800x480 for review against the prototype"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+anyhow.workspace = true
+rivet = { path = "../app", default-features = false }
+slint = { workspace = true, features = ["renderer-software"] }
+png = "0.17"

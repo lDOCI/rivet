@@ -1,0 +1,130 @@
+// Basic building blocks: icon, header, buttons. docs/ux/design-code.md §4.
+import { Tokens } from "tokens.slint";
+import { Icons } from "icons.slint";
+
+// 24x24 stroke icon from Icons.
+export component Icon inherits Path {
+    in property <string> d;
+    in property <color> color: Tokens.text;
+    in property <length> size: 26px;
+    in property <float> weight: 1.9;
+    width: root.size;
+    height: root.size;
+    viewbox-width: 24;
+    viewbox-height: 24;
+    commands: root.d;
+    stroke: root.color;
+    stroke-width: root.weight * root.size / 24;
+    stroke-line-cap: round;
+    fill: transparent;
+}
+
+export component BackButton inherits Rectangle {
+    callback clicked;
+    width: Tokens.touch;
+    height: Tokens.touch;
+    border-radius: Tokens.r-m;
+    background: ta.pressed ? Tokens.surface-2 : Tokens.surface-1;
+    accessible-role: button;
+    accessible-label: @tr("Back");
+    Icon {
+        d: "m15 18-6-6 6-6";
+        weight: 2.2;
+    }
+    ta := TouchArea {
+        clicked => { root.clicked(); }
+    }
+}
+
+// One header row: back · title · at most one action (as children).
+export component Header inherits HorizontalLayout {
+    in property <string> title;
+    in property <bool> back: true;
+    callback back-clicked;
+    height: Tokens.header;
+    spacing: 14px;
+    if root.back: BackButton {
+        clicked => { root.back-clicked(); }
+    }
+    Text {
+        text: root.title;
+        color: Tokens.text;
+        font-size: Tokens.title;
+        font-weight: 800;
+        vertical-alignment: center;
+        horizontal-stretch: 1;
+        overflow: elide;
+        accessible-role: text;
+    }
+    @children
+}
+
+// The one filled button per screen.
+export component PrimaryButton inherits Rectangle {
+    in property <string> text;
+    in property <string> sub;
+    in property <bool> enabled: true;
+    callback clicked;
+    min-height: Tokens.touch-primary;
+    border-radius: Tokens.r-m;
+    background: !root.enabled ? Tokens.surface-2 : ta.pressed ? Tokens.accent.darker(15%) : Tokens.accent;
+    accessible-role: button;
+    accessible-label: root.text;
+    VerticalLayout {
+        alignment: center;
+        spacing: 2px;
+        Text {
+            text: root.text;
+            color: root.enabled ? Tokens.accent-ink : Tokens.text-faint;
+            font-size: Tokens.row-title;
+            font-weight: 800;
+            horizontal-alignment: center;
+        }
+        if root.sub != "": Text {
+            text: root.sub;
+            color: root.enabled ? Tokens.accent-ink : Tokens.text-faint;
+            opacity: 0.75;
+            font-size: 13px;
+            horizontal-alignment: center;
+        }
+    }
+    ta := TouchArea {
+        enabled: root.enabled;
+        clicked => { root.clicked(); }
+    }
+}
+
+// Plain secondary button (surface fill), e.g. ± or a choice in a pair.
+export component SecondaryButton inherits Rectangle {
+    in property <string> text;
+    in property <length> font-size: 17px;
+    in property <color> fg: Tokens.text;
+    in property <bool> enabled: true;
+    callback clicked;
+    min-height: Tokens.touch;
+    min-width: Tokens.touch;
+    border-radius: Tokens.r-s;
+    background: ta.pressed ? Tokens.surface-3 : Tokens.surface-2;
+    opacity: root.enabled ? 1 : 0.4;
+    accessible-role: button;
+    accessible-label: root.text;
+    Text {
+        text: root.text;
+        color: root.fg;
+        font-size: root.font-size;
+        font-weight: 700;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    ta := TouchArea {
+        enabled: root.enabled;
+        clicked => { root.clicked(); }
+    }
+}
+
+export component SectionLabel inherits Text {
+    color: Tokens.text-faint;
+    font-size: Tokens.section;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}

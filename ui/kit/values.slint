@@ -1,0 +1,174 @@
+// Value controls. docs/ux/design-code.md §4:
+//   range value          → VBar (drag + ± under it)
+//   tuned during a print → FineStepper (two step sizes each side)
+//   exact number         → Stepper (tap the value for the keypad)
+import { Tokens } from "tokens.slint";
+import { SecondaryButton } from "controls.slint";
+
+// Vertical bar: label, value above, drag up/down, − / + below.
+export component VBar inherits VerticalLayout {
+    in property <string> label;
+    in property <float> minimum: 0;
+    in property <float> maximum: 100;
+    in property <float> step: 5;
+    in property <float> big-step: 10;
+    in property <string> unit: "%";
+    in property <bool> off-at-zero;
+    in-out property <float> value;
+    // Fired on release: commands go out once, not on every drag tick.
+    callback committed(float);
+    width: 108px;
+    spacing: 6px;
+
+    function clamp-step(v: float) -> float {
+        return max(root.minimum, min(root.maximum, round(v / root.step) * root.step));
+    }
+
+    Text {
+        text: root.label;
+        color: Tokens.text-dim;
+        font-size: Tokens.caption;
+        font-weight: 600;
+        horizontal-alignment: center;
+        overflow: elide;
+    }
+    Text {
+        text: root.off-at-zero && root.value == 0 ? @tr("Off") : round(root.value) + root.unit;
+        color: Tokens.text;
+        font-size: 24px;
+        font-weight: 800;
+        horizontal-alignment: center;
+    }
+    track := Rectangle {
+        vertical-stretch: 1;
+        min-height: 120px;
+        border-radius: Tokens.r-l;
+        background: Tokens.surface-1;
+        clip: true;
+        accessible-role: slider;
+        accessible-label: root.label;
+        accessible-value: round(root.value);
+        accessible-value-minimum: root.minimum;
+        accessible-value-maximum: root.maximum;
+        Rectangle {
+            y: parent.height - self.height;
+            height: parent.height * (root.value - root.minimum) / (root.maximum - root.minimum);
+            background: @linear-gradient(180deg, Tokens.accent-hi 0%, Tokens.accent 100%);
+        }
+        drag := TouchArea {
+            pointer-event(e) => {
+                if (e.kind == PointerEventKind.up) {
+                    root.committed(root.value);
+                }
+            }
+            moved => {
+                if (self.pressed) {
+                    root.value = root.clamp-step(root.minimum + (1 - self.mouse-y / track.height) * (root.maximum - root.minimum));
+                }
+            }
+            clicked => {
+                root.value = root.clamp-step(root.minimum + (1 - self.mouse-y / track.height) * (root.maximum - root.minimum));
+            }
+        }
+    }
+    HorizontalLayout {
+        spacing: 6px;
+        SecondaryButton {
+            text: "−";
+            font-size: 26px;
+            min-height: 56px;
+            clicked => {
+                root.value = root.clamp-step(root.value - root.big-step);
+                root.committed(root.value);
+            }
+        }
+        SecondaryButton {
+            text: "+";
+            font-size: 26px;
+            min-height: 56px;
+            clicked => {
+                root.value = root.clamp-step(root.value + root.big-step);
+                root.committed(root.value);
+            }
+        }
+    }
+}
+
+// − value + in a card. Tapping the value asks for the keypad.
+export component Stepper inherits Rectangle {
+    in property <string> title;
+    in property <string> sub;
+    in property <string> label; // formatted value with unit
+    callback decrement;
+    callback increment;
+    callback edit;
+    min-height: 84px;
+    border-radius: Tokens.r-m;
+    background: Tokens.surface-1;
+    HorizontalLayout {
+        padding-left: 18px;
+        padding-right: 10px;
+        spacing: 10px;
+        VerticalLayout {
+            alignment: center;
+            spacing: 2px;
+            horizontal-stretch: 1;
+            Text { text: root.title; color: Tokens.text; font-size: Tokens.row-title; font-weight: 700; overflow: elide; }
+            if root.sub != "": Text { text: root.sub; color: Tokens.text-dim; font-size: Tokens.caption; overflow: elide; }
+        }
+        SecondaryButton { width: 64px; height: 64px; y: (parent.height - 64px) / 2; text: "−"; font-size: 30px; clicked => { root.decrement(); } }
+        Rectangle {
+            width: 120px;
+            Text { text: root.label; color: Tokens.text; font-size: 22px; font-weight: 800; }
+            TouchArea { clicked => { root.edit(); } }
+        }
+        SecondaryButton { width: 64px; height: 64px; y: (parent.height - 64px) / 2; text: "+"; font-size: 30px; clicked => { root.increment(); } }
+    }
+}
+
+// Two step sizes each side, for values tuned during a print (speed, flow, Z).
+// A changed value turns accent and the caption says what it was.
+export component FineStepper inherits Rectangle {
+    in property <string> title;
+    in property <string> sub;
+    in property <string> label;      // formatted current value
+    in property <bool> changed;
+    in property <string> was;        // formatted original value
+    in property <string> big;        // e.g. "10"
+    in property <string> small;      // e.g. "1"
+    callback step(float);            // +/- big or small, in value units
+    callback edit;
+    in property <float> big-step;
+    in property <float> small-step;
+    min-height: 92px;
+    border-radius: Tokens.r-m;
+    background: Tokens.surface-1;
+    border-width: root.changed ? 2px : 0;
+    border-color: #2dd4bf66;
+    HorizontalLayout {
+        padding-left: 18px;
+        padding-right: 10px;
+        spacing: 8px;
+        VerticalLayout {
+            alignment: center;
+            spacing: 2px;
+            horizontal-stretch: 1;
+            Text { text: root.title; color: Tokens.text; font-size: Tokens.row-title; font-weight: 700; overflow: elide; }
+            Text {
+                text: root.changed ? @tr("was {}", root.was) : root.sub;
+                color: Tokens.text-dim;
+                font-size: Tokens.caption;
+                overflow: elide;
+            }
+        }
+        SecondaryButton { width: 64px; height: 64px; y: (parent.height - 64px) / 2; text: "−" + root.big; font-size: 16px; clicked => { root.step(-root.big-step); } }
+        SecondaryButton { width: 64px; height: 64px; y: (parent.height - 64px) / 2; text: "−" + root.small; font-size: 16px; clicked => { root.step(-root.small-step); } }
+        Rectangle {
+            width: 104px;
+            Text { text: root.label; color: root.changed ? Tokens.accent-hi : Tokens.text; font-size: 26px; font-weight: 800; }
+            TouchArea { clicked => { root.edit(); } }
+        }
+        SecondaryButton { width: 64px; height: 64px; y: (parent.height - 64px) / 2; text: "+" + root.small; font-size: 16px; clicked => { root.step(root.small-step); } }
+        SecondaryButton { width: 64px; height: 64px; y: (parent.height - 64px) / 2; text: "+" + root.big; font-size: 16px; clicked => { root.step(root.big-step); } }
+    }
+}

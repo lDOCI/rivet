@@ -1,0 +1,32 @@
+// Vertical list that shows a scrollbar whenever it can scroll (design-code §4).
+import { Tokens } from "tokens.slint";
+
+export component ScrollList inherits Rectangle {
+    in property <length> spacing: Tokens.gap-s;
+    flick := Flickable {
+        width: root.width - 14px;
+        x: 0;
+        height: root.height;
+        interactive: true;
+        VerticalLayout {
+            spacing: root.spacing;
+            padding-bottom: Tokens.pad;
+            @children
+        }
+    }
+    // Track and thumb; hidden when everything fits.
+    if flick.content-height > flick.height: Rectangle {
+        x: root.width - 8px;
+        width: 8px;
+        height: root.height - Tokens.pad;
+        border-radius: 4px;
+        background: Tokens.surface-1;
+        Rectangle {
+            width: parent.width;
+            border-radius: 4px;
+            background: #4a525c;
+            height: max(32px, parent.height * flick.height / flick.content-height);
+            y: (parent.height - self.height) * (-flick.content-y) / max(1px, flick.content-height - flick.height);
+        }
+    }
+}

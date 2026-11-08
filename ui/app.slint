@@ -1,5 +1,10 @@
 import { Palette, Metrics } from "theme.slint";
-import { TapButton, HeaterCard, NavItem } from "components.slint";
+import { TapButton, HeaterCard } from "components.slint";
+import { Tokens } from "kit/tokens.slint";
+import { Rail } from "kit/rail.slint";
+import { ControlScreen } from "screens/control.slint";
+import { SettingsScreen } from "screens/settings.slint";
+import { FansScreen, PrintTuneScreen } from "screens/tune.slint";
 
 // Embedded into the binary (see build.rs): the printer has no system fonts.
 import "../assets/fonts/Inter-Regular.ttf";
@@ -11,7 +16,7 @@ export component AppWindow inherits Window {
     height: 480px;
     default-font-family: "Inter";
     title: "Rivet";
-    background: Palette.bg;
+    background: Tokens.bg;
     default-font-size: 16px;
 
     // "ready" | "startup" | "error" | "klippy-offline" | "offline"
@@ -35,29 +40,27 @@ export component AppWindow inherits Window {
     callback emergency-stop();
     callback firmware-restart();
 
+    // Current screen. Rail sections: home, control, tools, settings, messages.
+    in-out property <string> screen: "home";
+
     property <bool> ready: root.link-state == "ready";
     property <bool> busy: root.ready && (root.print-state == "printing" || root.print-state == "paused");
 
     HorizontalLayout {
-        // Navigation rail. Only Home works in M0.
-        Rectangle {
-            width: 96px;
-            background: Palette.surface;
-
-            VerticalLayout {
-                padding: Metrics.gap;
-                spacing: Metrics.gap;
-                alignment: start;
-
-                NavItem { label: @tr("Home"); active: true; }
-                NavItem { label: @tr("Files"); }
-                NavItem { label: @tr("Control"); }
-                NavItem { label: @tr("Calibrate"); }
-                NavItem { label: @tr("Settings"); }
-            }
+        Rail {
+            active: root.screen == "fans" ? "control" : root.screen == "tune" ? "home" : root.screen;
+            navigate(section) => { root.screen = section; }
+            emergency-stop => { root.emergency-stop(); }
         }
 
-        VerticalLayout {
+        if root.screen == "control": ControlScreen {
+            open(target) => { root.screen = target == "fans" ? "fans" : root.screen; }
+        }
+        if root.screen == "settings": SettingsScreen { }
+        if root.screen == "fans": FansScreen { back => { root.screen = "control"; } }
+        if root.screen == "tune": PrintTuneScreen { back => { root.screen = "home"; } }
+
+        if root.screen == "home": VerticalLayout {
             padding: 16px;
             spacing: Metrics.gap;
 
