@@ -14,7 +14,7 @@ body{margin:0}
 a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
 </style>
 </helmet>
-<div style="width: 800px; height: 480px; display: flex; background: #0b0d10; color: #f4f6f8; font-family: Inter, system-ui, sans-serif; overflow: hidden">
+<div style="position: relative; width: 800px; height: 480px; display: flex; background: #0b0d10; color: #f4f6f8; font-family: Inter, system-ui, sans-serif; overflow: hidden">
   <dc-import name="NavRail" active="control" hint-size="88px,480px"></dc-import>
   <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px 20px 16px 16px; display: flex; flex-direction: column; gap: 4px">
     <div style="height: 64px; flex: none; display: flex; align-items: center; gap: 14px">
@@ -52,7 +52,7 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
           <button type="button" onClick="{{up}}" aria-label="На 5 градусов больше" style="width: 84px; height: 84px; flex: none; border: 0; border-radius: 22px; background: #1f242b; color: #f4f6f8; font: 500 36px Inter, system-ui, sans-serif; cursor: pointer">+</button>
         </div>
         <span style="font-size: 14px; color: #98a1ac; text-align: center">тяните точку на шкале или ±5°</span>
-        <button type="button" style="margin-top: 8px; height: 76px; border: 0; border-radius: 20px; background: #15181d; color: #f4f6f8; font: 600 17px Inter, system-ui, sans-serif; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer">
+        <button type="button" onClick="{{openPad}}" style="margin-top: 8px; height: 76px; border: 0; border-radius: 20px; background: #15181d; color: #f4f6f8; font: 600 17px Inter, system-ui, sans-serif; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"></rect><path d="M7 9h2"></path><path d="M11 9h2"></path><path d="M15 9h2"></path><path d="M7 13h2"></path><path d="M11 13h2"></path><path d="M15 13h2"></path><path d="M9 17h6"></path></svg>
           Ввести число
         </button>
@@ -60,13 +60,32 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
       </div>
     </div>
   </main>
+  <sc-if value="{{padOpen}}" hint-placeholder-val="{{ false }}">
+    <div role="dialog" aria-modal="true" aria-label="Ввести температуру сопла" style="position: absolute; inset: 0; background: rgba(5, 6, 8, 0.78); display: flex; align-items: center; justify-content: center">
+      <div style="width: 680px; height: 420px; box-sizing: border-box; border-radius: 28px; background: #15181d; padding: 20px; display: grid; grid-template-columns: 240px 1fr; gap: 20px">
+        <div style="display: flex; flex-direction: column; gap: 8px">
+          <span style="font-size: 15px; font-weight: 600; color: #98a1ac">Сопло, нагреть до</span>
+          <span aria-live="polite" style="height: 96px; border-radius: 20px; background: #0b0d10; display: flex; align-items: center; justify-content: center; font-size: 56px; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; color: {{entryInk}}">{{entryLabel}}</span>
+          <span style="font-size: 14px; color: {{hintInk}}; text-align: center">{{hint}}</span>
+          <div style="flex: 1"></div>
+          <button type="button" onClick="{{padOk}}" disabled="{{okDisabled}}" style="height: 80px; border: 0; border-radius: 22px; background: {{okBg}}; color: {{okFg}}; font: 800 19px Inter, system-ui, sans-serif; cursor: pointer">Готово</button>
+          <button type="button" onClick="{{padCancel}}" style="height: 64px; border: 0; border-radius: 20px; background: #1f242b; color: #f4f6f8; font: 600 16px Inter, system-ui, sans-serif; cursor: pointer">Отмена</button>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(4, minmax(0, 1fr)); gap: 8px">
+          <sc-for list="{{keys}}" as="k" hint-placeholder-count="12">
+            <button type="button" onClick="{{k.press}}" aria-label="{{k.aria}}" style="border: 0; border-radius: 20px; background: {{k.bg}}; color: #f4f6f8; font: 700 30px Inter, system-ui, sans-serif; font-variant-numeric: tabular-nums; cursor: pointer">{{k.label}}</button>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":800,"height":480}}'>
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { target: 240, dragging: false };
+    this.state = { target: 240, dragging: false, pad: false, entry: '' };
   }
   targetFromPointer(e) {
     var r = e.currentTarget.getBoundingClientRect();
@@ -83,6 +102,9 @@ class Component extends DCLogic {
     var arc = 565.5;
     var max = 300;
     var cur = 187;
+    var entry = this.state.entry;
+    var padNum = entry === '' ? -1 : parseInt(entry, 10);
+    var padValid = padNum >= 0 && padNum <= 280;
     var tf = Math.min(1, t / max);
     var a = (135 + tf * 270) * Math.PI / 180;
     return {
@@ -93,6 +115,30 @@ class Component extends DCLogic {
       down: function () { self.setState({ target: Math.max(0, t - 5) }); },
       up: function () { self.setState({ target: Math.min(280, t + 5) }); },
       off: function () { self.setState({ target: 0 }); },
+      padOpen: this.state.pad,
+      openPad: function () { self.setState({ pad: true, entry: '' }); },
+      padCancel: function () { self.setState({ pad: false }); },
+      padOk: function () { if (padValid) self.setState({ pad: false, target: padNum }); },
+      entryLabel: entry === '' ? '—' : entry + '°',
+      entryInk: entry === '' ? '#66707b' : '#f4f6f8',
+      hint: padNum > 280 ? 'максимум 280°' : 'от 0 до 280°',
+      hintInk: padNum > 280 ? '#fb7185' : '#98a1ac',
+      okDisabled: !padValid,
+      okBg: padValid ? '#2dd4bf' : '#1f242b',
+      okFg: padValid ? '#042f2a' : '#66707b',
+      keys: ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', '⌫'].map(function (k) {
+        var aria = k === 'C' ? 'Стереть всё' : k === '⌫' ? 'Стереть цифру' : k;
+        return {
+          label: k, aria: aria, bg: (k === 'C' || k === '⌫') ? '#1f242b' : '#252a31',
+          press: function () {
+            var e = self.state.entry;
+            if (k === 'C') e = '';
+            else if (k === '⌫') e = e.slice(0, -1);
+            else if (e.length < 3) e = (e === '0' ? '' : e) + k;
+            self.setState({ entry: e });
+          }
+        };
+      }),
       haloOpacity: this.state.dragging ? 0.18 : 0,
       dragStart: function (e) {
         var v = self.targetFromPointer(e);
