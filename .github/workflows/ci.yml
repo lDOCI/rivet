@@ -76,8 +76,13 @@ jobs:
           grep -q "starting Rivet" out.log
           grep -q "open framebuffer /nonexistent" out.log
 
+      # Only main keeps a binary, briefly: Actions storage is shared across the
+      # account, and a full quota must not fail an otherwise green build.
       - uses: actions/upload-artifact@v4
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        continue-on-error: true
         with:
           name: rivet-armv7-musl
           path: target/armv7-unknown-linux-musleabihf/release/rivet
           if-no-files-found: error
+          retention-days: 7
