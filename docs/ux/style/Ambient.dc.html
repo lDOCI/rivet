@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Заставка печати — Rivet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}
+</style>
+</helmet>
+<a href="Printing.dc.html" aria-label="Печать 42 процента, осталось 48 минут. Коснитесь, чтобы открыть" style="width: 800px; height: 480px; box-sizing: border-box; padding: 40px 48px; display: flex; align-items: center; gap: 48px; background: #050607; color: #f4f6f8; font-family: Inter, system-ui, sans-serif; overflow: hidden; position: relative">
+  <div style="position: relative; width: 360px; height: 360px; flex: none">
+    <svg width="360" height="360" viewBox="0 0 360 360" aria-hidden="true">
+      <defs><linearGradient id="amb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5eead4"></stop><stop offset="1" stop-color="#2dd4bf"></stop></linearGradient></defs>
+      <circle cx="180" cy="180" r="166" fill="none" stroke="#111418" stroke-width="16"></circle>
+      <circle cx="180" cy="180" r="166" fill="none" stroke="url(#amb)" stroke-width="16" stroke-linecap="round" stroke-dasharray="{{dash}}" transform="rotate(-90 180 180)"></circle>
+    </svg>
+    <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center">
+      <span style="font-size: 132px; font-weight: 800; letter-spacing: -0.05em; font-variant-numeric: tabular-nums; line-height: 1">{{pct}}<span style="font-size: 56px; color: #7d8792; letter-spacing: 0">%</span></span>
+    </div>
+  </div>
+  <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px">
+    <span style="font-size: 18px; font-weight: 600; color: #7d8792">Осталось</span>
+    <span style="font-size: 84px; font-weight: 800; line-height: 1; letter-spacing: -0.03em">48 мин</span>
+    <span style="font-size: 24px; color: #c7cdd4">готово в 15:20</span>
+    <span aria-hidden="true" style="height: 1px; background: #1a1e23; margin: 18px 0 12px"></span>
+    <span style="font-size: 18px; color: #98a1ac">Печать стенок · слой 76 из 180</span>
+    <span style="font-size: 18px; color: #98a1ac; font-variant-numeric: tabular-nums">сопло 240° · стол 80°</span>
+  </div>
+  <span style="position: absolute; right: 48px; bottom: 22px; font-size: 14px; color: #4a525c">Коснитесь, чтобы открыть</span>
+</a>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"progress":{"editor":"range","min":0,"max":100,"step":1,"default":42},"$preview":{"width":800,"height":480}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var pct = Math.round(this.props.progress ?? 42);
+    var c = 2 * Math.PI * 166;
+    return { pct: pct, dash: (c * pct / 100).toFixed(1) + ' ' + c.toFixed(1) };
+  }
+}
+</script>
+</body>
+</html>

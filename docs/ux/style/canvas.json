@@ -1,0 +1,19 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-11-08T03:25:00Z" },
+  "title": "Rivet — визуальный стиль",
+  "launch": { "view": "canvas" },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": { "x": 0, "y": 0, "w": 800, "h": 480, "title": "Главная", "is_interactive": true, "radius": 16 },
+    "Printing.dc.html": { "x": 880, "y": 0, "w": 800, "h": 480, "title": "Печать", "is_interactive": true, "radius": 16 },
+    "Heating.dc.html": { "x": 1760, "y": 0, "w": 800, "h": 480, "title": "Нагрев сопла", "is_interactive": true, "radius": 16 },
+    "Ambient.dc.html": { "x": 2640, "y": 0, "w": 800, "h": 480, "title": "Заставка во время печати", "is_interactive": true, "radius": 16 },
+    "NavRail.dc.html": { "x": 0, "y": 720, "w": 88, "h": 480, "title": "Компонент · меню" }
+  },
+  "order": ["Main.dc.html", "Printing.dc.html", "Heating.dc.html", "Ambient.dc.html", "NavRail.dc.html"],
+  "notes": {
+    "rowHero": { "x": 0, "y": -260, "text": "Новый визуальный стиль — 4 экрана-образца", "kind": "title1", "maxW": 3440 }
+  },
+  "designSystems": []
+}
