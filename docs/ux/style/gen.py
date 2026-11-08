@@ -503,13 +503,6 @@ def build():
         I('Экструдер', '0.50 А', 'TMC2209'),
         ST('Ток мотора X', 'до перезапуска', 0.8, 0.1, 2, 0.05, ' А', 2),
     ])
-    form('Limits', 'Лимиты', 'tools', 'Tools.dc.html', [
-        SL('Скорость', 'макс. мм/с', 600, 50, 600, 10, '', src='toolhead.max_velocity (max from configfile.settings.printer.max_velocity)'),
-        SL('Ускорение', 'мм/с²', 20000, 1000, 20000, 500, '', src='toolhead.max_accel'),
-        SL('Cruise ratio', 'мин. доля крейсерской', 0.5, 0, 1, 0.05, '', src='toolhead.minimum_cruise_ratio', dec=2),
-        SL('Углы', 'скорость в углах', 25, 1, 50, 1, '', src='toolhead.square_corner_velocity'),
-        A('Вернуть как в конфиге', ''),
-    ], intro='Меняется сразу и сбрасывается после перезапуска Klipper.')
     form('Macros', 'Макросы', 'tools', 'Tools.dc.html', [
         S('ИЗБРАННЫЕ'),
         L('LOAD_FILAMENT', 'Manual filament loading', 'MacroRun', src='gcode_macro *.description via configfile'),

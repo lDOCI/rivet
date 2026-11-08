@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>Лимиты — Rivet</title>
+<title>Лимиты движения — Rivet</title>
 <script src="./support.js"></script>
 </head>
 <body>
@@ -20,202 +20,104 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
 </helmet>
 <div style="position: relative; width: 800px; height: 480px; display: flex; background: #0b0d10; color: #f4f6f8; font-family: Inter, system-ui, sans-serif; overflow: hidden">
   <dc-import name="NavRail" active="tools" hint-size="88px,480px"></dc-import>
-  <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px 16px 0 16px; display: flex; flex-direction: column; gap: 10px">
-    <div style="height: 64px; flex: none; display: flex; align-items: center; gap: 14px"><a href="Tools.dc.html" aria-label="Назад" style="width: 64px; height: 64px; flex: none; border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></a><h1 style="margin: 0; flex: 1; font-size: 26px; font-weight: 800; letter-spacing: -0.02em">Лимиты</h1></div>
-    <p style="margin: 0; font-size: 15px; line-height: 1.45; color: #98a1ac">Меняется сразу и сбрасывается после перезапуска Klipper.</p>
-    <div style="flex: 1; min-height: 0; display: flex; gap: 16px">
-    <div style="flex: none; display: flex; gap: 10px; padding-bottom: 16px">
-      <sc-for list="{{bars}}" as="b" hint-placeholder-count="2">
-        <div style="width: 108px; display: flex; flex-direction: column; gap: 6px">
-          <span style="font-size: 14px; font-weight: 600; color: #98a1ac; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{b.title}}</span>
-          <span aria-live="polite" style="font-size: 24px; font-weight: 800; text-align: center; font-variant-numeric: tabular-nums">{{b.label}}</span>
-          <div role="slider" aria-label="{{b.title}}" aria-valuemin="{{b.min}}" aria-valuemax="{{b.max}}" aria-valuenow="{{b.now}}" onPointerDown="{{b.down}}" onPointerMove="{{b.move}}" onPointerUp="{{b.up}}" onPointerCancel="{{b.up}}" style="flex: 1; min-height: 120px; position: relative; border-radius: 24px; background: #15181d; overflow: hidden; touch-action: none; cursor: grab">
-            <span aria-hidden="true" style="position: absolute; left: 0; right: 0; bottom: 0; height: {{b.pct}}; background: linear-gradient(180deg, #5eead4, #2dd4bf)"></span>
-          </div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px">
-            <button type="button" onClick="{{b.dec}}" aria-label="{{b.decAria}}" style="height: 56px; border: 0; border-radius: 16px; background: #1f242b; color: #f4f6f8; font: 500 26px Inter, system-ui, sans-serif; cursor: pointer">−</button>
-            <button type="button" onClick="{{b.inc}}" aria-label="{{b.incAria}}" style="height: 56px; border: 0; border-radius: 16px; background: #1f242b; color: #f4f6f8; font: 500 26px Inter, system-ui, sans-serif; cursor: pointer">+</button>
-          </div>
-        </div>
-      </sc-for>
-    </div>
-    <div class="scroll" style="flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; padding-bottom: 16px">
-      <sc-for list="{{rows}}" as="r" hint-placeholder-count="6">
-        <sc-if value="{{r.isSection}}" hint-placeholder-val="{{ false }}"><span style="margin: 8px 4px 0; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; color: #66707b">{{r.title}}</span></sc-if>
-        <sc-if value="{{r.isLink}}" hint-placeholder-val="{{ true }}">
-          <a href="{{r.href}}" style="min-height: 72px; flex: none; border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; gap: 14px; padding: 0 18px">
-            <sc-if value="{{r.hasIcon}}" hint-placeholder-val="{{ false }}"><span aria-hidden="true" style="width: 44px; height: 44px; flex: none; border-radius: 14px; background: #1f242b; color: #2dd4bf; display: flex; align-items: center; justify-content: center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{r.p0}}"></path><path d="{{r.p1}}"></path><path d="{{r.p2}}"></path><path d="{{r.p3}}"></path><path d="{{r.p4}}"></path><path d="{{r.p5}}"></path></svg></span></sc-if>
-            <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 18px; font-weight: 700">{{r.title}}</span><span style="font-size: 14px; color: #98a1ac">{{r.sub}}</span></span>
-            <span style="font-size: 16px; color: #c7cdd4; white-space: nowrap">{{r.value}}</span>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#66707b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
-          </a>
-        </sc-if>
-        <sc-if value="{{r.isInfo}}" hint-placeholder-val="{{ false }}">
-          <div style="min-height: 64px; flex: none; border-radius: 20px; background: #15181d; display: flex; align-items: center; gap: 14px; padding: 0 18px">
-            <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 17px; font-weight: 600">{{r.title}}</span><span style="font-size: 14px; color: #98a1ac">{{r.sub}}</span></span>
-            <span style="font-size: 17px; font-weight: 700; color: {{r.tone}}; font-variant-numeric: tabular-nums; white-space: nowrap">{{r.value}}</span>
-          </div>
-        </sc-if>
-        <sc-if value="{{r.isToggle}}" hint-placeholder-val="{{ false }}">
-          <button type="button" role="switch" aria-checked="{{r.aria}}" onClick="{{r.flip}}" style="min-height: 72px; flex: none; border: 0; border-radius: 20px; background: #15181d; color: #f4f6f8; padding: 0 18px; display: flex; align-items: center; gap: 14px; font-family: Inter, system-ui, sans-serif; text-align: left; cursor: pointer">
-            <span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 18px; font-weight: 700">{{r.title}}</span><span style="font-size: 14px; color: #98a1ac">{{r.sub}}</span></span>
-            <span aria-hidden="true" style="width: 60px; height: 34px; flex: none; border-radius: 17px; background: {{r.track}}; position: relative"><span style="position: absolute; top: 4px; left: {{r.knob}}; width: 26px; height: 26px; border-radius: 13px; background: #ffffff"></span></span>
-          </button>
-        </sc-if>
-        <sc-if value="{{r.isSlider}}" hint-placeholder-val="{{ false }}">
-          <div style="min-height: 84px; flex: none; border-radius: 20px; background: #15181d; padding: 0 12px 0 18px; display: flex; align-items: center; gap: 16px">
-            <span style="width: 170px; flex: none; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 18px; font-weight: 700">{{r.title}}</span><span style="font-size: 14px; color: #98a1ac">{{r.sub}}</span></span>
-            <div role="slider" aria-label="{{r.title}}" aria-valuemin="{{r.min}}" aria-valuemax="{{r.max}}" aria-valuenow="{{r.now}}" onPointerDown="{{r.down}}" onPointerMove="{{r.move}}" onPointerUp="{{r.up}}" onPointerCancel="{{r.up}}" style="flex: 1; height: 60px; border-radius: 18px; background: #1f242b; position: relative; overflow: hidden; touch-action: none; cursor: grab">
-              <span aria-hidden="true" style="position: absolute; left: 0; top: 0; bottom: 0; width: {{r.pct}}; background: linear-gradient(90deg, #2dd4bf, #5eead4)"></span>
-            </div>
-            <span style="width: 86px; flex: none; text-align: right; font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums">{{r.label}}</span>
-          </div>
-        </sc-if>
-        <sc-if value="{{r.isStepper}}" hint-placeholder-val="{{ false }}">
-          <div style="min-height: 84px; flex: none; border-radius: 20px; background: #15181d; padding: 0 10px 0 18px; display: flex; align-items: center; gap: 10px">
-            <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 18px; font-weight: 700">{{r.title}}</span><span style="font-size: 14px; color: #98a1ac">{{r.sub}}</span></span>
-            <button type="button" onClick="{{r.dec}}" aria-label="Меньше" style="width: 64px; height: 64px; border: 0; border-radius: 18px; background: #1f242b; color: #f4f6f8; font: 500 30px Inter, system-ui, sans-serif; cursor: pointer">−</button>
-            <span style="width: 120px; text-align: center; font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums">{{r.label}}</span>
-            <button type="button" onClick="{{r.inc}}" aria-label="Больше" style="width: 64px; height: 64px; border: 0; border-radius: 18px; background: #1f242b; color: #f4f6f8; font: 500 30px Inter, system-ui, sans-serif; cursor: pointer">+</button>
-          </div>
-        </sc-if>
-        <sc-if value="{{r.isSeg}}" hint-placeholder-val="{{ false }}">
-          <div style="min-height: 84px; flex: none; border-radius: 20px; background: #15181d; padding: 10px 10px 10px 18px; box-sizing: border-box; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px">
-            <span style="flex: 1 1 150px; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 18px; font-weight: 700">{{r.title}}</span><span style="font-size: 14px; color: #98a1ac">{{r.sub}}</span></span>
-            <div role="radiogroup" aria-label="{{r.title}}" style="flex: 1 1 280px; display: flex; gap: 6px">
-              <sc-for list="{{r.opts}}" as="o" hint-placeholder-count="3">
-                <button type="button" role="radio" aria-checked="{{o.checked}}" onClick="{{o.pick}}" style="flex: 1; height: 64px; border: 0; border-radius: 16px; background: {{o.bg}}; color: {{o.fg}}; font: 700 15px Inter, system-ui, sans-serif; cursor: pointer">{{o.label}}</button>
-              </sc-for>
+  <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+    <div style="height: 64px; flex: none; display: flex; align-items: center; gap: 14px"><a href="Tools.dc.html" aria-label="Назад" style="width: 64px; height: 64px; flex: none; border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></a><h1 style="margin: 0; flex: 1; font-size: 26px; font-weight: 800; letter-spacing: -0.02em">Лимиты движения</h1><button type="button" onClick="{{resetAll}}" disabled="{{noneChanged}}" style="height: 64px; padding: 0 18px; border: 0; border-radius: 20px; background: {{resetBg}}; color: {{resetFg}}; font: 700 15px Inter, system-ui, sans-serif; cursor: pointer">Вернуть как в конфиге</button></div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px">
+        <sc-for list="{{main}}" as="m" hint-placeholder-count="2">
+          <div style="border-radius: 22px; background: #15181d; box-shadow: inset 0 0 0 2px {{m.ring}}; padding: 12px; display: flex; flex-direction: column; gap: 10px; ">
+            <span style="padding: 0 6px; display: flex; align-items: baseline; gap: 8px"><span style="flex: 1; font-size: 20px; font-weight: 700">{{m.title}}</span><span style="font-size: 13px; font-weight: 600; color: {{m.cfgInk}}; white-space: nowrap">{{m.cfg}}</span></span>
+            <span style="padding: 0 6px; margin-top: -6px; font-size: 14px; color: #98a1ac">{{m.hint}}</span>
+            <div style="display: flex; gap: 8px">
+              <button type="button" onClick="{{m.dec}}" aria-label="{{m.decAria}}" style="width: 72px; height: 76px; flex: none; border: 0; border-radius: 18px; background: #1f242b; color: #f4f6f8; font: 500 30px Inter, system-ui, sans-serif; cursor: pointer">−</button>
+              <button type="button" onClick="{{m.edit}}" aria-label="{{m.editAria}}" style="flex: 1; height: 76px; border: 0; border-radius: 18px; background: #0b0d10; color: {{m.valInk}}; font-family: Inter, system-ui, sans-serif; display: flex; align-items: baseline; justify-content: center; gap: 6px; padding-top: 14px; box-sizing: border-box; cursor: pointer"><span style="font-size: 32px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1">{{m.value}}</span><span style="font-size: 13px; color: #98a1ac">{{m.unit}}</span></button>
+              <button type="button" onClick="{{m.inc}}" aria-label="{{m.incAria}}" style="width: 72px; height: 76px; flex: none; border: 0; border-radius: 18px; background: #1f242b; color: #f4f6f8; font: 500 30px Inter, system-ui, sans-serif; cursor: pointer">+</button>
             </div>
           </div>
-        </sc-if>
-        <sc-if value="{{r.isAction}}" hint-placeholder-val="{{ false }}">
-          <a href="{{r.href}}" style="min-height: 72px; flex: none; border-radius: 20px; background: {{r.actBg}}; color: {{r.actFg}}; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 8px 18px; box-sizing: border-box; text-align: center"><span style="font-size: 18px; font-weight: 800">{{r.title}}</span><span style="font-size: 13px; opacity: 0.75">{{r.sub}}</span></a>
-        </sc-if>
-      </sc-for>
+        </sc-for>
     </div>
+    <span style="margin: 4px 4px 0; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; color: #66707b">ТОНКАЯ НАСТРОЙКА</span>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px">
+        <sc-for list="{{fine}}" as="m" hint-placeholder-count="2">
+          <div style="border-radius: 22px; background: #15181d; box-shadow: inset 0 0 0 2px {{m.ring}}; padding: 12px; display: flex; flex-direction: column; gap: 10px; ">
+            <span style="padding: 0 6px; display: flex; align-items: baseline; gap: 8px"><span style="flex: 1; font-size: 17px; font-weight: 700">{{m.title}}</span><span style="font-size: 13px; font-weight: 600; color: {{m.cfgInk}}; white-space: nowrap">{{m.cfg}}</span></span>
+            <span style="padding: 0 6px; margin-top: -6px; font-size: 14px; color: #98a1ac">{{m.hint}}</span>
+            <div style="display: flex; gap: 8px">
+              <button type="button" onClick="{{m.dec}}" aria-label="{{m.decAria}}" style="width: 72px; height: 64px; flex: none; border: 0; border-radius: 18px; background: #1f242b; color: #f4f6f8; font: 500 30px Inter, system-ui, sans-serif; cursor: pointer">−</button>
+              <button type="button" onClick="{{m.edit}}" aria-label="{{m.editAria}}" style="flex: 1; height: 64px; border: 0; border-radius: 18px; background: #0b0d10; color: {{m.valInk}}; font-family: Inter, system-ui, sans-serif; display: flex; align-items: baseline; justify-content: center; gap: 6px; padding-top: 14px; box-sizing: border-box; cursor: pointer"><span style="font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1">{{m.value}}</span><span style="font-size: 13px; color: #98a1ac">{{m.unit}}</span></button>
+              <button type="button" onClick="{{m.inc}}" aria-label="{{m.incAria}}" style="width: 72px; height: 64px; flex: none; border: 0; border-radius: 18px; background: #1f242b; color: #f4f6f8; font: 500 30px Inter, system-ui, sans-serif; cursor: pointer">+</button>
+            </div>
+          </div>
+        </sc-for>
     </div>
+    <div style="flex: 1"></div>
+    <span style="font-size: 14px; color: #98a1ac">Действует до перезапуска Klipper. Удобно, чтобы печатать тише или проверить, не в ускорении ли дело.</span>
   </main>
+  <sc-if value="{{padOpen}}" hint-placeholder-val="{{ false }}">
+    <div role="dialog" aria-modal="true" aria-label="Ввести значение" style="position: absolute; inset: 0; background: rgba(5, 6, 8, 0.78); display: flex; align-items: center; justify-content: center">
+      <div style="width: 680px; height: 420px; box-sizing: border-box; border-radius: 28px; background: #15181d; padding: 20px; display: grid; grid-template-columns: 240px 1fr; gap: 20px">
+        <div style="display: flex; flex-direction: column; gap: 8px">
+          <span style="font-size: 15px; font-weight: 600; color: #98a1ac">{{padTitle}}</span>
+          <span aria-live="polite" style="height: 96px; border-radius: 20px; background: #0b0d10; display: flex; align-items: center; justify-content: center; font-size: 44px; font-weight: 800; font-variant-numeric: tabular-nums; color: {{entryInk}}">{{entryLabel}}</span>
+          <span style="font-size: 14px; color: {{hintInk}}; text-align: center">{{padHint}}</span>
+          <div style="flex: 1"></div>
+          <button type="button" onClick="{{padOk}}" style="height: 80px; border: 0; border-radius: 22px; background: {{okBg}}; color: {{okFg}}; font: 800 19px Inter, system-ui, sans-serif; cursor: pointer">Готово</button>
+          <button type="button" onClick="{{padCancel}}" style="height: 64px; border: 0; border-radius: 20px; background: #1f242b; color: #f4f6f8; font: 600 16px Inter, system-ui, sans-serif; cursor: pointer">Отмена</button>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(4, minmax(0, 1fr)); gap: 8px">
+            <sc-for list="{{keys}}" as="k" hint-placeholder-count="12"><button type="button" onClick="{{k.press}}" aria-label="{{k.aria}}" style="border: 0; border-radius: 18px; background: {{k.bg}}; color: #f4f6f8; font: 700 28px Inter, system-ui, sans-serif; cursor: pointer">{{k.label}}</button></sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 800, "height": 480}}'>
-var ROWS = [
- {
-  "kind": "slider",
-  "t": "Скорость",
-  "sub": "макс. мм/с",
-  "v": 600,
-  "min": 50,
-  "max": 600,
-  "step": 10,
-  "unit": "",
-  "dec": 0,
-  "id": "r0"
- },
- {
-  "kind": "slider",
-  "t": "Ускорение",
-  "sub": "мм/с²",
-  "v": 20000,
-  "min": 1000,
-  "max": 20000,
-  "step": 500,
-  "unit": "",
-  "dec": 0,
-  "id": "r1"
- },
- {
-  "kind": "slider",
-  "t": "Cruise ratio",
-  "sub": "мин. доля крейсерской",
-  "v": 0.5,
-  "min": 0,
-  "max": 1,
-  "step": 0.05,
-  "unit": "",
-  "dec": 2,
-  "id": "r2"
- },
- {
-  "kind": "slider",
-  "t": "Углы",
-  "sub": "скорость в углах",
-  "v": 25,
-  "min": 1,
-  "max": 50,
-  "step": 1,
-  "unit": "",
-  "dec": 0,
-  "id": "r3"
- },
- {
-  "kind": "action",
-  "t": "Вернуть как в конфиге",
-  "sub": "",
-  "href": "Limits.dc.html",
-  "id": "r4"
- }
-];
-
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    var st = {};
-    ROWS.forEach(function (r) { if (r.v !== undefined) st[r.id] = r.v; });
-    st._drag = null;
-    this.state = st;
-  }
-  fromPointer(e, r) {
-    var b = e.currentTarget.getBoundingClientRect();
-    var f = Math.max(0, Math.min(1, (b.bottom - e.clientY) / b.height));
-    var v = r.min + f * (r.max - r.min);
-    return Math.round(v / r.step) * r.step;
+    this.state = { v: { vel: 600, acc: 20000, scv: 25, mcr: 0.5 }, pad: null, entry: '' };
   }
   renderVals() {
-    var self = this, s = this.state;
-    function fmt(r, v) { if (r.fmt === 'off0' && v === 0) return 'Выкл.'; if (v >= 10000) return (v / 1000).toFixed(1).replace('.0', '') + 'k' + (r.unit || ''); return (r.dec ? v.toFixed(r.dec) : String(v)) + (r.unit || ''); }
-    var rows = ROWS.map(function (r) {
-      var o = { kind: r.kind, title: r.t || '', sub: r.sub || '', href: r.href || '#',
-        isSection: r.kind === 'section', isLink: r.kind === 'link', isToggle: r.kind === 'toggle', isSlider: r.kind === 'slider',
-        isSeg: r.kind === 'seg', isStepper: r.kind === 'stepper', isAction: r.kind === 'action', isInfo: r.kind === 'info',
-        value: r.value || '', hasIcon: !!r.ic, p0: (r.ic || [])[0] || '', p1: (r.ic || [])[1] || '', p2: (r.ic || [])[2] || '', p3: (r.ic || [])[3] || '', p4: (r.ic || [])[4] || '', p5: (r.ic || [])[5] || '', tone: r.tone === 'danger' ? '#fb7185' : r.tone === 'accent' ? '#2dd4bf' : '#f4f6f8',
-        actBg: r.tone === 'accent' ? '#2dd4bf' : '#1f242b', actFg: r.tone === 'accent' ? '#042f2a' : (r.tone === 'danger' ? '#fb7185' : '#f4f6f8') };
-      if (r.kind === 'toggle') {
-        var on = !!s[r.id];
-        o.aria = on ? 'true' : 'false'; o.track = on ? '#2dd4bf' : '#3a414a'; o.knob = on ? '30px' : '4px';
-        o.flip = function () { var n = {}; n[r.id] = !on; self.setState(n); };
-      }
-      if (r.kind === 'slider') {
-        var v = s[r.id];
-        o.label = fmt(r, v); o.pct = ((v - r.min) / (r.max - r.min) * 100).toFixed(1) + '%'; o.min = r.min; o.max = r.max; o.now = v;
-        o.down = function (e) { if (e.currentTarget.setPointerCapture) e.currentTarget.setPointerCapture(e.pointerId); var n = { _drag: r.id }; n[r.id] = self.fromPointer(e, r); self.setState(n); };
-        o.move = function (e) { if (self.state._drag !== r.id) return; var n = {}; n[r.id] = self.fromPointer(e, r); if (n[r.id] !== self.state[r.id]) self.setState(n); };
-        o.up = function () { if (self.state._drag) self.setState({ _drag: null }); };
-        var big = r.bstep || Math.max(r.step, (r.max - r.min) / 10);
-        o.dec = function () { var n = {}; n[r.id] = Math.max(r.min, +(self.state[r.id] - big).toFixed(4)); self.setState(n); };
-        o.inc = function () { var n = {}; n[r.id] = Math.min(r.max, +(self.state[r.id] + big).toFixed(4)); self.setState(n); };
-        o.decAria = r.t + ': меньше на ' + big; o.incAria = r.t + ': больше на ' + big;
-      }
-      if (r.kind === 'stepper') {
-        var w = s[r.id];
-        o.label = fmt(r, w);
-        o.dec = function () { var n = {}; n[r.id] = Math.max(r.min, +(w - r.step).toFixed(4)); self.setState(n); };
-        o.inc = function () { var n = {}; n[r.id] = Math.min(r.max, +(w + r.step).toFixed(4)); self.setState(n); };
-      }
-      if (r.kind === 'seg') {
-        o.opts = r.opts.map(function (lab, i) {
-          var sel = s[r.id] === i;
-          return { label: lab, checked: sel ? 'true' : 'false', bg: sel ? '#2dd4bf' : '#1f242b', fg: sel ? '#042f2a' : '#f4f6f8',
-            pick: function () { var n = {}; n[r.id] = i; self.setState(n); } };
-        });
-      }
-      return o;
-    });
-    var bars = rows.filter(function (o) { return o.isSlider; });
-    return { rows: rows.filter(function (o) { return !o.isSlider; }), bars: bars };
+    var self = this, st = this.state;
+    var defs = {
+      vel: { title: 'Скорость', hint: 'самая большая скорость головы', unit: 'мм/с', cfg: 600, min: 10, max: 600, step: 50, dec: 0 },
+      acc: { title: 'Ускорение', hint: 'меньше — тише и меньше ряби', unit: 'мм/с²', cfg: 20000, min: 500, max: 20000, step: 1000, dec: 0 },
+      scv: { title: 'Скорость в углах', hint: 'выше — быстрее, но углы круглее', unit: 'мм/с', cfg: 25, min: 1, max: 50, step: 1, dec: 0 },
+      mcr: { title: 'Плавность разгона', hint: 'доля пути на крейсерской скорости', unit: 'доля', cfg: 0.5, min: 0, max: 1, step: 0.05, dec: 2 }
+    };
+    function setv(k, x) { var d = defs[k]; var n = Object.assign({}, self.state.v); n[k] = Math.min(d.max, Math.max(d.min, +x.toFixed(4))); self.setState({ v: n }); }
+    function item(k) {
+      var d = defs[k], x = st.v[k], changed = x !== d.cfg;
+      return {
+        title: d.title, hint: d.hint, unit: d.unit, value: d.dec ? x.toFixed(d.dec) : x.toLocaleString('ru-RU'),
+        cfg: changed ? 'в конфиге ' + (d.dec ? d.cfg.toFixed(d.dec) : d.cfg.toLocaleString('ru-RU')) : 'как в конфиге',
+        cfgInk: changed ? '#5eead4' : '#66707b', ring: changed ? 'rgba(45, 212, 191, 0.45)' : 'transparent', valInk: changed ? '#5eead4' : '#f4f6f8',
+        dec: function () { setv(k, x - d.step); }, inc: function () { setv(k, x + d.step); },
+        decAria: d.title + ': меньше', incAria: d.title + ': больше', editAria: d.title + ': ввести число',
+        edit: function () { self.setState({ pad: k, entry: '' }); }
+      };
+    }
+    var changedAny = Object.keys(defs).some(function (k) { return st.v[k] !== defs[k].cfg; });
+    var pd = st.pad ? defs[st.pad] : null;
+    var num = st.entry === '' ? NaN : parseFloat(st.entry.replace(',', '.'));
+    var valid = pd && !isNaN(num) && num >= pd.min && num <= pd.max;
+    return {
+      main: [item('vel'), item('acc')], fine: [item('scv'), item('mcr')],
+      noneChanged: !changedAny, resetBg: changedAny ? '#2dd4bf' : '#15181d', resetFg: changedAny ? '#042f2a' : '#66707b',
+      resetAll: function () { self.setState({ v: { vel: 600, acc: 20000, scv: 25, mcr: 0.5 } }); },
+      padOpen: !!st.pad, padTitle: pd ? pd.title + ', ' + pd.unit : '',
+      entryLabel: st.entry === '' ? '—' : st.entry, entryInk: st.entry === '' ? '#66707b' : '#f4f6f8',
+      padHint: pd ? 'от ' + pd.min + ' до ' + pd.max.toLocaleString('ru-RU') : '', hintInk: (pd && !isNaN(num) && !valid) ? '#fb7185' : '#98a1ac',
+      okBg: valid ? '#2dd4bf' : '#1f242b', okFg: valid ? '#042f2a' : '#66707b',
+      padOk: function () { if (valid) { setv(st.pad, num); self.setState({ pad: null }); } },
+      padCancel: function () { self.setState({ pad: null }); },
+      keys: ['1', '2', '3', '4', '5', '6', '7', '8', '9', ',', '0', '⌫'].map(function (k) {
+        return { label: k, aria: k === '⌫' ? 'Стереть' : k, bg: k === '⌫' ? '#1f242b' : '#252a31',
+          press: function () { var e = self.state.entry; if (k === '⌫') e = e.slice(0, -1); else if (e.length < 7) e = e + k; self.setState({ entry: e }); } };
+      })
+    };
   }
 }
-
 </script>
 </body>
 </html>

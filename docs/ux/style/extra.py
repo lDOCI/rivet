@@ -45,6 +45,7 @@ KB_JS = r"""
 EMPTY = 'class Component extends DCLogic {\n  renderVals() {\n    return {};\n  }\n}'
 
 def build_extra():
+    build_limits()
     # E-stop confirm
     body = root_open('none') + '''  <main role="alertdialog" aria-labelledby="t" style="flex: 1; box-sizing: border-box; padding: 28px 40px; display: flex; flex-direction: column; justify-content: center; gap: 14px">
     <span aria-hidden="true" style="width: 72px; height: 72px; border-radius: 24px; background: rgba(251, 75, 94, 0.16); color: #fb7185; display: flex; align-items: center; justify-content: center">''' + svg('warn', 36) + '''</span>
@@ -191,3 +192,102 @@ def build_extra():
   }
 }"""
     write('WifiJoin', 'Подключение к Wi-Fi', body, js)
+
+
+def build_limits():
+    card = """        <sc-for list="{{%s}}" as="m" hint-placeholder-count="2">
+          <div style="border-radius: 22px; background: #15181d; box-shadow: inset 0 0 0 2px {{m.ring}}; padding: 12px; display: flex; flex-direction: column; gap: 10px; %s">
+            <span style="padding: 0 6px; display: flex; align-items: baseline; gap: 8px"><span style="flex: 1; font-size: %s; font-weight: 700">{{m.title}}</span><span style="font-size: 13px; font-weight: 600; color: {{m.cfgInk}}; white-space: nowrap">{{m.cfg}}</span></span>
+            <span style="padding: 0 6px; margin-top: -6px; font-size: 14px; color: #98a1ac">{{m.hint}}</span>
+            <div style="display: flex; gap: 8px">
+              <button type="button" onClick="{{m.dec}}" aria-label="{{m.decAria}}" style="width: 72px; height: %s; flex: none; border: 0; border-radius: 18px; background: #1f242b; color: #f4f6f8; font: 500 30px Inter, system-ui, sans-serif; cursor: pointer">−</button>
+              <button type="button" onClick="{{m.edit}}" aria-label="{{m.editAria}}" style="flex: 1; height: %s; border: 0; border-radius: 18px; background: #0b0d10; color: {{m.valInk}}; font-family: Inter, system-ui, sans-serif; display: flex; align-items: baseline; justify-content: center; gap: 6px; padding-top: 14px; box-sizing: border-box; cursor: pointer"><span style="font-size: %s; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1">{{m.value}}</span><span style="font-size: 13px; color: #98a1ac">{{m.unit}}</span></button>
+              <button type="button" onClick="{{m.inc}}" aria-label="{{m.incAria}}" style="width: 72px; height: %s; flex: none; border: 0; border-radius: 18px; background: #1f242b; color: #f4f6f8; font: 500 30px Inter, system-ui, sans-serif; cursor: pointer">+</button>
+            </div>
+          </div>
+        </sc-for>
+"""
+    keys = ''.join(["""            <sc-for list="{{keys}}" as="k" hint-placeholder-count="12"><button type="button" onClick="{{k.press}}" aria-label="{{k.aria}}" style="border: 0; border-radius: 18px; background: {{k.bg}}; color: #f4f6f8; font: 700 28px Inter, system-ui, sans-serif; cursor: pointer">{{k.label}}</button></sc-for>
+"""])
+    body = root_open('tools') + """  <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+""" + header('Лимиты движения', 'Tools.dc.html', '<button type="button" onClick="{{resetAll}}" disabled="{{noneChanged}}" style="height: 64px; padding: 0 18px; border: 0; border-radius: 20px; background: {{resetBg}}; color: {{resetFg}}; font: 700 15px Inter, system-ui, sans-serif; cursor: pointer">Вернуть как в конфиге</button>') + """    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px">
+""" + card % ('main', '', '20px', '76px', '76px', '32px', '76px') + """    </div>
+    <span style="margin: 4px 4px 0; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; color: #66707b">ТОНКАЯ НАСТРОЙКА</span>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px">
+""" + card % ('fine', '', '17px', '64px', '64px', '24px', '64px') + """    </div>
+    <div style="flex: 1"></div>
+    <span style="font-size: 14px; color: #98a1ac">Действует до перезапуска Klipper. Удобно, чтобы печатать тише или проверить, не в ускорении ли дело.</span>
+  </main>
+  <sc-if value="{{padOpen}}" hint-placeholder-val="{{ false }}">
+    <div role="dialog" aria-modal="true" aria-label="Ввести значение" style="position: absolute; inset: 0; background: rgba(5, 6, 8, 0.78); display: flex; align-items: center; justify-content: center">
+      <div style="width: 680px; height: 420px; box-sizing: border-box; border-radius: 28px; background: #15181d; padding: 20px; display: grid; grid-template-columns: 240px 1fr; gap: 20px">
+        <div style="display: flex; flex-direction: column; gap: 8px">
+          <span style="font-size: 15px; font-weight: 600; color: #98a1ac">{{padTitle}}</span>
+          <span aria-live="polite" style="height: 96px; border-radius: 20px; background: #0b0d10; display: flex; align-items: center; justify-content: center; font-size: 44px; font-weight: 800; font-variant-numeric: tabular-nums; color: {{entryInk}}">{{entryLabel}}</span>
+          <span style="font-size: 14px; color: {{hintInk}}; text-align: center">{{padHint}}</span>
+          <div style="flex: 1"></div>
+          <button type="button" onClick="{{padOk}}" style="height: 80px; border: 0; border-radius: 22px; background: {{okBg}}; color: {{okFg}}; font: 800 19px Inter, system-ui, sans-serif; cursor: pointer">Готово</button>
+          <button type="button" onClick="{{padCancel}}" style="height: 64px; border: 0; border-radius: 20px; background: #1f242b; color: #f4f6f8; font: 600 16px Inter, system-ui, sans-serif; cursor: pointer">Отмена</button>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(4, minmax(0, 1fr)); gap: 8px">
+""" + keys + """        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+"""
+    body = body.replace('<div style="position: relative; width: 800px;', '<div style="position: relative; width: 800px;', 1)
+    js = r"""class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { v: { vel: 600, acc: 20000, scv: 25, mcr: 0.5 }, pad: null, entry: '' };
+  }
+  renderVals() {
+    var self = this, st = this.state;
+    var defs = {
+      vel: { title: 'Скорость', hint: 'самая большая скорость головы', unit: 'мм/с', cfg: 600, min: 10, max: 600, step: 50, dec: 0 },
+      acc: { title: 'Ускорение', hint: 'меньше — тише и меньше ряби', unit: 'мм/с²', cfg: 20000, min: 500, max: 20000, step: 1000, dec: 0 },
+      scv: { title: 'Скорость в углах', hint: 'выше — быстрее, но углы круглее', unit: 'мм/с', cfg: 25, min: 1, max: 50, step: 1, dec: 0 },
+      mcr: { title: 'Плавность разгона', hint: 'доля пути на крейсерской скорости', unit: 'доля', cfg: 0.5, min: 0, max: 1, step: 0.05, dec: 2 }
+    };
+    function setv(k, x) { var d = defs[k]; var n = Object.assign({}, self.state.v); n[k] = Math.min(d.max, Math.max(d.min, +x.toFixed(4))); self.setState({ v: n }); }
+    function item(k) {
+      var d = defs[k], x = st.v[k], changed = x !== d.cfg;
+      return {
+        title: d.title, hint: d.hint, unit: d.unit, value: d.dec ? x.toFixed(d.dec) : x.toLocaleString('ru-RU'),
+        cfg: changed ? 'в конфиге ' + (d.dec ? d.cfg.toFixed(d.dec) : d.cfg.toLocaleString('ru-RU')) : 'как в конфиге',
+        cfgInk: changed ? '#5eead4' : '#66707b', ring: changed ? 'rgba(45, 212, 191, 0.45)' : 'transparent', valInk: changed ? '#5eead4' : '#f4f6f8',
+        dec: function () { setv(k, x - d.step); }, inc: function () { setv(k, x + d.step); },
+        decAria: d.title + ': меньше', incAria: d.title + ': больше', editAria: d.title + ': ввести число',
+        edit: function () { self.setState({ pad: k, entry: '' }); }
+      };
+    }
+    var changedAny = Object.keys(defs).some(function (k) { return st.v[k] !== defs[k].cfg; });
+    var pd = st.pad ? defs[st.pad] : null;
+    var num = st.entry === '' ? NaN : parseFloat(st.entry.replace(',', '.'));
+    var valid = pd && !isNaN(num) && num >= pd.min && num <= pd.max;
+    return {
+      main: [item('vel'), item('acc')], fine: [item('scv'), item('mcr')],
+      noneChanged: !changedAny, resetBg: changedAny ? '#2dd4bf' : '#15181d', resetFg: changedAny ? '#042f2a' : '#66707b',
+      resetAll: function () { self.setState({ v: { vel: 600, acc: 20000, scv: 25, mcr: 0.5 } }); },
+      padOpen: !!st.pad, padTitle: pd ? pd.title + ', ' + pd.unit : '',
+      entryLabel: st.entry === '' ? '—' : st.entry, entryInk: st.entry === '' ? '#66707b' : '#f4f6f8',
+      padHint: pd ? 'от ' + pd.min + ' до ' + pd.max.toLocaleString('ru-RU') : '', hintInk: (pd && !isNaN(num) && !valid) ? '#fb7185' : '#98a1ac',
+      okBg: valid ? '#2dd4bf' : '#1f242b', okFg: valid ? '#042f2a' : '#66707b',
+      padOk: function () { if (valid) { setv(st.pad, num); self.setState({ pad: null }); } },
+      padCancel: function () { self.setState({ pad: null }); },
+      keys: ['1', '2', '3', '4', '5', '6', '7', '8', '9', ',', '0', '⌫'].map(function (k) {
+        return { label: k, aria: k === '⌫' ? 'Стереть' : k, bg: k === '⌫' ? '#1f242b' : '#252a31',
+          press: function () { var e = self.state.entry; if (k === '⌫') e = e.slice(0, -1); else if (e.length < 7) e = e + k; self.setState({ entry: e }); } };
+      })
+    };
+  }
+}"""
+    write('Limits', 'Лимиты движения', body, js)
+    for lab, src in [('Скорость', 'toolhead.max_velocity; config: configfile.settings.printer.max_velocity'),
+                     ('Ускорение', 'toolhead.max_accel; config: configfile.settings.printer.max_accel'),
+                     ('Скорость в углах', 'toolhead.square_corner_velocity'),
+                     ('Плавность разгона', 'toolhead.minimum_cruise_ratio'),
+                     ('apply', 'SET_VELOCITY_LIMIT VELOCITY= ACCEL= SQUARE_CORNER_VELOCITY= MINIMUM_CRUISE_RATIO=')]:
+        gen.note_src('Лимиты движения', lab, src)
+
