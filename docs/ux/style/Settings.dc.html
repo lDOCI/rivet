@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Настройки — Rivet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
+</style>
+</helmet>
+<div style="width: 800px; height: 480px; display: flex; background: #0b0d10; color: #f4f6f8; font-family: Inter, system-ui, sans-serif; overflow: hidden">
+  <dc-import name="NavRail" active="settings" hint-size="88px,480px"></dc-import>
+  <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px 20px 16px 16px; display: flex; flex-direction: column; gap: 12px">
+    <h1 style="margin: 6px 0 4px; font-size: 26px; font-weight: 800; letter-spacing: -0.02em">Настройки</h1>
+    <div style="flex: 1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(4, minmax(0, 1fr)); gap: 10px">
+      <sc-for list="{{rows}}" as="r" hint-placeholder-count="8">
+        <a href="{{r.href}}" style="border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; gap: 14px; padding: 0 16px">
+          <span aria-hidden="true" style="width: 44px; height: 44px; flex: none; border-radius: 14px; background: {{r.tint}}; color: {{r.ink}}; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800">{{r.glyph}}</span>
+          <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 17px; font-weight: 700">{{r.title}}</span><span style="font-size: 14px; color: #98a1ac; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.value}}</span></span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#66707b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
+        </a>
+      </sc-for>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":800,"height":480}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var teal = ['rgba(45, 212, 191, 0.13)', '#2dd4bf'];
+    var amber = ['rgba(251, 191, 36, 0.13)', '#fbbf24'];
+    var blue = ['rgba(96, 165, 250, 0.13)', '#60a5fa'];
+    var gray = ['#1f242b', '#c7cdd4'];
+    var rows = [
+      ['Wi-Fi', 'HomeNet_5G · 192.168.1.42', 'W', blue, 'Settings.dc.html'],
+      ['Калибровка', 'стол, Z-offset, PID, вибрации', 'К', teal, 'Calibrate.dc.html'],
+      ['Экран', 'яркость 70% · сон через 5 мин', 'Э', gray, 'Settings.dc.html'],
+      ['Блокировка экрана', 'во время печати', 'Б', amber, 'Settings.dc.html'],
+      ['Звук', 'сигнал в конце печати', 'З', gray, 'Settings.dc.html'],
+      ['Язык', 'Русский', 'Я', gray, 'Settings.dc.html'],
+      ['Система', 'перезапуск, журнал, выключение', 'С', gray, 'Settings.dc.html'],
+      ['О принтере', 'AD5M · Rivet 0.1 · Klipper 0.13', 'i', gray, 'Settings.dc.html']
+    ];
+    return {
+      rows: rows.map(function (r) {
+        return { title: r[0], value: r[1], glyph: r[2], tint: r[3][0], ink: r[3][1], href: r[4] };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>

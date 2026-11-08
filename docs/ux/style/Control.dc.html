@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Управление — Rivet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
+</style>
+</helmet>
+<div style="width: 800px; height: 480px; display: flex; background: #0b0d10; color: #f4f6f8; font-family: Inter, system-ui, sans-serif; overflow: hidden">
+  <dc-import name="NavRail" active="control" hint-size="88px,480px"></dc-import>
+  <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 12px">
+
+    <a href="Heating.dc.html" style="border-radius: 24px; background: #15181d; color: #f4f6f8; padding: 16px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between">
+      <svg width="44" height="44" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="48" fill="none" stroke="#232831" stroke-width="14" stroke-linecap="round" stroke-dasharray="226 302" transform="rotate(135 60 60)"></circle><circle cx="60" cy="60" r="48" fill="none" stroke="#4a525c" stroke-width="14" stroke-linecap="round" stroke-dasharray="18 302" transform="rotate(135 60 60)"></circle></svg>
+      <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 34px; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums">24°</span><span style="font-size: 15px; color: #98a1ac">Сопло · выкл.</span></span>
+    </a>
+    <a href="Heating.dc.html" style="border-radius: 24px; background: #15181d; color: #f4f6f8; padding: 16px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between">
+      <svg width="44" height="44" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="48" fill="none" stroke="#232831" stroke-width="14" stroke-linecap="round" stroke-dasharray="226 302" transform="rotate(135 60 60)"></circle><circle cx="60" cy="60" r="48" fill="none" stroke="#4a525c" stroke-width="14" stroke-linecap="round" stroke-dasharray="47 302" transform="rotate(135 60 60)"></circle></svg>
+      <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 34px; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums">23°</span><span style="font-size: 15px; color: #98a1ac">Стол · выкл.</span></span>
+    </a>
+    <a href="Speed.dc.html" style="border-radius: 24px; background: #15181d; color: #f4f6f8; padding: 16px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between">
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 13.5 16 9"></path><path d="M4.2 17.5a9 9 0 1 1 15.6 0"></path></svg>
+      <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 24px; font-weight: 800; letter-spacing: -0.02em">Стандарт</span><span style="font-size: 15px; color: #98a1ac">Скорость · 100%</span></span>
+    </a>
+    <a href="Fan.dc.html" style="border-radius: 24px; background: #15181d; color: #f4f6f8; padding: 16px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between">
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1.8"></circle><path d="M12 10.2c0-4 1-6.7 3.4-6.7 2.3 0 2.6 3.2.2 5.2"></path><path d="M13.6 12.9c3.5 2 5.3 4.2 4.1 6.3-1.2 2-4.1.7-4.7-2.4"></path><path d="M10.4 12.9c-3.5 2-6.4 2.5-7.5.4-1.2-2 1.4-3.9 4.4-2.9"></path></svg>
+      <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 24px; font-weight: 800; letter-spacing: -0.02em">Авто</span><span style="font-size: 15px; color: #98a1ac">Обдув модели</span></span>
+    </a>
+    <a href="Motion.dc.html" style="border-radius: 24px; background: #15181d; color: #f4f6f8; padding: 16px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between">
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18"></path><path d="M3 12h18"></path><path d="m9 6 3-3 3 3"></path><path d="m9 18 3 3 3-3"></path><path d="m6 9-3 3 3 3"></path><path d="m18 9 3 3-3 3"></path></svg>
+      <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 24px; font-weight: 800; letter-spacing: -0.02em">Движение</span><span style="font-size: 15px; color: #98a1ac">оси, парковка</span></span>
+    </a>
+    <a href="ZOffset.dc.html" style="border-radius: 24px; background: #15181d; color: #f4f6f8; padding: 16px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between">
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6"></path><path d="M10 3v6l2 3 2-3V3"></path><path d="M3 19h18"></path><path d="M12 14v2"></path></svg>
+      <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 30px; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums">−0.12</span><span style="font-size: 15px; color: #98a1ac">Z-offset, мм</span></span>
+    </a>
+    <a href="FilamentLoad.dc.html" style="border-radius: 24px; background: #15181d; color: #f4f6f8; padding: 16px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between">
+      <span aria-hidden="true" style="width: 34px; height: 34px; border-radius: 17px; background: #4466cc; box-shadow: inset 0 0 0 4px rgba(255, 255, 255, 0.14)"></span>
+      <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 24px; font-weight: 800; letter-spacing: -0.02em">Филамент</span><span style="font-size: 15px; color: #98a1ac">загрузить, выгрузить</span></span>
+    </a>
+    <button type="button" role="switch" aria-checked="{{lightOn}}" onClick="{{toggleLight}}" style="border: 0; border-radius: 24px; background: {{lightBg}}; color: #f4f6f8; padding: 16px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; font-family: Inter, system-ui, sans-serif; text-align: left; cursor: pointer">
+      <span aria-hidden="true" style="width: 60px; height: 34px; border-radius: 17px; background: {{trackBg}}; position: relative"><span style="position: absolute; top: 4px; left: {{knobLeft}}; width: 26px; height: 26px; border-radius: 13px; background: #ffffff"></span></span>
+      <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 24px; font-weight: 800; letter-spacing: -0.02em">{{lightLabel}}</span><span style="font-size: 15px; color: #98a1ac">Подсветка</span></span>
+    </button>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":800,"height":480}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { light: true };
+  }
+  renderVals() {
+    var self = this;
+    var on = this.state.light;
+    return {
+      lightOn: on ? 'true' : 'false',
+      lightLabel: on ? 'Вкл.' : 'Выкл.',
+      lightBg: on ? '#1a2a2a' : '#15181d',
+      trackBg: on ? '#2dd4bf' : '#3a414a',
+      knobLeft: on ? '30px' : '4px',
+      toggleLight: function () { self.setState({ light: !on }); }
+    };
+  }
+}
+</script>
+</body>
+</html>
