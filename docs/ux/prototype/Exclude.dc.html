@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Исключение объекта — Rivet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2fbf62;text-decoration:none}a:hover{color:#5fd788}
+</style>
+</helmet>
+<div style="width: 800px; height: 480px; display: flex; background: #0f1113; color: #f2f4f5; font-family: Inter, system-ui, sans-serif; overflow: hidden">
+  <dc-import name="NavRail" active="home" hint-size="96px,480px"></dc-import>
+  <div style="flex: 1; display: flex; flex-direction: column; min-width: 0">
+    <dc-import name="TopBar" mode="printing" hint-size="704px,48px"></dc-import>
+    <main style="flex: 1; box-sizing: border-box; padding: 4px 16px 16px; display: flex; gap: 14px; min-height: 0">
+
+      <div role="group" aria-label="Карта стола, вид сверху" style="width: 412px; height: 412px; flex: none; position: relative; box-sizing: border-box; border-radius: 16px; background: #1a1d21; background-image: linear-gradient(#262a30 1px, transparent 1px), linear-gradient(90deg, #262a30 1px, transparent 1px); background-size: 41px 41px">
+        <sc-for list="{{objects}}" as="o" hint-placeholder-count="4">
+          <button type="button" onClick="{{o.pick}}" aria-pressed="{{o.pressed}}" aria-label="{{o.aria}}" style="position: absolute; left: {{o.x}}px; top: {{o.y}}px; width: {{o.w}}px; height: {{o.h}}px; box-sizing: border-box; border-radius: 8px; border: {{o.border}}; background: {{o.fill}}; color: {{o.fg}}; font: 600 13px Inter, system-ui, sans-serif; cursor: pointer; text-decoration: {{o.strike}}">{{o.short}}</button>
+        </sc-for>
+      </div>
+
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px">
+        <div style="display: flex; align-items: center; height: 40px">
+          <h1 style="margin: 0; font-size: 20px; font-weight: 700; flex: 1">Объекты</h1>
+          <a href="Printing.dc.html" style="height: 40px; padding: 0 14px; border-radius: 10px; background: #262a30; color: #f2f4f5; font-weight: 600; font-size: 15px; display: flex; align-items: center">Назад</a>
+        </div>
+        <sc-for list="{{objects}}" as="o" hint-placeholder-count="4">
+          <button type="button" onClick="{{o.pick}}" aria-pressed="{{o.pressed}}" style="height: 48px; box-sizing: border-box; padding: 0 14px; border-radius: 10px; border: {{o.border}}; background: #1a1d21; color: {{o.listFg}}; font: 500 14px Inter, system-ui, sans-serif; text-align: left; display: flex; align-items: center; gap: 8px; cursor: pointer">
+            <span style="flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-decoration: {{o.strike}}">{{o.label}}</span>
+            <span style="font-size: 12px; color: #9aa1a9">{{o.status}}</span>
+          </button>
+        </sc-for>
+        <div style="flex: 1"></div>
+        <sc-if value="{{showAsk}}" hint-placeholder-val="{{ true }}">
+          <button type="button" onClick="{{ask}}" disabled="{{askDisabled}}" style="height: 56px; border: 0; border-radius: 12px; background: #262a30; color: {{askFg}}; font: 700 16px Inter, system-ui, sans-serif; cursor: pointer">{{askLabel}}</button>
+        </sc-if>
+        <sc-if value="{{confirming}}" hint-placeholder-val="{{ false }}">
+          <div role="alertdialog" aria-label="Подтверждение исключения" style="display: flex; flex-direction: column; gap: 8px">
+            <span style="font-size: 14px; color: #c3c8ce">Объект перестанет печататься. Вернуть его нельзя.</span>
+            <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+              <button type="button" onClick="{{cancel}}" style="height: 56px; border: 0; border-radius: 12px; background: #262a30; color: #f2f4f5; font: 700 16px Inter, system-ui, sans-serif; cursor: pointer">Нет</button>
+              <button type="button" onClick="{{confirm}}" style="height: 56px; border: 0; border-radius: 12px; background: #e5484d; color: #ffffff; font: 700 18px Inter, system-ui, sans-serif; cursor: pointer">Исключить</button>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":800,"height":480}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { picked: null, confirming: false, excluded: { clip: true } };
+  }
+  renderVals() {
+    var self = this;
+    var s = this.state;
+    var defs = [
+      { id: 'body1', label: 'Корпус_вентилятора_1', short: '1', x: 60, y: 70, w: 120, h: 120 },
+      { id: 'body2', label: 'Корпус_вентилятора_2', short: '2', x: 230, y: 70, w: 120, h: 120 },
+      { id: 'lid', label: 'Крышка', short: 'Крышка', x: 60, y: 240, w: 150, h: 90 },
+      { id: 'clip', label: 'Клипса', short: 'Клипса', x: 260, y: 250, w: 80, h: 70 }
+    ];
+    var objects = defs.map(function (d) {
+      var gone = !!s.excluded[d.id];
+      var sel = s.picked === d.id;
+      return Object.assign({}, d, {
+        pressed: sel ? 'true' : 'false',
+        aria: d.label + (gone ? ', исключён' : sel ? ', выбран' : ''),
+        border: sel ? '2px solid #4c9aff' : gone ? '1px dashed #4a5058' : '1px solid #3a4048',
+        fill: gone ? 'transparent' : sel ? 'rgba(76, 154, 255, 0.22)' : '#2b3138',
+        fg: gone ? '#6b737c' : '#f2f4f5',
+        listFg: gone ? '#6b737c' : '#f2f4f5',
+        strike: gone ? 'line-through' : 'none',
+        status: gone ? 'исключён' : sel ? 'выбран' : 'печатается',
+        pick: function () { if (!gone) self.setState({ picked: d.id, confirming: false }); }
+      });
+    });
+    var picked = defs.find(function (d) { return d.id === s.picked; });
+    return {
+      objects: objects,
+      showAsk: !s.confirming,
+      confirming: s.confirming,
+      askDisabled: !picked,
+      askFg: picked ? '#ff6b70' : '#6b737c',
+      askLabel: picked ? 'Исключить «' + picked.label + '»' : 'Выберите объект на карте',
+      ask: function () { if (picked) self.setState({ confirming: true }); },
+      cancel: function () { self.setState({ confirming: false }); },
+      confirm: function () {
+        var ex = Object.assign({}, s.excluded);
+        ex[s.picked] = true;
+        self.setState({ excluded: ex, picked: null, confirming: false });
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

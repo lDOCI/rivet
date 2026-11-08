@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Тюнинг печати — Rivet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2fbf62;text-decoration:none}a:hover{color:#5fd788}
+</style>
+</helmet>
+<div style="width: 800px; height: 480px; display: flex; background: #0f1113; color: #f2f4f5; font-family: Inter, system-ui, sans-serif; overflow: hidden">
+  <dc-import name="NavRail" active="home" hint-size="96px,480px"></dc-import>
+  <div style="flex: 1; display: flex; flex-direction: column; min-width: 0">
+    <dc-import name="TopBar" mode="printing" hint-size="704px,48px"></dc-import>
+    <main style="flex: 1; box-sizing: border-box; padding: 4px 16px 16px; display: flex; flex-direction: column; gap: 10px; min-height: 0">
+      <div style="display: flex; align-items: center; gap: 12px; height: 44px">
+        <h1 style="margin: 0; font-size: 22px; font-weight: 700; flex: 1">Тюнинг печати</h1>
+        <span style="font-size: 13px; color: #9aa1a9">Применяется сразу</span>
+        <a href="Printing.dc.html" style="height: 44px; padding: 0 20px; border-radius: 12px; background: #2fbf62; color: #0b1a10; font-weight: 700; font-size: 16px; display: flex; align-items: center">Готово</a>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 0">
+        <sc-for list="{{rows}}" as="row" hint-placeholder-count="5">
+          <div style="height: 58px; box-sizing: border-box; padding: 0 8px 0 16px; border-radius: 12px; background: #1a1d21; display: flex; align-items: center; gap: 8px">
+            <div style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+              <span style="font-size: 16px; font-weight: 600">{{row.label}}</span>
+              <span style="font-size: 12px; color: #9aa1a9">{{row.hint}}</span>
+            </div>
+            <button type="button" onClick="{{row.downBig}}" aria-label="{{row.downBigLabel}}" style="width: 64px; height: 44px; border: 0; border-radius: 10px; background: #262a30; color: #f2f4f5; font: 600 15px Inter, system-ui, sans-serif; cursor: pointer">{{row.bigStepDown}}</button>
+            <button type="button" onClick="{{row.down}}" aria-label="{{row.downLabel}}" style="width: 64px; height: 44px; border: 0; border-radius: 10px; background: #262a30; color: #f2f4f5; font: 600 15px Inter, system-ui, sans-serif; cursor: pointer">{{row.stepDown}}</button>
+            <span style="width: 104px; text-align: center; font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums">{{row.value}}</span>
+            <button type="button" onClick="{{row.up}}" aria-label="{{row.upLabel}}" style="width: 64px; height: 44px; border: 0; border-radius: 10px; background: #262a30; color: #f2f4f5; font: 600 15px Inter, system-ui, sans-serif; cursor: pointer">{{row.stepUp}}</button>
+            <button type="button" onClick="{{row.upBig}}" aria-label="{{row.upBigLabel}}" style="width: 64px; height: 44px; border: 0; border-radius: 10px; background: #262a30; color: #f2f4f5; font: 600 15px Inter, system-ui, sans-serif; cursor: pointer">{{row.bigStepUp}}</button>
+          </div>
+        </sc-for>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":800,"height":480}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { z: 0, speed: 100, flow: 100, fan: 60, pa: 0.04 };
+  }
+  renderVals() {
+    var self = this;
+    var s = this.state;
+    function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
+    function row(key, label, hint, small, big, lo, hi, fmt, unit) {
+      function set(delta) {
+        return function () {
+          var next = {};
+          next[key] = clamp(Math.round((s[key] + delta) * 1000) / 1000, lo, hi);
+          self.setState(next);
+        };
+      }
+      return {
+        label: label, hint: hint, value: fmt(s[key]),
+        stepDown: '−' + small, stepUp: '+' + small,
+        bigStepDown: '−' + big, bigStepUp: '+' + big,
+        down: set(-small), up: set(small), downBig: set(-big), upBig: set(big),
+        downLabel: label + ': уменьшить на ' + small + unit,
+        upLabel: label + ': увеличить на ' + small + unit,
+        downBigLabel: label + ': уменьшить на ' + big + unit,
+        upBigLabel: label + ': увеличить на ' + big + unit
+      };
+    }
+    function signed(v) { return (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(2) + ' мм'; }
+    function pct(v) { return v + '%'; }
+    return {
+      rows: [
+        row('z', 'Z-offset', 'Смещение сопла, сохраняется после печати', 0.01, 0.05, -2, 2, signed, ' мм'),
+        row('speed', 'Скорость', 'Множитель скорости движения', 5, 25, 10, 300, pct, '%'),
+        row('flow', 'Поток', 'Множитель экструзии', 1, 5, 50, 150, pct, '%'),
+        row('fan', 'Обдув детали', 'Вентилятор модели', 5, 20, 0, 100, pct, '%'),
+        row('pa', 'Pressure advance', 'Компенсация давления в сопле', 0.005, 0.02, 0, 1, function (v) { return v.toFixed(3); }, '')
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Файлы — Rivet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2fbf62;text-decoration:none}a:hover{color:#5fd788}
+</style>
+</helmet>
+<div style="width: 800px; height: 480px; display: flex; background: #0f1113; color: #f2f4f5; font-family: Inter, system-ui, sans-serif; overflow: hidden">
+  <dc-import name="NavRail" active="files" hint-size="96px,480px"></dc-import>
+  <div style="flex: 1; display: flex; flex-direction: column; min-width: 0">
+    <dc-import name="TopBar" mode="ready" hint-size="704px,48px"></dc-import>
+    <main style="flex: 1; box-sizing: border-box; padding: 4px 16px 0; display: flex; flex-direction: column; gap: 10px; min-height: 0">
+      <div style="display: flex; align-items: center; gap: 10px; height: 44px">
+        <div role="tablist" aria-label="Источник" style="display: flex; padding: 3px; border-radius: 12px; background: #1a1d21">
+          <button type="button" role="tab" aria-selected="{{printerSel}}" onClick="{{showPrinter}}" style="height: 38px; padding: 0 16px; border: 0; border-radius: 9px; background: {{printerBg}}; color: #f2f4f5; font: 600 14px Inter, system-ui, sans-serif; cursor: pointer">Принтер · 24</button>
+          <button type="button" role="tab" aria-selected="{{usbSel}}" onClick="{{showUsb}}" style="height: 38px; padding: 0 16px; border: 0; border-radius: 9px; background: {{usbBg}}; color: #f2f4f5; font: 600 14px Inter, system-ui, sans-serif; cursor: pointer">USB · 3</button>
+        </div>
+        <div style="flex: 1"></div>
+        <button type="button" style="height: 44px; padding: 0 14px; border: 0; border-radius: 10px; background: #1a1d21; color: #f2f4f5; font: 500 14px Inter, system-ui, sans-serif; display: flex; align-items: center; gap: 6px; cursor: pointer">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4v16"></path><path d="m3 16 4 4 4-4"></path><path d="M14 6h7"></path><path d="M14 11h5"></path><path d="M14 16h3"></path></svg>
+          Сначала новые
+        </button>
+      </div>
+      <div style="flex: 1; min-height: 0; overflow: hidden; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; align-content: start">
+        <sc-for list="{{files}}" as="f" hint-placeholder-count="6">
+          <a href="FileDetail.dc.html" aria-label="{{f.aria}}" style="height: 176px; box-sizing: border-box; padding: 8px; border-radius: 14px; background: #1a1d21; color: #f2f4f5; display: flex; flex-direction: column; gap: 6px">
+            <div aria-hidden="true" style="height: 104px; border-radius: 10px; background: #262a30; display: flex; align-items: center; justify-content: center; color: #6b737c; font-size: 11px">миниатюра</div>
+            <span style="font-size: 14px; font-weight: 600; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden">{{f.name}}</span>
+            <span style="font-size: 12px; color: #9aa1a9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{f.meta}}</span>
+          </a>
+        </sc-for>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":800,"height":480}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { source: 'printer' };
+  }
+  renderVals() {
+    var self = this;
+    var usb = this.state.source === 'usb';
+    var printerFiles = [
+      ['Корпус_вентилятора_№2_PETG_0.2мм', '1 ч 23 мин · 18 г'],
+      ['benchy_0.2mm_PLA_AD5M', '52 мин · 11 г'],
+      ['Держатель_катушки_v3_с_подшипником_608', '3 ч 05 мин · 64 г'],
+      ['Крышка_электроники', '41 мин · 9 г'],
+      ['calibration_cube_20mm', '18 мин · 4 г'],
+      ['Органайзер_для_отвёрток_8_ячеек', '2 ч 10 мин · 47 г']
+    ];
+    var usbFiles = [
+      ['Кронштейн_полки', '1 ч 02 мин · 22 г'],
+      ['vase_spiral_tall', '2 ч 40 мин · 35 г'],
+      ['Заглушка_трубы_25мм', '12 мин · 3 г']
+    ];
+    var list = (usb ? usbFiles : printerFiles).map(function (f) {
+      return { name: f[0], meta: f[1], aria: f[0] + ', ' + f[1] };
+    });
+    return {
+      files: list,
+      printerSel: usb ? 'false' : 'true',
+      usbSel: usb ? 'true' : 'false',
+      printerBg: usb ? 'transparent' : '#262a30',
+      usbBg: usb ? '#262a30' : 'transparent',
+      showPrinter: function () { self.setState({ source: 'printer' }); },
+      showUsb: function () { self.setState({ source: 'usb' }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

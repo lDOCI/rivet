@@ -1,0 +1,44 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-11-08T03:00:00Z" },
+  "title": "Rivet — вайрфреймы D1",
+  "launch": { "view": "canvas" },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": { "x": 0, "y": 0, "w": 800, "h": 480, "title": "Главная · простой", "is_interactive": true, "radius": 12 },
+    "Printing.dc.html": { "x": 880, "y": 0, "w": 800, "h": 480, "title": "Главная · печать", "is_interactive": true, "radius": 12 },
+    "Tune.dc.html": { "x": 1760, "y": 0, "w": 800, "h": 480, "title": "Тюнинг в печати", "is_interactive": true, "radius": 12 },
+    "ConfirmStop.dc.html": { "x": 2640, "y": 0, "w": 800, "h": 480, "title": "Подтверждение отмены", "is_interactive": true, "radius": 12 },
+    "Exclude.dc.html": { "x": 3520, "y": 0, "w": 800, "h": 480, "title": "Исключение объекта", "is_interactive": true, "radius": 12 },
+
+    "Files.dc.html": { "x": 0, "y": 900, "w": 800, "h": 480, "title": "Файлы", "is_interactive": true, "radius": 12 },
+    "FileDetail.dc.html": { "x": 880, "y": 900, "w": 800, "h": 480, "title": "Карточка файла", "is_interactive": true, "radius": 12 },
+    "Control.dc.html": { "x": 1760, "y": 900, "w": 800, "h": 480, "title": "Управление", "is_interactive": true, "radius": 12 },
+    "Temp.dc.html": { "x": 2640, "y": 900, "w": 800, "h": 480, "title": "Нагрев", "is_interactive": true, "radius": 12 },
+
+    "Calibrate.dc.html": { "x": 0, "y": 1800, "w": 800, "h": 480, "title": "Калибровка", "is_interactive": true, "radius": 12 },
+    "BedMesh.dc.html": { "x": 880, "y": 1800, "w": 800, "h": 480, "title": "Карта стола", "is_interactive": true, "radius": 12 },
+    "Settings.dc.html": { "x": 1760, "y": 1800, "w": 800, "h": 480, "title": "Настройки", "is_interactive": true, "radius": 12 },
+
+    "KlipperError.dc.html": { "x": 0, "y": 2700, "w": 800, "h": 480, "title": "Ошибка Klipper", "is_interactive": true, "radius": 12 },
+    "Offline.dc.html": { "x": 880, "y": 2700, "w": 800, "h": 480, "title": "Нет связи", "is_interactive": true, "radius": 12 },
+
+    "NavRail.dc.html": { "x": 0, "y": 3600, "w": 96, "h": 480, "title": "Компонент · меню" },
+    "TopBar.dc.html": { "x": 176, "y": 3600, "w": 704, "h": 48, "title": "Компонент · верхняя панель" }
+  },
+  "order": [
+    "Main.dc.html", "Printing.dc.html", "Tune.dc.html", "ConfirmStop.dc.html", "Exclude.dc.html",
+    "Files.dc.html", "FileDetail.dc.html", "Control.dc.html", "Temp.dc.html",
+    "Calibrate.dc.html", "BedMesh.dc.html", "Settings.dc.html",
+    "KlipperError.dc.html", "Offline.dc.html",
+    "NavRail.dc.html", "TopBar.dc.html"
+  ],
+  "notes": {
+    "rowPrint": { "x": 0, "y": -260, "text": "Печать", "kind": "title1", "maxW": 4320 },
+    "rowFiles": { "x": 0, "y": 640, "text": "Файлы и управление", "kind": "title1", "maxW": 3440 },
+    "rowSystem": { "x": 0, "y": 1540, "text": "Калибровка и система", "kind": "title1", "maxW": 2560 },
+    "rowStates": { "x": 0, "y": 2440, "text": "Состояния", "kind": "title1", "maxW": 1680 },
+    "rowComponents": { "x": 0, "y": 3340, "text": "Общие компоненты", "kind": "title1", "maxW": 1680 }
+  },
+  "designSystems": []
+}

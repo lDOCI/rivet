@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Управление — Rivet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2fbf62;text-decoration:none}a:hover{color:#5fd788}
+</style>
+</helmet>
+<div style="width: 800px; height: 480px; display: flex; background: #0f1113; color: #f2f4f5; font-family: Inter, system-ui, sans-serif; overflow: hidden">
+  <dc-import name="NavRail" active="control" hint-size="96px,480px"></dc-import>
+  <div style="flex: 1; display: flex; flex-direction: column; min-width: 0">
+    <dc-import name="TopBar" mode="ready" hint-size="704px,48px"></dc-import>
+    <main style="flex: 1; box-sizing: border-box; padding: 4px 16px 16px; display: flex; gap: 12px; min-height: 0">
+
+      <section aria-label="Движение" style="width: 404px; flex: none; box-sizing: border-box; padding: 12px; border-radius: 16px; background: #1a1d21; display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; gap: 14px; font-size: 13px; color: #9aa1a9; font-variant-numeric: tabular-nums">
+          <span>X <b style="color: #f2f4f5; font-weight: 600">{{x}}</b></span>
+          <span>Y <b style="color: #f2f4f5; font-weight: 600">{{y}}</b></span>
+          <span>Z <b style="color: #f2f4f5; font-weight: 600">{{z}}</b></span>
+          <span style="flex: 1; text-align: right; color: #2fbf62">оси запаркованы</span>
+        </div>
+        <div style="display: flex; gap: 12px">
+          <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; width: 276px">
+            <span></span>
+            <button type="button" onClick="{{yUp}}" aria-label="Y плюс" style="height: 64px; border: 0; border-radius: 12px; background: #262a30; color: #f2f4f5; font: 700 16px Inter, system-ui, sans-serif; cursor: pointer">Y+</button>
+            <span></span>
+            <button type="button" onClick="{{xDown}}" aria-label="X минус" style="height: 64px; border: 0; border-radius: 12px; background: #262a30; color: #f2f4f5; font: 700 16px Inter, system-ui, sans-serif; cursor: pointer">X−</button>
+            <button type="button" aria-label="Парковка X и Y" style="height: 64px; border: 0; border-radius: 12px; background: #2b3138; color: #f2f4f5; display: flex; align-items: center; justify-content: center; cursor: pointer">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"></path><path d="M5 9.5V21h14V9.5"></path></svg>
+            </button>
+            <button type="button" onClick="{{xUp}}" aria-label="X плюс" style="height: 64px; border: 0; border-radius: 12px; background: #262a30; color: #f2f4f5; font: 700 16px Inter, system-ui, sans-serif; cursor: pointer">X+</button>
+            <span></span>
+            <button type="button" onClick="{{yDown}}" aria-label="Y минус" style="height: 64px; border: 0; border-radius: 12px; background: #262a30; color: #f2f4f5; font: 700 16px Inter, system-ui, sans-serif; cursor: pointer">Y−</button>
+            <span></span>
+          </div>
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 6px">
+            <button type="button" onClick="{{zUp}}" aria-label="Z плюс, стол вниз" style="flex: 1; border: 0; border-radius: 12px; background: #262a30; color: #f2f4f5; font: 700 16px Inter, system-ui, sans-serif; cursor: pointer">Z+</button>
+            <button type="button" onClick="{{zDown}}" aria-label="Z минус, стол вверх" style="flex: 1; border: 0; border-radius: 12px; background: #262a30; color: #f2f4f5; font: 700 16px Inter, system-ui, sans-serif; cursor: pointer">Z−</button>
+          </div>
+        </div>
+        <div role="radiogroup" aria-label="Шаг перемещения" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px">
+          <sc-for list="{{steps}}" as="s" hint-placeholder-count="4">
+            <button type="button" role="radio" aria-checked="{{s.checked}}" onClick="{{s.pick}}" style="height: 48px; border: 0; border-radius: 10px; background: {{s.bg}}; color: {{s.fg}}; font: 600 15px Inter, system-ui, sans-serif; cursor: pointer">{{s.label}}</button>
+          </sc-for>
+        </div>
+      </section>
+
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+        <section aria-label="Экструдер" style="flex: 1; box-sizing: border-box; padding: 12px; border-radius: 16px; background: #1a1d21; display: flex; flex-direction: column; gap: 10px">
+          <div style="display: flex; align-items: baseline; justify-content: space-between">
+            <span style="font-size: 16px; font-weight: 600">Экструдер</span>
+            <a href="Temp.dc.html" style="font-size: 14px; color: #ff8a3d; font-weight: 600">сопло 240° →</a>
+          </div>
+          <div role="radiogroup" aria-label="Длина" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px">
+            <sc-for list="{{lengths}}" as="l" hint-placeholder-count="3">
+              <button type="button" role="radio" aria-checked="{{l.checked}}" onClick="{{l.pick}}" style="height: 44px; border: 0; border-radius: 10px; background: {{l.bg}}; color: {{l.fg}}; font: 600 15px Inter, system-ui, sans-serif; cursor: pointer">{{l.label}}</button>
+            </sc-for>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; flex: 1">
+            <button type="button" style="border: 0; border-radius: 12px; background: #262a30; color: #f2f4f5; font: 700 16px Inter, system-ui, sans-serif; cursor: pointer">Выдавить</button>
+            <button type="button" style="border: 0; border-radius: 12px; background: #262a30; color: #f2f4f5; font: 700 16px Inter, system-ui, sans-serif; cursor: pointer">Втянуть</button>
+          </div>
+          <span style="font-size: 12px; color: #9aa1a9">Доступно, когда сопло горячее 180°</span>
+        </section>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+          <button type="button" style="height: 56px; border: 0; border-radius: 12px; background: #262a30; color: #f2f4f5; font: 700 15px Inter, system-ui, sans-serif; cursor: pointer">Парковка XYZ</button>
+          <button type="button" style="height: 56px; border: 0; border-radius: 12px; background: #262a30; color: #f2f4f5; font: 700 15px Inter, system-ui, sans-serif; cursor: pointer">Выкл. моторы</button>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":800,"height":480}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { step: 10, len: 10, x: 110, y: 110, z: 10 };
+  }
+  renderVals() {
+    var self = this;
+    var s = this.state;
+    function move(axis, dir, max) {
+      return function () {
+        var next = {};
+        next[axis] = Math.min(max, Math.max(0, Math.round((s[axis] + dir * s.step) * 10) / 10));
+        self.setState(next);
+      };
+    }
+    function choice(values, key, unit) {
+      return values.map(function (v) {
+        var on = s[key] === v;
+        return {
+          label: v + unit, checked: on ? 'true' : 'false',
+          bg: on ? '#2fbf62' : '#262a30', fg: on ? '#0b1a10' : '#f2f4f5',
+          pick: function () { var n = {}; n[key] = v; self.setState(n); }
+        };
+      });
+    }
+    return {
+      x: s.x.toFixed(1), y: s.y.toFixed(1), z: s.z.toFixed(2),
+      xUp: move('x', 1, 220), xDown: move('x', -1, 220),
+      yUp: move('y', 1, 220), yDown: move('y', -1, 220),
+      zUp: move('z', 1, 220), zDown: move('z', -1, 220),
+      steps: choice([0.1, 1, 10, 50], 'step', ' мм'),
+      lengths: choice([5, 10, 50], 'len', ' мм')
+    };
+  }
+}
+</script>
+</body>
+</html>

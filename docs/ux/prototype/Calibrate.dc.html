@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Калибровка — Rivet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2fbf62;text-decoration:none}a:hover{color:#5fd788}
+</style>
+</helmet>
+<div style="width: 800px; height: 480px; display: flex; background: #0f1113; color: #f2f4f5; font-family: Inter, system-ui, sans-serif; overflow: hidden">
+  <dc-import name="NavRail" active="calibrate" hint-size="96px,480px"></dc-import>
+  <div style="flex: 1; display: flex; flex-direction: column; min-width: 0">
+    <dc-import name="TopBar" mode="ready" hint-size="704px,48px"></dc-import>
+    <main style="flex: 1; box-sizing: border-box; padding: 4px 16px 16px; display: flex; flex-direction: column; gap: 10px; min-height: 0">
+      <h1 style="margin: 0; font-size: 22px; font-weight: 700; height: 36px; display: flex; align-items: center">Калибровка</h1>
+      <div style="flex: 1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 10px">
+        <a href="BedMesh.dc.html" style="box-sizing: border-box; padding: 14px; border-radius: 16px; background: #1a1d21; color: #f2f4f5; display: flex; flex-direction: column; gap: 6px">
+          <span style="font-size: 17px; font-weight: 700">Карта стола</span>
+          <span style="font-size: 13px; color: #9aa1a9; line-height: 1.35; flex: 1">Неровность стола, 5×5 точек</span>
+          <span style="font-size: 13px; color: #2fbf62; font-weight: 600">Δ 0.18 мм · 3 дня назад</span>
+        </a>
+        <button type="button" style="box-sizing: border-box; padding: 14px; border: 0; border-radius: 16px; background: #1a1d21; color: #f2f4f5; font-family: Inter, system-ui, sans-serif; text-align: left; display: flex; flex-direction: column; gap: 6px; cursor: pointer">
+          <span style="font-size: 17px; font-weight: 700">Z-offset</span>
+          <span style="font-size: 13px; color: #9aa1a9; line-height: 1.35; flex: 1">Зазор сопла над столом, мастер с листом бумаги</span>
+          <span style="font-size: 13px; color: #2fbf62; font-weight: 600">−0.12 мм</span>
+        </button>
+        <button type="button" style="box-sizing: border-box; padding: 14px; border: 0; border-radius: 16px; background: #1a1d21; color: #f2f4f5; font-family: Inter, system-ui, sans-serif; text-align: left; display: flex; flex-direction: column; gap: 6px; cursor: pointer">
+          <span style="font-size: 17px; font-weight: 700">Input shaper</span>
+          <span style="font-size: 13px; color: #9aa1a9; line-height: 1.35; flex: 1">Подавление вибраций, около 5 минут</span>
+          <span style="font-size: 13px; color: #f5a623; font-weight: 600">ни разу не запускалась</span>
+        </button>
+        <button type="button" style="box-sizing: border-box; padding: 14px; border: 0; border-radius: 16px; background: #1a1d21; color: #f2f4f5; font-family: Inter, system-ui, sans-serif; text-align: left; display: flex; flex-direction: column; gap: 6px; cursor: pointer">
+          <span style="font-size: 17px; font-weight: 700">PID сопла</span>
+          <span style="font-size: 13px; color: #9aa1a9; line-height: 1.35; flex: 1">Стабильность температуры хотэнда</span>
+          <span style="font-size: 13px; color: #2fbf62; font-weight: 600">±0.4° при 240°</span>
+        </button>
+        <button type="button" style="box-sizing: border-box; padding: 14px; border: 0; border-radius: 16px; background: #1a1d21; color: #f2f4f5; font-family: Inter, system-ui, sans-serif; text-align: left; display: flex; flex-direction: column; gap: 6px; cursor: pointer">
+          <span style="font-size: 17px; font-weight: 700">PID стола</span>
+          <span style="font-size: 13px; color: #9aa1a9; line-height: 1.35; flex: 1">Стабильность температуры стола</span>
+          <span style="font-size: 13px; color: #2fbf62; font-weight: 600">±0.3° при 80°</span>
+        </button>
+        <button type="button" style="box-sizing: border-box; padding: 14px; border: 0; border-radius: 16px; background: #1a1d21; color: #f2f4f5; font-family: Inter, system-ui, sans-serif; text-align: left; display: flex; flex-direction: column; gap: 6px; cursor: pointer">
+          <span style="font-size: 17px; font-weight: 700">Ремни</span>
+          <span style="font-size: 13px; color: #9aa1a9; line-height: 1.35; flex: 1">Сравнение натяжения ремней по частоте</span>
+          <span style="font-size: 13px; color: #9aa1a9; font-weight: 600">после M3</span>
+        </button>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":800,"height":480}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

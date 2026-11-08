@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Нагрев — Rivet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2fbf62;text-decoration:none}a:hover{color:#5fd788}
+</style>
+</helmet>
+<div style="width: 800px; height: 480px; display: flex; background: #0f1113; color: #f2f4f5; font-family: Inter, system-ui, sans-serif; overflow: hidden">
+  <dc-import name="NavRail" active="control" hint-size="96px,480px"></dc-import>
+  <div style="flex: 1; display: flex; flex-direction: column; min-width: 0">
+    <dc-import name="TopBar" mode="ready" hint-size="704px,48px"></dc-import>
+    <main style="flex: 1; box-sizing: border-box; padding: 4px 16px 16px; display: flex; gap: 12px; min-height: 0">
+
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; gap: 10px; align-items: center">
+          <a href="Main.dc.html" aria-label="Назад" style="width: 48px; height: 48px; flex: none; border-radius: 10px; background: #1a1d21; color: #f2f4f5; display: flex; align-items: center; justify-content: center">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
+          </a>
+          <div role="tablist" aria-label="Нагреватель" style="display: flex; padding: 3px; border-radius: 12px; background: #1a1d21; flex: 1">
+            <button type="button" role="tab" aria-selected="{{nozzleSel}}" onClick="{{pickNozzle}}" style="flex: 1; height: 42px; border: 0; border-radius: 9px; background: {{nozzleBg}}; color: #f2f4f5; font: 600 15px Inter, system-ui, sans-serif; cursor: pointer">Сопло · 24°</button>
+            <button type="button" role="tab" aria-selected="{{bedSel}}" onClick="{{pickBed}}" style="flex: 1; height: 42px; border: 0; border-radius: 9px; background: {{bedBg}}; color: #f2f4f5; font: 600 15px Inter, system-ui, sans-serif; cursor: pointer">Стол · 23°</button>
+          </div>
+        </div>
+        <div style="height: 64px; border-radius: 14px; background: #1a1d21; display: flex; align-items: center; justify-content: center; gap: 6px">
+          <span style="font-size: 14px; color: #9aa1a9">цель</span>
+          <span aria-live="polite" style="font-size: 40px; font-weight: 700; font-variant-numeric: tabular-nums; color: {{entryColor}}">{{entry}}°</span>
+          <span style="font-size: 13px; color: #9aa1a9">макс. {{max}}°</span>
+        </div>
+        <div style="flex: 1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px">
+          <sc-for list="{{keys}}" as="k" hint-placeholder-count="12">
+            <button type="button" onClick="{{k.press}}" aria-label="{{k.aria}}" style="border: 0; border-radius: 10px; background: {{k.bg}}; color: {{k.fg}}; font: 600 20px Inter, system-ui, sans-serif; cursor: pointer">{{k.label}}</button>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="width: 196px; flex: none; display: flex; flex-direction: column; gap: 8px">
+        <span style="font-size: 13px; color: #9aa1a9; height: 20px">Пресеты: сопло / стол</span>
+        <sc-for list="{{presets}}" as="p" hint-placeholder-count="4">
+          <button type="button" onClick="{{p.apply}}" style="height: 62px; border: 0; border-radius: 12px; background: #1a1d21; color: #f2f4f5; font: 700 16px Inter, system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer">{{p.name}}<span style="font-size: 13px; font-weight: 500; color: #9aa1a9">{{p.temps}}</span></button>
+        </sc-for>
+        <button type="button" onClick="{{off}}" style="height: 52px; border: 0; border-radius: 12px; background: #262a30; color: #f2f4f5; font: 700 15px Inter, system-ui, sans-serif; cursor: pointer">Выключить всё</button>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":800,"height":480}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { heater: 'nozzle', entry: '240' };
+  }
+  renderVals() {
+    var self = this;
+    var s = this.state;
+    var nozzle = s.heater === 'nozzle';
+    var max = nozzle ? 280 : 110;
+    var value = parseInt(s.entry || '0', 10);
+    var tooHot = value > max;
+    function press(d) {
+      return function () {
+        if (d === 'del') { self.setState({ entry: s.entry.slice(0, -1) }); return; }
+        if (d === 'ok') { return; }
+        if (s.entry.length >= 3) return;
+        self.setState({ entry: (s.entry === '0' ? '' : s.entry) + d });
+      };
+    }
+    var keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'del', '0', 'ok'].map(function (d) {
+      var ok = d === 'ok';
+      return {
+        label: d === 'del' ? '⌫' : ok ? 'Нагреть' : d,
+        aria: d === 'del' ? 'Стереть' : ok ? 'Нагреть до ' + (s.entry || '0') + ' градусов' : d,
+        bg: ok ? (tooHot ? '#3a2526' : '#2fbf62') : '#262a30',
+        fg: ok ? (tooHot ? '#ff6b70' : '#0b1a10') : '#f2f4f5',
+        press: press(d)
+      };
+    });
+    var presets = [['PLA', 210, 60], ['PETG', 240, 80], ['ABS', 250, 100], ['TPU', 225, 50]].map(function (p) {
+      return {
+        name: p[0], temps: p[1] + '° / ' + p[2] + '°',
+        apply: function () { self.setState({ entry: String(nozzle ? p[1] : p[2]) }); }
+      };
+    });
+    return {
+      entry: s.entry || '0', max: max,
+      entryColor: tooHot ? '#ff6b70' : '#ff8a3d',
+      keys: keys, presets: presets,
+      nozzleSel: nozzle ? 'true' : 'false', bedSel: nozzle ? 'false' : 'true',
+      nozzleBg: nozzle ? '#262a30' : 'transparent', bedBg: nozzle ? 'transparent' : '#262a30',
+      pickNozzle: function () { self.setState({ heater: 'nozzle', entry: '240' }); },
+      pickBed: function () { self.setState({ heater: 'bed', entry: '80' }); },
+      off: function () { self.setState({ entry: '0' }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

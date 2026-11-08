@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Ошибка Klipper — Rivet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2fbf62;text-decoration:none}a:hover{color:#5fd788}
+</style>
+</helmet>
+<div style="width: 800px; height: 480px; display: flex; background: #0f1113; color: #f2f4f5; font-family: Inter, system-ui, sans-serif; overflow: hidden">
+  <dc-import name="NavRail" active="none" hint-size="96px,480px"></dc-import>
+  <div style="flex: 1; display: flex; flex-direction: column; min-width: 0">
+    <dc-import name="TopBar" mode="error" hint-size="704px,48px"></dc-import>
+    <main style="flex: 1; box-sizing: border-box; padding: 4px 16px 16px; display: flex; flex-direction: column; gap: 12px; min-height: 0">
+      <section role="alert" style="flex: 1; box-sizing: border-box; padding: 20px; border-radius: 16px; background: #1f1416; border: 1px solid #4a2427; display: flex; flex-direction: column; gap: 12px">
+        <div style="display: flex; align-items: center; gap: 12px">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#ff6b70" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2h8l6 6v8l-6 6H8l-6-6V8z"></path><path d="M12 8v5"></path><path d="M12 16.5v.5"></path></svg>
+          <h1 style="margin: 0; font-size: 24px; font-weight: 700">Klipper остановлен</h1>
+        </div>
+        <p style="margin: 0; padding: 12px 14px; border-radius: 10px; background: #140d0e; font: 500 15px ui-monospace, SFMono-Regular, Menlo, monospace; color: #ffb3b5; line-height: 1.4">MCU 'mcu' shutdown: Timer too close</p>
+        <p style="margin: 0; font-size: 15px; line-height: 1.5; color: #c3c8ce">Плата не успела выполнить команду вовремя. Обычно помогает перезапуск прошивки. Если повторяется во время печати, проверьте загрузку процессора и USB-кабель.</p>
+        <div style="flex: 1"></div>
+        <span style="font-size: 13px; color: #9aa1a9">Нагрев выключен, моторы отключены. Печать прервана на 42%.</span>
+      </section>
+      <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px">
+        <a href="Main.dc.html" style="height: 60px; border-radius: 12px; background: #2fbf62; color: #0b1a10; font-weight: 700; font-size: 17px; display: flex; align-items: center; justify-content: center">Перезапуск прошивки</a>
+        <a href="Main.dc.html" style="height: 60px; border-radius: 12px; background: #262a30; color: #f2f4f5; font-weight: 600; font-size: 15px; display: flex; align-items: center; justify-content: center">Перезапуск Klipper</a>
+        <a href="Settings.dc.html" style="height: 60px; border-radius: 12px; background: #262a30; color: #f2f4f5; font-weight: 600; font-size: 15px; display: flex; align-items: center; justify-content: center">Журнал</a>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":800,"height":480}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

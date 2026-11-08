@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Карточка файла — Rivet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2fbf62;text-decoration:none}a:hover{color:#5fd788}
+</style>
+</helmet>
+<div style="width: 800px; height: 480px; display: flex; background: #0f1113; color: #f2f4f5; font-family: Inter, system-ui, sans-serif; overflow: hidden">
+  <dc-import name="NavRail" active="files" hint-size="96px,480px"></dc-import>
+  <div style="flex: 1; display: flex; flex-direction: column; min-width: 0">
+    <dc-import name="TopBar" mode="ready" hint-size="704px,48px"></dc-import>
+    <main style="flex: 1; box-sizing: border-box; padding: 4px 16px 16px; display: flex; gap: 16px; min-height: 0">
+      <div style="width: 260px; flex: none; display: flex; flex-direction: column; gap: 10px">
+        <a href="Files.dc.html" style="height: 44px; align-self: flex-start; padding: 0 14px 0 8px; border-radius: 10px; background: #1a1d21; color: #f2f4f5; font-weight: 600; font-size: 15px; display: flex; align-items: center; gap: 4px">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
+          Файлы
+        </a>
+        <div aria-hidden="true" style="width: 260px; height: 260px; border-radius: 14px; background: #262a30; display: flex; align-items: center; justify-content: center; color: #6b737c; font-size: 12px">миниатюра 300×300 из G-code</div>
+        <span style="font-size: 12px; color: #9aa1a9">Загружен вчера в 21:12 · 2.4 МБ</span>
+      </div>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+        <h1 style="margin: 0; font-size: 20px; font-weight: 700; line-height: 1.3; word-break: break-word">Корпус_вентилятора_№2_PETG_0.2мм.gcode</h1>
+        <dl style="margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+          <div style="padding: 10px 12px; border-radius: 12px; background: #1a1d21"><dt style="font-size: 12px; color: #9aa1a9">Время печати</dt><dd style="margin: 2px 0 0; font-size: 18px; font-weight: 600">1 ч 23 мин</dd></div>
+          <div style="padding: 10px 12px; border-radius: 12px; background: #1a1d21"><dt style="font-size: 12px; color: #9aa1a9">Филамент</dt><dd style="margin: 2px 0 0; font-size: 18px; font-weight: 600">18 г · 6.1 м PETG</dd></div>
+          <div style="padding: 10px 12px; border-radius: 12px; background: #1a1d21"><dt style="font-size: 12px; color: #9aa1a9">Слои</dt><dd style="margin: 2px 0 0; font-size: 18px; font-weight: 600">180 × 0.2 мм</dd></div>
+          <div style="padding: 10px 12px; border-radius: 12px; background: #1a1d21"><dt style="font-size: 12px; color: #9aa1a9">Нагрев из слайсера</dt><dd style="margin: 2px 0 0; font-size: 18px; font-weight: 600">240° / 80°</dd></div>
+        </dl>
+        <div style="flex: 1"></div>
+        <div style="display: flex; gap: 10px">
+          <button type="button" aria-label="Удалить файл" style="width: 60px; height: 60px; flex: none; border: 0; border-radius: 12px; background: #262a30; color: #ff6b70; display: flex; align-items: center; justify-content: center; cursor: pointer">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M6 6l1 14h10l1-14"></path></svg>
+          </button>
+          <a href="Printing.dc.html" style="flex: 1; height: 60px; border-radius: 12px; background: #2fbf62; color: #0b1a10; font-weight: 700; font-size: 18px; display: flex; align-items: center; justify-content: center; gap: 8px">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12-7.5z"></path></svg>
+            Печать
+          </a>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":800,"height":480}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>
