@@ -20,7 +20,7 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
     <div style="height: 64px; flex: none; display: flex; align-items: center; gap: 14px">
       <a href="Control.dc.html" aria-label="Отменить загрузку" style="width: 64px; height: 64px; flex: none; border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; justify-content: center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></a>
       <div style="flex: 1; display: flex; flex-direction: column; gap: 8px">
-        <span style="font-size: 15px; font-weight: 600; color: #98a1ac">Загрузка филамента · шаг {{step}} из 3</span>
+        <span style="font-size: 15px; font-weight: 600; color: #98a1ac">{{stepLabel}}</span>
         <div aria-hidden="true" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px">
           <span style="height: 6px; border-radius: 3px; background: {{bar1}}"></span><span style="height: 6px; border-radius: 3px; background: {{bar2}}"></span><span style="height: 6px; border-radius: 3px; background: {{bar3}}"></span>
         </div>
@@ -48,7 +48,7 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
           </div>
         </sc-if>
         <sc-if value="{{showStatus}}" hint-placeholder-val="{{ false }}">
-          <span style="align-self: flex-start; height: 36px; padding: 0 14px; border-radius: 18px; background: rgba(45, 212, 191, 0.12); color: #5eead4; font-size: 15px; font-weight: 600; display: flex; align-items: center">Сопло {{temp}}° — готово</span>
+          <span style="align-self: flex-start; height: 36px; padding: 0 14px; border-radius: 18px; background: rgba(45, 212, 191, 0.12); color: #5eead4; font-size: 15px; font-weight: 600; display: flex; align-items: center">{{statusText}}</span>
         </sc-if>
       </div>
     </div>
@@ -77,7 +77,8 @@ class Component extends DCLogic {
       3: ['Пошёл пластик нужного цвета?', 'Если из сопла ещё идёт старый цвет — протяните ещё немного.', 'Ещё 20 мм', 'Да, готово']
     }[s.step];
     return {
-      step: s.step,
+      stepLabel: 'Загрузка филамента · шаг ' + s.step + ' из 3',
+      statusText: 'Сопло ' + temps[s.mat] + '° — готово',
       bar1: on(1), bar2: on(2), bar3: on(3),
       title: copy[0], text: copy[1], secondaryLabel: copy[2], primaryLabel: copy[3],
       isStep1: s.step === 1, showStatus: s.step > 1, temp: temps[s.mat],

@@ -16,7 +16,9 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
 </helmet>
 <div style="width: 800px; height: 480px; display: flex; background: #0b0d10; color: #f4f6f8; font-family: Inter, system-ui, sans-serif; overflow: hidden">
   <dc-import name="NavRail" active="control" hint-size="88px,480px"></dc-import>
-  <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 12px">
+  <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+    <div style="height: 64px; flex: none; display: flex; align-items: center; padding-left: 4px"><h1 style="margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.02em">Управление</h1></div>
+    <div style="flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 12px">
 
     <a href="Heating.dc.html" style="border-radius: 24px; background: #15181d; color: #f4f6f8; padding: 16px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between">
       <svg width="44" height="44" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="48" fill="none" stroke="#232831" stroke-width="14" stroke-linecap="round" stroke-dasharray="226 302" transform="rotate(135 60 60)"></circle><circle cx="60" cy="60" r="48" fill="none" stroke="#4a525c" stroke-width="14" stroke-linecap="round" stroke-dasharray="18 302" transform="rotate(135 60 60)"></circle></svg>
@@ -44,12 +46,13 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
     </a>
     <a href="FilamentLoad.dc.html" style="border-radius: 24px; background: #15181d; color: #f4f6f8; padding: 16px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between">
       <span aria-hidden="true" style="width: 34px; height: 34px; border-radius: 17px; background: #4466cc; box-shadow: inset 0 0 0 4px rgba(255, 255, 255, 0.14)"></span>
-      <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 24px; font-weight: 800; letter-spacing: -0.02em">Филамент</span><span style="font-size: 15px; color: #98a1ac">загрузить, выгрузить</span></span>
+      <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 24px; font-weight: 800; letter-spacing: -0.02em">Филамент</span><span style="font-size: 15px; color: #98a1ac">сменить пруток</span></span>
     </a>
     <button type="button" role="switch" aria-checked="{{lightOn}}" onClick="{{toggleLight}}" style="border: 0; border-radius: 24px; background: {{lightBg}}; color: #f4f6f8; padding: 16px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; font-family: Inter, system-ui, sans-serif; text-align: left; cursor: pointer">
       <span aria-hidden="true" style="width: 60px; height: 34px; border-radius: 17px; background: {{trackBg}}; position: relative"><span style="position: absolute; top: 4px; left: {{knobLeft}}; width: 26px; height: 26px; border-radius: 13px; background: #ffffff"></span></span>
       <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 24px; font-weight: 800; letter-spacing: -0.02em">{{lightLabel}}</span><span style="font-size: 15px; color: #98a1ac">Подсветка</span></span>
     </button>
+    </div>
   </main>
 </div>
 </x-dc>

@@ -32,7 +32,7 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
       <button type="button" onClick="{{dn5}}" aria-label="Опустить на 0.05 мм" style="border: 0; border-radius: 22px; background: #252a31; color: #f4f6f8; font: 800 26px Inter, system-ui, sans-serif; cursor: pointer">−0.05</button>
       <button type="button" onClick="{{up1}}" aria-label="Поднять на 0.01 мм" style="border: 0; border-radius: 22px; background: #181c21; color: #c7cdd4; font: 700 24px Inter, system-ui, sans-serif; cursor: pointer">+0.01</button>
       <button type="button" onClick="{{dn1}}" aria-label="Опустить на 0.01 мм" style="border: 0; border-radius: 22px; background: #181c21; color: #c7cdd4; font: 700 24px Inter, system-ui, sans-serif; cursor: pointer">−0.01</button>
-      <button type="button" onClick="{{reset}}" style="grid-column: 1 / span 2; border: 1px solid #252a31; border-radius: 20px; background: transparent; color: #c7cdd4; font: 600 16px Inter, system-ui, sans-serif; cursor: pointer">Вернуть {{saved}}</button>
+      <button type="button" onClick="{{reset}}" style="grid-column: 1 / span 2; border: 1px solid #252a31; border-radius: 20px; background: transparent; color: #c7cdd4; font: 600 16px Inter, system-ui, sans-serif; cursor: pointer">{{resetLabel}}</button>
     </div>
   </main>
 </div>
@@ -49,7 +49,7 @@ class Component extends DCLogic {
     function fmt(v) { return (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(2); }
     function step(d) { return function () { self.setState({ z: Math.round((z + d) * 100) / 100 }); }; }
     return {
-      value: fmt(z), saved: fmt(-0.12),
+      value: fmt(z), resetLabel: 'Вернуть ' + fmt(-0.12),
       up5: step(0.05), up1: step(0.01), dn5: step(-0.05), dn1: step(-0.01),
       reset: function () { self.setState({ z: -0.12 }); }
     };
