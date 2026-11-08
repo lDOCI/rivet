@@ -21,7 +21,7 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
     <div style="flex: 1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(4, minmax(0, 1fr)); gap: 10px">
       <sc-for list="{{rows}}" as="r" hint-placeholder-count="8">
         <a href="{{r.href}}" style="border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; gap: 14px; padding: 0 16px">
-          <span aria-hidden="true" style="width: 44px; height: 44px; flex: none; border-radius: 14px; background: {{r.tint}}; color: {{r.ink}}; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800">{{r.glyph}}</span>
+          <span aria-hidden="true" style="width: 44px; height: 44px; flex: none; border-radius: 14px; background: {{r.tint}}; color: {{r.ink}}; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{r.p0}}"></path><path d="{{r.p1}}"></path><path d="{{r.p2}}"></path><path d="{{r.p3}}"></path></svg></span>
           <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 17px; font-weight: 700">{{r.title}}</span><span style="font-size: 14px; color: #98a1ac; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.value}}</span></span>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#66707b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
         </a>
@@ -38,18 +38,18 @@ class Component extends DCLogic {
     var blue = ['rgba(96, 165, 250, 0.13)', '#60a5fa'];
     var gray = ['#1f242b', '#c7cdd4'];
     var rows = [
-      ['Wi-Fi', 'HomeNet_5G · 192.168.1.42', 'W', blue, 'Settings.dc.html'],
-      ['Калибровка', 'стол, Z-offset, PID, вибрации', 'К', teal, 'Calibrate.dc.html'],
-      ['Экран', 'яркость 70% · сон через 5 мин', 'Э', gray, 'Settings.dc.html'],
-      ['Блокировка экрана', 'во время печати', 'Б', amber, 'Settings.dc.html'],
-      ['Звук', 'сигнал в конце печати', 'З', gray, 'Settings.dc.html'],
-      ['Язык', 'Русский', 'Я', gray, 'Settings.dc.html'],
-      ['Система', 'перезапуск, журнал, выключение', 'С', gray, 'Settings.dc.html'],
-      ['О принтере', 'AD5M · Rivet 0.1 · Klipper 0.13', 'i', gray, 'Settings.dc.html']
+      ['Wi-Fi', 'HomeNet_5G · 192.168.1.42', ["M5 12.5a10 10 0 0 1 14 0", "M8.5 16a5 5 0 0 1 7 0", "M2 9a15 15 0 0 1 20 0", "M12 19.5h.01"], blue, 'Settings.dc.html'],
+      ['Калибровка', 'стол, Z-offset, PID, вибрации', ["M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18", "M12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6", "M12 1v4M12 19v4M1 12h4M19 12h4", ""], teal, 'Calibrate.dc.html'],
+      ['Экран', 'яркость 70% · сон через 5 мин', ["M12 8a4 4 0 1 0 0 8a4 4 0 1 0 0-8", "M12 2v2M12 20v2M2 12h2M20 12h2", "M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4", ""], gray, 'Settings.dc.html'],
+      ['Блокировка экрана', 'во время печати', ["M7 11h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2z", "M8 11V7a4 4 0 0 1 8 0v4", "M12 15v2", ""], amber, 'Settings.dc.html'],
+      ['Звук', 'сигнал в конце печати', ["M11 5 6 9H3v6h3l5 4z", "M15.5 8.5a5 5 0 0 1 0 7", "M18.5 5.5a9 9 0 0 1 0 13", ""], gray, 'Settings.dc.html'],
+      ['Язык', 'Русский', ["M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18", "M3 12h18", "M12 3c2.5 2.5 3.8 5.5 3.8 9s-1.3 6.5-3.8 9c-2.5-2.5-3.8-5.5-3.8-9s1.3-6.5 3.8-9z", ""], gray, 'Settings.dc.html'],
+      ['Система', 'перезапуск, журнал, выключение', ["M8 6h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z", "M9.5 2v4M14.5 2v4M9.5 18v4M14.5 18v4", "M2 9.5h4M2 14.5h4M18 9.5h4M18 14.5h4", "M10 10h4v4h-4z"], gray, 'Settings.dc.html'],
+      ['О принтере', 'AD5M · Rivet 0.1 · Klipper 0.13', ["M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18", "M12 11v6", "M12 7.5h.01", ""], gray, 'Settings.dc.html']
     ];
     return {
       rows: rows.map(function (r) {
-        return { title: r[0], value: r[1], glyph: r[2], tint: r[3][0], ink: r[3][1], href: r[4] };
+        return { title: r[0], value: r[1], p0: r[2][0], p1: r[2][1], p2: r[2][2], p3: r[2][3], tint: r[3][0], ink: r[3][1], href: r[4] };
       })
     };
   }

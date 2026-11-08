@@ -24,7 +24,7 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
     <div style="flex: 1; display: grid; grid-template-rows: repeat(4, minmax(0, 1fr)); gap: 10px">
       <sc-for list="{{items}}" as="m" hint-placeholder-count="4">
         <a href="{{m.href}}" style="border-radius: 22px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; gap: 16px; padding: 0 18px; position: relative">
-          <span aria-hidden="true" style="width: 48px; height: 48px; flex: none; border-radius: 16px; background: {{m.tint}}; color: {{m.ink}}; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800">{{m.glyph}}</span>
+          <span aria-hidden="true" style="width: 48px; height: 48px; flex: none; border-radius: 16px; background: {{m.tint}}; color: {{m.ink}}; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="{{m.p0}}"></path><path d="{{m.p1}}"></path><path d="{{m.p2}}"></path><path d="{{m.p3}}"></path></svg></span>
           <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px"><span style="font-size: 18px; font-weight: {{m.weight}}">{{m.title}}</span><span style="font-size: 14px; color: #98a1ac; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{m.text}}</span></span>
           <span style="font-size: 14px; color: #66707b; white-space: nowrap">{{m.when}}</span>
           <sc-if value="{{m.unread}}" hint-placeholder-val="{{ true }}"><span aria-label="не прочитано" style="width: 10px; height: 10px; border-radius: 5px; background: #2dd4bf"></span></sc-if>
@@ -47,16 +47,16 @@ class Component extends DCLogic {
     var ok = ['rgba(45, 212, 191, 0.13)', '#2dd4bf'];
     var info = ['rgba(96, 165, 250, 0.13)', '#60a5fa'];
     var items = [
-      ['Печать завершена', 'Корпус вентилятора №2 · 1 ч 24 мин', '✓', ok, '14:02', true, 'Main.dc.html'],
-      ['Калибровка вибраций не выполнялась', 'Займёт ~5 мин, уберёт рябь на стенках', '!', warn, 'сегодня', true, 'Calibrate.dc.html'],
-      ['Печать остановлена вручную', 'Benchy · на 63%', '■', info, 'вчера', false, 'Main.dc.html'],
-      ['Доступно обновление Rivet 0.2', 'Новое: папки в файлах, блокировка экрана', '↑', info, '2 дня', false, 'Settings.dc.html']
+      ['Печать завершена', 'Корпус вентилятора №2 · 1 ч 24 мин', ["M5 12.5l4.5 4.5L19 7", "", "", ""], ok, '14:02', true, 'Main.dc.html'],
+      ['Калибровка вибраций не выполнялась', 'Займёт ~5 мин, уберёт рябь на стенках', ["M12 6v8", "M12 18h.01", "", ""], warn, 'сегодня', true, 'Calibrate.dc.html'],
+      ['Печать остановлена вручную', 'Benchy · на 63%', ["M8 7h8a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z", "", "", ""], info, 'вчера', false, 'Main.dc.html'],
+      ['Доступно обновление Rivet 0.2', 'Новое: папки в файлах, блокировка экрана', ["M12 19V5", "m6 11 6-6 6 6", "", ""], info, '2 дня', false, 'Settings.dc.html']
     ];
     return {
       readAll: function () { self.setState({ read: true }); },
       items: items.map(function (i) {
         var unread = i[5] && !read;
-        return { title: i[0], text: i[1], glyph: i[2], tint: i[3][0], ink: i[3][1], when: i[4], unread: unread, weight: unread ? 700 : 500, href: i[6] };
+        return { title: i[0], text: i[1], p0: i[2][0], p1: i[2][1], p2: i[2][2], p3: i[2][3], tint: i[3][0], ink: i[3][1], when: i[4], unread: unread, weight: unread ? 700 : 500, href: i[6] };
       })
     };
   }
