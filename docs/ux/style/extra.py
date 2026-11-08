@@ -7,7 +7,7 @@ def build_extra():
     body = root_open('none') + '''  <main role="alertdialog" aria-labelledby="t" style="flex: 1; box-sizing: border-box; padding: 28px 40px; display: flex; flex-direction: column; justify-content: center; gap: 14px">
     <span aria-hidden="true" style="width: 72px; height: 72px; border-radius: 24px; background: rgba(251, 75, 94, 0.16); color: #fb7185; display: flex; align-items: center; justify-content: center">''' + svg('warn', 36) + '''</span>
     <h1 id="t" style="margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.02em">Аварийная остановка?</h1>
-    <p style="margin: 0; max-width: 560px; font-size: 18px; line-height: 1.5; color: #c7cdd4">Klipper сразу выключит нагрев и моторы (M112). Печать продолжить не получится, потом нужен перезапуск прошивки.</p>
+    <p style="margin: 0; max-width: 560px; font-size: 18px; line-height: 1.5; color: #c7cdd4">Klipper сразу выключит нагрев и моторы. Печать продолжить не получится, потом нужен перезапуск прошивки.</p>
     <div style="margin-top: 12px; display: grid; grid-template-columns: 1fr 1.3fr; gap: 12px">
       <a href="Main.dc.html" style="height: 84px; border-radius: 22px; background: #15181d; color: #f4f6f8; font-size: 18px; font-weight: 700; display: flex; align-items: center; justify-content: center">Отмена</a>
       <a href="KlipperError.dc.html" style="height: 84px; border-radius: 22px; background: #e11d48; color: #ffffff; font-size: 19px; font-weight: 800; display: flex; align-items: center; justify-content: center">Остановить всё</a>
@@ -59,7 +59,7 @@ def build_extra():
     body = root_open('home') + '''  <main style="flex: 1"></main>
   <div role="dialog" aria-modal="true" aria-labelledby="pt" style="position: absolute; inset: 0; background: rgba(5, 6, 8, 0.78); display: flex; align-items: center; justify-content: center">
     <div style="width: 560px; border-radius: 28px; background: #15181d; padding: 24px; display: flex; flex-direction: column; gap: 12px">
-      <span style="font-size: 13px; font-weight: 700; letter-spacing: 0.04em; color: #66707b">МАКРОС · M600</span>
+      <span style="font-size: 13px; font-weight: 700; letter-spacing: 0.04em; color: #66707b">ИЗ МАКРОСА</span>
       <h2 id="pt" style="margin: 0; font-size: 26px; font-weight: 800">Смена филамента</h2>
       <p style="margin: 0; font-size: 17px; line-height: 1.5; color: #c7cdd4">Вставьте новый пруток и нажмите «Загрузить». Когда пойдёт чистый цвет — «Продолжить».</p>
       <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 6px">

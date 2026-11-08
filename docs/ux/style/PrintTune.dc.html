@@ -98,7 +98,7 @@ var ROWS = [
  {
   "kind": "slider",
   "t": "Скорость",
-  "sub": "M220",
+  "sub": "",
   "v": 100,
   "min": 10,
   "max": 300,
@@ -110,7 +110,7 @@ var ROWS = [
  {
   "kind": "slider",
   "t": "Поток",
-  "sub": "M221",
+  "sub": "",
   "v": 100,
   "min": 75,
   "max": 125,
@@ -122,7 +122,7 @@ var ROWS = [
  {
   "kind": "stepper",
   "t": "Z-offset",
-  "sub": "на лету · SET_GCODE_OFFSET",
+  "sub": "меняется сразу",
   "v": -0.12,
   "min": -2,
   "max": 2,
@@ -134,7 +134,7 @@ var ROWS = [
  {
   "kind": "action",
   "t": "Сохранить Z-offset",
-  "sub": "Z_OFFSET_APPLY_PROBE + SAVE_CONFIG после печати",
+  "sub": "запишется после печати",
   "href": "PrintTune.dc.html",
   "id": "r3"
  },
@@ -169,7 +169,7 @@ var ROWS = [
  {
   "kind": "action",
   "t": "Сбросить скорость и поток",
-  "sub": "M220 S100, M221 S100",
+  "sub": "обратно на 100%",
   "href": "PrintTune.dc.html",
   "id": "r7"
  }

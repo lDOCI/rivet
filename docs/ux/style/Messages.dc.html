@@ -50,7 +50,7 @@ class Component extends DCLogic {
       ['Печать завершена', 'Корпус вентилятора №2 · 1 ч 24 мин', ["M5 12.5l4.5 4.5L19 7", "", "", ""], ok, '14:02', true, 'Main.dc.html'],
       ['Калибровка вибраций не выполнялась', 'input_shaper не настроен — меньше ряби на стенках', ["M12 6v8", "M12 18h.01", "", ""], warn, 'сегодня', true, 'InputShaper.dc.html'],
       ['Печать остановлена вручную', 'Benchy · на 63%', ["M8 7h8a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z", "", "", ""], info, 'вчера', false, 'Main.dc.html'],
-      ['Klipper: нужно сохранить конфиг', 'после калибровки щупа · SAVE_CONFIG перезапустит Klipper', ["M12 19V5", "m6 11 6-6 6 6", "", ""], info, '2 дня', false, 'Settings.dc.html']
+      ['Klipper: нужно сохранить конфиг', 'после калибровки щупа · при сохранении Klipper перезапустится', ["M12 19V5", "m6 11 6-6 6 6", "", ""], info, '2 дня', false, 'Settings.dc.html']
     ];
     return {
       readAll: function () { self.setState({ read: true }); },

@@ -18,7 +18,6 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
   <dc-import name="NavRail" active="control" hint-size="88px,480px"></dc-import>
   <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px 16px 0 16px; display: flex; flex-direction: column; gap: 10px">
     <div style="height: 64px; flex: none; display: flex; align-items: center; gap: 14px"><a href="Control.dc.html" aria-label="Назад" style="width: 64px; height: 64px; flex: none; border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></a><h1 style="margin: 0; flex: 1; font-size: 26px; font-weight: 800; letter-spacing: -0.02em">Устройства</h1></div>
-    <p style="margin: 0; font-size: 15px; line-height: 1.45; color: #98a1ac">Показываются только устройства, которые есть в конфиге Moonraker и Klipper.</p>
     <div style="flex: 1; min-height: 0; display: flex; gap: 16px">
     <div style="flex: none; display: flex; gap: 10px; padding-bottom: 16px">
       <sc-for list="{{bars}}" as="b" hint-placeholder-count="2">
@@ -110,7 +109,7 @@ var ROWS = [
  },
  {
   "kind": "toggle",
-  "t": "Камера-свет",
+  "t": "Розетка камеры",
   "sub": "умная розетка",
   "v": false,
   "id": "r2"
@@ -122,8 +121,8 @@ var ROWS = [
  },
  {
   "kind": "slider",
-  "t": "beeper",
-  "sub": "output_pin",
+  "t": "Пищалка",
+  "sub": "beeper",
   "v": 0,
   "min": 0,
   "max": 100,
@@ -135,8 +134,8 @@ var ROWS = [
  },
  {
   "kind": "toggle",
-  "t": "caselight_relay",
-  "sub": "output_pin, вкл./выкл.",
+  "t": "Реле подсветки",
+  "sub": "caselight_relay",
   "v": true,
   "id": "r5"
  }

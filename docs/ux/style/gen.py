@@ -384,13 +384,13 @@ def build():
         I('Сопло', '240° / 240°', 'для выдавливания нужно ≥ 170°', src='extruder.temperature/target; extruder.can_extrude; configfile.settings.extruder.min_extrude_temp'),
         SG('Длина', 'за одно нажатие', ['5 мм', '10 мм', '25 мм', '50 мм', '100 мм'], 2, src='max: configfile.settings.extruder.max_extrude_only_distance'),
         SG('Скорость', 'мм/с', ['2', '5', '10', '15'], 1, src='max: configfile.settings.extruder.max_extrude_only_velocity'),
-        A('Выдавить 25 мм', 'G1 E25 F300', tone='accent'),
-        A('Втянуть 25 мм', 'G1 E−25 F300'),
+        A('Выдавить 25 мм', '5 мм/с', tone='accent'),
+        A('Втянуть 25 мм', '5 мм/с'),
         S('ФИЛАМЕНТ'),
         L('Заправить / сменить пруток', 'мастер: нагрев, протяжка, проверка цвета', 'FilamentLoad', icon='spool'),
         L('Выгрузить пруток', 'нагреет и вытянет', 'FilamentLoad', icon='retract', src='UNLOAD_FILAMENT macro if present, else G1 E−'),
         L('Катушки Spoolman', 'активная: PETG синий · 640 г', 'Spools', icon='spool', src='server.spoolman.get_spool_id + Spoolman API'),
-        L('Ретракт прошивки', 'G10/G11: 0.8 мм', 'Retraction', icon='retract', src='firmware_retraction.*'),
+        L('Ретракт прошивки', 'длина 0.8 мм', 'Retraction', icon='retract', src='firmware_retraction.*'),
         L('Сушка филамента на столе', 'стол как сушилка', 'Dryer', icon='dryer'),
     ])
     form('Retraction', 'Ретракт прошивки', 'control', 'Extruder.dc.html', [
@@ -398,8 +398,8 @@ def build():
         ST('Скорость ретракта', '', 40, 5, 120, 5, ' мм/с', src='firmware_retraction.retract_speed'),
         ST('Доп. подача', 'после возврата', 0, 0, 2, 0.05, ' мм', 2, src='firmware_retraction.unretract_extra_length'),
         ST('Скорость подачи', '', 30, 5, 120, 5, ' мм/с', src='firmware_retraction.unretract_speed'),
-        I('Применяется сразу', 'до перезапуска', 'чтобы навсегда — правьте printer.cfg'),
-    ], intro='Действует, только если слайсер шлёт G10/G11.')
+        I('Действует до перезапуска', '', 'насовсем — только в конфиге принтера'),
+    ], intro='Работает, только если в слайсере включён ретракт прошивкой.')
     form('Spools', 'Катушки', 'control', 'Extruder.dc.html', [
         I('Активная', 'PETG · синий', 'Polymaker · 640 из 1000 г', src='server.spoolman.get_spool_id → Spoolman /api/v1/spool/{id}'),
         S('ВСЕ КАТУШКИ'),
@@ -407,22 +407,22 @@ def build():
         L('PLA · белый', 'eSun · 910 г · #9', '@'),
         L('PLA · чёрный', 'eSun · 210 г · #4', '@'),
         L('TPU · красный', 'Overture · 450 г · #15', '@'),
-        A('Снять активную катушку', 'server.spoolman.post_spool_id без id'),
+        A('Снять активную катушку', 'расход не будет списываться'),
     ])
     form('Dryer', 'Сушка филамента', 'control', 'Extruder.dc.html', [
         SG('Материал', 'температура стола', ['PLA 50°', 'PETG 65°', 'ABS 80°', 'TPU 55°'], 1),
         ST('Время', '', 4, 1, 12, 1, ' ч'),
         I('Как', 'катушку на стол, сверху короб', 'стол держит температуру, моторы выключены'),
-        A('Начать сушку', 'M140 + таймер, выключит сам', tone='accent'),
+        A('Начать сушку', 'стол выключится сам по таймеру', tone='accent'),
     ])
     form('Devices', 'Устройства', 'control', 'Control.dc.html', [
         S('ПИТАНИЕ · MOONRAKER'),
         T('Принтер', 'реле основного питания', True, src='machine.device_power.devices'),
-        T('Камера-свет', 'умная розетка', False, src='machine.device_power.devices'),
+        T('Розетка камеры', 'умная розетка', False, src='machine.device_power.devices'),
         S('ВЫХОДЫ KLIPPER'),
-        SL('beeper', 'output_pin', 0, 0, 100, 5, '%', src='output_pin <name>.value', fmt='off0'),
-        T('caselight_relay', 'output_pin, вкл./выкл.', True, src='output_pin <name>.value'),
-    ], intro='Показываются только устройства, которые есть в конфиге Moonraker и Klipper.')
+        SL('Пищалка', 'beeper', 0, 0, 100, 5, '%', src='output_pin <name>.value', fmt='off0'),
+        T('Реле подсветки', 'caselight_relay', True, src='output_pin <name>.value'),
+    ], intro='')
 
     # ---------- Tools children ----------
     form('Calibrate', 'Калибровки', 'tools', 'Tools.dc.html', [
@@ -434,19 +434,19 @@ def build():
         L('Нагрев (PID)', 'сопло и стол', 'PidCal', icon='thermo', src='configfile.settings.extruder.control/pid_kp…'),
         L('Pressure advance', '0.040', 'PressureAdvance', icon='pa', src='extruder.pressure_advance'),
         L('Драйверы TMC', 'ток, режимы', 'Tmc', icon='driver', src='tmc2209 <stepper>.*'),
-        L('Тензодатчик', 'обнулить, если врёт касание · LOAD_CELL_TARE', 'Calibrate', icon='scale', src='only when gcode_macro LOAD_CELL_TARE exists (AD5M)'),
+        L('Тензодатчик', 'обнулить, если врёт касание', 'Calibrate', icon='scale', src='only when gcode_macro LOAD_CELL_TARE exists (AD5M)'),
     ])
     form('Screws', 'Винты стола', 'tools', 'Calibrate.dc.html', [
         I('Задний левый', 'опорный', 'не крутить'),
         I('Задний правый', '↻ 00:15', 'по часовой, четверть оборота', src='SCREWS_TILT_CALCULATE result (gcode response)', tone='accent'),
         I('Передний левый', '↺ 00:05', 'против часовой', tone='accent'),
         I('Передний правый', '✓ ровно', 'меньше 00:03'),
-        A('Проверить снова', 'SCREWS_TILT_CALCULATE', tone='accent'),
+        A('Проверить снова', 'щуп коснётся у каждого винта', tone='accent'),
     ], intro='00:15 = 15 минут на циферблате, то есть четверть оборота.')
     form('ProbeZ', 'Щуп и Z', 'tools', 'Calibrate.dc.html', [
         I('Z-offset щупа', '0.000 мм', 'из конфига', src='configfile.settings.probe.z_offset'),
-        A('Калибровка бумагой', 'PROBE_CALIBRATE → мастер', 'ZWizard', tone='accent'),
-        A('Проверить точность щупа', 'PROBE_ACCURACY · 10 касаний'),
+        A('Калибровка бумагой', 'пошагово, с листом бумаги', 'ZWizard', tone='accent'),
+        A('Проверить точность щупа', '10 касаний в одной точке'),
         I('Последняя проверка', 'разброс 0.004 мм', 'норма до 0.01', src='PROBE_ACCURACY gcode response'),
         S('НАСТРОЙКИ ЩУПА'),
         I('Смещение X / Y', '0 / 0 мм', '', src='configfile.settings.probe.x_offset/y_offset'),
@@ -457,19 +457,19 @@ def build():
         I('2', 'Положите лист бумаги под сопло', ''),
         I('3', 'Опускайте, пока бумага не начнёт цепляться', ''),
         SG('Шаг', '', ['0.005', '0.01', '0.05', '0.1', '1'], 2),
-        A('Сопло ↑ на шаг', 'TESTZ Z=+шаг'),
-        A('Сопло ↓ на шаг', 'TESTZ Z=−шаг'),
-        A('Принять и сохранить', 'ACCEPT → SAVE_CONFIG, Klipper перезапустится', tone='accent'),
-        A('Отменить', 'ABORT', tone='danger'),
+        A('Сопло ↑ на шаг', ''),
+        A('Сопло ↓ на шаг', ''),
+        A('Принять и сохранить', 'Klipper перезапустится', tone='accent'),
+        A('Отменить', '', tone='danger'),
     ])
     form('InputShaper', 'Вибрации', 'tools', 'Calibrate.dc.html', [
         I('Ось X', 'MZV · 54.2 Гц', 'макс. ускорение 7 400', src='configfile.settings.input_shaper.shaper_type_x/shaper_freq_x'),
         I('Ось Y', 'EI · 41.8 Гц', 'макс. ускорение 5 900', src='configfile.settings.input_shaper.*_y'),
-        A('Измерить обе оси', 'SHAPER_CALIBRATE · ~5 мин · не трогать принтер', tone='accent'),
-        A('Только X', 'SHAPER_CALIBRATE AXIS=X'),
-        A('Только Y', 'SHAPER_CALIBRATE AXIS=Y'),
-        A('Проверить датчик', 'MEASURE_AXES_NOISE'),
-    ], intro='Датчик: adxl345. После замера покажем график и предложим сохранить (SAVE_CONFIG).')
+        A('Измерить обе оси', 'не трогайте принтер во время замера', tone='accent'),
+        A('Только X', ''),
+        A('Только Y', ''),
+        A('Проверить датчик', 'шум акселерометра'),
+    ], intro='После замера покажем график и предложим сохранить.')
     form('Belts', 'Ремни', 'tools', 'Calibrate.dc.html', [
         I('Похожесть ремней', '87%', 'выше 90% — хорошо', src='TEST_RESONANCES AXIS=1,1 / 1,-1 → compare csv'),
         A('Проверить ремни', 'по диагоналям · ~3 мин', tone='accent'),
@@ -480,27 +480,27 @@ def build():
         ST('Температура', 'как при обычной печати', 220, 40, 350, 5, '°', src='max: configfile.settings.<heater>.max_temp'),
         SL('Обдув во время', 'как при печати', 50, 0, 100, 10, '%', fmt='off0'),
         I('Текущие', 'Kp 22.3 · Ki 1.1 · Kd 114', '', src='configfile.settings.extruder.pid_kp/ki/kd'),
-        A('Запустить', 'PID_CALIBRATE · 3–5 мин · потом SAVE_CONFIG', tone='accent'),
+        A('Запустить', 'нагреватель несколько раз включится и выключится', tone='accent'),
     ])
     form('PressureAdvance', 'Pressure advance', 'tools', 'Calibrate.dc.html', [
         ST('Pressure advance', 'сейчас', 0.04, 0, 1, 0.005, '', 3, src='extruder.pressure_advance'),
         ST('Smooth time', '', 0.04, 0, 0.2, 0.005, ' с', 3, src='extruder.smooth_time'),
-        A('Применить', 'SET_PRESSURE_ADVANCE · до перезапуска', tone='accent'),
+        A('Применить', 'действует до перезапуска', tone='accent'),
         A('Тестовая башня', 'печать с PA 0→0.1 по высоте, потом ввести высоту лучшего слоя'),
     ])
     form('Tmc', 'Драйверы TMC', 'tools', 'Calibrate.dc.html', [
-        I('stepper_x', '0.80 А · stealthChop', 'tmc2209', src='tmc2209 stepper_x.run_current, drv_status'),
-        I('stepper_y', '0.80 А · stealthChop', 'tmc2209'),
-        I('stepper_z', '0.60 А', 'tmc2209'),
-        I('extruder', '0.50 А', 'tmc2209'),
-        ST('Ток stepper_x', 'SET_TMC_CURRENT, до перезапуска', 0.8, 0.1, 2, 0.05, ' А', 2),
+        I('Мотор X', '0.80 А · тихий режим', 'TMC2209', src='tmc2209 stepper_x.run_current, drv_status'),
+        I('Мотор Y', '0.80 А · тихий режим', 'TMC2209'),
+        I('Мотор Z', '0.60 А', 'TMC2209'),
+        I('Экструдер', '0.50 А', 'TMC2209'),
+        ST('Ток мотора X', 'до перезапуска', 0.8, 0.1, 2, 0.05, ' А', 2),
     ])
     form('Limits', 'Лимиты', 'tools', 'Tools.dc.html', [
         SL('Скорость', 'макс. мм/с', 600, 50, 600, 10, '', src='toolhead.max_velocity (max from configfile.settings.printer.max_velocity)'),
         SL('Ускорение', 'мм/с²', 20000, 1000, 20000, 500, '', src='toolhead.max_accel'),
         SL('Cruise ratio', 'мин. доля крейсерской', 0.5, 0, 1, 0.05, '', src='toolhead.minimum_cruise_ratio', dec=2),
-        SL('Углы', 'square corner velocity', 25, 1, 50, 1, '', src='toolhead.square_corner_velocity'),
-        A('Вернуть из конфига', 'SET_VELOCITY_LIMIT значениями из printer.cfg'),
+        SL('Углы', 'скорость в углах', 25, 1, 50, 1, '', src='toolhead.square_corner_velocity'),
+        A('Вернуть как в конфиге', ''),
     ], intro='Меняется сразу и сбрасывается после перезапуска Klipper.')
     form('Macros', 'Макросы', 'tools', 'Tools.dc.html', [
         S('ИЗБРАННЫЕ'),
@@ -520,7 +520,7 @@ def build():
         ST('EXTRUDER_TEMP', 'по умолчанию 200', 200, 0, 350, 5, '°'),
         SG('PROFILE', '', ['auto', 'default', 'новый'], 0),
         T('В избранное', 'кнопка на «Инструментах»', True),
-        A('Запустить', 'AUTO_BED_LEVEL BED_TEMP=60 EXTRUDER_TEMP=200 PROFILE=auto', tone='accent'),
+        A('Запустить', '', tone='accent'),
     ])
     form('History', 'История', 'tools', 'Tools.dc.html', [
         I('Всего печатей', '142', '128 успешно · 90%', src='server.history.totals'),
@@ -529,11 +529,11 @@ def build():
         L('Корпус вентилятора №2', 'вчера · 1 ч 23 мин · PETG', 'FileDetail', '✓', src='server.history.list'),
         L('Benchy', 'вчера · остановлена на 63%', 'FileDetail', '■'),
         L('Держатель катушки v3', '3 дня · 3 ч 05 мин', 'FileDetail', '✓'),
-        A('Очистить историю', 'server.history.delete_job all=true', tone='danger'),
+        A('Очистить историю', 'файлы останутся', tone='danger'),
     ])
     form('Sensors', 'Датчики', 'tools', 'Tools.dc.html', [
         S('ФИЛАМЕНТ'),
-        T('Датчик обрыва', 'runout_sensor · есть пруток', True, src='filament_switch_sensor runout_sensor.enabled/filament_detected'),
+        T('Датчик обрыва', 'сейчас: пруток есть', True, src='filament_switch_sensor runout_sensor.enabled/filament_detected'),
         S('ТЕМПЕРАТУРЫ'),
         I('MCU', '41°', '', src='temperature_sensor mcu_temp.temperature'),
         I('Хост (T113)', '52°', '', src='temperature_sensor host_temp'),
@@ -548,9 +548,9 @@ def build():
         A('Отметить: фильтр заменён', 'сбросит счётчик'),
     ])
     form('Camera', 'Камера', 'tools', 'Tools.dc.html', [
-        I('Камера', 'нет потока', 'появится, если в Moonraker есть webcam', src='server.webcams.list'),
+        I('Камера', 'не подключена', 'добавьте камеру в Moonraker — появится здесь', src='server.webcams.list'),
         S('ТАЙМЛАПС'),
-        T('Записывать таймлапс', 'плагин moonraker-timelapse', False, src='machine.timelapse.settings'),
+        T('Записывать таймлапс', 'видео всей печати', False, src='machine.timelapse.settings'),
         SG('Режим', '', ['По слоям', 'По времени'], 0),
         ST('Кадров в секунду', '', 30, 10, 60, 5, ''),
         L('Видео', '3 файла', 'Camera', src='server.files.list root=timelapse'),
@@ -569,7 +569,7 @@ def build():
         L('Система', 'перезапуск, выключение, о системе', 'System', icon='chip'),
     ])
     form('Network', 'Сеть', 'settings', 'Settings.dc.html', [
-        T('Wi-Fi', 'wlan0 · MAC 2C:05:47:…', True, src='host wpa_supplicant'),
+        T('Wi-Fi', '', True, src='host wpa_supplicant'),
         I('Подключено', 'HomeNet_5G', '192.168.1.42 · сигнал −54 дБм', src='machine.system_info.network.wlan0'),
         S('ДОСТУПНЫЕ СЕТИ'),
         L('HomeNet_5G', '5 ГГц · WPA2', 'WifiJoin', 'подключено'),
@@ -583,7 +583,7 @@ def build():
     form('WifiJoin', 'HomeNet', 'settings', 'Network.dc.html', [
         I('Пароль', '••••••••', 'нажмите, чтобы ввести — откроется клавиатура'),
         T('Подключаться автоматически', '', True),
-        A('Подключиться', 'wpa_cli', tone='accent'),
+        A('Подключиться', '', tone='accent'),
         A('Забыть сеть', '', tone='danger'),
     ])
     form('Screen', 'Экран', 'settings', 'Settings.dc.html', [
@@ -600,11 +600,11 @@ def build():
         I('Стоп', 'работает всегда', 'даже на заблокированном экране'),
     ])
     form('Sound', 'Звук', 'settings', 'Settings.dc.html', [
-        T('Звуки', 'бипер принтера', True, src='M300 (AD5M macro) / output_pin beeper'),
+        T('Звуки', 'пищалка принтера', True, src='M300 (AD5M macro) / output_pin beeper'),
         SL('Громкость', '', 60, 0, 100, 10, '%', fmt='off0'),
-        T('Мелодия в конце печати', 'PLAY_MIDI', True, src='gcode_macro PLAY_MIDI (KlipperMod)'),
+        T('Мелодия в конце печати', '', True, src='gcode_macro PLAY_MIDI (KlipperMod)'),
         T('Звук касаний', '', False),
-        A('Проверить', 'M300 S1000 P200'),
+        A('Проверить звук', ''),
     ])
     form('LangTime', 'Язык и время', 'settings', 'Settings.dc.html', [
         SG('Язык', '', ['Русский', 'English'], 0),
@@ -613,33 +613,33 @@ def build():
     ])
     form('Safety', 'Безопасность', 'settings', 'Settings.dc.html', [
         T('Подтверждать аварийную остановку', 'E-stop с подтверждением', True),
-        T('Отмена не сработала → E-stop', 'если CANCEL_PRINT висит', True),
+        T('Если отмена зависла — аварийная остановка', '', True),
         ST('Ждать перед E-stop', '', 15, 5, 60, 5, ' с'),
         T('Подтверждать запуск макросов', '', False),
         SG('Всплывающие уведомления', 'с какого уровня', ['Все', 'Предупреждения', 'Ошибки'], 1),
     ])
     form('Printers', 'Принтеры', 'settings', 'Settings.dc.html', [
-        L('AD5M', 'localhost:7125 · подключён', '@', '✓', src='Rivet config: list of Moonraker URLs'),
+        L('AD5M', 'этот принтер · подключён', '@', '✓', src='Rivet config: list of Moonraker URLs'),
         A('Добавить принтер', 'адрес Moonraker и порт', tone='accent'),
     ])
     form('Updates', 'Обновления', 'settings', 'Settings.dc.html', [
         I('Klipper', 'v0.12.0-xblax', 'актуально', src='machine.update.status.version_info.klipper'),
         I('Moonraker', 'v0.9.3', 'актуально'),
         I('Rivet', '0.1.0', 'актуально'),
-        A('Проверить', 'machine.update.refresh'),
+        A('Проверить обновления', ''),
         I('KlipperMod', 'обновляется образом с USB', 'не через этот экран'),
     ])
     form('System', 'Система', 'settings', 'Settings.dc.html', [
         S('ПЕРЕЗАПУСК'),
-        A('Перезапустить Klipper', 'RESTART'),
-        A('Перезапустить прошивку', 'FIRMWARE_RESTART'),
-        A('Перезапустить Moonraker', 'machine.services.restart'),
-        A('Перезапустить экран', 'Rivet'),
+        A('Перезапустить Klipper', 'перечитает конфиг'),
+        A('Перезапустить прошивку', 'после ошибки платы'),
+        A('Перезапустить Moonraker', ''),
+        A('Перезапустить экран', ''),
         S('ПИТАНИЕ'),
         T('Выключить после печати', 'когда остынет ниже 50°', False, src='AUTO_SHUTDOWN (KlipperMod)'),
-        A('Перезагрузить', 'machine.reboot'),
-        A('Выключить', 'SHUTDOWN (KlipperMod) / machine.shutdown', tone='danger'),
-        A('Загрузить стоковую прошивку', 'REBOOT_STOCK_SYSTEM · только KlipperMod'),
+        A('Перезагрузить принтер', ''),
+        A('Выключить принтер', '', tone='danger'),
+        A('Загрузить стоковую прошивку', 'вернуться в прошивку Flashforge до перезагрузки'),
         S('О СИСТЕМЕ'),
         I('Процессор', 'T113-S3 · 2 ядра · 18%', '', src='machine.system_info.cpu_info; machine.proc_stats'),
         I('Память', '54 / 128 МБ', '', src='machine.proc_stats.system_memory'),
@@ -658,23 +658,23 @@ def build():
         A('Очистить очередь', '', tone='danger'),
     ])
     form('FileActions', 'Корпус вентилятора №2', 'home', 'FileDetail.dc.html', [
-        A('Добавить в очередь', 'server.job_queue.post_job', tone='accent'),
-        A('Переименовать', 'server.files.move'),
-        A('Переместить в папку', 'server.files.move'),
-        A('Скопировать с USB на принтер', 'server.files.copy'),
-        A('Удалить', 'server.files.delete_file', tone='danger'),
+        A('Добавить в очередь', '', tone='accent'),
+        A('Переименовать', ''),
+        A('Переместить в папку', ''),
+        A('Скопировать с USB на принтер', ''),
+        A('Удалить', '', tone='danger'),
     ])
 
     # ---------- Printing ----------
     form('PrintTune', 'Подстройка печати', 'home', 'Printing.dc.html', [
-        SL('Скорость', 'M220', 100, 10, 300, 5, '%', src='gcode_move.speed_factor'),
-        SL('Поток', 'M221', 100, 75, 125, 1, '%', src='gcode_move.extrude_factor'),
-        ST('Z-offset', 'на лету · SET_GCODE_OFFSET', -0.12, -2, 2, 0.01, ' мм', 2, src='gcode_move.homing_origin[2]'),
-        A('Сохранить Z-offset', 'Z_OFFSET_APPLY_PROBE + SAVE_CONFIG после печати'),
+        SL('Скорость', '', 100, 10, 300, 5, '%', src='gcode_move.speed_factor'),
+        SL('Поток', '', 100, 75, 125, 1, '%', src='gcode_move.extrude_factor'),
+        ST('Z-offset', 'меняется сразу', -0.12, -2, 2, 0.01, ' мм', 2, src='gcode_move.homing_origin[2]'),
+        A('Сохранить Z-offset', 'запишется после печати'),
         ST('Pressure advance', '', 0.04, 0, 1, 0.005, '', 3, src='extruder.pressure_advance'),
         L('Температуры', 'сопло 240° · стол 80°', 'Heating'),
         L('Вентиляторы', 'обдув 60%', 'Fan'),
-        A('Сбросить скорость и поток', 'M220 S100, M221 S100'),
+        A('Сбросить скорость и поток', 'обратно на 100%'),
     ])
     form('PrintMore', 'Ещё', 'home', 'Printing.dc.html', [
         L('Пауза на слое', 'следующий или выбранный', 'LayerPause', src='print_stats.info.current_layer/total_layer; SET_PAUSE_AT_LAYER'),
@@ -686,23 +686,23 @@ def build():
     ])
     form('LayerPause', 'Пауза на слое', 'home', 'PrintMore.dc.html', [
         I('Сейчас', 'слой 76 из 180', '', src='print_stats.info.current_layer/total_layer'),
-        A('На следующем слое', 'SET_PAUSE_NEXT_LAYER ENABLE=1', tone='accent'),
+        A('На следующем слое', '', tone='accent'),
         ST('На слое', '', 120, 77, 180, 1, ''),
-        A('Поставить паузу на 120', 'SET_PAUSE_AT_LAYER LAYER=120 · для вставки магнита, смены цвета'),
+        A('Поставить паузу на 120', 'чтобы вставить магнит или сменить цвет'),
         A('Снять запланированную паузу', '', tone='danger'),
-    ], intro='Нужен макрос SET_PAUSE_AT_LAYER (есть в Mainsail/Fluidd-конфиге).')
+    ], intro='')
 
     # ---------- more Control ----------
     form('Fan', 'Вентиляторы', 'control', 'Control.dc.html', [
-        SL('Обдув модели', 'fan · M106', 60, 0, 100, 5, '%', src='fan.speed', fmt='off0'),
-        SL('Камера', 'fan_generic chamber_fan', 0, 0, 100, 5, '%', src='fan_generic chamber_fan.speed', fmt='off0'),
+        SL('Обдув', '', 60, 0, 100, 5, '%', src='fan.speed', fmt='off0'),
+        SL('Камера', '', 0, 0, 100, 5, '%', src='fan_generic chamber_fan.speed', fmt='off0'),
         SG('Воздух в камере', 'AD5M Pro', ['Выкл.', 'Фильтр', 'Вытяжка'], 0, src='only when AIR_CIRCULATION_* macros exist'),
         S('АВТОМАТИЧЕСКИЕ'),
-        I('Хотэнд', '100%', 'heater_fan · включается от 50°', src='heater_fan hotend_fan.speed'),
-        I('Драйверы', '0%', 'controller_fan · пока двигаются моторы', src='controller_fan stepper_driver_fan.speed'),
+        I('Хотэнд', '100%', 'включается сам от 50°', src='heater_fan hotend_fan.speed'),
+        I('Драйверы', '0%', 'работает, пока включены моторы', src='controller_fan stepper_driver_fan.speed'),
     ], intro='Слайсер может поменять обдув модели на следующем слое.')
     form('Light', 'Свет', 'control', 'Control.dc.html', [
-        T('Подсветка', 'chamber_led', True, src='led chamber_led.color_data'),
+        T('Подсветка', '', True, src='led chamber_led.color_data'),
         SL('Яркость', '', 70, 0, 100, 5, '%', src='led chamber_led.color_data[0][3]', fmt='off0'),
         SL('Красный', 'RGB', 100, 0, 100, 5, '%', src='led/neopixel color_data[0][0] — bars shown only for RGB(W) LEDs'),
         SL('Зелёный', '', 100, 0, 100, 5, '%'),
@@ -711,9 +711,9 @@ def build():
         T('Цвет по состоянию', 'печать, ошибка, готово', False),
     ])
     form('Speed', 'Скорость и поток', 'control', 'Control.dc.html', [
-        SL('Скорость', 'M220 · от скорости в слайсере', 100, 10, 300, 5, '%', src='gcode_move.speed_factor'),
-        SL('Поток', 'M221 · сколько пластика', 100, 75, 125, 1, '%', src='gcode_move.extrude_factor'),
-        A('Вернуть 100% / 100%', 'M220 S100, M221 S100'),
+        SL('Скорость', '', 100, 10, 300, 5, '%', src='gcode_move.speed_factor'),
+        SL('Поток', '', 100, 75, 125, 1, '%', src='gcode_move.extrude_factor'),
+        A('Вернуть 100% / 100%', ''),
         I('Сейчас', '86 мм/с', 'реальная скорость головы', src='motion_report.live_velocity'),
     ], intro='Выше 150% качество и прочность обычно падают.')
     form('HeatPresets', 'Пресеты нагрева', 'control', 'Heating.dc.html', [
@@ -722,20 +722,20 @@ def build():
         S('ABS'), ST('Сопло', '', 250, 0, 350, 5, '°'), ST('Стол', '', 100, 0, 130, 5, '°'),
         S('TPU'), ST('Сопло', '', 225, 0, 350, 5, '°'), ST('Стол', '', 50, 0, 130, 5, '°'),
         A('Добавить материал', ''),
-    ], intro='Кнопки быстрого нагрева на экране «Нагрев». Хранятся в Moonraker database, max — max_temp из конфига.')
+    ], intro='Кнопки быстрого нагрева на экране «Нагрев».')
     form('MotionAdvanced', 'Движение · ещё', 'control', 'Motion.dc.html', [
         S('ПАРКОВКА'),
-        A('Всё (G28)', '', tone='accent'), A('Только XY', 'G28 X Y'), A('Только Z', 'G28 Z'),
+        A('Все оси', '', tone='accent'), A('Только XY', ''), A('Только Z', ''),
         S('ПЕРЕЙТИ В ТОЧКУ'),
         ST('X', '−110 … 110', 0, -110, 110, 1, ' мм', src='toolhead.axis_minimum/axis_maximum'),
         ST('Y', '−110 … 110', 0, -110, 110, 1, ' мм'),
         ST('Z', '−10 … 230', 10, -10, 230, 1, ' мм'),
-        A('Поехать', 'G90 G1 X0 Y0 Z10'),
+        A('Поехать', ''),
         S('НАСТРОЙКИ ДЖОЙСТИКА'),
         ST('Скорость XY', '', 100, 10, 600, 10, ' мм/с', src='max: toolhead.max_velocity'),
         ST('Скорость Z', '', 10, 1, 25, 1, ' мм/с', src='max: configfile.settings.printer.max_z_velocity'),
         T('Инвертировать X', 'только на экране', False), T('Инвертировать Y', '', False), T('Инвертировать Z', '', False),
-        A('Проверить концевики', 'QUERY_ENDSTOPS'),
+        A('Проверить концевики', 'нажаты или нет'),
     ])
     # ---------- printing extras ----------
     form('PrintDone', 'Печать завершена', 'home', 'Main.dc.html', [
@@ -746,10 +746,10 @@ def build():
     ])
     form('Runout', 'Закончился филамент', 'home', 'Printing.dc.html', [
         I('Печать на паузе', 'слой 76 из 180', 'датчик обрыва сработал', src='filament_switch_sensor.filament_detected=false; print_stats.state=paused', tone='danger'),
-        A('Выгрузить остаток', 'UNLOAD_FILAMENT'),
+        A('Выгрузить остаток', ''),
         A('Заправить новый', 'мастер загрузки', 'FilamentLoad'),
-        A('Прочистить 25 мм', 'PURGE_FILAMENT'),
-        A('Продолжить печать', 'RESUME', 'Printing', tone='accent'),
+        A('Прочистить 25 мм', ''),
+        A('Продолжить печать', '', 'Printing', tone='accent'),
         A('Отменить печать', '', 'ConfirmStop', tone='danger'),
     ])
 

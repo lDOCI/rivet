@@ -129,7 +129,7 @@ class Component extends DCLogic {
       padOk: function () { if (padValid) self.setState({ pad: false, target: padNum }); },
       entryLabel: entry === '' ? '—' : entry + '°',
       entryInk: entry === '' ? '#66707b' : '#f4f6f8',
-      hint: padNum > max ? 'максимум ' + max + '° (max_temp)' : 'от 0 до ' + max + '°',
+      hint: padNum > max ? 'максимум ' + max + '°' : 'от 0 до ' + max + '°',
       hintInk: padNum > max ? '#fb7185' : '#98a1ac',
       okDisabled: !padValid,
       okBg: padValid ? '#2dd4bf' : '#1f242b',

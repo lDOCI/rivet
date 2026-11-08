@@ -86,28 +86,28 @@ var ROWS = [
  {
   "kind": "action",
   "t": "Перезапустить Klipper",
-  "sub": "RESTART",
+  "sub": "перечитает конфиг",
   "href": "System.dc.html",
   "id": "r1"
  },
  {
   "kind": "action",
   "t": "Перезапустить прошивку",
-  "sub": "FIRMWARE_RESTART",
+  "sub": "после ошибки платы",
   "href": "System.dc.html",
   "id": "r2"
  },
  {
   "kind": "action",
   "t": "Перезапустить Moonraker",
-  "sub": "machine.services.restart",
+  "sub": "",
   "href": "System.dc.html",
   "id": "r3"
  },
  {
   "kind": "action",
   "t": "Перезапустить экран",
-  "sub": "Rivet",
+  "sub": "",
   "href": "System.dc.html",
   "id": "r4"
  },
@@ -125,15 +125,15 @@ var ROWS = [
  },
  {
   "kind": "action",
-  "t": "Перезагрузить",
-  "sub": "machine.reboot",
+  "t": "Перезагрузить принтер",
+  "sub": "",
   "href": "System.dc.html",
   "id": "r7"
  },
  {
   "kind": "action",
-  "t": "Выключить",
-  "sub": "SHUTDOWN (KlipperMod) / machine.shutdown",
+  "t": "Выключить принтер",
+  "sub": "",
   "href": "System.dc.html",
   "tone": "danger",
   "id": "r8"
@@ -141,7 +141,7 @@ var ROWS = [
  {
   "kind": "action",
   "t": "Загрузить стоковую прошивку",
-  "sub": "REBOOT_STOCK_SYSTEM · только KlipperMod",
+  "sub": "вернуться в прошивку Flashforge до перезагрузки",
   "href": "System.dc.html",
   "id": "r9"
  },
