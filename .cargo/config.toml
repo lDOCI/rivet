@@ -1,0 +1,9 @@
+# Cross-compiling for the printer: static musl binary, linked with the lld
+# that ships with rustup, so no external toolchain is needed.
+[target.armv7-unknown-linux-musleabihf]
+linker = "rust-lld"
+rustflags = ["-C", "target-feature=+crt-static"]
+
+[alias]
+# cargo printer -> release binary for Klipper Mod (AD5M, armv7)
+printer = "build -p rivet --release --no-default-features --features fbdev --target armv7-unknown-linux-musleabihf"

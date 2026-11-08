@@ -12,8 +12,11 @@ rust-version = "1.85"
 [workspace.dependencies]
 moonraker = { path = "crates/moonraker" }
 model = { path = "crates/model" }
+fbdev-platform = { path = "crates/fbdev-platform" }
 
 anyhow = "1"
+slint = { version = "1.18", default-features = false, features = ["std", "compat-1-2"] }
+slint-build = "1.18"
 thiserror = "2"
 futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
 serde = { version = "1", features = ["derive"] }

@@ -67,10 +67,7 @@ async fn handle_event(ev: Event, client: &Client, state: &mut PrinterState) {
     match ev {
         Event::Connected => {
             state.connection = Connection::Connected;
-            if let Err(err) = client
-                .identify("Rivet", env!("CARGO_PKG_VERSION"))
-                .await
-            {
+            if let Err(err) = client.identify("Rivet", env!("CARGO_PKG_VERSION")).await {
                 tracing::warn!(%err, "identify failed");
             }
             refresh_klippy(client, state).await;
