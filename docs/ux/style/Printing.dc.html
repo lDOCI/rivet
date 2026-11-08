@@ -78,7 +78,7 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
         </a>
         <a href="ConfirmStop.dc.html" style="height: 84px; border-radius: 20px; background: rgba(251, 75, 94, 0.12); color: #fb7185; font-size: 15px; font-weight: 600; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="3"></rect></svg>
-          Стоп
+          Отменить
         </a>
       </div>
     </div>
@@ -102,7 +102,7 @@ class Component extends DCLogic {
       ringEnd: p ? '#fbbf24' : '#2dd4bf',
       running: !p, paused: p,
       toggleLabel: p ? 'Продолжить' : 'Пауза',
-      stage: p ? 'На паузе' : 'Печать стенок',
+      stage: p ? 'На паузе' : 'Печатается',
       stageColor: p ? '#fbbf24' : '#2dd4bf',
       stageGlow: p ? 'rgba(251, 191, 36, 0.18)' : 'rgba(45, 212, 191, 0.18)',
       toggle: function () { self.setState({ paused: !p }); }

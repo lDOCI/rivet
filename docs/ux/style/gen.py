@@ -73,6 +73,7 @@ ICONS = {
     'unload': ["M12 12V3", "m8 7 4-4 4 4", "M8 15h8l-2 4h-4z"],
     'swap': ["M4 9h13", "m14 5 4 4-4 4", "M20 15H7", "m10 19-4-4 4-4"],
     'service': ["M4 6h16v14H4z", "M8 3v4M16 3v4", "M4 10h16", "m9 15 2 2 4-4"],
+    'bolt': ["M13 2 4 14h7l-1 8 9-12h-7z"],
     'filter': ["M3 5h18l-7 8v6l-4 2v-8z"],
 }
 
@@ -157,14 +158,12 @@ def hub(name, title, rail, tiles, cols=4, back=None):
                    % (30 if len(big) <= 6 else 22, big))
         else:
             val = '<span style="font-size: 20px; font-weight: 800; letter-spacing: -0.02em">%s</span>' % t['label']
-        sub = t.get('sub') if big else t.get('sub', '')
-        lab = t['label'] if big else ''
-        subline = ' · '.join(x for x in [lab, sub] if x)
+        subline = t['label'] if big else t.get('sub', '')
         icon = t.get('icon_html') or svg(t['icon'], 30, '#2dd4bf')
         out += ('      <a href="%s" style="border-radius: 24px; background: #15181d; color: #f4f6f8; padding: 16px; box-sizing: border-box; '
                 'display: flex; flex-direction: column; justify-content: space-between; min-width: 0">%s'
                 '<span style="display: flex; flex-direction: column; gap: 2px; min-width: 0">%s'
-                '<span style="font-size: 14px; color: #98a1ac; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">%s</span></span></a>\n') % (
+                '<span style="font-size: 14px; line-height: 1.3; color: #98a1ac; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden">%s</span></span></a>\n') % (
             t['href'], icon, val, subline)
         note_src(title, t['label'], t.get('src'))
     out += '    </div>\n  </main>\n</div>\n'
@@ -193,7 +192,7 @@ class Component extends DCLogic {
     var rows = ROWS.map(function (r) {
       var o = { kind: r.kind, title: r.t || '', sub: r.sub || '', href: r.href || '#',
         isSection: r.kind === 'section', isLink: r.kind === 'link', isToggle: r.kind === 'toggle', isSlider: r.kind === 'slider',
-        isSeg: r.kind === 'seg', isStepper: r.kind === 'stepper', isAction: r.kind === 'action', isInfo: r.kind === 'info',
+        isSeg: r.kind === 'seg', isStepper: r.kind === 'stepper', isPrimary: r.kind === 'action' && r.tone === 'accent', isSecondary: r.kind === 'action' && r.tone !== 'accent', isInfo: r.kind === 'info', actInk: r.tone === 'danger' ? '#fb7185' : '#f4f6f8',
         value: r.value || '', hasIcon: !!r.ic, p0: (r.ic || [])[0] || '', p1: (r.ic || [])[1] || '', p2: (r.ic || [])[2] || '', p3: (r.ic || [])[3] || '', p4: (r.ic || [])[4] || '', p5: (r.ic || [])[5] || '', tone: r.tone === 'danger' ? '#fb7185' : r.tone === 'accent' ? '#2dd4bf' : '#f4f6f8',
         actBg: r.tone === 'accent' ? '#2dd4bf' : '#1f242b', actFg: r.tone === 'accent' ? '#042f2a' : (r.tone === 'danger' ? '#fb7185' : '#f4f6f8') };
       if (r.kind === 'toggle') {
@@ -217,6 +216,8 @@ class Component extends DCLogic {
         o.label = fmt(r, w);
         o.dec = function () { var n = {}; n[r.id] = Math.max(r.min, +(w - r.step).toFixed(4)); self.setState(n); };
         o.inc = function () { var n = {}; n[r.id] = Math.min(r.max, +(w + r.step).toFixed(4)); self.setState(n); };
+        o.edit = function () { self.setState({ _pad: r.id, _entry: '' }); };
+        o.editAria = r.t + ': ' + fmt(r, w) + ', ввести число';
       }
       if (r.kind === 'seg') {
         o.opts = r.opts.map(function (lab, i) {
@@ -227,11 +228,49 @@ class Component extends DCLogic {
       }
       return o;
     });
+    var pr = null; ROWS.forEach(function (r) { if (r.id === s._pad) pr = r; });
+    var e = s._entry || '';
+    var num = e === '' || e === '-' ? NaN : parseFloat(e.replace(',', '.'));
+    var ok = !!pr && !isNaN(num) && num >= pr.min && num <= pr.max;
+    var keys = (pr && pr.min < 0) ? ['1', '2', '3', '4', '5', '6', '7', '8', '9', '±', '0', ','] : ['1', '2', '3', '4', '5', '6', '7', '8', '9', ',', '0', 'C'];
     var bars = rows.filter(function (o) { return o.isSlider; });
-    return { rows: rows.filter(function (o) { return !o.isSlider; }), bars: bars };
+    return { rows: rows.filter(function (o) { return !o.isSlider; }), bars: bars,
+      padOpen: !!pr, padTitle: pr ? pr.t + (pr.unit ? ', ' + pr.unit.trim() : '') : '',
+      entryLabel: e === '' ? '—' : e, entryInk: e === '' ? '#66707b' : '#f4f6f8',
+      padHint: pr ? 'от ' + pr.min + ' до ' + pr.max : '', hintInk: (pr && !isNaN(num) && !ok) ? '#fb7185' : '#98a1ac',
+      okBg: ok ? '#2dd4bf' : '#1f242b', okFg: ok ? '#042f2a' : '#66707b',
+      padOk: function () { if (ok) { var n = { _pad: null }; n[pr.id] = num; self.setState(n); } },
+      padCancel: function () { self.setState({ _pad: null }); },
+      backspace: function () { self.setState({ _entry: (self.state._entry || '').slice(0, -1) }); },
+      keys: keys.map(function (k) {
+        return { label: k, aria: k === 'C' ? 'Очистить' : k === '±' ? 'Сменить знак' : k, bg: (k === 'C' || k === '±') ? '#1f242b' : '#252a31',
+          press: function () { var t = self.state._entry || ''; if (k === 'C') t = ''; else if (k === '±') t = t.charAt(0) === '-' ? t.slice(1) : '-' + t; else if (k === ',') { if (t.indexOf(',') < 0) t = (t === '' ? '0' : t) + ','; } else if (t.replace('-', '').length < 7) t = t + k; self.setState({ _entry: t }); } };
+      }) };
   }
 }
 '''
+
+PAD_HTML = """  <sc-if value="{{padOpen}}" hint-placeholder-val="{{ false }}">
+    <div role="dialog" aria-modal="true" aria-label="Ввести число" style="position: absolute; inset: 0; background: rgba(5, 6, 8, 0.78); display: flex; align-items: center; justify-content: center">
+      <div style="width: 680px; height: 420px; box-sizing: border-box; border-radius: 28px; background: #15181d; padding: 20px; display: grid; grid-template-columns: 240px 1fr; gap: 20px">
+        <div style="display: flex; flex-direction: column; gap: 8px">
+          <span style="font-size: 15px; font-weight: 600; color: #98a1ac">{{padTitle}}</span>
+          <div style="height: 96px; border-radius: 20px; background: #0b0d10; display: flex; align-items: center; gap: 6px; padding: 0 8px 0 16px">
+            <span aria-live="polite" style="flex: 1; text-align: center; font-size: 40px; font-weight: 800; font-variant-numeric: tabular-nums; color: {{entryInk}}">{{entryLabel}}</span>
+            <button type="button" onClick="{{backspace}}" aria-label="Стереть" style="width: 56px; height: 64px; border: 0; border-radius: 16px; background: #1f242b; color: #f4f6f8; font: 600 22px Inter, system-ui, sans-serif; cursor: pointer">⌫</button>
+          </div>
+          <span style="font-size: 14px; color: {{hintInk}}; text-align: center">{{padHint}}</span>
+          <div style="flex: 1"></div>
+          <button type="button" onClick="{{padOk}}" style="height: 80px; border: 0; border-radius: 22px; background: {{okBg}}; color: {{okFg}}; font: 800 19px Inter, system-ui, sans-serif; cursor: pointer">Готово</button>
+          <button type="button" onClick="{{padCancel}}" style="height: 64px; border: 0; border-radius: 20px; background: #1f242b; color: #f4f6f8; font: 600 16px Inter, system-ui, sans-serif; cursor: pointer">Отмена</button>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(4, minmax(0, 1fr)); gap: 8px">
+          <sc-for list="{{keys}}" as="k" hint-placeholder-count="12"><button type="button" onClick="{{k.press}}" aria-label="{{k.aria}}" style="border: 0; border-radius: 18px; background: {{k.bg}}; color: #f4f6f8; font: 700 28px Inter, system-ui, sans-serif; cursor: pointer">{{k.label}}</button></sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+"""
 
 BARS_HTML = '''    <div style="flex: 1; min-height: 0; display: flex; gap: 16px">
     <div style="flex: none; display: flex; gap: 10px; padding-bottom: 16px">
@@ -296,7 +335,7 @@ def form(name, title, rail, back, rows, right='', intro=''):
           <div style="min-height: 84px; flex: none; border-radius: 20px; background: #15181d; padding: 0 10px 0 18px; display: flex; align-items: center; gap: 10px">
             <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 18px; font-weight: 700">{{r.title}}</span><span style="font-size: 14px; color: #98a1ac">{{r.sub}}</span></span>
             <button type="button" onClick="{{r.dec}}" aria-label="Меньше" style="width: 64px; height: 64px; border: 0; border-radius: 18px; background: #1f242b; color: #f4f6f8; font: 500 30px Inter, system-ui, sans-serif; cursor: pointer">−</button>
-            <span style="width: 120px; text-align: center; font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums">{{r.label}}</span>
+            <button type="button" onClick="{{r.edit}}" aria-label="{{r.editAria}}" style="width: 120px; height: 64px; border: 0; border-radius: 18px; background: transparent; color: #f4f6f8; font: 800 22px Inter, system-ui, sans-serif; font-variant-numeric: tabular-nums; white-space: nowrap; cursor: pointer">{{r.label}}</button>
             <button type="button" onClick="{{r.inc}}" aria-label="Больше" style="width: 64px; height: 64px; border: 0; border-radius: 18px; background: #1f242b; color: #f4f6f8; font: 500 30px Inter, system-ui, sans-serif; cursor: pointer">+</button>
           </div>
         </sc-if>
@@ -310,13 +349,19 @@ def form(name, title, rail, back, rows, right='', intro=''):
             </div>
           </div>
         </sc-if>
-        <sc-if value="{{r.isAction}}" hint-placeholder-val="{{ false }}">
-          <a href="{{r.href}}" style="min-height: 72px; flex: none; border-radius: 20px; background: {{r.actBg}}; color: {{r.actFg}}; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 8px 18px; box-sizing: border-box; text-align: center"><span style="font-size: 18px; font-weight: 800">{{r.title}}</span><span style="font-size: 13px; opacity: 0.75">{{r.sub}}</span></a>
+        <sc-if value="{{r.isPrimary}}" hint-placeholder-val="{{ false }}">
+          <a href="{{r.href}}" style="min-height: 76px; flex: none; border-radius: 20px; background: #2dd4bf; color: #042f2a; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 8px 18px; box-sizing: border-box; text-align: center"><span style="font-size: 18px; font-weight: 800">{{r.title}}</span><span style="font-size: 13px; opacity: 0.75">{{r.sub}}</span></a>
+        </sc-if>
+        <sc-if value="{{r.isSecondary}}" hint-placeholder-val="{{ false }}">
+          <a href="{{r.href}}" style="min-height: 64px; flex: none; border-radius: 20px; background: #15181d; color: {{r.actInk}}; display: flex; align-items: center; gap: 14px; padding: 10px 18px; box-sizing: border-box">
+            <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 17px; font-weight: 700">{{r.title}}</span><span style="font-size: 14px; color: #98a1ac">{{r.sub}}</span></span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" opacity="0.7"><path d="M5 12h14"></path><path d="m13 6 6 6-6 6"></path></svg>
+          </a>
         </sc-if>
       </sc-for>
     </div>
 ''' + ('    </div>\n' if has_bars else '') + '''  </main>
-</div>
+''' + PAD_HTML + '''</div>
 '''
     clean = []
     for i, r in enumerate(rows):
@@ -365,25 +410,25 @@ def build():
         'r="48" fill="none" stroke="%s" stroke-width="14" stroke-linecap="round" stroke-dasharray="%d 302" transform="rotate(135 60 60)"></circle></svg>'
         % (color, cur))
     hub('Control', 'Управление', 'control', [
-        dict(icon_html=gauge(18, 0, '#4a525c'), value='24°', label='Нагрев', sub='сопло выкл. · стол 23°', href='Heating.dc.html',
+        dict(icon_html=gauge(18, 0, '#4a525c'), value='24° · 23°', label='Сопло · стол', href='Heating.dc.html',
              src='printer.objects: extruder.temperature/target, heater_bed.temperature/target'),
         dict(icon='move', label='Движение', sub='оси, парковка, моторы', href='Motion.dc.html'),
         dict(icon='extruder', label='Экструдер', sub='выдавить, заправка', href='Extruder.dc.html'),
-        dict(icon='fan', value='60%', label='Вентиляторы', sub='обдув модели', href='Fan.dc.html', src='fan.speed (part fan); fan_generic/*.speed'),
-        dict(icon='bulb', value='70%', label='Свет', sub='подсветка', href='Light.dc.html', src='led <name>.color_data[0][3] (white channel)'),
-        dict(icon='gauge', value='100%', label='Скорость и поток', sub='поток 100%', href='Speed.dc.html',
+        dict(icon='fan', value='60%', label='Обдув', href='Fan.dc.html', src='fan.speed (part fan); fan_generic/*.speed'),
+        dict(icon='bulb', value='70%', label='Свет', href='Light.dc.html', src='led <name>.color_data[0][3] (white channel)'),
+        dict(icon='gauge', value='100%', label='Скорость', href='Speed.dc.html',
              src='gcode_move.speed_factor ×100, gcode_move.extrude_factor ×100'),
         dict(icon='zoff', value='−0.12', label='Z-offset, мм', href='ZOffset.dc.html', src='gcode_move.homing_origin[2]'),
         dict(icon='plug', label='Устройства', sub='питание, пины', href='Devices.dc.html'),
     ])
     hub('Tools', 'Инструменты', 'tools', [
-        dict(icon='calib', label='Калибровки', sub='стол, щуп, вибрации…', href='Calibrate.dc.html'),
-        dict(icon='macro', label='Макросы', sub='12 макросов', href='Macros.dc.html', src='printer.objects.list → gcode_macro *'),
+        dict(icon='calib', label='Калибровки', sub='стол, щуп, вибрации', href='Calibrate.dc.html'),
+        dict(icon='bolt', label='Макросы', sub='12 макросов', href='Macros.dc.html', src='printer.objects.list → gcode_macro *'),
         dict(icon='console', label='Консоль', sub='G-code вручную', href='Console.dc.html'),
         dict(icon='history', label='История', sub='142 печати', href='History.dc.html', src='server.history.totals'),
         dict(icon='limits', label='Лимиты', sub='скорость, ускорение', href='Limits.dc.html'),
         dict(icon='sensor', label='Датчики', sub='обрыв нити, температуры', href='Sensors.dc.html'),
-        dict(icon='service', label='Обслуживание', sub='фильтр, сопло, рельсы', href='Maintenance.dc.html'),
+        dict(icon='service', label='Обслуживание', sub='фильтр, сопло', href='Maintenance.dc.html'),
         dict(icon='camera', label='Камера', sub='и таймлапс', href='Camera.dc.html'),
     ])
 
@@ -392,8 +437,8 @@ def build():
         I('Сопло', '240° / 240°', 'для выдавливания нужно ≥ 170°', src='extruder.temperature/target; extruder.can_extrude; configfile.settings.extruder.min_extrude_temp'),
         SG('Длина', 'за одно нажатие', ['5 мм', '10 мм', '25 мм', '50 мм', '100 мм'], 2, src='max: configfile.settings.extruder.max_extrude_only_distance'),
         SG('Скорость', 'мм/с', ['2', '5', '10', '15'], 1, src='max: configfile.settings.extruder.max_extrude_only_velocity'),
-        A('Выдавить 25 мм', '5 мм/с', tone='accent'),
-        A('Втянуть 25 мм', '5 мм/с'),
+        A('Выдавить', 'выбранную длину', tone='accent'),
+        A('Втянуть', 'обратно в экструдер'),
         S('ФИЛАМЕНТ'),
         L('Заправить / сменить пруток', 'мастер: нагрев, протяжка, проверка цвета', 'FilamentLoad', icon='load'),
         L('Выгрузить пруток', 'нагреет и вытянет', 'FilamentLoad', icon='unload', src='UNLOAD_FILAMENT macro if present, else G1 E−'),
@@ -409,9 +454,7 @@ def build():
         I('Действует до перезапуска', '', 'насовсем — только в конфиге принтера'),
     ], intro='Работает, только если в слайсере включён ретракт прошивкой.')
     form('Spools', 'Катушки', 'control', 'Extruder.dc.html', [
-        I('Активная', 'PETG · синий', 'Polymaker · 640 из 1000 г', src='server.spoolman.get_spool_id → Spoolman /api/v1/spool/{id}'),
-        S('ВСЕ КАТУШКИ'),
-        L('PETG · синий', 'Polymaker · 640 г · #12', '@', 'активна'),
+        L('PETG · синий', 'Polymaker · 640 г · #12', '@', 'активна', src='server.spoolman.get_spool_id → Spoolman /api/v1/spool'),
         L('PLA · белый', 'eSun · 910 г · #9', '@'),
         L('PLA · чёрный', 'eSun · 210 г · #4', '@'),
         L('TPU · красный', 'Overture · 450 г · #15', '@'),
@@ -420,15 +463,14 @@ def build():
     form('Dryer', 'Сушка филамента', 'control', 'Extruder.dc.html', [
         SG('Материал', 'температура стола', ['PLA 50°', 'PETG 65°', 'ABS 80°', 'TPU 55°'], 1),
         ST('Время', '', 4, 1, 12, 1, ' ч'),
-        I('Как', 'катушку на стол, сверху короб', 'стол держит температуру, моторы выключены'),
         A('Начать сушку', 'стол выключится сам по таймеру', tone='accent'),
     ])
     form('Devices', 'Устройства', 'control', 'Control.dc.html', [
-        S('ПИТАНИЕ · MOONRAKER'),
+        S('ПИТАНИЕ'),
         T('Принтер', 'реле основного питания', True, src='machine.device_power.devices'),
         T('Розетка камеры', 'умная розетка', False, src='machine.device_power.devices'),
-        S('ВЫХОДЫ KLIPPER'),
-        SL('Пищалка', 'beeper', 0, 0, 100, 5, '%', src='output_pin <name>.value', fmt='off0'),
+        S('ВЫХОДЫ'),
+        T('Пищалка', 'beeper', False, src='output_pin <name>.value'),
         T('Реле подсветки', 'caselight_relay', True, src='output_pin <name>.value'),
     ], intro='')
 
@@ -460,22 +502,11 @@ def build():
         I('Смещение X / Y', '0 / 0 мм', '', src='configfile.settings.probe.x_offset/y_offset'),
         I('Касаний на точку', '1', '', src='configfile.settings.probe.samples'),
     ])
-    form('ZWizard', 'Z-offset бумагой', 'tools', 'ProbeZ.dc.html', [
-        I('1', 'Принтер паркуется и касается стола', ''),
-        I('2', 'Положите лист бумаги под сопло', ''),
-        I('3', 'Опускайте, пока бумага не начнёт цепляться', ''),
-        SG('Шаг', '', ['0.005', '0.01', '0.05', '0.1', '1'], 2),
-        A('Сопло ↑ на шаг', ''),
-        A('Сопло ↓ на шаг', ''),
-        A('Принять и сохранить', 'Klipper перезапустится', tone='accent'),
-        A('Отменить', '', tone='danger'),
-    ])
     form('InputShaper', 'Вибрации', 'tools', 'Calibrate.dc.html', [
         I('Ось X', 'MZV · 54.2 Гц', 'макс. ускорение 7 400', src='configfile.settings.input_shaper.shaper_type_x/shaper_freq_x'),
         I('Ось Y', 'EI · 41.8 Гц', 'макс. ускорение 5 900', src='configfile.settings.input_shaper.*_y'),
-        A('Измерить обе оси', 'не трогайте принтер во время замера', tone='accent'),
-        A('Только X', ''),
-        A('Только Y', ''),
+        SG('Что измерить', '', ['Обе оси', 'X', 'Y'], 0),
+        A('Измерить', 'не трогайте принтер во время замера', tone='accent'),
         A('Проверить датчик', 'шум акселерометра'),
     ], intro='После замера покажем график и предложим сохранить.')
     form('Belts', 'Ремни', 'tools', 'Calibrate.dc.html', [
@@ -486,7 +517,7 @@ def build():
     form('PidCal', 'Нагрев (PID)', 'tools', 'Calibrate.dc.html', [
         SG('Нагреватель', '', ['Сопло', 'Стол'], 0, src='heaters.available_heaters'),
         ST('Температура', 'как при обычной печати', 220, 40, 350, 5, '°', src='max: configfile.settings.<heater>.max_temp'),
-        SL('Обдув во время', 'как при печати', 50, 0, 100, 10, '%', fmt='off0'),
+        SG('Обдув во время', 'как при печати', ['Выкл.', '50%', '100%'], 1),
         I('Текущие', 'Kp 22.3 · Ki 1.1 · Kd 114', '', src='configfile.settings.extruder.pid_kp/ki/kd'),
         A('Запустить', 'нагреватель несколько раз включится и выключится', tone='accent'),
     ])
@@ -501,7 +532,6 @@ def build():
         I('Мотор Y', '0.80 А · тихий режим', 'TMC2209'),
         I('Мотор Z', '0.60 А', 'TMC2209'),
         I('Экструдер', '0.50 А', 'TMC2209'),
-        ST('Ток мотора X', 'до перезапуска', 0.8, 0.1, 2, 0.05, ' А', 2),
     ])
     form('Macros', 'Макросы', 'tools', 'Tools.dc.html', [
         S('ИЗБРАННЫЕ'),
@@ -516,13 +546,12 @@ def build():
         T('Показывать скрытые (_)', 'служебные макросы', False),
     ])
     form('MacroRun', 'AUTO_BED_LEVEL', 'tools', 'Macros.dc.html', [
-        I('Описание', 'нагрев, протирка, карта стола', '', src='configfile.config["gcode_macro X"].description; params parsed from gcode'),
         ST('BED_TEMP', 'по умолчанию 60', 60, 0, 130, 5, '°'),
         ST('EXTRUDER_TEMP', 'по умолчанию 200', 200, 0, 350, 5, '°'),
         SG('PROFILE', '', ['auto', 'default', 'новый'], 0),
         T('В избранное', 'кнопка на «Инструментах»', True),
         A('Запустить', '', tone='accent'),
-    ])
+    ], intro='Нагрев, протирка сопла и карта стола.')
     form('History', 'История', 'tools', 'Tools.dc.html', [
         I('Всего печатей', '142', '128 успешно · 90%', src='server.history.totals'),
         I('Время печати', '311 ч', 'филамент 8.4 кг', src='server.history.totals.total_print_time/total_filament_used'),
@@ -589,7 +618,7 @@ def build():
     ])
     form('Screen', 'Экран', 'settings', 'Settings.dc.html', [
         SL('Яркость', 'подсветка экрана', 70, 10, 100, 5, '%', src='AD5M: LCD_ON BACKLIGHT=<pct>; generic: /sys/class/backlight'),
-        SG('Гасить через', 'без касаний', ['1 мин', '5 мин', '10 мин', '30 мин', 'Никогда'], 2),
+        SG('Гасить через, мин', 'без касаний', ['1', '5', '10', '30', '∞'], 2),
         T('Не гасить во время печати', 'показывать заставку с прогрессом', True),
         SG('Поворот', '', ['0°', '90°', '180°', '270°'], 0),
         A('Калибровка тача', 'коснуться 4 точек'),
@@ -598,7 +627,6 @@ def build():
         T('Блокировка во время печати', 'разблокировать — провести пальцем', False),
         T('PIN-код', '4–6 цифр', False),
         SG('Автоблокировка', 'без касаний', ['Нет', '5 мин', '15 мин', '30 мин'], 0),
-        I('Стоп', 'работает всегда', 'даже на заблокированном экране'),
     ])
     form('Sound', 'Звук', 'settings', 'Settings.dc.html', [
         T('Звуки', 'пищалка принтера', True, src='M300 (AD5M macro) / output_pin beeper'),
@@ -617,7 +645,7 @@ def build():
         T('Если отмена зависла — аварийная остановка', '', True),
         ST('Ждать перед E-stop', '', 15, 5, 60, 5, ' с'),
         T('Подтверждать запуск макросов', '', False),
-        SG('Всплывающие уведомления', 'с какого уровня', ['Все', 'Предупреждения', 'Ошибки'], 1),
+        SG('Уведомления', 'что показывать поверх экрана', ['Все', 'Важные', 'Ошибки'], 1),
     ])
     form('Printers', 'Принтеры', 'settings', 'Settings.dc.html', [
         L('AD5M', 'этот принтер · подключён', '@', '✓', src='Rivet config: list of Moonraker URLs'),
@@ -630,7 +658,6 @@ def build():
         I('Rivet', '0.1.0', '', src='Rivet build'),
         S('ОБНОВЛЕНИЯ'),
         I('KlipperMod', 'образом с USB', 'Moonraker на этой прошивке не обновляет компоненты', src='no [update_manager] in KlipperMod moonraker.conf'),
-        I('На обычном Klipper', 'здесь появится список', 'компонент · версия · есть ли новая · кнопка «Обновить»', src='machine.update.status (only when [update_manager] exists)'),
     ])
     form('System', 'Система', 'settings', 'Settings.dc.html', [
         S('ПЕРЕЗАПУСК'),
@@ -654,32 +681,31 @@ def build():
 
     # ---------- Files ----------
     form('JobQueue', 'Очередь печати', 'home', 'Files.dc.html', [
-        I('Очередь', 'готова', '2 задания', src='server.job_queue.status'),
-        L('Benchy', '52 мин · PLA', 'FileDetail', '1'),
-        L('Крышка электроники', '41 мин · PLA', 'FileDetail', '2'),
-        T('Пауза очереди', 'не начинать следующее', False),
+        L('1 · Benchy', '52 мин · PLA', 'FileDetail', src='server.job_queue.status'),
+        L('2 · Крышка электроники', '41 мин · PLA', 'FileDetail'),
+        A('Начать очередь', 'всего 1 ч 33 мин', tone='accent'),
+        T('Ждать подтверждения между печатями', 'снять деталь со стола', True),
         A('Очистить очередь', '', tone='danger'),
     ])
     form('FileActions', 'Корпус вентилятора №2', 'home', 'FileDetail.dc.html', [
-        A('Добавить в очередь', '', tone='accent'),
+        A('Добавить в очередь', ''),
         A('Переименовать', ''),
         A('Переместить в папку', ''),
-        A('Скопировать с USB на принтер', ''),
         A('Удалить', '', tone='danger'),
     ])
 
     # ---------- Printing ----------
     form('PrintTune', 'Подстройка печати', 'home', 'Printing.dc.html', [
-        SL('Скорость', '', 100, 10, 300, 5, '%', src='gcode_move.speed_factor'),
-        SL('Поток', '', 100, 75, 125, 1, '%', src='gcode_move.extrude_factor'),
+        SL('Скорость', '', 100, 50, 200, 5, '%', src='gcode_move.speed_factor'),
+        SL('Поток', '', 100, 50, 200, 1, '%', src='gcode_move.extrude_factor'),
         ST('Z-offset', 'меняется сразу', -0.12, -2, 2, 0.01, ' мм', 2, src='gcode_move.homing_origin[2]'),
         A('Сохранить Z-offset', 'запишется после печати'),
-        ST('Pressure advance', '', 0.04, 0, 1, 0.005, '', 3, src='extruder.pressure_advance'),
+        ST('PA', 'pressure advance', 0.04, 0, 1, 0.005, '', 3, src='extruder.pressure_advance'),
         L('Температуры', 'сопло 240° · стол 80°', 'Heating'),
         L('Вентиляторы', 'обдув 60%', 'Fan'),
         A('Сбросить скорость и поток', 'обратно на 100%'),
     ])
-    form('PrintMore', 'Ещё', 'home', 'Printing.dc.html', [
+    form('PrintMore', 'Во время печати', 'home', 'Printing.dc.html', [
         L('Пауза на слое', 'следующий или выбранный', 'LayerPause', src='print_stats.info.current_layer/total_layer; SET_PAUSE_AT_LAYER'),
         L('Пропуск объектов', '4 детали', 'Exclude', src='exclude_object.objects'),
         L('Камера', '', 'Camera'),
@@ -689,9 +715,9 @@ def build():
     ])
     form('LayerPause', 'Пауза на слое', 'home', 'PrintMore.dc.html', [
         I('Сейчас', 'слой 76 из 180', '', src='print_stats.info.current_layer/total_layer'),
-        A('На следующем слое', '', tone='accent'),
-        ST('На слое', '', 120, 77, 180, 1, ''),
-        A('Поставить паузу на 120', 'чтобы вставить магнит или сменить цвет'),
+        ST('Пауза на слое', 'вставить магнит, сменить цвет', 120, 77, 180, 1, ''),
+        A('Поставить паузу', '', tone='accent'),
+        A('На следующем слое', ''),
         A('Снять запланированную паузу', '', tone='danger'),
     ], intro='')
 
@@ -707,33 +733,22 @@ def build():
     form('Light', 'Свет', 'control', 'Control.dc.html', [
         T('Подсветка', '', True, src='led chamber_led.color_data'),
         SL('Яркость', '', 70, 0, 100, 5, '%', src='led chamber_led.color_data[0][3]', fmt='off0'),
-        SL('Красный', 'RGB', 100, 0, 100, 5, '%', src='led/neopixel color_data[0][0] — bars shown only for RGB(W) LEDs'),
-        SL('Зелёный', '', 100, 0, 100, 5, '%'),
-        SL('Синий', '', 100, 0, 100, 5, '%'),
         T('Включать при старте', '', True),
-        T('Цвет по состоянию', 'печать, ошибка, готово', False),
     ])
     form('Speed', 'Скорость и поток', 'control', 'Control.dc.html', [
-        SL('Скорость', '', 100, 10, 300, 5, '%', src='gcode_move.speed_factor'),
-        SL('Поток', '', 100, 75, 125, 1, '%', src='gcode_move.extrude_factor'),
+        SL('Скорость', '', 100, 50, 200, 5, '%', src='gcode_move.speed_factor'),
+        SL('Поток', '', 100, 50, 200, 1, '%', src='gcode_move.extrude_factor'),
         A('Вернуть 100% / 100%', ''),
         I('Сейчас', '86 мм/с', 'реальная скорость головы', src='motion_report.live_velocity'),
     ], intro='Выше 150% качество и прочность обычно падают.')
-    form('HeatPresets', 'Пресеты нагрева', 'control', 'Heating.dc.html', [
-        S('PLA'), ST('Сопло', '', 210, 0, 350, 5, '°'), ST('Стол', '', 60, 0, 130, 5, '°'),
-        S('PETG'), ST('Сопло', '', 240, 0, 350, 5, '°'), ST('Стол', '', 80, 0, 130, 5, '°'),
-        S('ABS'), ST('Сопло', '', 250, 0, 350, 5, '°'), ST('Стол', '', 100, 0, 130, 5, '°'),
-        S('TPU'), ST('Сопло', '', 225, 0, 350, 5, '°'), ST('Стол', '', 50, 0, 130, 5, '°'),
-        A('Добавить материал', ''),
-    ], intro='Кнопки быстрого нагрева на экране «Нагрев».')
     form('MotionAdvanced', 'Движение · ещё', 'control', 'Motion.dc.html', [
         S('ПАРКОВКА'),
-        A('Все оси', '', tone='accent'), A('Только XY', ''), A('Только Z', ''),
+        A('Все оси', ''), A('Только XY', ''), A('Только Z', ''),
         S('ПЕРЕЙТИ В ТОЧКУ'),
         ST('X', '−110 … 110', 0, -110, 110, 1, ' мм', src='toolhead.axis_minimum/axis_maximum'),
         ST('Y', '−110 … 110', 0, -110, 110, 1, ' мм'),
         ST('Z', '−10 … 230', 10, -10, 230, 1, ' мм'),
-        A('Поехать', ''),
+        A('Поехать', '', tone='accent'),
         S('НАСТРОЙКИ ДЖОЙСТИКА'),
         ST('Скорость XY', '', 100, 10, 600, 10, ' мм/с', src='max: toolhead.max_velocity'),
         ST('Скорость Z', '', 10, 1, 25, 1, ' мм/с', src='max: configfile.settings.printer.max_z_velocity'),
@@ -741,21 +756,6 @@ def build():
         A('Проверить концевики', 'нажаты или нет'),
     ])
     # ---------- printing extras ----------
-    form('PrintDone', 'Печать завершена', 'home', 'Main.dc.html', [
-        I('Корпус вентилятора №2', '✓ готово', '1 ч 23 мин · 18 г PETG', src='print_stats.state=complete, print_duration, filament_used', tone='accent'),
-        A('Печатать снова', '', 'FileDetail', tone='accent'),
-        A('К файлам', '', 'Files'),
-        I('Снимите деталь', 'стол 61°', 'PETG лучше снимать, когда стол остынет'),
-    ])
-    form('Runout', 'Закончился филамент', 'home', 'Printing.dc.html', [
-        I('Печать на паузе', 'слой 76 из 180', 'датчик обрыва сработал', src='filament_switch_sensor.filament_detected=false; print_stats.state=paused', tone='danger'),
-        A('Выгрузить остаток', ''),
-        A('Заправить новый', 'мастер загрузки', 'FilamentLoad'),
-        A('Прочистить 25 мм', ''),
-        A('Продолжить печать', '', 'Printing', tone='accent'),
-        A('Отменить печать', '', 'ConfirmStop', tone='danger'),
-    ])
-
 if __name__ == '__main__':
     build()
     # write sources doc

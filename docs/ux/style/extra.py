@@ -46,6 +46,8 @@ EMPTY = 'class Component extends DCLogic {\n  renderVals() {\n    return {};\n  
 
 def build_extra():
     build_limits()
+    import more
+    more.build_more()
     # E-stop confirm
     body = root_open('none') + '''  <main role="alertdialog" aria-labelledby="t" style="flex: 1; box-sizing: border-box; padding: 28px 40px; display: flex; flex-direction: column; justify-content: center; gap: 14px">
     <span aria-hidden="true" style="width: 72px; height: 72px; border-radius: 24px; background: rgba(251, 75, 94, 0.16); color: #fb7185; display: flex; align-items: center; justify-content: center">''' + svg('warn', 36) + '''</span>
@@ -116,7 +118,7 @@ def build_extra():
     <span style="font-size: 17px; color: #98a1ac">Печать идёт: 42% · осталось 48 мин</span>
     <div style="margin-top: 14px; display: flex; gap: 12px" aria-label="Введено 2 цифры из 4"><span style="width: 18px; height: 18px; border-radius: 9px; background: #2dd4bf"></span><span style="width: 18px; height: 18px; border-radius: 9px; background: #2dd4bf"></span><span style="width: 18px; height: 18px; border-radius: 9px; background: #2a3038"></span><span style="width: 18px; height: 18px; border-radius: 9px; background: #2a3038"></span></div>
     <div style="flex: 1"></div>
-    <a href="EStop.dc.html" style="align-self: flex-start; height: 64px; padding: 0 22px; border-radius: 20px; background: rgba(251, 75, 94, 0.16); color: #fb7185; font-size: 16px; font-weight: 800; display: flex; align-items: center">СТОП работает и здесь</a>
+    <a href="EStop.dc.html" style="align-self: flex-start; height: 72px; padding: 0 22px; border-radius: 18px; background: rgba(251, 75, 94, 0.14); color: #fb7185; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 10px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2.5h8l5.5 5.5v8L16 21.5H8L2.5 16V8z"></path><path d="M12 7.5v5.5"></path><path d="M12 16.5v.5"></path></svg>Аварийная остановка</a>
   </div>
   <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(4, minmax(0, 1fr)); gap: 8px">''' + keys + '''</div>
 </div>
@@ -151,7 +153,7 @@ def build_extra():
     body = root_open('control') + '''  <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px; display: flex; flex-direction: column; gap: 10px">
 ''' + header('График температур', 'Heating.dc.html', '<span style="font-size: 15px; color: #98a1ac">последние 10 мин</span>') + '''    <svg role="img" aria-label="Сопло дошло до 220 градусов, стол до 80" viewBox="0 0 640 280" style="flex: 1; min-height: 0; width: 100%; border-radius: 20px; background: #15181d">
       <path d="M20 60H620M20 120H620M20 180H620M20 240H620" stroke="#1f242b" stroke-width="1"></path>
-      <text x="26" y="54" fill="#66707b" font-size="12" font-family="Inter, sans-serif">250°</text><text x="26" y="174" fill="#66707b" font-size="12" font-family="Inter, sans-serif">100°</text>
+      <text x="26" y="56" fill="#66707b" font-size="12" font-family="Inter, sans-serif">200°</text><text x="26" y="116" fill="#66707b" font-size="12" font-family="Inter, sans-serif">140°</text><text x="26" y="176" fill="#66707b" font-size="12" font-family="Inter, sans-serif">80°</text><text x="26" y="236" fill="#66707b" font-size="12" font-family="Inter, sans-serif">20°</text>
       <polyline points="''' + nozzle + '''" fill="none" stroke="#f97316" stroke-width="3" stroke-linejoin="round"></polyline>
       <polyline points="''' + bed + '''" fill="none" stroke="#60a5fa" stroke-width="3" stroke-linejoin="round"></polyline>
     </svg>

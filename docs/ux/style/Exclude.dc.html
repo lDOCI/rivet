@@ -20,7 +20,7 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
     <section aria-label="Стол, вид сверху" style="width: 448px; flex: none; border-radius: 24px; background: #15181d; padding: 12px; box-sizing: border-box; display: flex">
       <div style="flex: 1; position: relative; border-radius: 16px; background-color: #1b1f25; background-image: linear-gradient(#20252c 1px, transparent 1px), linear-gradient(90deg, #20252c 1px, transparent 1px); background-size: 42px 42px">
         <sc-for list="{{objects}}" as="o" hint-placeholder-count="4">
-          <button type="button" onClick="{{o.pick}}" aria-pressed="{{o.pressed}}" aria-label="{{o.aria}}" style="position: absolute; left: {{o.x}}px; top: {{o.y}}px; width: {{o.w}}px; height: {{o.h}}px; box-sizing: border-box; border-radius: {{o.r}}; border: {{o.border}}; background: {{o.fill}}; box-shadow: {{o.glow}}; cursor: pointer"></button>
+          <button type="button" onClick="{{o.pick}}" aria-pressed="{{o.pressed}}" aria-label="{{o.aria}}" style="position: absolute; left: {{o.x}}px; top: {{o.y}}px; width: {{o.w}}px; height: {{o.h}}px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border-radius: {{o.r}}; border: {{o.border}}; background: {{o.fill}}; box-shadow: {{o.glow}}; cursor: pointer"><span style="font-size: 13px; font-weight: 700; color: {{o.ink}}">{{o.label}}</span></button>
         </sc-for>
       </div>
     </section>
@@ -66,6 +66,7 @@ class Component extends DCLogic {
         border: gone ? '2px dashed #4a525c' : on ? '3px solid #ffffff' : '0',
         fill: gone ? 'transparent' : on ? '#fb4b5e' : '#4466cc',
         glow: on ? '0 0 0 6px rgba(251, 75, 94, 0.25)' : 'none',
+        ink: gone ? '#66707b' : '#ffffff',
         pick: function () {
           if (gone) return;
           var p = Object.assign({}, s.picked);

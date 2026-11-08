@@ -38,7 +38,7 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
           <circle cx="{{tx}}" cy="{{ty}}" r="15" fill="#0b0d10"></circle>
           <circle cx="{{tx}}" cy="{{ty}}" r="10" fill="#f4f6f8"></circle>
         </svg>
-        <div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px">
+        <div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; pointer-events: none">
           <span style="font-size: 76px; font-weight: 800; line-height: 1; letter-spacing: -0.04em; font-variant-numeric: tabular-nums">{{curLabel}}</span>
           <span style="font-size: 16px; color: #98a1ac">сейчас</span>
         </div>
@@ -121,7 +121,7 @@ class Component extends DCLogic {
       target: t,
       tabs: [['n', 'Сопло · ' + (h === 'n' ? cur : 187) + '°'], ['b', 'Стол · ' + (h === 'b' ? cur : 23) + '°']].map(function (x) { var on = x[0] === h; return { label: x[1], sel: on ? 'true' : 'false', bg: on ? '#2dd4bf' : 'transparent', fg: on ? '#042f2a' : '#c7cdd4', pick: function () { self.setState({ heater: x[0], pad: false }); } }; }),
       curLabel: cur + '°',
-      chip: t === 0 ? 'выключен' : heating ? 'нагревается · ещё ~' + Math.max(10, Math.round((t - cur) / 1.4)) + ' с' : 'держит температуру',
+      chip: t === 0 ? 'выключен' : heating ? 'нагревается · ещё ~' + Math.max(10, Math.round((t - cur) / 1.4)) + ' с' : (t < cur - 2 ? 'остывает до ' + t + '°' : 'держит температуру'),
       chipBg: t === 0 ? '#15181d' : 'rgba(249, 115, 22, 0.13)', chipFg: t === 0 ? '#98a1ac' : '#fdba74',
       arcAria: (h === 'b' ? 'Стол' : 'Сопло') + ': сейчас ' + cur + ' градусов, цель ' + t + '. Перетащите точку, чтобы изменить цель',
       padTitle: (h === 'b' ? 'Стол' : 'Сопло') + ', нагреть до',
