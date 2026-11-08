@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Сообщения — Rivet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
+</style>
+</helmet>
+<div style="width: 800px; height: 480px; display: flex; background: #0b0d10; color: #f4f6f8; font-family: Inter, system-ui, sans-serif; overflow: hidden">
+  <dc-import name="NavRail" active="messages" hint-size="88px,480px"></dc-import>
+  <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px 20px 16px 16px; display: flex; flex-direction: column; gap: 12px">
+    <div style="height: 64px; flex: none; display: flex; align-items: center; justify-content: space-between">
+      <h1 style="margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.02em">Сообщения</h1>
+      <button type="button" onClick="{{readAll}}" style="height: 64px; padding: 0 20px; border: 0; border-radius: 20px; background: #15181d; color: #c7cdd4; font: 600 15px Inter, system-ui, sans-serif; cursor: pointer">Прочитать все</button>
+    </div>
+    <div style="flex: 1; display: grid; grid-template-rows: repeat(4, minmax(0, 1fr)); gap: 10px">
+      <sc-for list="{{items}}" as="m" hint-placeholder-count="4">
+        <a href="{{m.href}}" style="border-radius: 22px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; gap: 16px; padding: 0 18px; position: relative">
+          <span aria-hidden="true" style="width: 48px; height: 48px; flex: none; border-radius: 16px; background: {{m.tint}}; color: {{m.ink}}; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="{{m.p0}}"></path><path d="{{m.p1}}"></path><path d="{{m.p2}}"></path><path d="{{m.p3}}"></path></svg></span>
+          <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px"><span style="font-size: 18px; font-weight: {{m.weight}}">{{m.title}}</span><span style="font-size: 14px; color: #98a1ac; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{m.text}}</span></span>
+          <span style="font-size: 14px; color: #66707b; white-space: nowrap">{{m.when}}</span>
+          <sc-if value="{{m.unread}}" hint-placeholder-val="{{ true }}"><span aria-label="не прочитано" style="width: 10px; height: 10px; border-radius: 5px; background: #2dd4bf"></span></sc-if>
+        </a>
+      </sc-for>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":800,"height":480}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { read: false };
+  }
+  renderVals() {
+    var self = this;
+    var read = this.state.read;
+    var warn = ['rgba(251, 191, 36, 0.13)', '#fbbf24'];
+    var ok = ['rgba(45, 212, 191, 0.13)', '#2dd4bf'];
+    var info = ['rgba(96, 165, 250, 0.13)', '#60a5fa'];
+    var items = [
+      ['Печать завершена', 'Корпус вентилятора №2 · 1 ч 24 мин', ["M5 12.5l4.5 4.5L19 7", "", "", ""], ok, '14:02', true, 'Main.dc.html'],
+      ['Калибровка вибраций не выполнялась', 'input_shaper не настроен — меньше ряби на стенках', ["M12 6v8", "M12 18h.01", "", ""], warn, 'сегодня', true, 'InputShaper.dc.html'],
+      ['Печать остановлена вручную', 'Benchy · на 63%', ["M8 7h8a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z", "", "", ""], info, 'вчера', false, 'Main.dc.html'],
+      ['Klipper: нужно сохранить конфиг', 'после калибровки щупа · при сохранении Klipper перезапустится', ["M12 19V5", "m6 11 6-6 6 6", "", ""], info, '2 дня', false, 'Settings.dc.html']
+    ];
+    return {
+      readAll: function () { self.setState({ read: true }); },
+      items: items.map(function (i) {
+        var unread = i[5] && !read;
+        return { title: i[0], text: i[1], p0: i[2][0], p1: i[2][1], p2: i[2][2], p3: i[2][3], tint: i[3][0], ink: i[3][1], when: i[4], unread: unread, weight: unread ? 700 : 500, href: i[6] };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Лимиты движения — Rivet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
+.scroll{overflow-y:scroll;scrollbar-width:thin;scrollbar-color:#4a525c #15181d;padding-right:10px}
+.scroll::-webkit-scrollbar{width:8px}
+.scroll::-webkit-scrollbar-track{background:#15181d;border-radius:4px}
+.scroll::-webkit-scrollbar-thumb{background:#4a525c;border-radius:4px}
+</style>
+</helmet>
+<div style="position: relative; width: 800px; height: 480px; display: flex; background: #0b0d10; color: #f4f6f8; font-family: Inter, system-ui, sans-serif; overflow: hidden">
+  <dc-import name="NavRail" active="tools" hint-size="88px,480px"></dc-import>
+  <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+    <div style="height: 64px; flex: none; display: flex; align-items: center; gap: 14px"><a href="Tools.dc.html" aria-label="Назад" style="width: 64px; height: 64px; flex: none; border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></a><h1 style="margin: 0; flex: 1; font-size: 26px; font-weight: 800; letter-spacing: -0.02em">Лимиты движения</h1><sc-if value="{{anyChanged}}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{resetAll}}" style="height: 64px; padding: 0 18px; border: 0; border-radius: 20px; background: #15181d; color: #5eead4; font: 700 15px Inter, system-ui, sans-serif; cursor: pointer">Сбросить всё</button></sc-if></div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px">
+        <sc-for list="{{main}}" as="m" hint-placeholder-count="2">
+          <div style="border-radius: 22px; background: #15181d; box-shadow: inset 0 0 0 2px {{m.ring}}; padding: 12px; display: flex; flex-direction: column; gap: 10px; ">
+            <span style="min-height: 32px; padding: 0 6px; display: flex; align-items: center; gap: 8px"><span style="flex: 1; display: flex; align-items: baseline; gap: 8px; min-width: 0"><span style="font-size: 20px; font-weight: 700">{{m.title}}</span><span style="font-size: 14px; font-weight: 600; color: #66707b; white-space: nowrap">{{m.unit}}</span></span><sc-if value="{{m.changed}}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{m.reset}}" aria-label="{{m.resetAria}}" style="height: 32px; padding: 0 12px; border: 0; border-radius: 16px; background: rgba(45, 212, 191, 0.13); color: #5eead4; font: 600 13px Inter, system-ui, sans-serif; display: flex; align-items: center; gap: 6px; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.3-5.7"></path><path d="M4 4v4h4"></path></svg>{{m.was}}</button></sc-if></span>
+            <span style="padding: 0 6px; margin-top: -6px; font-size: 14px; color: #98a1ac">{{m.hint}}</span>
+            <div style="display: flex; gap: 8px">
+              <button type="button" onClick="{{m.dec}}" aria-label="{{m.decAria}}" style="width: 72px; height: 76px; flex: none; border: 0; border-radius: 18px; background: #1f242b; color: #f4f6f8; font: 500 30px Inter, system-ui, sans-serif; cursor: pointer">−</button>
+              <button type="button" onClick="{{m.edit}}" aria-label="{{m.editAria}}" style="flex: 1; height: 76px; border: 0; border-radius: 18px; background: #0b0d10; color: {{m.valInk}}; font-family: Inter, system-ui, sans-serif; display: flex; align-items: center; justify-content: center; cursor: pointer"><span style="font-size: 32px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap">{{m.value}}</span></button>
+              <button type="button" onClick="{{m.inc}}" aria-label="{{m.incAria}}" style="width: 72px; height: 76px; flex: none; border: 0; border-radius: 18px; background: #1f242b; color: #f4f6f8; font: 500 30px Inter, system-ui, sans-serif; cursor: pointer">+</button>
+            </div>
+          </div>
+        </sc-for>
+    </div>
+    <span style="margin: 4px 4px 0; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; color: #66707b">ТОНКАЯ НАСТРОЙКА</span>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px">
+        <sc-for list="{{fine}}" as="m" hint-placeholder-count="2">
+          <div style="border-radius: 22px; background: #15181d; box-shadow: inset 0 0 0 2px {{m.ring}}; padding: 12px; display: flex; flex-direction: column; gap: 10px; ">
+            <span style="min-height: 32px; padding: 0 6px; display: flex; align-items: center; gap: 8px"><span style="flex: 1; display: flex; align-items: baseline; gap: 8px; min-width: 0"><span style="font-size: 17px; font-weight: 700">{{m.title}}</span><span style="font-size: 14px; font-weight: 600; color: #66707b; white-space: nowrap">{{m.unit}}</span></span><sc-if value="{{m.changed}}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{m.reset}}" aria-label="{{m.resetAria}}" style="height: 32px; padding: 0 12px; border: 0; border-radius: 16px; background: rgba(45, 212, 191, 0.13); color: #5eead4; font: 600 13px Inter, system-ui, sans-serif; display: flex; align-items: center; gap: 6px; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.3-5.7"></path><path d="M4 4v4h4"></path></svg>{{m.was}}</button></sc-if></span>
+            <span style="padding: 0 6px; margin-top: -6px; font-size: 14px; color: #98a1ac">{{m.hint}}</span>
+            <div style="display: flex; gap: 8px">
+              <button type="button" onClick="{{m.dec}}" aria-label="{{m.decAria}}" style="width: 72px; height: 64px; flex: none; border: 0; border-radius: 18px; background: #1f242b; color: #f4f6f8; font: 500 30px Inter, system-ui, sans-serif; cursor: pointer">−</button>
+              <button type="button" onClick="{{m.edit}}" aria-label="{{m.editAria}}" style="flex: 1; height: 64px; border: 0; border-radius: 18px; background: #0b0d10; color: {{m.valInk}}; font-family: Inter, system-ui, sans-serif; display: flex; align-items: center; justify-content: center; cursor: pointer"><span style="font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap">{{m.value}}</span></button>
+              <button type="button" onClick="{{m.inc}}" aria-label="{{m.incAria}}" style="width: 72px; height: 64px; flex: none; border: 0; border-radius: 18px; background: #1f242b; color: #f4f6f8; font: 500 30px Inter, system-ui, sans-serif; cursor: pointer">+</button>
+            </div>
+          </div>
+        </sc-for>
+    </div>
+    <div style="flex: 1"></div>
+    <span style="font-size: 14px; color: #98a1ac">Действует до перезапуска Klipper.</span>
+  </main>
+  <sc-if value="{{padOpen}}" hint-placeholder-val="{{ false }}">
+    <div role="dialog" aria-modal="true" aria-label="Ввести значение" style="position: absolute; inset: 0; background: rgba(5, 6, 8, 0.78); display: flex; align-items: center; justify-content: center">
+      <div style="width: 680px; height: 420px; box-sizing: border-box; border-radius: 28px; background: #15181d; padding: 20px; display: grid; grid-template-columns: 240px 1fr; gap: 20px">
+        <div style="display: flex; flex-direction: column; gap: 8px">
+          <span style="font-size: 15px; font-weight: 600; color: #98a1ac">{{padTitle}}</span>
+          <span aria-live="polite" style="height: 96px; border-radius: 20px; background: #0b0d10; display: flex; align-items: center; justify-content: center; font-size: 44px; font-weight: 800; font-variant-numeric: tabular-nums; color: {{entryInk}}">{{entryLabel}}</span>
+          <span style="font-size: 14px; color: {{hintInk}}; text-align: center">{{padHint}}</span>
+          <div style="flex: 1"></div>
+          <button type="button" onClick="{{padOk}}" style="height: 80px; border: 0; border-radius: 22px; background: {{okBg}}; color: {{okFg}}; font: 800 19px Inter, system-ui, sans-serif; cursor: pointer">Готово</button>
+          <button type="button" onClick="{{padCancel}}" style="height: 64px; border: 0; border-radius: 20px; background: #1f242b; color: #f4f6f8; font: 600 16px Inter, system-ui, sans-serif; cursor: pointer">Отмена</button>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(4, minmax(0, 1fr)); gap: 8px">
+            <sc-for list="{{keys}}" as="k" hint-placeholder-count="12"><button type="button" onClick="{{k.press}}" aria-label="{{k.aria}}" style="border: 0; border-radius: 18px; background: {{k.bg}}; color: #f4f6f8; font: 700 28px Inter, system-ui, sans-serif; cursor: pointer">{{k.label}}</button></sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 800, "height": 480}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { v: { vel: 600, acc: 20000, scv: 25, mcr: 50 }, pad: null, entry: '' };
+  }
+  renderVals() {
+    var self = this, st = this.state;
+    var defs = {
+      vel: { title: 'Скорость', hint: 'предел скорости головы', unit: 'мм/с', cfg: 600, min: 10, max: 600, step: 50, dec: 0 },
+      acc: { title: 'Ускорение', hint: 'меньше — тише и меньше ряби', unit: 'мм/с²', cfg: 20000, min: 500, max: 20000, step: 1000, dec: 0 },
+      scv: { title: 'Скорость в углах', hint: 'выше — быстрее, но углы круглее', unit: 'мм/с', cfg: 25, min: 1, max: 50, step: 1, dec: 0 },
+      mcr: { title: 'Плавность разгона', hint: 'сколько пути на полной скорости', unit: '%', cfg: 50, min: 0, max: 100, step: 5, dec: 0 }
+    };
+    function setv(k, x) { var d = defs[k]; var n = Object.assign({}, self.state.v); n[k] = Math.min(d.max, Math.max(d.min, +x.toFixed(4))); self.setState({ v: n }); }
+    function item(k) {
+      var d = defs[k], x = st.v[k], changed = x !== d.cfg;
+      return {
+        title: d.title, hint: d.hint, unit: d.unit, value: d.dec ? x.toFixed(d.dec) : x.toLocaleString('ru-RU'),
+        changed: changed, was: 'было ' + (d.dec ? d.cfg.toFixed(d.dec) : d.cfg.toLocaleString('ru-RU')),
+        reset: function () { setv(k, d.cfg); }, resetAria: d.title + ': вернуть ' + d.cfg,
+        ring: changed ? 'rgba(45, 212, 191, 0.45)' : 'transparent', valInk: changed ? '#5eead4' : '#f4f6f8',
+        dec: function () { setv(k, x - d.step); }, inc: function () { setv(k, x + d.step); },
+        decAria: d.title + ': меньше', incAria: d.title + ': больше', editAria: d.title + ': ввести число',
+        edit: function () { self.setState({ pad: k, entry: '' }); }
+      };
+    }
+    var changedAny = Object.keys(defs).some(function (k) { return st.v[k] !== defs[k].cfg; });
+    var pd = st.pad ? defs[st.pad] : null;
+    var num = st.entry === '' ? NaN : parseFloat(st.entry.replace(',', '.'));
+    var valid = pd && !isNaN(num) && num >= pd.min && num <= pd.max;
+    return {
+      main: [item('vel'), item('acc')], fine: [item('scv'), item('mcr')],
+      anyChanged: changedAny,
+      resetAll: function () { self.setState({ v: { vel: 600, acc: 20000, scv: 25, mcr: 50 } }); },
+      padOpen: !!st.pad, padTitle: pd ? pd.title + ', ' + pd.unit : '',
+      entryLabel: st.entry === '' ? '—' : st.entry, entryInk: st.entry === '' ? '#66707b' : '#f4f6f8',
+      padHint: pd ? 'от ' + pd.min + ' до ' + pd.max.toLocaleString('ru-RU') : '', hintInk: (pd && !isNaN(num) && !valid) ? '#fb7185' : '#98a1ac',
+      okBg: valid ? '#2dd4bf' : '#1f242b', okFg: valid ? '#042f2a' : '#66707b',
+      padOk: function () { if (valid) { setv(st.pad, num); self.setState({ pad: null }); } },
+      padCancel: function () { self.setState({ pad: null }); },
+      keys: ['1', '2', '3', '4', '5', '6', '7', '8', '9', ',', '0', '⌫'].map(function (k) {
+        return { label: k, aria: k === '⌫' ? 'Стереть' : k, bg: k === '⌫' ? '#1f242b' : '#252a31',
+          press: function () { var e = self.state.entry; if (k === '⌫') e = e.slice(0, -1); else if (e.length < 7) e = e + k; self.setState({ entry: e }); } };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>

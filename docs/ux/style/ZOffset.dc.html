@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Z-offset — Rivet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
+</style>
+</helmet>
+<div style="width: 800px; height: 480px; display: flex; background: #0b0d10; color: #f4f6f8; font-family: Inter, system-ui, sans-serif; overflow: hidden">
+  <dc-import name="NavRail" active="control" hint-size="88px,480px"></dc-import>
+  <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px 20px 16px 16px; display: grid; grid-template-columns: 1fr 1.15fr; gap: 20px">
+    <div style="display: flex; flex-direction: column; gap: 14px">
+      <div style="display: flex; align-items: center; gap: 14px">
+        <a href="Control.dc.html" aria-label="Назад" style="width: 64px; height: 64px; flex: none; border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></a>
+        <h1 style="margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.02em">Z-offset</h1>
+      </div>
+      <span aria-live="polite" style="margin-top: 14px; font-size: 72px; font-weight: 800; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; line-height: 1">{{value}}<span style="font-size: 26px; color: #98a1ac; letter-spacing: 0"> мм</span></span>
+      <p style="margin: 0; font-size: 16px; line-height: 1.5; color: #c7cdd4">Не липнет — опустите сопло.<br>Царапает или слой прозрачный — поднимите.</p>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto repeat(2, minmax(0, 1fr)) 64px 64px; gap: 10px">
+      <span style="font-size: 15px; font-weight: 600; color: #98a1ac; text-align: center">Поднять сопло</span>
+      <span style="font-size: 15px; font-weight: 600; color: #98a1ac; text-align: center">Опустить сопло</span>
+      <button type="button" onClick="{{up5}}" aria-label="Поднять на 0.05 мм" style="border: 0; border-radius: 22px; background: #252a31; color: #f4f6f8; font: 800 26px Inter, system-ui, sans-serif; cursor: pointer">+0.05</button>
+      <button type="button" onClick="{{dn5}}" aria-label="Опустить на 0.05 мм" style="border: 0; border-radius: 22px; background: #252a31; color: #f4f6f8; font: 800 26px Inter, system-ui, sans-serif; cursor: pointer">−0.05</button>
+      <button type="button" onClick="{{up1}}" aria-label="Поднять на 0.01 мм" style="border: 0; border-radius: 22px; background: #181c21; color: #c7cdd4; font: 700 24px Inter, system-ui, sans-serif; cursor: pointer">+0.01</button>
+      <button type="button" onClick="{{dn1}}" aria-label="Опустить на 0.01 мм" style="border: 0; border-radius: 22px; background: #181c21; color: #c7cdd4; font: 700 24px Inter, system-ui, sans-serif; cursor: pointer">−0.01</button>
+      <button type="button" onClick="{{reset}}" style=" border: 1px solid #252a31; border-radius: 20px; background: transparent; color: #c7cdd4; font: 600 16px Inter, system-ui, sans-serif; cursor: pointer">{{resetLabel}}</button>
+      <a href="ZWizard.dc.html" style="border-radius: 20px; background: #15181d; color: #c7cdd4; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center">Подстройка</a>
+      <button type="button" style="grid-column: 1 / span 2; border: 0; border-radius: 20px; background: #2dd4bf; color: #042f2a; font: 800 17px Inter, system-ui, sans-serif; cursor: pointer">Сохранить</button>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":800,"height":480}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { z: -0.12 };
+  }
+  renderVals() {
+    var self = this;
+    var z = this.state.z;
+    function fmt(v) { return (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(2); }
+    function step(d) { return function () { self.setState({ z: Math.round((z + d) * 100) / 100 }); }; }
+    return {
+      value: fmt(z), resetLabel: 'Вернуть ' + fmt(-0.12),
+      up5: step(0.05), up1: step(0.01), dn5: step(-0.05), dn1: step(-0.01),
+      reset: function () { self.setState({ z: -0.12 }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

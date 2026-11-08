@@ -1,5 +1,8 @@
 slint::include_modules!();
 
+#[cfg(all(feature = "fbdev", not(target_os = "linux")))]
+compile_error!("the `fbdev` backend is Linux-only: build it for the printer with `cargo printer`");
+
 mod engine;
 
 use engine::Command;

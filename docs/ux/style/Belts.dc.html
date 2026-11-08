@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Ремни — Rivet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
+.scroll{overflow-y:scroll;scrollbar-width:thin;scrollbar-color:#4a525c #15181d;padding-right:10px}
+.scroll::-webkit-scrollbar{width:8px}
+.scroll::-webkit-scrollbar-track{background:#15181d;border-radius:4px}
+.scroll::-webkit-scrollbar-thumb{background:#4a525c;border-radius:4px}
+</style>
+</helmet>
+<div style="position: relative; width: 800px; height: 480px; display: flex; background: #0b0d10; color: #f4f6f8; font-family: Inter, system-ui, sans-serif; overflow: hidden">
+  <dc-import name="NavRail" active="tools" hint-size="88px,480px"></dc-import>
+  <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+    <div style="height: 64px; flex: none; display: flex; align-items: center; gap: 14px"><a href="Calibrate.dc.html" aria-label="Назад" style="width: 64px; height: 64px; flex: none; border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></a><h1 style="margin: 0; flex: 1; font-size: 26px; font-weight: 800; letter-spacing: -0.02em">Ремни</h1></div>
+    <div style="flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 250px; gap: 12px">
+      <div style="border-radius: 20px; background: #15181d; padding: 8px; display: flex; flex-direction: column; min-height: 0">
+        <div style="flex: 1; min-height: 0"><svg role="img" aria-label="Ремень A: пик 78 герц, ремень B: пик 71 герц" viewBox="0 0 440 260" style="width: 100%; height: 100%"><path d="M67.9 10 V240" stroke="#1f242b" stroke-width="1"></path><text x="67.9" y="254" fill="#66707b" font-size="11" text-anchor="middle" font-family="Inter, sans-serif">25</text><path d="M140.3 10 V240" stroke="#1f242b" stroke-width="1"></path><text x="140.3" y="254" fill="#66707b" font-size="11" text-anchor="middle" font-family="Inter, sans-serif">50</text><path d="M212.8 10 V240" stroke="#1f242b" stroke-width="1"></path><text x="212.8" y="254" fill="#66707b" font-size="11" text-anchor="middle" font-family="Inter, sans-serif">75</text><path d="M285.2 10 V240" stroke="#1f242b" stroke-width="1"></path><text x="285.2" y="254" fill="#66707b" font-size="11" text-anchor="middle" font-family="Inter, sans-serif">100</text><path d="M357.6 10 V240" stroke="#1f242b" stroke-width="1"></path><text x="357.6" y="254" fill="#66707b" font-size="11" text-anchor="middle" font-family="Inter, sans-serif">125</text><text x="430" y="254" fill="#66707b" font-size="11" text-anchor="end" font-family="Inter, sans-serif">Гц</text><polyline points="10.0,230.4 12.8,230.4 15.6,230.4 18.4,230.3 21.2,230.3 24.0,230.2 26.8,230.2 29.6,230.1 32.4,230.1 35.2,230.0 38.0,230.0 40.8,229.9 43.6,229.8 46.4,229.8 49.2,229.7 52.0,229.6 54.8,229.6 57.6,229.5 60.4,229.4 63.2,229.3 66.0,229.2 68.8,229.1 71.6,229.0 74.4,228.9 77.2,228.8 80.0,228.7 82.8,228.6 85.6,228.4 88.4,228.3 91.2,228.1 94.0,228.0 96.8,227.8 99.6,227.6 102.4,227.4 105.2,227.2 108.0,227.0 110.8,226.8 113.6,226.5 116.4,226.2 119.2,225.9 122.0,225.6 124.8,225.2 127.6,224.9 130.4,224.5 133.2,224.0 136.0,223.5 138.8,223.0 141.6,222.4 144.4,221.7 147.2,221.0 150.0,220.2 152.8,219.3 155.6,218.3 158.4,217.2 161.2,215.9 164.0,214.5 166.8,212.9 169.6,211.0 172.4,208.9 175.2,206.4 178.0,203.6 180.8,200.2 183.6,196.3 186.4,191.6 189.2,186.0 192.0,179.4 194.8,171.3 197.6,161.6 200.4,149.8 203.2,135.7 206.0,119.1 208.8,100.0 211.6,79.3 214.4,58.9 217.2,41.9 220.0,31.9 222.8,31.7 225.6,41.2 228.4,57.9 231.2,78.2 234.0,98.7 236.8,117.8 239.6,134.3 242.4,148.4 245.2,160.1 248.0,169.7 250.8,177.6 253.6,184.2 256.4,189.6 259.2,194.1 262.0,197.9 264.8,201.0 267.6,203.6 270.4,205.9 273.2,207.7 276.0,209.3 278.8,210.5 281.6,211.6 284.4,212.4 287.2,213.1 290.0,213.6 292.8,213.9 295.6,214.0 298.4,214.0 301.2,213.7 304.0,213.3 306.8,212.7 309.6,211.9 312.4,210.8 315.2,209.4 318.0,207.7 320.8,205.5 323.6,202.9 326.4,199.8 329.2,196.1 332.0,191.8 334.8,187.0 337.6,181.8 340.4,176.8 343.2,172.4 346.0,169.4 348.8,168.3 351.6,169.5 354.4,172.8 357.2,177.4 360.0,182.7 362.8,188.2 365.6,193.4 368.4,198.1 371.2,202.2 374.0,205.7 376.8,208.8 379.6,211.4 382.4,213.6 385.2,215.5 388.0,217.1 390.8,218.5 393.6,219.7 396.4,220.8 399.2,221.7 402.0,222.5 404.8,223.2 407.6,223.9 410.4,224.4 413.2,224.9 416.0,225.4 418.8,225.8 421.6,226.2 424.4,226.5 427.2,226.8 430.0,227.1" fill="none" stroke="#2dd4bf" stroke-width="3" stroke-linejoin="round"></polyline><polyline points="10.0,230.3 12.8,230.3 15.6,230.3 18.4,230.2 21.2,230.1 24.0,230.1 26.8,230.0 29.6,230.0 32.4,229.9 35.2,229.8 38.0,229.8 40.8,229.7 43.6,229.6 46.4,229.5 49.2,229.5 52.0,229.4 54.8,229.3 57.6,229.2 60.4,229.1 63.2,229.0 66.0,228.8 68.8,228.7 71.6,228.6 74.4,228.4 77.2,228.3 80.0,228.1 82.8,228.0 85.6,227.8 88.4,227.6 91.2,227.4 94.0,227.2 96.8,226.9 99.6,226.6 102.4,226.4 105.2,226.1 108.0,225.7 110.8,225.4 113.6,225.0 116.4,224.5 119.2,224.1 122.0,223.5 124.8,223.0 127.6,222.3 130.4,221.6 133.2,220.8 136.0,219.9 138.8,218.9 141.6,217.8 144.4,216.6 147.2,215.1 150.0,213.5 152.8,211.6 155.6,209.4 158.4,206.8 161.2,203.8 164.0,200.3 166.8,196.1 169.6,191.1 172.4,185.1 175.2,177.8 178.0,169.1 180.8,158.5 183.6,145.9 186.4,131.0 189.2,114.2 192.0,96.3 194.8,79.1 197.6,65.7 200.4,59.0 203.2,60.9 206.0,70.8 208.8,86.2 211.6,103.9 214.4,121.4 217.2,137.3 220.0,151.0 222.8,162.6 225.6,172.2 228.4,180.1 231.2,186.6 234.0,192.0 236.8,196.4 239.6,200.2 242.4,203.3 245.2,205.9 248.0,208.0 250.8,209.9 253.6,211.4 256.4,212.7 259.2,213.8 262.0,214.7 264.8,215.4 267.6,216.0 270.4,216.4 273.2,216.7 276.0,216.9 278.8,216.9 281.6,216.8 284.4,216.6 287.2,216.3 290.0,215.7 292.8,215.0 295.6,214.1 298.4,213.0 301.2,211.6 304.0,209.9 306.8,207.9 309.6,205.4 312.4,202.4 315.2,198.9 318.0,194.7 320.8,190.0 323.6,184.7 326.4,179.1 329.2,173.7 332.0,169.1 334.8,166.1 337.6,165.3 340.4,166.8 343.2,170.4 346.0,175.5 348.8,181.2 351.6,187.0 354.4,192.4 357.2,197.3 360.0,201.5 362.8,205.2 365.6,208.4 368.4,211.1 371.2,213.4 374.0,215.3 376.8,217.0 379.6,218.4 382.4,219.7 385.2,220.8 388.0,221.7 390.8,222.5 393.6,223.3 396.4,223.9 399.2,224.5 402.0,225.0 404.8,225.5 407.6,225.9 410.4,226.2 413.2,226.6 416.0,226.9 418.8,227.2 421.6,227.4 424.4,227.7 427.2,227.9 430.0,228.1" fill="none" stroke="#f97316" stroke-width="3" stroke-linejoin="round"></polyline></svg></div>
+        <div style="display: flex; gap: 16px; padding: 4px 8px 2px; font-size: 13px; color: #98a1ac"><span><b style="color: #2dd4bf">—</b> ремень A · пик 78 Гц</span><span><b style="color: #f97316">—</b> ремень B · пик 71 Гц</span></div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px">
+        <div style="border-radius: 20px; background: #15181d; padding: 14px 16px; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 13px; color: #98a1ac">Похожесть</span><span style="font-size: 36px; font-weight: 800; color: #fcd34d">87%</span><span style="font-size: 13px; color: #98a1ac">хорошо — от 90%</span></div>
+        <div style="border-radius: 20px; background: rgba(251, 191, 36, 0.08); padding: 14px 16px; font-size: 15px; line-height: 1.45; color: #e2e6ea">Ремень <b>B</b> слабее: его пик ниже. Подтяните натяжитель B на четверть оборота и проверьте снова.</div>
+        <div style="flex: 1"></div>
+        <a href="Belts.dc.html" style="height: 76px; border-radius: 20px; background: #2dd4bf; color: #042f2a; font-size: 17px; font-weight: 800; display: flex; flex-direction: column; align-items: center; justify-content: center"><span>Проверить снова</span><span style="font-size: 12px; font-weight: 600; opacity: 0.75">~3 мин · не трогайте принтер</span></a>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 800, "height": 480}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

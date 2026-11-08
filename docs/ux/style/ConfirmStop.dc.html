@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Остановить печать? — Rivet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
+</style>
+</helmet>
+<div style="width: 800px; height: 480px; position: relative; background: #0b0d10; color: #f4f6f8; font-family: Inter, system-ui, sans-serif; overflow: hidden">
+  <div aria-hidden="true" style="position: absolute; inset: 0; display: flex; filter: blur(2px); opacity: 0.35">
+    <dc-import name="NavRail" active="home" hint-size="88px,480px"></dc-import>
+    <div style="flex: 1; padding: 16px; display: flex; gap: 22px; align-items: center">
+      <div style="width: 300px; height: 300px; border-radius: 50%; border: 12px solid #1f242b; box-sizing: border-box"></div>
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 14px"><div style="width: 160px; height: 80px; border-radius: 16px; background: #15181d"></div><div style="height: 56px; border-radius: 16px; background: #15181d"></div><div style="height: 84px; border-radius: 20px; background: #15181d"></div></div>
+    </div>
+  </div>
+  <div style="position: absolute; inset: 0; background: rgba(5, 6, 7, 0.55); display: flex; align-items: center; justify-content: center">
+    <section role="alertdialog" aria-modal="true" aria-labelledby="t" aria-describedby="d" style="width: 540px; box-sizing: border-box; padding: 28px; border-radius: 28px; background: #15181d; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55); display: flex; flex-direction: column; gap: 12px">
+      <span aria-hidden="true" style="width: 56px; height: 56px; border-radius: 18px; background: rgba(251, 75, 94, 0.13); display: flex; align-items: center; justify-content: center"><span style="width: 20px; height: 20px; border-radius: 5px; background: #fb4b5e"></span></span>
+      <h1 id="t" style="margin: 6px 0 0; font-size: 28px; font-weight: 800; letter-spacing: -0.02em">Остановить печать?</h1>
+      <p id="d" style="margin: 0; font-size: 17px; line-height: 1.45; color: #c7cdd4">Готово 42% «Корпуса вентилятора №2». Продолжить эту печать потом не получится.</p>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 10px">
+        <a href="Printing.dc.html" style="height: 80px; border-radius: 20px; background: #1f242b; color: #f4f6f8; font-weight: 700; font-size: 18px; display: flex; align-items: center; justify-content: center">Не останавливать</a>
+        <a href="Main.dc.html" style="height: 80px; border-radius: 20px; background: #fb4b5e; color: #ffffff; font-weight: 700; font-size: 19px; display: flex; align-items: center; justify-content: center">Остановить</a>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":800,"height":480}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

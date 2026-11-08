@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Подключение к Wi-Fi — Rivet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
+.scroll{overflow-y:scroll;scrollbar-width:thin;scrollbar-color:#4a525c #15181d;padding-right:10px}
+.scroll::-webkit-scrollbar{width:8px}
+.scroll::-webkit-scrollbar-track{background:#15181d;border-radius:4px}
+.scroll::-webkit-scrollbar-thumb{background:#4a525c;border-radius:4px}
+</style>
+</helmet>
+<div style="position: relative; width: 800px; height: 480px; display: flex; background: #0b0d10; color: #f4f6f8; font-family: Inter, system-ui, sans-serif; overflow: hidden">
+  <dc-import name="NavRail" active="settings" hint-size="88px,480px"></dc-import>
+  <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+    <div style="height: 64px; flex: none; display: flex; align-items: center; gap: 14px"><a href="Network.dc.html" aria-label="Назад" style="width: 64px; height: 64px; flex: none; border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></a><h1 style="margin: 0; flex: 1; font-size: 26px; font-weight: 800; letter-spacing: -0.02em">Сеть «HomeNet»</h1></div>
+    <div style="display: flex; gap: 8px">
+      <div aria-label="Пароль" style="flex: 1; height: 64px; border-radius: 18px; background: #15181d; box-shadow: inset 0 0 0 2px #2dd4bf; display: flex; align-items: center; padding: 0 18px; font: 600 20px Inter, system-ui, sans-serif; letter-spacing: 0.06em; color: {{fieldInk}}">{{fieldText}}</div>
+      <button type="button" onClick="{{toggleShow}}" style="width: 120px; border: 0; border-radius: 18px; background: #15181d; color: #c7cdd4; font: 600 15px Inter, system-ui, sans-serif; cursor: pointer">{{showLabel}}</button>
+      <a href="Network.dc.html" style="width: 150px; border-radius: 18px; background: {{okBg}}; color: {{okFg}}; font-size: 17px; font-weight: 800; display: flex; align-items: center; justify-content: center">Подключиться</a>
+    </div>
+    <div style="flex: 1"></div>
+      <div role="group" aria-label="Клавиатура" style="flex: none; display: flex; flex-direction: column; gap: 6px">
+        <sc-for list="{{kbRows}}" as="row" hint-placeholder-count="5">
+          <div style="display: flex; gap: 6px">
+            <sc-for list="{{row.keys}}" as="k" hint-placeholder-count="10">
+              <button type="button" onClick="{{k.press}}" aria-label="{{k.aria}}" style="flex: {{k.flex}}; height: 50px; border: 0; border-radius: 12px; background: {{k.bg}}; color: {{k.fg}}; font: 600 19px Inter, system-ui, sans-serif; cursor: pointer">{{k.label}}</button>
+            </sc-for>
+          </div>
+        </sc-for>
+      </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 800, "height": 480}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { kbText: '', kbUpper: false, kbSym: false, show: false };
+  }
+
+  kbRows(onDone) {
+    var self = this, st = this.state;
+    var letters = [['1','2','3','4','5','6','7','8','9','0'], ['q','w','e','r','t','y','u','i','o','p'], ['a','s','d','f','g','h','j','k','l','⌫'], ['⇧','z','x','c','v','b','n','m','=','.'], ['#+=','_','-',' ','⏎']];
+    var syms = [['1','2','3','4','5','6','7','8','9','0'], ['!','@','#','$','%','&','*','(',')','/'], ['"',"'",';',',','?','+','[',']','<','⌫'], ['⇧','>','{','}','|','~','^','`','=','.'], ['abc','_',':',' ','⏎']];
+    var set = st.kbSym ? syms : letters;
+    return set.map(function (row) {
+      return { keys: row.map(function (k) {
+        var special = k === '⌫' || k === '⇧' || k === '⏎' || k === 'abc' || k === '#+=';
+        var label = k === ' ' ? 'пробел' : (k.length === 1 && k !== '_' && st.kbUpper && !st.kbSym ? k.toUpperCase() : k);
+        return {
+          label: label, aria: k === '⌫' ? 'Стереть' : k === '⇧' ? 'Регистр' : k === '⏎' ? 'Готово' : k === ' ' ? 'Пробел' : label,
+          flex: k === ' ' ? 4 : (k === '⏎' ? 2 : 1),
+          bg: k === '⏎' ? '#2dd4bf' : (k === '⇧' && st.kbUpper) ? '#3a414a' : special ? '#1f242b' : '#252a31',
+          fg: k === '⏎' ? '#042f2a' : '#f4f6f8',
+          press: function () {
+            var t = self.state.kbText;
+            if (k === '⌫') self.setState({ kbText: t.slice(0, -1) });
+            else if (k === '⇧') self.setState({ kbUpper: !self.state.kbUpper });
+            else if (k === '⏎') onDone(t);
+            else if (k === '#+=') self.setState({ kbSym: true });
+            else if (k === 'abc') self.setState({ kbSym: false });
+            else self.setState({ kbText: t + (self.state.kbUpper && !self.state.kbSym ? k.toUpperCase() : k) });
+          }
+        };
+      }) };
+    });
+  }
+
+  renderVals() {
+    var self = this, st = this.state;
+    var t = st.kbText;
+    return {
+      fieldText: t ? (st.show ? t : t.replace(/./g, '•')) + '▏' : 'Пароль Wi-Fi',
+      fieldInk: t ? '#f4f6f8' : '#66707b',
+      showLabel: st.show ? 'Скрыть' : 'Показать',
+      okBg: t.length >= 8 ? '#2dd4bf' : '#1f242b', okFg: t.length >= 8 ? '#042f2a' : '#66707b',
+      toggleShow: function () { self.setState({ show: !st.show }); },
+      kbRows: this.kbRows(function () {})
+    };
+  }
+}
+</script>
+</body>
+</html>

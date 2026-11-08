@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Пропуск объектов — Rivet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
+</style>
+</helmet>
+<div style="width: 800px; height: 480px; display: flex; background: #0b0d10; color: #f4f6f8; font-family: Inter, system-ui, sans-serif; overflow: hidden">
+  <dc-import name="NavRail" active="home" hint-size="88px,480px"></dc-import>
+  <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px 20px 16px 16px; display: flex; gap: 16px">
+    <section aria-label="Стол, вид сверху" style="width: 448px; flex: none; border-radius: 24px; background: #15181d; padding: 12px; box-sizing: border-box; display: flex">
+      <div style="flex: 1; position: relative; border-radius: 16px; background-color: #1b1f25; background-image: linear-gradient(#20252c 1px, transparent 1px), linear-gradient(90deg, #20252c 1px, transparent 1px); background-size: 42px 42px">
+        <sc-for list="{{objects}}" as="o" hint-placeholder-count="4">
+          <button type="button" onClick="{{o.pick}}" aria-pressed="{{o.pressed}}" aria-label="{{o.aria}}" style="position: absolute; left: {{o.x}}px; top: {{o.y}}px; width: {{o.w}}px; height: {{o.h}}px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border-radius: {{o.r}}; border: {{o.border}}; background: {{o.fill}}; box-shadow: {{o.glow}}; cursor: pointer"><span style="font-size: 13px; font-weight: 700; color: {{o.ink}}">{{o.label}}</span></button>
+        </sc-for>
+      </div>
+    </section>
+    <section style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px">
+      <h1 style="margin: 4px 0 0; font-size: 26px; font-weight: 800; letter-spacing: -0.02em">Пропуск объектов</h1>
+      <p style="margin: 0; font-size: 16px; line-height: 1.45; color: #98a1ac">{{hint}}</p>
+      <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 4px">
+        <sc-for list="{{chosen}}" as="c" hint-placeholder-count="1">
+          <span style="height: 44px; padding: 0 14px; border-radius: 14px; background: rgba(251, 75, 94, 0.12); color: #fda4af; font-size: 16px; font-weight: 600; display: flex; align-items: center">{{c.label}}</span>
+        </sc-for>
+      </div>
+      <div style="flex: 1"></div>
+      <span style="font-size: 14px; color: #66707b">Пунктиром — уже пропущенные</span>
+      <div style="display: grid; grid-template-columns: 1fr 1.3fr; gap: 10px">
+        <a href="Printing.dc.html" style="height: 80px; border-radius: 20px; background: #1f242b; color: #f4f6f8; font-weight: 700; font-size: 18px; display: flex; align-items: center; justify-content: center">Назад</a>
+        <button type="button" onClick="{{skip}}" disabled="{{off}}" style="height: 80px; border: 0; border-radius: 20px; background: {{skipBg}}; color: {{skipFg}}; font: 700 18px Inter, system-ui, sans-serif; cursor: pointer">{{skipLabel}}</button>
+      </div>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":800,"height":480}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { picked: {}, skipped: { clip: true } };
+  }
+  renderVals() {
+    var self = this;
+    var s = this.state;
+    var defs = [
+      { id: 'a', label: 'Корпус 1', x: 60, y: 70, w: 120, h: 120, r: '18px' },
+      { id: 'b', label: 'Корпус 2', x: 230, y: 70, w: 120, h: 120, r: '18px' },
+      { id: 'lid', label: 'Крышка', x: 60, y: 240, w: 150, h: 96, r: '14px' },
+      { id: 'clip', label: 'Клипса', x: 262, y: 252, w: 76, h: 76, r: '38px' }
+    ];
+    var objects = defs.map(function (d) {
+      var gone = !!s.skipped[d.id];
+      var on = !!s.picked[d.id];
+      return Object.assign({}, d, {
+        pressed: on ? 'true' : 'false',
+        aria: d.label + (gone ? ', пропущен' : on ? ', выбран' : ''),
+        border: gone ? '2px dashed #4a525c' : on ? '3px solid #ffffff' : '0',
+        fill: gone ? 'transparent' : on ? '#fb4b5e' : '#4466cc',
+        glow: on ? '0 0 0 6px rgba(251, 75, 94, 0.25)' : 'none',
+        ink: gone ? '#66707b' : '#ffffff',
+        pick: function () {
+          if (gone) return;
+          var p = Object.assign({}, s.picked);
+          p[d.id] = !p[d.id];
+          self.setState({ picked: p });
+        }
+      });
+    });
+    var chosen = defs.filter(function (d) { return s.picked[d.id]; });
+    var n = chosen.length;
+    return {
+      objects: objects,
+      chosen: chosen,
+      hint: n ? 'Эти детали больше не будут печататься. Вернуть их нельзя.' : 'Коснитесь детали на столе, которая отклеилась или испортилась.',
+      off: !n,
+      skipLabel: n ? 'Пропустить (' + n + ')' : 'Пропустить',
+      skipBg: n ? '#fb4b5e' : '#1a1e23',
+      skipFg: n ? '#ffffff' : '#4a525c',
+      skip: function () {
+        var sk = Object.assign({}, s.skipped);
+        chosen.forEach(function (d) { sk[d.id] = true; });
+        self.setState({ skipped: sk, picked: {} });
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

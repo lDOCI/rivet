@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Движение — Rivet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
+</style>
+</helmet>
+<div style="width: 800px; height: 480px; display: flex; background: #0b0d10; color: #f4f6f8; font-family: Inter, system-ui, sans-serif; overflow: hidden">
+  <dc-import name="NavRail" active="control" hint-size="88px,480px"></dc-import>
+  <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px 20px 16px 16px; display: flex; gap: 16px">
+    <section aria-label="Голова: оси X и Y" style="width: 448px; flex: none; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); grid-template-rows: repeat(5, minmax(0, 1fr)); gap: 7px">
+      <a href="Control.dc.html" aria-label="Назад" style="border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></a>
+      <span></span>
+      <button type="button" onClick="{{y10}}" aria-label="Y плюс 10 мм" style="border: 0; border-radius: 20px; background: #252a31; color: #f4f6f8; font: 700 18px Inter, system-ui, sans-serif; cursor: pointer">Y +10</button>
+      <span></span><span></span>
+      <span></span><span></span>
+      <button type="button" onClick="{{y1}}" aria-label="Y плюс 1 мм" style="border: 0; border-radius: 20px; background: #181c21; color: #c7cdd4; font: 600 17px Inter, system-ui, sans-serif; cursor: pointer">+1</button>
+      <span></span><span></span>
+      <button type="button" onClick="{{xm10}}" aria-label="X минус 10 мм" style="border: 0; border-radius: 20px; background: #252a31; color: #f4f6f8; font: 700 18px Inter, system-ui, sans-serif; cursor: pointer">X −10</button>
+      <button type="button" onClick="{{xm1}}" aria-label="X минус 1 мм" style="border: 0; border-radius: 20px; background: #181c21; color: #c7cdd4; font: 600 17px Inter, system-ui, sans-serif; cursor: pointer">−1</button>
+      <button type="button" onClick="{{home}}" aria-label="Парковка всех осей" style="border: 0; border-radius: 50%; background: rgba(45, 212, 191, 0.14); color: #2dd4bf; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 10.2 12 3.5l8.5 6.7V19a1.5 1.5 0 0 1-1.5 1.5h-4v-6h-6v6H5A1.5 1.5 0 0 1 3.5 19z"></path></svg></button>
+      <button type="button" onClick="{{x1}}" aria-label="X плюс 1 мм" style="border: 0; border-radius: 20px; background: #181c21; color: #c7cdd4; font: 600 17px Inter, system-ui, sans-serif; cursor: pointer">+1</button>
+      <button type="button" onClick="{{x10}}" aria-label="X плюс 10 мм" style="border: 0; border-radius: 20px; background: #252a31; color: #f4f6f8; font: 700 18px Inter, system-ui, sans-serif; cursor: pointer">X +10</button>
+      <span></span><span></span>
+      <button type="button" onClick="{{ym1}}" aria-label="Y минус 1 мм" style="border: 0; border-radius: 20px; background: #181c21; color: #c7cdd4; font: 600 17px Inter, system-ui, sans-serif; cursor: pointer">−1</button>
+      <span></span><span></span>
+      <span></span><span></span>
+      <button type="button" onClick="{{ym10}}" aria-label="Y минус 10 мм" style="border: 0; border-radius: 20px; background: #252a31; color: #f4f6f8; font: 700 18px Inter, system-ui, sans-serif; cursor: pointer">Y −10</button>
+      <span></span><span></span>
+    </section>
+    <section aria-label="Стол: ось Z" style="flex: 1; display: flex; flex-direction: column; gap: 7px">
+      <div style="height: 64px; border-radius: 20px; background: #15181d; display: flex; align-items: center; justify-content: space-around; font-size: 15px; color: #98a1ac; font-variant-numeric: tabular-nums">
+        <sc-if value="{{free}}" hint-placeholder-val="{{ false }}"><span style="color: #fcd34d; font-weight: 600">Моторы свободны · сначала парковка ⌂</span></sc-if><sc-if value="{{homed}}" hint-placeholder-val="{{ true }}"><span>X <b style="color: #f4f6f8">{{x}}</b></span><span>Y <b style="color: #f4f6f8">{{y}}</b></span><span>Z <b style="color: #f4f6f8">{{z}}</b></span></sc-if>
+      </div>
+      <button type="button" onClick="{{z10}}" aria-label="Стол вниз на 10 мм" style="flex: 1; border: 0; border-radius: 20px; background: #252a31; color: #f4f6f8; font: 700 18px Inter, system-ui, sans-serif; cursor: pointer">Стол ↓ 10</button>
+      <button type="button" onClick="{{z1}}" aria-label="Стол вниз на 1 мм" style="flex: 1; border: 0; border-radius: 20px; background: #181c21; color: #c7cdd4; font: 600 17px Inter, system-ui, sans-serif; cursor: pointer">↓ 1</button>
+      <button type="button" onClick="{{zm1}}" aria-label="Стол вверх на 1 мм" style="flex: 1; border: 0; border-radius: 20px; background: #181c21; color: #c7cdd4; font: 600 17px Inter, system-ui, sans-serif; cursor: pointer">↑ 1</button>
+      <button type="button" onClick="{{zm10}}" aria-label="Стол вверх на 10 мм" style="flex: 1; border: 0; border-radius: 20px; background: #252a31; color: #f4f6f8; font: 700 18px Inter, system-ui, sans-serif; cursor: pointer">Стол ↑ 10</button>
+      <div style="height: 64px; flex: none; display: grid; grid-template-columns: 1.3fr 1fr; gap: 7px">
+        <button type="button" onClick="{{motorsOff}}" style="height: 64px; border: 0; border-radius: 20px; background: #15181d; color: #c7cdd4; font: 600 16px Inter, system-ui, sans-serif; white-space: nowrap; cursor: pointer">Моторы выкл.</button>
+        <a href="MotionAdvanced.dc.html" style="border-radius: 20px; background: #15181d; color: #f4f6f8; font-size: 16px; font-weight: 600; display: flex; align-items: center; justify-content: center">Ещё…</a>
+      </div>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":800,"height":480}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { x: 0, y: 0, z: 10, free: false };
+  }
+  renderVals() {
+    var self = this;
+    var s = this.state;
+    function mv(axis, d) {
+      return function () {
+        if (s.free) return;
+        var n = {};
+        var lim = { x: [-110, 110], y: [-110, 110], z: [-10, 230] }[axis];
+        n[axis] = Math.min(lim[1], Math.max(lim[0], s[axis] + d));
+        self.setState(n);
+      };
+    }
+    return {
+      x: s.free ? '—' : s.x, y: s.free ? '—' : s.y, z: s.free ? '—' : s.z.toFixed(1),
+      free: s.free, homed: !s.free,
+      motorsOff: function () { self.setState({ free: true }); },
+      x1: mv('x', 1), x10: mv('x', 10), xm1: mv('x', -1), xm10: mv('x', -10),
+      y1: mv('y', 1), y10: mv('y', 10), ym1: mv('y', -1), ym10: mv('y', -10),
+      z1: mv('z', 1), z10: mv('z', 10), zm1: mv('z', -1), zm10: mv('z', -10),
+      home: function () { self.setState({ x: 110, y: 110, z: 220, free: false }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

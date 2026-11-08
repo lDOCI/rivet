@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Сервис — Rivet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
+.scroll{overflow-y:scroll;scrollbar-width:thin;scrollbar-color:#4a525c #15181d;padding-right:10px}
+.scroll::-webkit-scrollbar{width:8px}
+.scroll::-webkit-scrollbar-track{background:#15181d;border-radius:4px}
+.scroll::-webkit-scrollbar-thumb{background:#4a525c;border-radius:4px}
+</style>
+</helmet>
+<div style="position: relative; width: 800px; height: 480px; display: flex; background: #0b0d10; color: #f4f6f8; font-family: Inter, system-ui, sans-serif; overflow: hidden">
+  <dc-import name="NavRail" active="tools" hint-size="88px,480px"></dc-import>
+  <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px 16px 0; display: flex; flex-direction: column; gap: 10px">
+    <div style="height: 64px; flex: none; display: flex; align-items: center; gap: 14px"><a href="Tools.dc.html" aria-label="Назад" style="width: 64px; height: 64px; flex: none; border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></a><h1 style="margin: 0; flex: 1; font-size: 26px; font-weight: 800; letter-spacing: -0.02em">Сервис</h1></div>
+    <div class="scroll" style="flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; padding-bottom: 16px">
+        <div style="flex: none; border-radius: 20px; background: #15181d; padding: 14px 18px; display: flex; flex-direction: column; gap: 10px">
+          <div style="display: flex; align-items: baseline; gap: 10px"><span style="flex: 1; font-size: 17px; font-weight: 700">Фильтр HEPA</span><span style="font-size: 14px; color: #98a1ac; font-weight: 600">заменить через 218 ч</span></div>
+          <div role="progressbar" aria-label="Фильтр HEPA" aria-valuenow="82" aria-valuemin="0" aria-valuemax="300" style="height: 10px; border-radius: 5px; background: #252a31; overflow: hidden"><span style="display: block; height: 10px; width: 27%; border-radius: 5px; background: #2dd4bf"></span></div>
+          <div style="display: flex; align-items: center; gap: 10px"><span style="flex: 1; font-size: 13px; color: #98a1ac; font-variant-numeric: tabular-nums">82 из 300 ч печати</span><button type="button" style="height: 44px; padding: 0 14px; border: 0; border-radius: 14px; background: #1f242b; color: #2dd4bf; font: 700 14px Inter, system-ui, sans-serif; cursor: pointer">Заменил</button></div>
+        </div>
+        <div style="flex: none; border-radius: 20px; background: #15181d; padding: 14px 18px; display: flex; flex-direction: column; gap: 10px">
+          <div style="display: flex; align-items: baseline; gap: 10px"><span style="flex: 1; font-size: 17px; font-weight: 700">Сопло</span><span style="font-size: 14px; color: #98a1ac; font-weight: 600">заменить через 189 ч</span></div>
+          <div role="progressbar" aria-label="Сопло" aria-valuenow="311" aria-valuemin="0" aria-valuemax="500" style="height: 10px; border-radius: 5px; background: #252a31; overflow: hidden"><span style="display: block; height: 10px; width: 62%; border-radius: 5px; background: #2dd4bf"></span></div>
+          <div style="display: flex; align-items: center; gap: 10px"><span style="flex: 1; font-size: 13px; color: #98a1ac; font-variant-numeric: tabular-nums">311 из 500 ч печати</span><button type="button" style="height: 44px; padding: 0 14px; border: 0; border-radius: 14px; background: #1f242b; color: #2dd4bf; font: 700 14px Inter, system-ui, sans-serif; cursor: pointer">Заменил</button></div>
+        </div>
+        <div style="flex: none; border-radius: 20px; background: #15181d; padding: 14px 18px; display: flex; flex-direction: column; gap: 10px">
+          <div style="display: flex; align-items: baseline; gap: 10px"><span style="flex: 1; font-size: 17px; font-weight: 700">Направляющие</span><span style="font-size: 14px; color: #fcd34d; font-weight: 600">пора смазать</span></div>
+          <div role="progressbar" aria-label="Направляющие" aria-valuenow="96" aria-valuemin="0" aria-valuemax="100" style="height: 10px; border-radius: 5px; background: #252a31; overflow: hidden"><span style="display: block; height: 10px; width: 96%; border-radius: 5px; background: #fbbf24"></span></div>
+          <div style="display: flex; align-items: center; gap: 10px"><span style="flex: 1; font-size: 13px; color: #98a1ac; font-variant-numeric: tabular-nums">96 из 100 ч печати</span><button type="button" style="height: 44px; padding: 0 14px; border: 0; border-radius: 14px; background: #1f242b; color: #2dd4bf; font: 700 14px Inter, system-ui, sans-serif; cursor: pointer">Заменил</button></div>
+        </div>
+        <span style="margin: 4px 4px 0; font-size: 14px; color: #98a1ac">Часы считаются по истории печати. Интервал меняется тапом по строке.</span>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 800, "height": 480}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Загрузка филамента — Rivet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
+</style>
+</helmet>
+<div style="width: 800px; height: 480px; display: flex; background: #0b0d10; color: #f4f6f8; font-family: Inter, system-ui, sans-serif; overflow: hidden">
+  <dc-import name="NavRail" active="control" hint-size="88px,480px"></dc-import>
+  <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px 20px 16px 16px; display: flex; flex-direction: column; gap: 14px">
+    <div style="height: 64px; flex: none; display: flex; align-items: center; gap: 14px">
+      <a href="Extruder.dc.html" aria-label="Отменить загрузку" style="width: 64px; height: 64px; flex: none; border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; justify-content: center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></a>
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 8px">
+        <span style="font-size: 15px; font-weight: 600; color: #98a1ac">{{stepLabel}}</span>
+        <div aria-hidden="true" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px">
+          <span style="height: 6px; border-radius: 3px; background: {{bar1}}"></span><span style="height: 6px; border-radius: 3px; background: {{bar2}}"></span><span style="height: 6px; border-radius: 3px; background: {{bar3}}"></span>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex: 1; min-height: 0; display: grid; grid-template-columns: 220px 1fr; gap: 22px; align-items: center">
+      <div aria-hidden="true" style="width: 220px; height: 220px; border-radius: 28px; background: radial-gradient(circle at 50% 40%, #1d2530 0%, #15181d 75%); display: flex; align-items: center; justify-content: center">
+        <svg width="170" height="190" viewBox="0 0 100 112" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <defs>
+            <linearGradient id="hot" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fbbf24"></stop><stop offset="1" stop-color="#f97316"></stop></linearGradient>
+            <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#f97316" stop-opacity="0.35"></stop><stop offset="1" stop-color="#f97316" stop-opacity="0"></stop></radialGradient>
+          </defs>
+          <ellipse cx="50" cy="80" rx="40" ry="22" fill="url(#glow)" opacity="{{glowOpacity}}"></ellipse>
+          <rect x="47.5" y="2" width="5" height="{{filLen}}" rx="2.5" fill="{{filColor}}"></rect>
+          <circle cx="38" cy="26" r="9" fill="#1f242b" stroke="{{gearInk}}" stroke-width="3" stroke-dasharray="2.4 2.2"></circle>
+          <circle cx="38" cy="26" r="2.5" fill="{{gearInk}}"></circle>
+          <circle cx="62" cy="26" r="9" fill="#1f242b" stroke="{{gearInk}}" stroke-width="3" stroke-dasharray="2.4 2.2"></circle>
+          <circle cx="62" cy="26" r="2.5" fill="{{gearInk}}"></circle>
+          <rect x="24" y="42" width="52" height="24" rx="7" fill="#252a31"></rect>
+          <path d="M30 49h40M30 54h40M30 59h40" stroke="#1a1e24" stroke-width="2"></path>
+          <rect x="30" y="68" width="40" height="15" rx="4" fill="{{heaterFill}}"></rect>
+          <path d="M43 83h14l-4 9h-6z" fill="#b8913f"></path>
+          <rect x="47.5" y="92" width="5" height="16" rx="2.5" fill="{{filColor}}" opacity="{{strandOpacity}}"></rect>
+        </svg>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 12px">
+        <h1 style="margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.2">{{title}}</h1>
+        <p style="margin: 0; font-size: 17px; line-height: 1.5; color: #c7cdd4">{{text}}</p>
+        <sc-if value="{{isStep1}}" hint-placeholder-val="{{ true }}">
+          <div role="radiogroup" aria-label="Пластик" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 4px">
+            <sc-for list="{{materials}}" as="m" hint-placeholder-count="4">
+              <button type="button" role="radio" aria-checked="{{m.checked}}" onClick="{{m.pick}}" style="height: 76px; border: 0; border-radius: 18px; background: {{m.bg}}; color: {{m.fg}}; font-family: Inter, system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer"><span style="font-size: 18px; font-weight: 800">{{m.name}}</span><span style="font-size: 13px; font-weight: 600; opacity: 0.75">{{m.temp}}°</span></button>
+            </sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{isStep3}}" hint-placeholder-val="{{ false }}">
+          <div role="radiogroup" aria-label="Сколько выдавить" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 4px">
+            <sc-for list="{{amounts}}" as="a" hint-placeholder-count="4">
+              <button type="button" role="radio" aria-checked="{{a.checked}}" onClick="{{a.pick}}" style="height: 64px; border: 0; border-radius: 18px; background: {{a.bg}}; color: {{a.fg}}; font: 700 18px Inter, system-ui, sans-serif; cursor: pointer">{{a.label}}</button>
+            </sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{showStatus}}" hint-placeholder-val="{{ false }}">
+          <span style="align-self: flex-start; height: 36px; padding: 0 14px; border-radius: 18px; background: rgba(45, 212, 191, 0.12); color: #5eead4; font-size: 15px; font-weight: 600; display: flex; align-items: center">{{statusText}}</span>
+        </sc-if>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1.4fr; gap: 10px">
+      <sc-if value="{{isStep1}}" hint-placeholder-val="{{ true }}"><a href="Extruder.dc.html" style="height: 80px; border-radius: 22px; background: #15181d; color: #f4f6f8; font-size: 18px; font-weight: 700; display: flex; align-items: center; justify-content: center">Отмена</a></sc-if>
+      <sc-if value="{{notStep1}}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{secondary}}" style="height: 80px; border: 0; border-radius: 22px; background: #15181d; color: #f4f6f8; font: 700 18px Inter, system-ui, sans-serif; cursor: pointer">{{secondaryLabel}}</button></sc-if>
+      <sc-if value="{{isStep3}}" hint-placeholder-val="{{ false }}"><a href="Extruder.dc.html" style="height: 80px; border-radius: 22px; background: #2dd4bf; color: #042f2a; font-size: 19px; font-weight: 800; display: flex; align-items: center; justify-content: center">Да, готово</a></sc-if>
+      <sc-if value="{{notStep3}}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{primary}}" style="height: 80px; border: 0; border-radius: 22px; background: #2dd4bf; color: #042f2a; font: 800 19px Inter, system-ui, sans-serif; cursor: pointer">{{primaryLabel}}</button></sc-if>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":800,"height":480}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { step: 1, mat: 'PETG', amt: 25, pushed: 0 };
+  }
+  renderVals() {
+    var self = this;
+    var s = this.state;
+    var temps = { PLA: 210, PETG: 240, ABS: 250, TPU: 225 };
+    var on = function (n) { return s.step >= n ? '#2dd4bf' : '#1f242b'; };
+    var copy = {
+      1: ['Какой пластик заправляете?', 'Сопло нагреется до нужной температуры. Старый пруток выгрузится сам, если он есть.', 'Отмена', 'Нагреть сопло'],
+      2: ['Вставьте пруток до упора', 'Протолкните конец прутка в экструдер, пока не почувствуете сопротивление, и держите.', 'Назад', 'Протянуть 50 мм'],
+      3: ['Пошёл пластик нужного цвета?', 'Если из сопла ещё идёт старый цвет — выдавите ещё. Выберите сколько.', 'Выдавить ' + s.amt + ' мм', 'Да, готово']
+    }[s.step];
+    return {
+      stepLabel: 'Загрузка филамента · шаг ' + s.step + ' из 3',
+      statusText: 'Сопло ' + temps[s.mat] + '°' + (s.step === 3 && s.pushed ? ' · выдавлено ' + s.pushed + ' мм' : ' — готово'),
+      bar1: on(1), bar2: on(2), bar3: on(3),
+      title: copy[0], text: copy[1], secondaryLabel: copy[2], primaryLabel: copy[3],
+      isStep1: s.step === 1, notStep1: s.step !== 1, isStep3: s.step === 3, notStep3: s.step !== 3, showStatus: s.step > 1, temp: temps[s.mat],
+      filColor: '#4466cc',
+      filLen: s.step === 1 ? 14 : 64,
+      gearInk: s.step === 2 ? '#2dd4bf' : '#4a525c',
+      heaterFill: s.step >= 1 ? 'url(#hot)' : '#3a414a',
+      glowOpacity: 1,
+      strandOpacity: s.step === 3 ? 1 : 0,
+      materials: Object.keys(temps).map(function (k) {
+        var sel = k === s.mat;
+        return {
+          name: k, temp: temps[k], checked: sel ? 'true' : 'false',
+          bg: sel ? '#2dd4bf' : '#15181d', fg: sel ? '#042f2a' : '#f4f6f8',
+          pick: function () { self.setState({ mat: k }); }
+        };
+      }),
+      primary: function () { if (s.step < 3) self.setState({ step: s.step + 1, pushed: 0 }); },
+      secondary: function () { if (s.step === 2) self.setState({ step: 1 }); else if (s.step === 3) self.setState({ pushed: s.pushed + s.amt }); },
+      amounts: [10, 25, 50, 100].map(function (n) {
+        var on = n === s.amt;
+        return { label: n + ' мм', checked: on ? 'true' : 'false', bg: on ? '#2dd4bf' : '#15181d', fg: on ? '#042f2a' : '#f4f6f8', pick: function () { self.setState({ amt: n }); } };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>

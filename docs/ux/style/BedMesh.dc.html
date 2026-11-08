@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Карта стола — Rivet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
+</style>
+</helmet>
+<div style="width: 800px; height: 480px; display: flex; background: #0b0d10; color: #f4f6f8; font-family: Inter, system-ui, sans-serif; overflow: hidden">
+  <dc-import name="NavRail" active="tools" hint-size="88px,480px"></dc-import>
+  <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px 20px 16px 16px; display: flex; gap: 20px">
+    <div style="width: 340px; flex: none; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; align-items: center; gap: 14px">
+        <a href="Calibrate.dc.html" aria-label="Назад" style="width: 64px; height: 64px; flex: none; border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></a>
+        <h1 style="margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.02em">Карта стола</h1>
+      </div>
+      <div role="img" aria-label="Карта стола 5 на 5, от минус 0.09 до плюс 0.09 мм" style="flex: 1; border-radius: 24px; background: #15181d; padding: 12px; box-sizing: border-box; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); grid-template-rows: repeat(5, minmax(0, 1fr)); gap: 5px">
+        <sc-for list="{{cells}}" as="c" hint-placeholder-count="25">
+          <span aria-hidden="true" style="border-radius: 10px; background: {{c.bg}}; color: #ffffff; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; font-variant-numeric: tabular-nums">{{c.label}}</span>
+        </sc-for>
+      </div>
+      <div aria-hidden="true" style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #98a1ac"><span>ниже</span><span style="flex: 1; height: 8px; border-radius: 4px; background: linear-gradient(90deg, #2563eb, #2a3038, #ea580c)"></span><span>выше</span></div>
+    </div>
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; padding-top: 6px">
+      <span style="font-size: 15px; font-weight: 600; color: #98a1ac">Разброс по столу</span>
+      <span style="font-size: 64px; font-weight: 800; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums">0.18<span style="font-size: 26px; color: #98a1ac; letter-spacing: 0"> мм</span></span>
+      <span style="align-self: flex-start; height: 34px; padding: 0 14px; border-radius: 17px; background: rgba(45, 212, 191, 0.13); color: #5eead4; font-size: 15px; font-weight: 600; display: flex; align-items: center">В норме — компенсация справится</span>
+      <p style="margin: 4px 0 0; font-size: 15px; line-height: 1.5; color: #98a1ac">Профиль «default». Если разброс больше 0.3 мм — выровняйте стол винтами.</p>
+      <div style="flex: 1"></div>
+      <button type="button" style="height: 80px; border: 0; border-radius: 22px; background: #2dd4bf; color: #042f2a; font: 800 19px Inter, system-ui, sans-serif; cursor: pointer">Снять заново</button>
+      <button type="button" style="height: 64px; border: 0; border-radius: 20px; background: #15181d; color: #f4f6f8; font: 600 16px Inter, system-ui, sans-serif; cursor: pointer">Профили: default, PETG-80 ›</button>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":800,"height":480}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var mesh = [
+      [-0.09, -0.05, -0.02, 0.01, 0.04],
+      [-0.06, -0.02, 0.00, 0.03, 0.06],
+      [-0.03, 0.00, 0.02, 0.04, 0.07],
+      [-0.01, 0.02, 0.04, 0.06, 0.08],
+      [0.01, 0.03, 0.05, 0.07, 0.09]
+    ];
+    function mix(a, b, t) {
+      return 'rgb(' + [0, 1, 2].map(function (i) { return Math.round(a[i] + (b[i] - a[i]) * t); }).join(',') + ')';
+    }
+    var mid = [42, 48, 56], low = [37, 99, 235], high = [234, 88, 12];
+    var cells = [];
+    mesh.forEach(function (row) {
+      row.forEach(function (v) {
+        var t = Math.min(1, Math.abs(v) / 0.09);
+        cells.push({ label: (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(2), bg: mix(mid, v < 0 ? low : high, t * 0.9) });
+      });
+    });
+    return { cells: cells };
+  }
+}
+</script>
+</body>
+</html>

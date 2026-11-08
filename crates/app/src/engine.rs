@@ -12,6 +12,9 @@ use crate::AppWindow;
 
 /// UI refresh cap. Moonraker sends ~4 updates/s while printing.
 const UI_TICK: Duration = Duration::from_millis(100);
+/// Setup calls run inline in the event loop, so a hung Moonraker must not
+/// stall UI updates for the default 30 s.
+const SETUP_TIMEOUT: Duration = Duration::from_secs(5);
 
 #[derive(Debug, Clone)]
 pub enum Command {
@@ -67,7 +70,10 @@ async fn handle_event(ev: Event, client: &Client, state: &mut PrinterState) {
     match ev {
         Event::Connected => {
             state.connection = Connection::Connected;
-            if let Err(err) = client.identify("Rivet", env!("CARGO_PKG_VERSION")).await {
+            if let Err(err) = client
+                .identify("Rivet", env!("CARGO_PKG_VERSION"), SETUP_TIMEOUT)
+                .await
+            {
                 tracing::warn!(%err, "identify failed");
             }
             refresh_klippy(client, state).await;
@@ -104,7 +110,10 @@ async fn handle_event(ev: Event, client: &Client, state: &mut PrinterState) {
 }
 
 async fn refresh_klippy(client: &Client, state: &mut PrinterState) {
-    match client.call("server.info", Value::Null).await {
+    match client
+        .call_timeout("server.info", Value::Null, SETUP_TIMEOUT)
+        .await
+    {
         Ok(info) => {
             state.klippy = Klippy::parse(info["klippy_state"].as_str().unwrap_or_default());
             // When Klippy isn't ready, Moonraker sends notify_klippy_ready later.
@@ -115,7 +124,10 @@ async fn refresh_klippy(client: &Client, state: &mut PrinterState) {
                 // last values are stale: drop them. The reason still comes
                 // from printer.info.
                 state.clear_status();
-                if let Ok(mut info) = client.call("printer.info", Value::Null).await {
+                if let Ok(mut info) = client
+                    .call_timeout("printer.info", Value::Null, SETUP_TIMEOUT)
+                    .await
+                {
                     state.apply_status(json!({
                         "webhooks": { "state_message": info["state_message"].take() }
                     }));
@@ -128,7 +140,11 @@ async fn refresh_klippy(client: &Client, state: &mut PrinterState) {
 
 async fn subscribe(client: &Client, state: &mut PrinterState) {
     match client
-        .call("printer.objects.subscribe", model::subscription())
+        .call_timeout(
+            "printer.objects.subscribe",
+            model::subscription(),
+            SETUP_TIMEOUT,
+        )
         .await
     {
         Ok(mut result) => state.replace_status(result["status"].take()),

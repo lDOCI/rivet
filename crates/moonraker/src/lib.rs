@@ -127,8 +127,13 @@ impl Client {
         .map(drop)
     }
 
-    pub async fn identify(&self, name: &str, version: &str) -> Result<Value, Error> {
-        self.call(
+    pub async fn identify(
+        &self,
+        name: &str,
+        version: &str,
+        timeout: Duration,
+    ) -> Result<Value, Error> {
+        self.call_timeout(
             "server.connection.identify",
             json!({
                 "client_name": name,
@@ -136,6 +141,7 @@ impl Client {
                 "type": "display",
                 "url": "https://github.com/lDOCI/rivet",
             }),
+            timeout,
         )
         .await
     }
