@@ -34,6 +34,20 @@ Logs: `RUST_LOG=debug cargo run -p rivet`.
 
 Tests: `cargo test --workspace`.
 
+## Build for the printer
+
+Static armv7 binary for Klipper Mod (no external toolchain, links with rustup's `rust-lld`):
+
+```bash
+rustup target add armv7-unknown-linux-musleabihf
+cargo printer
+```
+
+Output: `target/armv7-unknown-linux-musleabihf/release/rivet`. CI builds the same binary on every push.
+
+On the device it draws to `/dev/fb0` and reads touch from evdev. Overrides: `RIVET_FB`, `RIVET_TOUCH`,
+`RIVET_ROTATION` (`0`/`90`/`180`/`270`), `RIVET_TOUCH_SWAP_XY`, `RIVET_TOUCH_INVERT_X`, `RIVET_TOUCH_INVERT_Y`.
+
 ## Layout
 
 | Path | What |
@@ -41,9 +55,11 @@ Tests: `cargo test --workspace`.
 | `crates/moonraker` | async JSON-RPC client with reconnect |
 | `crates/model` | printer state, status delta merging |
 | `crates/app` | `rivet` binary: Slint UI + network thread |
+| `crates/fbdev-platform` | Slint platform for the printer: `/dev/fb0` + evdev touch, pure Rust |
 | `crates/mock-moonraker` | fake Moonraker for development |
 | `ui/` | `.slint` theme, components, screens |
+| `assets/fonts` | Inter (SIL OFL 1.1), embedded into the binary |
 
 ## License
 
-GPL-3.0-or-later.
+GPL-3.0-or-later. Bundled Inter font: SIL Open Font License 1.1 (`assets/fonts/OFL.txt`).

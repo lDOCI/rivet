@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    name: fmt, clippy, tests
+    runs-on: ubuntu-24.04
+    env:
+      RUSTFLAGS: -D warnings
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+
+      - name: rustfmt
+        run: cargo fmt --all --check
+
+      - name: clippy (desktop)
+        run: cargo clippy --workspace --all-targets
+
+      - name: clippy (printer, fbdev)
+        run: cargo clippy -p rivet -p fbdev-platform --no-default-features --features fbdev --all-targets
+
+      - name: tests
+        run: cargo test --workspace
+
+  printer:
+    name: printer build (armv7 musl)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: armv7-unknown-linux-musleabihf
+      - uses: Swatinem/rust-cache@v2
+
+      - name: build
+        run: cargo printer
+
+      - name: inspect
+        run: |
+          BIN=target/armv7-unknown-linux-musleabihf/release/rivet
+          file "$BIN"
+          SIZE=$(stat -c %s "$BIN")
+          echo "size: $SIZE bytes"
+          echo "### Printer binary: $((SIZE / 1024)) KiB" >> "$GITHUB_STEP_SUMMARY"
+          # Budget ceiling from ROADMAP.md: 12 MB.
+          test "$SIZE" -le 12582912
+
+      - name: smoke test under qemu
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq qemu-user-static >/dev/null
+          BIN=target/armv7-unknown-linux-musleabihf/release/rivet
+          # No framebuffer on the runner: the binary must start, log, and fail cleanly.
+          set +e
+          RIVET_FB=/nonexistent timeout 20 qemu-arm-static "$BIN" > out.log 2>&1
+          CODE=$?
+          set -e
+          cat out.log
+          test "$CODE" -eq 1
+          grep -q "starting Rivet" out.log
+          grep -q "open framebuffer /nonexistent" out.log
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rivet-armv7-musl
+          path: target/armv7-unknown-linux-musleabihf/release/rivet
+          if-no-files-found: error

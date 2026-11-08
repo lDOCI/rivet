@@ -1,9 +1,15 @@
 import { Palette, Metrics } from "theme.slint";
 import { TapButton, HeaterCard, NavItem } from "components.slint";
 
+// Embedded into the binary (see build.rs): the printer has no system fonts.
+import "../assets/fonts/Inter-Regular.ttf";
+import "../assets/fonts/Inter-SemiBold.ttf";
+import "../assets/fonts/Inter-Bold.ttf";
+
 export component AppWindow inherits Window {
     width: 800px;
     height: 480px;
+    default-font-family: "Inter";
     title: "Rivet";
     background: Palette.bg;
     default-font-size: 16px;

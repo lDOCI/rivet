@@ -12,15 +12,15 @@
 | P3 | Remote-экран на Pi / мини-ПК | aarch64 / x86_64 | тот же бинарь, другие флаги |
 | P4 | AD5X | MIPS32, IFS 4 цвета | Rust для MIPS — tier 3: nightly + `build-std`. KlipperMod AD5X не поддерживает |
 
-Rust target для P1/P2: `armv7-unknown-linux-musleabihf` (статически) или `armv7-unknown-linux-gnueabihf` под glibc Buildroot. Что выбрать, решаем по факту в M0: libinput проще линковать с glibc.
+Rust target для P1/P2: `armv7-unknown-linux-musleabihf`, статический бинарь без зависимостей от glibc прошивки (D-010). Сборка: `cargo printer`.
 
 ## Стек
 
 - **Rust stable** (MSRV фиксируем в `rust-toolchain.toml`).
 - **Slint 1.18**:
-  - на устройстве: backend `linuxkms`, `renderer-software`; DRM dumb buffers → fallback на `/dev/fb0` (`SLINT_BACKEND_LINUXFB=1`); ввод через `libinput`;
-  - запасной план, если libinput на устройстве нет: свой `slint::platform::Platform` на `MinimalSoftwareWindow` + прямое чтение `/dev/input/event*` (crate `evdev`) + запись в `/dev/fb0`;
-  - на десктопе: backend `winit`.
+  - на устройстве: свой платформенный слой `crates/fbdev-platform` (D-009): `MinimalSoftwareWindow` рисует только изменённые области прямо в mmap `/dev/fb0` (XRGB8888, XBGR8888, RGB565), тач читается из evdev (по умолчанию tslib `ts_uinput`), цикл событий на `poll` + pipe для `invoke_from_event_loop`. Настройка через `RIVET_FB`, `RIVET_TOUCH`, `RIVET_ROTATION`, `RIVET_TOUCH_SWAP_XY/INVERT_X/INVERT_Y`;
+  - на десктопе: backend `winit` + тот же software renderer;
+  - шрифты Inter вшиты в бинарь (`import` в `.slint` + `EmbedFiles`), fontconfig грузится через dlopen и на устройстве не нужен.
   - Лицензия Slint: GPLv3 (подходит, проект GPLv3).
 - **tokio** (`current_thread`) + **tokio-tungstenite** — WebSocket JSON-RPC Moonraker.
 - **serde / serde_json** — модели.

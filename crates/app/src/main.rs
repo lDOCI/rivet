@@ -18,6 +18,9 @@ fn main() -> anyhow::Result<()> {
     let url = moonraker_url();
     tracing::info!(%url, "starting Rivet");
 
+    #[cfg(feature = "fbdev")]
+    fbdev_platform::init(fbdev_platform::Config::from_env())?;
+
     let ui = AppWindow::new()?;
     let (cmd_tx, cmd_rx) = mpsc::unbounded_channel();
     wire_callbacks(&ui, &cmd_tx);
