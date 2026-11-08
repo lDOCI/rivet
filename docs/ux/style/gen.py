@@ -495,8 +495,7 @@ def build():
         T('Принтер', 'реле основного питания', True, src='machine.device_power.devices'),
         T('Розетка камеры', 'умная розетка', False, src='machine.device_power.devices'),
         S('ВЫХОДЫ'),
-        T('Пищалка', 'beeper', False, src='output_pin <name>.value'),
-        T('Реле подсветки', 'caselight_relay', True, src='output_pin <name>.value'),
+        T('Реле подсветки', '', True, src='output_pin <name>.value (pins starting with _ are hidden)'),
     ], intro='')
 
     # ---------- Tools children ----------
