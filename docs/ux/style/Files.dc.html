@@ -14,9 +14,10 @@ body{margin:0}
 a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
 </style>
 </helmet>
-<div style="width: 800px; height: 480px; display: flex; background: #0b0d10; color: #f4f6f8; font-family: Inter, system-ui, sans-serif; overflow: hidden">
+<div style="position: relative; width: 800px; height: 480px; display: flex; background: #0b0d10; color: #f4f6f8; font-family: Inter, system-ui, sans-serif; overflow: hidden">
   <dc-import name="NavRail" active="home" hint-size="88px,480px"></dc-import>
   <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px 20px 16px 16px; display: flex; flex-direction: column; gap: 12px">
+    <sc-if value="{{normalMode}}" hint-placeholder-val="{{ true }}">
     <div style="height: 64px; flex: none; display: flex; align-items: center; gap: 10px">
       <a href="Main.dc.html" aria-label="Назад" style="width: 64px; height: 64px; flex: none; border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></a>
       <div role="tablist" aria-label="Где лежат файлы" style="flex: 1; height: 64px; box-sizing: border-box; padding: 5px; border-radius: 20px; background: #15181d; display: flex; gap: 4px">
@@ -25,26 +26,62 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
       </div>
       <a href="JobQueue.dc.html" aria-label="Очередь печати, 2" style="width: 64px; height: 64px; flex: none; border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; justify-content: center; position: relative"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"></path></svg><span style="position: absolute; top: 8px; right: 8px; min-width: 18px; height: 18px; border-radius: 9px; background: #2dd4bf; color: #042f2a; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center">2</span></a>
       <button type="button" aria-label="Поиск и сортировка" style="width: 64px; height: 64px; flex: none; border: 0; border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4.5 4.5"></path></svg></button>
+      <button type="button" onClick="{{enterSelect}}" aria-label="Выбрать несколько" style="width: 64px; height: 64px; flex: none; border: 0; border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"></rect><path d="m8 12 3 3 5-6"></path></svg></button>
     </div>
+    </sc-if>
+    <sc-if value="{{selectMode}}" hint-placeholder-val="{{ false }}">
+    <div style="height: 64px; flex: none; display: flex; align-items: center; gap: 10px">
+      <button type="button" onClick="{{exitSelect}}" aria-label="Отменить выбор" style="width: 64px; height: 64px; flex: none; border: 0; border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
+      <h1 aria-live="polite" style="margin: 0; flex: 1; font-size: 24px; font-weight: 800">{{selLabel}}</h1>
+      <button type="button" onClick="{{selectAll}}" style="height: 64px; padding: 0 20px; border: 0; border-radius: 20px; background: #15181d; color: #f4f6f8; font: 700 16px Inter, system-ui, sans-serif; cursor: pointer">{{allLabel}}</button>
+    </div>
+    </sc-if>
     <div style="flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 12px">
       <sc-for list="{{files}}" as="f" hint-placeholder-count="6">
-        <a href="FileDetail.dc.html" aria-label="{{f.aria}}" style="border-radius: 22px; background: #15181d; color: #f4f6f8; padding: 10px; box-sizing: border-box; display: flex; flex-direction: column; gap: 6px; min-height: 0">
+        <sc-if value="{{normalMode}}" hint-placeholder-val="{{ true }}">        <a href="FileDetail.dc.html" aria-label="{{f.aria}}" onPointerDown="{{f.pressStart}}" onPointerUp="{{f.pressEnd}}" onPointerLeave="{{f.pressEnd}}" onClick="{{f.click}}" style="border-radius: 22px; background: #15181d; color: #f4f6f8; padding: 10px; box-sizing: border-box; display: flex; flex-direction: column; gap: 6px; min-height: 0">
           <div aria-hidden="true" style="flex: 1; min-height: 0; border-radius: 16px; background: radial-gradient(circle at 50% 40%, #222a36 0%, #171b21 75%); display: flex; align-items: center; justify-content: center">
             <svg width="96" height="96" viewBox="0 0 200 200"><polygon points="100,40 170,80 100,120 30,80" fill="{{f.top}}"></polygon><polygon points="30,80 100,120 100,168 30,128" fill="{{f.left}}"></polygon><polygon points="100,120 170,80 170,128 100,168" fill="{{f.right}}"></polygon></svg>
           </div>
           <span style="font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{f.name}}</span>
           <span style="font-size: 13px; color: #98a1ac">{{f.meta}}</span>
-        </a>
+        </a></sc-if>
+        <sc-if value="{{selectMode}}" hint-placeholder-val="{{ false }}"><button type="button" role="checkbox" aria-checked="{{f.checked}}" aria-label="{{f.aria}}" onClick="{{f.toggle}}" style="position: relative; border: 0; border-radius: 22px; background: #15181d; box-shadow: inset 0 0 0 3px {{f.ring}}; color: #f4f6f8; padding: 10px; box-sizing: border-box; display: flex; flex-direction: column; gap: 6px; min-height: 0; text-align: left; font-family: Inter, system-ui, sans-serif; cursor: pointer">
+          <div aria-hidden="true" style="flex: 1; min-height: 0; border-radius: 16px; background: radial-gradient(circle at 50% 40%, #222a36 0%, #171b21 75%); display: flex; align-items: center; justify-content: center">
+            <svg width="96" height="96" viewBox="0 0 200 200"><polygon points="100,40 170,80 100,120 30,80" fill="{{f.top}}"></polygon><polygon points="30,80 100,120 100,168 30,128" fill="{{f.left}}"></polygon><polygon points="100,120 170,80 170,128 100,168" fill="{{f.right}}"></polygon></svg>
+          </div>
+          <span style="font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{f.name}}</span>
+          <span style="font-size: 13px; color: #98a1ac">{{f.meta}}</span>
+        <span aria-hidden="true" style="position: absolute; top: 14px; right: 14px; width: 30px; height: 30px; border-radius: 15px; background: {{f.badgeBg}}; box-shadow: inset 0 0 0 2px {{f.badgeRing}}; color: #042f2a; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="{{f.tickOpacity}}"><path d="m5 12.5 4.5 4.5L19 7"></path></svg></span></button></sc-if>
       </sc-for>
     </div>
+    <sc-if value="{{selectMode}}" hint-placeholder-val="{{ false }}">
+      <div style="height: 76px; flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: 10px">
+        <button type="button" onClick="{{queueSel}}" disabled="{{noneSel}}" style="border: 0; border-radius: 20px; background: #15181d; color: {{actFg}}; font: 700 17px Inter, system-ui, sans-serif; cursor: pointer">{{queueLabel}}</button>
+        <button type="button" onClick="{{askDelete}}" disabled="{{noneSel}}" style="border: 0; border-radius: 20px; background: {{delBg}}; color: {{delFg}}; font: 800 17px Inter, system-ui, sans-serif; cursor: pointer">{{deleteLabel}}</button>
+      </div>
+    </sc-if>
   </main>
+  <sc-if value="{{confirmOpen}}" hint-placeholder-val="{{ false }}">
+    <div role="alertdialog" aria-modal="true" aria-labelledby="dt" style="position: absolute; inset: 0; background: rgba(5, 6, 8, 0.78); display: flex; align-items: center; justify-content: center">
+      <div style="width: 520px; border-radius: 28px; background: #15181d; padding: 24px; display: flex; flex-direction: column; gap: 12px">
+        <h2 id="dt" style="margin: 0; font-size: 26px; font-weight: 800">{{confirmTitle}}</h2>
+        <p style="margin: 0; font-size: 16px; line-height: 1.5; color: #c7cdd4">{{confirmText}}</p>
+        <div style="display: grid; grid-template-columns: 1fr 1.3fr; gap: 10px; margin-top: 6px">
+          <button type="button" onClick="{{cancelDelete}}" style="height: 76px; border: 0; border-radius: 20px; background: #1f242b; color: #f4f6f8; font: 700 17px Inter, system-ui, sans-serif; cursor: pointer">Отмена</button>
+          <button type="button" onClick="{{doDelete}}" style="height: 76px; border: 0; border-radius: 20px; background: #e11d48; color: #ffffff; font: 800 17px Inter, system-ui, sans-serif; cursor: pointer">Удалить</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":800,"height":480}}'>
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { src: 'printer' };
+    this.state = { src: 'printer', select: false, sel: {}, confirm: false, gone: {} };
+    this._timer = null;
+    this._long = false;
   }
   renderVals() {
     var self = this;
@@ -60,10 +97,42 @@ class Component extends DCLogic {
       ['Калибровочный куб', '18 мин · PLA', 'green'], ['Органайзер для отвёрток', '2 ч 10 мин · PLA', 'red']
     ];
     var u = [['Кронштейн полки', '1 ч 02 мин · PETG', 'gray'], ['Ваза спираль', '2 ч 40 мин · PLA', 'green'], ['Заглушка трубы 25 мм', '12 мин · PLA', 'white']];
+    var st = this.state;
+    var list = (usb ? u : p).filter(function (f) { return !st.gone[f[0]]; });
+    var n = list.filter(function (f) { return st.sel[f[0]]; }).length;
+    var word = function (k) { var m = k % 10, h = k % 100; return (m === 1 && h !== 11) ? 'файл' : (m >= 2 && m <= 4 && (h < 12 || h > 14)) ? 'файла' : 'файлов'; };
     return {
-      files: (usb ? u : p).map(function (f) {
+      normalMode: !st.select, selectMode: st.select, confirmOpen: st.confirm,
+      selLabel: n ? 'Выбрано: ' + n : 'Выберите файлы',
+      allLabel: n === list.length ? 'Снять все' : 'Выбрать все',
+      noneSel: n === 0, actFg: n ? '#f4f6f8' : '#66707b',
+      delBg: n ? '#e11d48' : '#1f242b', delFg: n ? '#ffffff' : '#66707b',
+      deleteLabel: n ? 'Удалить ' + n : 'Удалить', queueLabel: n ? 'В очередь ' + n : 'В очередь',
+      confirmTitle: 'Удалить ' + n + ' ' + word(n) + '?',
+      confirmText: 'Файлы удалятся с ' + (usb ? 'USB-флешки' : 'принтера') + '. Отменить это нельзя.',
+      enterSelect: function () { self.setState({ select: true, sel: {} }); },
+      exitSelect: function () { self.setState({ select: false, sel: {} }); },
+      selectAll: function () { var m = {}; if (n !== list.length) list.forEach(function (f) { m[f[0]] = true; }); self.setState({ sel: m }); },
+      askDelete: function () { if (n) self.setState({ confirm: true }); },
+      cancelDelete: function () { self.setState({ confirm: false }); },
+      doDelete: function () { var g = Object.assign({}, st.gone); Object.keys(st.sel).forEach(function (k) { if (st.sel[k]) g[k] = true; }); self.setState({ gone: g, sel: {}, confirm: false, select: false }); },
+      queueSel: function () { if (n) self.setState({ select: false, sel: {} }); },
+      files: list.map(function (f) {
         var c = colors[f[2]];
-        return { name: f[0], meta: f[1], aria: f[0] + ', ' + f[1], top: c[0], left: c[1], right: c[2] };
+        var on = !!st.sel[f[0]];
+        return {
+          name: f[0], meta: f[1], aria: f[0] + ', ' + f[1], top: c[0], left: c[1], right: c[2],
+          checked: on ? 'true' : 'false', ring: on ? '#2dd4bf' : 'transparent',
+          badgeBg: on ? '#2dd4bf' : 'rgba(11, 13, 16, 0.6)', badgeRing: on ? '#2dd4bf' : '#98a1ac', tickOpacity: on ? 1 : 0,
+          toggle: function () { var m = Object.assign({}, st.sel); m[f[0]] = !on; self.setState({ sel: m }); },
+          pressStart: function () {
+            self._long = false;
+            clearTimeout(self._timer);
+            self._timer = setTimeout(function () { self._long = true; var m = {}; m[f[0]] = true; self.setState({ select: true, sel: m }); }, 500);
+          },
+          pressEnd: function () { clearTimeout(self._timer); },
+          click: function (e) { if (self._long) { e.preventDefault(); self._long = false; } }
+        };
       }),
       pSel: usb ? 'false' : 'true', uSel: usb ? 'true' : 'false',
       pBg: usb ? 'transparent' : '#2dd4bf', pFg: usb ? '#98a1ac' : '#042f2a',
