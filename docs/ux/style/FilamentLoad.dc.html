@@ -64,8 +64,10 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
     </div>
 
     <div style="display: grid; grid-template-columns: 1fr 1.4fr; gap: 10px">
-      <button type="button" onClick="{{secondary}}" style="height: 80px; border: 0; border-radius: 22px; background: #15181d; color: #f4f6f8; font: 700 18px Inter, system-ui, sans-serif; cursor: pointer">{{secondaryLabel}}</button>
-      <button type="button" onClick="{{primary}}" style="height: 80px; border: 0; border-radius: 22px; background: #2dd4bf; color: #042f2a; font: 800 19px Inter, system-ui, sans-serif; cursor: pointer">{{primaryLabel}}</button>
+      <sc-if value="{{isStep1}}" hint-placeholder-val="{{ true }}"><a href="Control.dc.html" style="height: 80px; border-radius: 22px; background: #15181d; color: #f4f6f8; font-size: 18px; font-weight: 700; display: flex; align-items: center; justify-content: center">Отмена</a></sc-if>
+      <sc-if value="{{notStep1}}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{secondary}}" style="height: 80px; border: 0; border-radius: 22px; background: #15181d; color: #f4f6f8; font: 700 18px Inter, system-ui, sans-serif; cursor: pointer">{{secondaryLabel}}</button></sc-if>
+      <sc-if value="{{isStep3}}" hint-placeholder-val="{{ false }}"><a href="Control.dc.html" style="height: 80px; border-radius: 22px; background: #2dd4bf; color: #042f2a; font-size: 19px; font-weight: 800; display: flex; align-items: center; justify-content: center">Да, готово</a></sc-if>
+      <sc-if value="{{notStep3}}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{primary}}" style="height: 80px; border: 0; border-radius: 22px; background: #2dd4bf; color: #042f2a; font: 800 19px Inter, system-ui, sans-serif; cursor: pointer">{{primaryLabel}}</button></sc-if>
     </div>
   </main>
 </div>
@@ -91,7 +93,7 @@ class Component extends DCLogic {
       statusText: 'Сопло ' + temps[s.mat] + '° — готово',
       bar1: on(1), bar2: on(2), bar3: on(3),
       title: copy[0], text: copy[1], secondaryLabel: copy[2], primaryLabel: copy[3],
-      isStep1: s.step === 1, showStatus: s.step > 1, temp: temps[s.mat],
+      isStep1: s.step === 1, notStep1: s.step !== 1, isStep3: s.step === 3, notStep3: s.step !== 3, showStatus: s.step > 1, temp: temps[s.mat],
       filColor: '#4466cc',
       filLen: s.step === 1 ? 14 : 64,
       gearInk: s.step === 2 ? '#2dd4bf' : '#4a525c',
@@ -106,8 +108,8 @@ class Component extends DCLogic {
           pick: function () { self.setState({ mat: k }); }
         };
       }),
-      primary: function () { if (s.step < 3) self.setState({ step: s.step + 1 }); else self.setState({ step: 1 }); },
-      secondary: function () { if (s.step > 1 && s.step < 3) self.setState({ step: s.step - 1 }); }
+      primary: function () { if (s.step < 3) self.setState({ step: s.step + 1 }); },
+      secondary: function () { if (s.step === 2) self.setState({ step: 1 }); }
     };
   }
 }
