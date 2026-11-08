@@ -1,0 +1,27 @@
+[package]
+name = "rivet"
+description = "Lightweight touch UI for Klipper/Moonraker"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[features]
+default = ["desktop"]
+# Window on macOS / Linux desktop. Software renderer to match the device pixel for pixel.
+desktop = ["slint/backend-winit", "slint/renderer-winit-software"]
+# Printer: render to DRM dumb buffers, falling back to /dev/fb0; touch via libinput.
+device = ["slint/backend-linuxkms-noseat", "slint/renderer-software"]
+
+[dependencies]
+anyhow.workspace = true
+model.workspace = true
+moonraker.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+slint = { version = "1.18", default-features = false, features = ["std", "compat-1-2"] }
+
+[build-dependencies]
+slint-build = "1.18"

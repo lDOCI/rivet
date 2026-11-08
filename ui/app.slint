@@ -1,0 +1,201 @@
+import { Palette, Metrics } from "theme.slint";
+import { TapButton, HeaterCard, NavItem } from "components.slint";
+
+export component AppWindow inherits Window {
+    width: 800px;
+    height: 480px;
+    title: "Rivet";
+    background: Palette.bg;
+    default-font-size: 16px;
+
+    // "ready" | "startup" | "error" | "klippy-offline" | "offline"
+    in property <string> link-state: "offline";
+    in property <string> klippy-message;
+    in property <float> extruder-temp;
+    in property <float> extruder-target;
+    in property <float> bed-temp;
+    in property <float> bed-target;
+    // standby | printing | paused | complete | cancelled | error
+    in property <string> print-state;
+    in property <string> filename;
+    in property <float> progress;
+
+    callback preheat(float, float);
+    callback cooldown();
+    callback home-all();
+    callback pause-print();
+    callback resume-print();
+    callback cancel-print();
+    callback emergency-stop();
+    callback firmware-restart();
+
+    property <bool> ready: root.link-state == "ready";
+    property <bool> busy: root.ready && (root.print-state == "printing" || root.print-state == "paused");
+
+    HorizontalLayout {
+        // Navigation rail. Only Home works in M0.
+        Rectangle {
+            width: 96px;
+            background: Palette.surface;
+
+            VerticalLayout {
+                padding: Metrics.gap;
+                spacing: Metrics.gap;
+                alignment: start;
+
+                NavItem { label: @tr("Home"); active: true; }
+                NavItem { label: @tr("Files"); }
+                NavItem { label: @tr("Control"); }
+                NavItem { label: @tr("Calibrate"); }
+                NavItem { label: @tr("Settings"); }
+            }
+        }
+
+        VerticalLayout {
+            padding: 16px;
+            spacing: Metrics.gap;
+
+            // Status bar
+            HorizontalLayout {
+                height: Metrics.touch;
+                spacing: 10px;
+
+                Rectangle {
+                    width: 12px;
+                    VerticalLayout {
+                        alignment: center;
+                        Rectangle {
+                            width: 12px;
+                            height: 12px;
+                            border-radius: 6px;
+                            background: root.ready ? Palette.accent
+                                : root.link-state == "startup" ? Palette.warn
+                                : Palette.danger;
+                        }
+                    }
+                }
+                Text {
+                    vertical-alignment: center;
+                    color: Palette.text-dim;
+                    overflow: elide;
+                    text: root.link-state == "ready" ? @tr("Ready")
+                        : root.link-state == "startup" ? @tr("Klipper is starting…")
+                        : root.link-state == "error" ? @tr("Klipper error")
+                        : root.link-state == "klippy-offline" ? @tr("Klipper is not running")
+                        : @tr("No connection to Moonraker");
+                }
+                Rectangle { horizontal-stretch: 1; }
+                TapButton {
+                    width: 120px;
+                    text: @tr("E-STOP");
+                    base: Palette.danger;
+                    enabled: root.link-state != "offline";
+                    clicked => { root.emergency-stop(); }
+                }
+            }
+
+            // Heaters
+            HorizontalLayout {
+                spacing: Metrics.gap;
+                vertical-stretch: 0;
+                HeaterCard { label: @tr("Nozzle"); known: root.ready; current: root.extruder-temp; target: root.extruder-target; }
+                HeaterCard { label: @tr("Bed"); known: root.ready; current: root.bed-temp; target: root.bed-target; }
+            }
+
+            // Print card
+            Rectangle {
+                border-radius: Metrics.radius;
+                background: Palette.surface;
+                vertical-stretch: 1;
+
+                VerticalLayout {
+                    padding: 16px;
+                    spacing: 10px;
+
+                    Text {
+                        text: root.busy ? root.filename : @tr("No active print");
+                        color: Palette.text;
+                        font-size: 18px;
+                        font-weight: 600;
+                        overflow: elide;
+                    }
+
+                    Rectangle {
+                        height: 10px;
+                        border-radius: 5px;
+                        background: Palette.surface-hi;
+
+                        Rectangle {
+                            x: 0px;
+                            height: parent.height;
+                            width: root.busy ? parent.width * root.progress : 0px;
+                            border-radius: 5px;
+                            background: root.print-state == "paused" ? Palette.warn : Palette.accent;
+                        }
+                    }
+
+                    HorizontalLayout {
+                        spacing: Metrics.gap;
+
+                        Text {
+                            vertical-alignment: center;
+                            color: Palette.text-dim;
+                            text: root.busy ? round(root.progress * 100) + "%" : "";
+                            font-size: 22px;
+                            font-weight: 700;
+                        }
+                        Rectangle { horizontal-stretch: 1; }
+
+                        if root.print-state == "printing": TapButton {
+                            width: 140px;
+                            text: @tr("Pause");
+                            clicked => { root.pause-print(); }
+                        }
+                        if root.print-state == "paused": TapButton {
+                            width: 140px;
+                            text: @tr("Resume");
+                            base: Palette.accent;
+                            clicked => { root.resume-print(); }
+                        }
+                        if root.busy: TapButton {
+                            width: 140px;
+                            text: @tr("Stop");
+                            fg: Palette.danger;
+                            clicked => { root.cancel-print(); }
+                        }
+                    }
+                }
+            }
+
+            // Quick actions
+            if !root.busy && root.link-state != "error": HorizontalLayout {
+                spacing: Metrics.gap;
+                vertical-stretch: 0;
+                TapButton { text: "PLA"; enabled: root.ready; clicked => { root.preheat(210, 60); } }
+                TapButton { text: "PETG"; enabled: root.ready; clicked => { root.preheat(240, 80); } }
+                TapButton { text: @tr("Cool down"); enabled: root.ready; clicked => { root.cooldown(); } }
+                TapButton { text: @tr("Home"); enabled: root.ready; clicked => { root.home-all(); } }
+            }
+
+            // Klipper shut down: show reason and the way out.
+            if root.link-state == "error": HorizontalLayout {
+                spacing: Metrics.gap;
+                vertical-stretch: 0;
+                Text {
+                    horizontal-stretch: 1;
+                    vertical-alignment: center;
+                    color: Palette.danger;
+                    text: root.klippy-message;
+                    wrap: word-wrap;
+                    overflow: elide;
+                }
+                TapButton {
+                    width: 200px;
+                    text: @tr("Firmware restart");
+                    base: Palette.accent;
+                    clicked => { root.firmware-restart(); }
+                }
+            }
+        }
+    }
+}

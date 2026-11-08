@@ -1,0 +1,10 @@
+[package]
+name = "model"
+description = "Printer state model: merges Moonraker status deltas"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde_json.workspace = true

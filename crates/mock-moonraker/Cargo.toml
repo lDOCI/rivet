@@ -1,0 +1,18 @@
+[package]
+name = "mock-moonraker"
+description = "Fake Moonraker websocket server for UI development without a printer"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+anyhow.workspace = true
+futures-util.workspace = true
+model.workspace = true
+serde_json.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread", "io-std", "io-util"] }
+tokio-tungstenite = { workspace = true, features = ["handshake"] }
+tracing.workspace = true
+tracing-subscriber.workspace = true

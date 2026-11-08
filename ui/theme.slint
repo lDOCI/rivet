@@ -1,0 +1,20 @@
+// Dark, high-contrast palette tuned for a 4.3" 800x480 panel viewed at arm's length.
+export global Palette {
+    out property <color> bg: #0f1113;
+    out property <color> surface: #1a1d21;
+    out property <color> surface-hi: #262a30;
+    out property <color> pressed: #33383f;
+    out property <color> text: #f2f4f5;
+    out property <color> text-dim: #8b929a;
+    out property <color> accent: #00ae42;
+    out property <color> heat: #ff7a1a;
+    out property <color> warn: #f5a623;
+    out property <color> danger: #e5484d;
+}
+
+export global Metrics {
+    out property <length> gap: 12px;
+    out property <length> radius: 16px;
+    // Minimum touch target on a resistive-ish 4.3" panel.
+    out property <length> touch: 56px;
+}
