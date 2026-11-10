@@ -5,6 +5,8 @@ import { Rail } from "kit/rail.slint";
 import { ControlScreen } from "screens/control.slint";
 import { SettingsScreen } from "screens/settings.slint";
 import { FansScreen, PrintTuneScreen } from "screens/tune.slint";
+import { Dialog, Keypad } from "kit/dialogs.slint";
+import { Toast } from "kit/toast.slint";
 
 // Embedded into the binary (see build.rs): the printer has no system fonts.
 import "../assets/fonts/Inter-Regular.ttf";
@@ -39,6 +41,21 @@ export component AppWindow inherits Window {
     callback cancel-print();
     callback emergency-stop();
     callback firmware-restart();
+
+    // Command feedback from the engine: "" | "not-connected" | "timeout" | "rpc".
+    // For "rpc", `toast-detail` is the message Klipper or Moonraker gave.
+    in-out property <string> toast-kind;
+    in property <string> toast-detail;
+
+    // Overlay on top of everything: "" | "cancel-print" | "keypad".
+    in-out property <string> overlay;
+    in property <string> keypad-title;
+    in property <string> keypad-hint;
+    in property <string> keypad-current;
+    in property <float> keypad-min;
+    in property <float> keypad-max: 999;
+    in property <bool> keypad-negative;
+    callback keypad-done(float);
 
     // Current screen. Rail sections: home, control, tools, settings, messages.
     in-out property <string> screen: "home";
@@ -170,7 +187,7 @@ export component AppWindow inherits Window {
                             width: 140px;
                             text: @tr("Stop");
                             fg: Palette.danger;
-                            clicked => { root.cancel-print(); }
+                            clicked => { root.overlay = "cancel-print"; }
                         }
                     }
                 }
@@ -206,5 +223,33 @@ export component AppWindow inherits Window {
                 }
             }
         }
+    }
+    if root.toast-kind != "": Toast {
+        x: Tokens.rail-width + Tokens.pad;
+        y: root.height - self.height - Tokens.pad;
+        width: root.width - Tokens.rail-width - 2 * Tokens.pad;
+        text: root.toast-kind == "not-connected" ? @tr("No connection to the printer")
+            : root.toast-kind == "timeout" ? @tr("The printer did not answer")
+            : root.toast-detail;
+        dismissed => { root.toast-kind = ""; }
+    }
+    if root.overlay == "cancel-print": Dialog {
+        title: @tr("Cancel print?");
+        message: root.filename + "\n" + @tr("The heaters turn off. The job cannot be resumed.");
+        confirm-text: @tr("Cancel print");
+        cancel-text: @tr("Keep printing");
+        danger: true;
+        confirmed => { root.overlay = ""; root.cancel-print(); }
+        cancelled => { root.overlay = ""; }
+    }
+    if root.overlay == "keypad": Keypad {
+        title: root.keypad-title;
+        hint: root.keypad-hint;
+        current: root.keypad-current;
+        minimum: root.keypad-min;
+        maximum: root.keypad-max;
+        allow-negative: root.keypad-negative;
+        done(v) => { root.overlay = ""; root.keypad-done(v); }
+        cancelled => { root.overlay = ""; }
     }
 }

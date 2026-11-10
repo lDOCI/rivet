@@ -1,0 +1,228 @@
+// Overlays: confirm dialog and numeric keypad. design-code §4.
+import { Tokens } from "tokens.slint";
+import { Icon, PrimaryButton, SecondaryButton, DangerButton } from "controls.slint";
+
+// Dimmed backdrop (78 %) that swallows taps behind it.
+export component Backdrop inherits Rectangle {
+    background: #050608c7;
+    TouchArea { }
+}
+
+// Title, message, actions at the bottom, cancel on the left.
+export component Dialog inherits Rectangle {
+    in property <string> title;
+    in property <string> message;
+    in property <string> confirm-text;
+    in property <string> cancel-text: @tr("Cancel");
+    in property <bool> danger;
+    callback confirmed;
+    callback cancelled;
+    accessible-role: none;
+    Backdrop { }
+    Rectangle {
+        width: 500px;
+        height: body.preferred-height;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        border-radius: Tokens.r-xl;
+        background: Tokens.surface-1;
+        body := VerticalLayout {
+            padding: 24px;
+            spacing: 12px;
+            Text {
+                text: root.title;
+                color: Tokens.text;
+                font-size: Tokens.title;
+                font-weight: 800;
+                wrap: word-wrap;
+            }
+            Text {
+                text: root.message;
+                color: Tokens.text-dim;
+                font-size: Tokens.body;
+                wrap: word-wrap;
+            }
+            Rectangle { height: 8px; }
+            HorizontalLayout {
+                spacing: Tokens.gap;
+                SecondaryButton {
+                    text: root.cancel-text;
+                    min-height: Tokens.touch-primary;
+                    clicked => { root.cancelled(); }
+                }
+                if root.danger: DangerButton {
+                    text: root.confirm-text;
+                    clicked => { root.confirmed(); }
+                }
+                if !root.danger: PrimaryButton {
+                    text: root.confirm-text;
+                    clicked => { root.confirmed(); }
+                }
+            }
+        }
+    }
+}
+
+component Key inherits Rectangle {
+    in property <string> text;
+    in property <bool> enabled: true;
+    callback clicked;
+    border-radius: 18px;
+    background: ta.pressed ? Tokens.surface-3 : Tokens.surface-2;
+    opacity: root.enabled ? 1 : 0.3;
+    accessible-role: button;
+    accessible-label: root.text;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+    Text {
+        text: root.text;
+        color: Tokens.text;
+        font-size: 28px;
+        font-weight: 700;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    ta := TouchArea { enabled: root.enabled; clicked => { root.clicked(); } }
+}
+
+// Numeric keypad. Opened with an `if`, so every opening starts empty;
+// `current` shows faintly until the first key. Done is off while the entry is
+// empty or outside [minimum, maximum]; the hint turns red when it is outside.
+export component Keypad inherits Rectangle {
+    in property <string> title;
+    in property <string> hint;
+    in property <string> current;
+    in property <float> minimum: 0;
+    in property <float> maximum: 999;
+    in property <bool> allow-negative;
+    callback done(float);
+    callback cancelled;
+    accessible-role: none;
+
+    // The entry is kept as digits (mantissa) + decimals, so no string slicing.
+    property <int> mantissa;
+    property <int> decimals;
+    property <bool> dot;
+    property <bool> neg;
+    property <bool> typed;
+    property <int> scale: self.decimals == 0 ? 1 : self.decimals == 1 ? 10 : self.decimals == 2 ? 100 : 1000;
+    property <int> whole: floor(self.mantissa / self.scale);
+    property <int> fraction: self.mantissa - self.whole * self.scale;
+    property <string> fraction-text:
+        self.decimals == 0 ? ""
+        : self.decimals == 1 ? self.fraction
+        : self.decimals == 2 ? (self.fraction < 10 ? "0" : "") + self.fraction
+        : (self.fraction < 10 ? "00" : self.fraction < 100 ? "0" : "") + self.fraction;
+    property <string> entry: (self.neg ? "−" : "") + self.whole + (self.dot ? "." + self.fraction-text : "");
+    property <float> value: (self.neg ? -1 : 1) * self.mantissa / self.scale;
+    property <bool> in-range: self.typed && self.value >= root.minimum && self.value <= root.maximum;
+    property <bool> out-of-range: self.typed && !self.in-range;
+
+    function digit(d: int) {
+        if (self.mantissa < 100000 && (!self.dot || self.decimals < 3)) {
+            self.mantissa = self.mantissa * 10 + d;
+            if (self.dot) { self.decimals += 1; }
+            self.typed = true;
+        }
+    }
+    function point() {
+        if (!self.dot) { self.dot = true; self.typed = true; }
+    }
+    function sign() {
+        if (root.allow-negative) { self.neg = !self.neg; self.typed = true; }
+    }
+    function back() {
+        if (self.dot && self.decimals == 0) {
+            self.dot = false;
+        } else if (self.mantissa == 0 && self.neg) {
+            self.neg = false;
+        } else {
+            self.mantissa = floor(self.mantissa / 10);
+            if (self.dot) { self.decimals -= 1; }
+        }
+        if (self.mantissa == 0 && !self.dot && !self.neg) { self.typed = false; }
+    }
+
+    Backdrop { }
+    Rectangle {
+        width: 680px;
+        height: 420px;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        border-radius: Tokens.r-xl;
+        background: Tokens.surface-1;
+        HorizontalLayout {
+            padding: 20px;
+            spacing: 20px;
+            VerticalLayout {
+                width: 240px;
+                spacing: 8px;
+                Text { text: root.title; color: Tokens.text-dim; font-size: 15px; font-weight: 600; overflow: elide; }
+                Rectangle {
+                    height: 96px;
+                    border-radius: Tokens.r-m;
+                    background: Tokens.well;
+                    HorizontalLayout {
+                        padding-left: 16px;
+                        padding-right: 8px;
+                        spacing: 6px;
+                        Text {
+                            horizontal-stretch: 1;
+                            text: root.typed ? root.entry : root.current;
+                            color: root.out-of-range ? Tokens.danger : root.typed ? Tokens.text : Tokens.text-faint;
+                            font-size: 40px;
+                            font-weight: 800;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                            overflow: elide;
+                        }
+                        Rectangle {
+                            width: 56px;
+                            VerticalLayout {
+                                alignment: center;
+                                Key { height: 64px; text: "⌫"; enabled: root.typed; clicked => { root.back(); } }
+                            }
+                        }
+                    }
+                }
+                Text {
+                    text: root.hint;
+                    color: root.out-of-range ? Tokens.danger : Tokens.text-dim;
+                    font-size: Tokens.caption;
+                    horizontal-alignment: center;
+                    wrap: word-wrap;
+                }
+                Rectangle { vertical-stretch: 1; }
+                PrimaryButton {
+                    text: @tr("Done");
+                    enabled: root.in-range;
+                    clicked => { root.done(root.value); }
+                }
+                SecondaryButton { text: @tr("Cancel"); clicked => { root.cancelled(); } }
+            }
+            GridLayout {
+                spacing: 8px;
+                horizontal-stretch: 1;
+                Row {
+                    Key { text: "1"; clicked => { root.digit(1); } }
+                    Key { text: "2"; clicked => { root.digit(2); } }
+                    Key { text: "3"; clicked => { root.digit(3); } }
+                }
+                Row {
+                    Key { text: "4"; clicked => { root.digit(4); } }
+                    Key { text: "5"; clicked => { root.digit(5); } }
+                    Key { text: "6"; clicked => { root.digit(6); } }
+                }
+                Row {
+                    Key { text: "7"; clicked => { root.digit(7); } }
+                    Key { text: "8"; clicked => { root.digit(8); } }
+                    Key { text: "9"; clicked => { root.digit(9); } }
+                }
+                Row {
+                    Key { text: "−"; enabled: root.allow-negative; clicked => { root.sign(); } }
+                    Key { text: "0"; clicked => { root.digit(0); } }
+                    Key { text: "."; clicked => { root.point(); } }
+                }
+            }
+        }
+    }
+}

@@ -3,7 +3,10 @@ use std::{env, fs, path::PathBuf};
 fn main() {
     let config = slint_build::CompilerConfiguration::new()
         // Fonts imported in .slint are embedded, so the device needs no system fonts.
-        .embed_resources(slint_build::EmbedResourcesKind::EmbedFiles);
+        .embed_resources(slint_build::EmbedResourcesKind::EmbedFiles)
+        // Debug info lets tests find elements by accessible label; keep it out
+        // of release builds, the printer binary has a size budget.
+        .with_debug_info(env::var("PROFILE").is_ok_and(|p| p != "release"));
     slint_build::compile_with_config("../../ui/app.slint", config).expect("compile .slint UI");
 
     musl_libdl_stub();

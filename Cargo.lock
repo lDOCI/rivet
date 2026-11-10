@@ -3573,6 +3573,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "fbdev-platform",
+ "i-slint-backend-testing",
  "model",
  "moonraker",
  "serde_json",

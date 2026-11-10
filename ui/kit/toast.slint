@@ -1,0 +1,37 @@
+// Command feedback: a Moonraker error shows on screen instead of only in the
+// log. Tap to dismiss; it also leaves by itself.
+import { Tokens } from "tokens.slint";
+import { Icon } from "controls.slint";
+
+export component Toast inherits Rectangle {
+    in property <string> text;
+    callback dismissed;
+    height: 64px;
+    border-radius: Tokens.r-m;
+    background: #2a1519;
+    border-width: 1px;
+    border-color: #fb4b5e66;
+    accessible-role: AccessibleRole.text;
+    accessible-label: root.text;
+    HorizontalLayout {
+        padding-left: 18px;
+        padding-right: 18px;
+        spacing: 12px;
+        Icon { d: "M12 3.5 22 20.5H2z M12 10v4.5 M12 17.5v.5"; size: 26px; color: Tokens.danger; y: (parent.height - self.height) / 2; }
+        Text {
+            horizontal-stretch: 1;
+            text: root.text;
+            color: Tokens.text;
+            font-size: Tokens.body;
+            font-weight: 600;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+    }
+    TouchArea { clicked => { root.dismissed(); } }
+    Timer {
+        interval: 5s;
+        running: root.visible;
+        triggered => { root.dismissed(); }
+    }
+}

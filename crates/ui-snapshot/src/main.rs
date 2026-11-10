@@ -15,7 +15,9 @@ use slint::{
 
 const WIDTH: u32 = 800;
 const HEIGHT: u32 = 480;
-const ALL: &[&str] = &["home", "control", "settings", "fans", "tune"];
+const ALL: &[&str] = &[
+    "home", "control", "settings", "fans", "tune", "dialog", "keypad", "toast",
+];
 
 struct Headless(Rc<MinimalSoftwareWindow>);
 
@@ -50,7 +52,7 @@ fn main() -> anyhow::Result<()> {
 
     let mut buf = vec![Rgb8Pixel::default(); (WIDTH * HEIGHT) as usize];
     for screen in screens {
-        ui.set_screen(screen.into());
+        show(&ui, screen);
         slint::platform::update_timers_and_animations();
         window.request_redraw();
         window.draw_if_needed(|renderer| {
@@ -61,6 +63,39 @@ fn main() -> anyhow::Result<()> {
         println!("{}", path.display());
     }
     Ok(())
+}
+
+/// Put the window into the state a snapshot name stands for. The overlay ones
+/// sit on top of a real screen.
+fn show(ui: &AppWindow, name: &str) {
+    ui.set_overlay("".into());
+    ui.set_toast_kind("".into());
+    match name {
+        "dialog" => {
+            ui.set_screen("home".into());
+            ui.set_print_state("printing".into());
+            ui.set_filename("benchy.gcode".into());
+            ui.set_progress(0.42);
+            ui.set_overlay("cancel-print".into());
+        }
+        "keypad" => {
+            ui.set_screen("control".into());
+            ui.set_keypad_title("Nozzle, °C".into());
+            ui.set_keypad_hint("0 … 350".into());
+            ui.set_keypad_current("240".into());
+            ui.set_keypad_max(350.0);
+            ui.set_overlay("keypad".into());
+        }
+        "toast" => {
+            ui.set_screen("control".into());
+            ui.set_toast_detail("Must home axis first".into());
+            ui.set_toast_kind("rpc".into());
+        }
+        screen => {
+            ui.set_print_state("standby".into());
+            ui.set_screen(screen.into());
+        }
+    }
 }
 
 fn write_png(path: &PathBuf, buf: &[Rgb8Pixel]) -> anyhow::Result<()> {

@@ -49,9 +49,15 @@ pub async fn run(
             cmd = cmds.recv() => {
                 let Some(cmd) = cmd else { break };
                 let client = client.clone();
+                let ui = ui.clone();
                 tokio::spawn(async move {
                     if let Err(err) = execute(&client, &cmd).await {
                         tracing::warn!(?cmd, %err, "command failed");
+                        let (kind, detail) = toast_for(&err);
+                        let _ = ui.upgrade_in_event_loop(move |ui| {
+                            ui.set_toast_detail(detail.into());
+                            ui.set_toast_kind(kind.into());
+                        });
                     }
                 });
             }
@@ -184,6 +190,18 @@ async fn execute(client: &Client, cmd: &Command) -> Result<(), moonraker::Error>
     }
 }
 
+/// What the user sees for a failed command: a kind the UI words itself (so the
+/// text is translated) and, for errors from Klipper, the message it gave.
+fn toast_for(err: &moonraker::Error) -> (&'static str, String) {
+    match err {
+        moonraker::Error::NotConnected | moonraker::Error::Closed => {
+            ("not-connected", String::new())
+        }
+        moonraker::Error::Timeout => ("timeout", String::new()),
+        moonraker::Error::Rpc { message, .. } => ("rpc", message.clone()),
+    }
+}
+
 fn push(ui: &slint::Weak<AppWindow>, s: Snapshot) {
     let _ = ui.upgrade_in_event_loop(move |ui| {
         let link = match (s.connection, s.klippy) {
@@ -203,4 +221,24 @@ fn push(ui: &slint::Weak<AppWindow>, s: Snapshot) {
         ui.set_filename(s.filename.as_str().into());
         ui.set_progress(s.progress as f32);
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn failed_commands_map_to_toasts() {
+        assert_eq!(
+            toast_for(&moonraker::Error::NotConnected).0,
+            "not-connected"
+        );
+        assert_eq!(toast_for(&moonraker::Error::Closed).0, "not-connected");
+        assert_eq!(toast_for(&moonraker::Error::Timeout).0, "timeout");
+        let rpc = moonraker::Error::Rpc {
+            code: 400,
+            message: "Must home axis first".into(),
+        };
+        assert_eq!(toast_for(&rpc), ("rpc", "Must home axis first".to_owned()));
+    }
 }

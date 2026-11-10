@@ -26,3 +26,6 @@ fbdev-platform = { workspace = true, optional = true }
 
 [build-dependencies]
 slint-build.workspace = true
+
+[dev-dependencies]
+i-slint-backend-testing = "1.18"
