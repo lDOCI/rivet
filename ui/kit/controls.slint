@@ -70,6 +70,7 @@ export component PrimaryButton inherits Rectangle {
     background: !root.enabled ? Tokens.surface-2 : ta.pressed ? Tokens.accent.darker(15%) : Tokens.accent;
     accessible-role: button;
     accessible-label: root.text;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
     VerticalLayout {
         alignment: center;
         spacing: 2px;
@@ -108,6 +109,7 @@ export component SecondaryButton inherits Rectangle {
     opacity: root.enabled ? 1 : 0.4;
     accessible-role: button;
     accessible-label: root.text;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
     Text {
         text: root.text;
         color: root.fg;
@@ -127,4 +129,25 @@ export component SectionLabel inherits Text {
     font-size: Tokens.section;
     font-weight: 700;
     letter-spacing: 0.5px;
+}
+
+// Solid red: only inside a confirm dialog (design-code §4, Destructive).
+export component DangerButton inherits Rectangle {
+    in property <string> text;
+    callback clicked;
+    min-height: Tokens.touch-primary;
+    border-radius: Tokens.r-m;
+    background: ta.pressed ? Tokens.danger-solid.darker(15%) : Tokens.danger-solid;
+    accessible-role: button;
+    accessible-label: root.text;
+    accessible-action-default => { root.clicked(); }
+    Text {
+        text: root.text;
+        color: #ffffff;
+        font-size: Tokens.row-title;
+        font-weight: 800;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    ta := TouchArea { clicked => { root.clicked(); } }
 }

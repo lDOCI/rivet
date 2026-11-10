@@ -215,43 +215,43 @@ export component SegmentedRow inherits Rectangle {
 // baseline and a two-line caption, so titles in a row line up.
 export component Tile inherits Rectangle {
     in property <string> icon;
-    in property <string> value;  // live value; empty for tool tiles
-    in property <string> label;  // name, or caption under a value
+    in property <string> value;  // live value, shown as the caption; empty for tool tiles
+    in property <string> label;  // name
     in property <string> sub;    // caption for tool tiles
     callback clicked;
-    // Equal cells in a grid, whatever the text inside.
+    // Square cells in a grid, whatever the text inside.
     preferred-width: 0px;
     min-width: 0px;
     horizontal-stretch: 1;
-    vertical-stretch: 1;
+    height: self.width;
     border-radius: Tokens.r-l;
     background: ta.pressed ? Tokens.surface-2 : Tokens.surface-1;
     accessible-role: button;
-    accessible-label: root.value != "" ? root.value + " " + root.label : root.label;
+    accessible-label: root.value != "" ? root.label + " " + root.value : root.label;
     VerticalLayout {
         padding: 16px;
+        // One zone for the icon or live widget, so names line up across a row.
         // Wrapped: a fixed-width child would cap the column's width.
-        if root.icon != "": HorizontalLayout {
-            alignment: start;
-            Icon { d: root.icon; color: Tokens.accent; size: 42px; weight: 1.7; }
-        }
-        @children
-        Rectangle { vertical-stretch: 1; }
         Rectangle {
-            height: 36px;
-            Text {
-                y: parent.height - self.height;
-                width: parent.width;
-                text: root.value != "" ? root.value : root.label;
-                color: Tokens.text;
-                font-size: root.value != "" ? 30px : 20px;
-                font-weight: 800;
-                overflow: elide;
+            height: 44px;
+            HorizontalLayout {
+                alignment: start;
+                if root.icon != "": Icon { d: root.icon; color: Tokens.accent; size: 36px; weight: 1.8; y: (parent.height - self.height) / 2; }
+                @children
             }
+        }
+        Rectangle { vertical-stretch: 1; }
+        Text {
+            height: 24px;
+            text: root.label;
+            color: Tokens.text;
+            font-size: 20px;
+            font-weight: 800;
+            overflow: elide;
         }
         Text {
             height: 36px;
-            text: root.value != "" ? root.label : root.sub;
+            text: root.value != "" ? root.value : root.sub;
             color: Tokens.text-dim;
             font-size: Tokens.caption;
             wrap: word-wrap;
