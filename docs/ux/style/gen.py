@@ -151,22 +151,19 @@ def hub(name, title, rail, tiles, cols=4, back=None):
     out += ('  <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px; display: flex; flex-direction: column; gap: 12px">\n')
     out += header(title, back)
     out += ('    <div style="flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(%d, minmax(0, 1fr)); '
-            'grid-template-rows: repeat(%d, minmax(0, 1fr)); gap: 12px">\n') % (cols, rows)
+            'grid-auto-rows: auto; align-content: center; gap: 12px">\n') % cols
     for t in tiles:
         big = t.get('value')
-        val = ''
-        if big:
-            val = ('<span style="height: 36px; display: flex; align-items: flex-end; font-size: %dpx; line-height: 1; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; white-space: nowrap">%s</span>'
-                   % (30 if len(big) <= 6 else 24, big))
-        else:
-            val = '<span style="height: 36px; display: flex; align-items: flex-end; font-size: 20px; line-height: 1.1; font-weight: 800; letter-spacing: -0.02em; white-space: nowrap">%s</span>' % t['label']
-        subline = t['label'] if big else t.get('sub', '')
-        icon = t.get('icon_html') or svg(t['icon'], 42, '#2dd4bf', '1.7')
+        name_html = '<span style="font-size: 20px; line-height: 24px; font-weight: 800; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">%s</span>' % t['label']
+        cap_style = 'color: #98a1ac; font-variant-numeric: tabular-nums'
+        subline = big or t.get('sub', '')
+        icon = t.get('icon_html') or svg(t['icon'], 36, '#2dd4bf', '1.8')
+        icon = '<span style="height: 44px; display: flex; align-items: center">%s</span>' % icon
         out += ('      <a href="%s" style="border-radius: 24px; background: #15181d; color: #f4f6f8; padding: 16px; box-sizing: border-box; '
-                'display: flex; flex-direction: column; justify-content: space-between; min-width: 0">%s'
+                'display: flex; flex-direction: column; justify-content: space-between; min-width: 0; aspect-ratio: 1 / 1">%s'
                 '<span style="display: flex; flex-direction: column; gap: 2px; min-width: 0">%s'
-                '<span style="height: 36px; font-size: 14px; line-height: 18px; color: #98a1ac; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden">%s</span></span></a>\n') % (
-            t['href'], icon, val, subline)
+                '<span style="height: 36px; font-size: 14px; line-height: 18px; %s; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden">%s</span></span></a>\n') % (
+            t['href'], icon, name_html, cap_style, subline)
         note_src(title, t['label'], t.get('src'))
     out += '    </div>\n  </main>\n</div>\n'
     write(name, title, out, 'class Component extends DCLogic {\n  renderVals() {\n    return {};\n  }\n}')
@@ -440,13 +437,12 @@ def two_gauges():
         stroke = 'url(#hg)' if hot else '#4a525c'
         dot = ('<circle cx="%.1f" cy="%.1f" r="9" fill="#f4f6f8"></circle>' % (tx, ty)) if tgt else ''
         return ('<span style="display: flex; flex-direction: column; align-items: center; gap: 2px">'
-                '<span style="position: relative; width: 56px; height: 56px; display: block">'
-                '<svg width="56" height="56" viewBox="0 0 120 120" aria-hidden="true">'
+                '<span style="position: relative; width: 44px; height: 44px; display: block">'
+                '<svg width="44" height="44" viewBox="0 0 120 120" aria-hidden="true">'
                 '<defs><linearGradient id="hg" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#fbbf24"></stop><stop offset="1" stop-color="#f97316"></stop></linearGradient></defs>'
                 '<circle cx="60" cy="60" r="48" fill="none" stroke="#232831" stroke-width="12" stroke-linecap="round" stroke-dasharray="226 302" transform="rotate(135 60 60)"></circle>'
                 '<circle cx="60" cy="60" r="48" fill="none" stroke="%s" stroke-width="12" stroke-linecap="round" stroke-dasharray="%.0f 302" transform="rotate(135 60 60)"></circle>%s</svg>'
-                '<span style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums">%d°</span></span>'
-                '<span style="font-size: 12px; font-weight: 600; color: #98a1ac">%s</span></span>') % (stroke, cur_len, dot, cur, name)
+                '<span style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums">%d°</span></span></span>') % (stroke, cur_len, dot, cur)
     return ('<span role="img" aria-label="Сопло 187 градусов, цель 240; стол 23 градуса, выключен" style="display: flex; gap: 8px">'
             + one(187, 240, 350, 'сопло', True) + one(23, 0, 130, 'стол', False) + '</span>')
 
@@ -459,7 +455,7 @@ def build():
         'r="48" fill="none" stroke="%s" stroke-width="14" stroke-linecap="round" stroke-dasharray="%d 302" transform="rotate(135 60 60)"></circle></svg>'
         % (color, cur))
     hub('Control', 'Управление', 'control', [
-        dict(icon_html=two_gauges(), label='Нагрев', sub='сопло греется до 240°', href='Heating.dc.html',
+        dict(icon_html=two_gauges(), label='Нагрев', sub='сопло → 240°, стол выкл.', href='Heating.dc.html',
              src='printer.objects: extruder.temperature/target, heater_bed.temperature/target'),
         dict(icon='move', label='Движение', sub='оси, парковка, моторы', href='Motion.dc.html'),
         dict(icon='extruder', label='Экструдер', sub='выдавить, заправка', href='Extruder.dc.html'),
@@ -467,7 +463,7 @@ def build():
         dict(icon='bulb', value='80%', label='Свет', href='Light.dc.html', src='led <name>.color_data[0][3] (white channel)'),
         dict(icon='gauge', value='100%', label='Скорость', href='Speed.dc.html',
              src='gcode_move.speed_factor ×100, gcode_move.extrude_factor ×100'),
-        dict(icon='zoff', value='−0.12', label='Z-offset, мм', href='ZOffset.dc.html', src='gcode_move.homing_origin[2]'),
+        dict(icon='zoff', value='−0.12 мм', label='Z-offset', href='ZOffset.dc.html', src='gcode_move.homing_origin[2]'),
         dict(icon='plug', label='Устройства', sub='питание, пины', href='Devices.dc.html'),
     ])
     hub('Tools', 'Инструменты', 'tools', [
