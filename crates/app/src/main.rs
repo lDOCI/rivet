@@ -157,6 +157,18 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
             }
         });
     }
+    {
+        let tx = tx.clone();
+        ui.on_run_gcode(move |script| {
+            let script = script.trim();
+            if !script.is_empty() {
+                let _ = tx.send(Command::Gcode(script.to_owned()));
+            }
+        });
+    }
+    ui.on_clear_console(send(Command::ClearConsole));
+    // Typing is plain string editing, done here: Slint has no string slicing.
+    ui.on_apply_key(|text, key| rivet::apply_key(&text, &key).into());
     ui.on_refresh_files(send(Command::ListFiles));
     {
         let tx = tx.clone();

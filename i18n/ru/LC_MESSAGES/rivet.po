@@ -443,3 +443,57 @@ msgstr "Во время печати"
 
 msgid "Speed and flow"
 msgstr "Скорость и поток"
+
+msgid "Console"
+msgstr "Консоль"
+
+msgid "G-code by hand"
+msgstr "G-code вручную"
+
+msgid "Macros"
+msgstr "Макросы"
+
+msgid "Clear"
+msgstr "Очистить"
+
+msgid "Command, tap to type"
+msgstr "Команда, нажмите чтобы ввести"
+
+msgid "G-code or macro"
+msgstr "G-code или макрос"
+
+msgid "Send"
+msgstr "Отправить"
+
+msgid "Erase"
+msgstr "Стереть"
+
+msgid "Shift"
+msgstr "Регистр"
+
+msgid "Letters"
+msgstr "Буквы"
+
+msgid "Symbols"
+msgstr "Символы"
+
+msgid "space"
+msgstr "пробел"
+
+msgid "Space"
+msgstr "Пробел"
+
+msgid "The macro starts at once on the printer."
+msgstr "Макрос сразу запустится на принтере."
+
+msgid "Run"
+msgstr "Запустить"
+
+msgid "Run {}?"
+msgstr "Запустить {}?"
+
+msgid "{n} macro"
+msgid_plural "{n} macros"
+msgstr[0] "{n} макрос"
+msgstr[1] "{n} макроса"
+msgstr[2] "{n} макросов"

@@ -138,6 +138,9 @@ pub enum Command {
         level: f32,
         white: bool,
     },
+    /// G-code typed in the console or a macro to run.
+    Gcode(String),
+    ClearConsole,
     /// Reload the list of G-code files.
     ListFiles,
     /// Slicer data and checks for one file, by its path in `gcodes`.
@@ -161,7 +164,9 @@ pub async fn run(
     let mut last_pushed: Option<Snapshot> = None;
 
     // A failed command leaves our optimistic value wrong: ask the printer.
-    let (resync_tx, mut resync_rx) = mpsc::unbounded_channel::<()>();
+    let (resync_tx, mut resync_rx) = mpsc::unbounded_channel::<Internal>();
+    let mut shown_console = u64::MAX;
+    let mut shown_macros: Vec<String> = Vec::new();
 
     let mut tick = tokio::time::interval(UI_TICK);
     tick.set_missed_tick_behavior(MissedTickBehavior::Skip);
@@ -174,6 +179,16 @@ pub async fn run(
             }
             cmd = cmds.recv() => {
                 let Some(cmd) = cmd else { break };
+                match &cmd {
+                    Command::ClearConsole => {
+                        state.clear_console();
+                        continue;
+                    }
+                    Command::Gcode(script) => {
+                        state.push_console(format!("> {script}"), model::LineKind::Command);
+                    }
+                    _ => {}
+                }
                 let cmd = match cmd {
                     Command::Move { axis, delta } => {
                         match clamp_move(&state.snapshot(), axis, delta) {
@@ -191,7 +206,10 @@ pub async fn run(
                 tokio::spawn(async move {
                     if let Err(err) = execute(&client, &cmd, &ui, &thumbs).await {
                         tracing::warn!(?cmd, %err, "command failed");
-                        let _ = resync.send(());
+                        let _ = resync.send(Internal::Resync);
+                        if let moonraker::Error::Rpc { message, .. } = &err {
+                            let _ = resync.send(Internal::ConsoleError(message.clone()));
+                        }
                         let (kind, detail) = toast_for(&err);
                         let _ = ui.upgrade_in_event_loop(move |ui| {
                             ui.set_toast_detail(detail.into());
@@ -200,10 +218,26 @@ pub async fn run(
                     }
                 });
             }
-            Some(()) = resync_rx.recv() => {
-                resync_status(&client, &mut state).await;
-            }
+            Some(internal) = resync_rx.recv() => match internal {
+                Internal::Resync => resync_status(&client, &mut state).await,
+                Internal::ConsoleError(message) => {
+                    state.push_console(format!("!! {message}"), model::LineKind::Error);
+                }
+            },
             _ = tick.tick() => {
+                if shown_console != state.console_revision {
+                    shown_console = state.console_revision;
+                    push_console(&ui, &state.console);
+                }
+                if shown_macros != state.macros {
+                    shown_macros.clone_from(&state.macros);
+                    let names = state.macros.clone();
+                    let _ = ui.upgrade_in_event_loop(move |ui| {
+                        let rows: Vec<slint::SharedString> =
+                            names.into_iter().map(Into::into).collect();
+                        ui.set_macros(slint::ModelRc::new(slint::VecModel::from(rows)));
+                    });
+                }
                 let snap = state.snapshot();
                 if last_pushed.as_ref() != Some(&snap) {
                     // A finished job lands in history; so does the first look
@@ -254,6 +288,11 @@ async fn handle_event(ev: Event, client: &Client, state: &mut PrinterState) {
                     }
                 }
             }
+            "notify_gcode_response" => {
+                if let Some(line) = params.get(0).and_then(Value::as_str) {
+                    state.push_console(line.to_owned(), model::line_kind(line));
+                }
+            }
             "notify_klippy_ready" => {
                 state.klippy = Klippy::Ready;
                 subscribe(client, state).await;
@@ -269,6 +308,28 @@ async fn handle_event(ev: Event, client: &Client, state: &mut PrinterState) {
             _ => {}
         },
     }
+}
+
+/// Things the engine tells itself from spawned tasks.
+enum Internal {
+    /// A command failed: read the real values back.
+    Resync,
+    /// Klipper's reason a command failed, for the console.
+    ConsoleError(String),
+}
+
+fn push_console(ui: &slint::Weak<AppWindow>, lines: &[(String, model::LineKind)]) {
+    let rows: Vec<(String, i32)> = lines.iter().map(|(t, k)| (t.clone(), *k as i32)).collect();
+    let _ = ui.upgrade_in_event_loop(move |ui| {
+        let items: Vec<crate::ConsoleLine> = rows
+            .into_iter()
+            .map(|(text, kind)| crate::ConsoleLine {
+                text: text.into(),
+                kind,
+            })
+            .collect();
+        ui.set_console_lines(slint::ModelRc::new(slint::VecModel::from(items)));
+    });
 }
 
 /// Newest job in history, for «print again» on Home. A printer without
@@ -365,6 +426,16 @@ async fn subscribe(client: &Client, state: &mut PrinterState) {
             Vec::new()
         }
     };
+    state.macros = model::macro_names(&available);
+    if let Ok(store) = client
+        .call_timeout("server.gcode_store", json!({ "count": 100 }), SETUP_TIMEOUT)
+        .await
+    {
+        state.clear_console();
+        for (text, kind) in model::parse_gcode_store(&store) {
+            state.push_console(text, kind);
+        }
+    }
     state.leds = available
         .iter()
         .filter(|n| n.starts_with("led "))
@@ -670,6 +741,8 @@ async fn execute(
             .call("printer.print.start", json!({ "filename": file }))
             .await
             .map(drop),
+        Command::Gcode(script) => client.gcode(script).await,
+        Command::ClearConsole => Ok(()),
         Command::ListFiles => list_files(client, ui, thumbs).await,
         Command::FileDetails(path) => file_details(client, ui, thumbs, path).await,
         Command::DeleteFiles(paths) => {

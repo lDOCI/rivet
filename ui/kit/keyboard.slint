@@ -1,0 +1,85 @@
+// On-screen keyboard: letters and symbols, shift, backspace, space, enter.
+// It only reports keys; the text lives with the screen that owns the field.
+import { Tokens } from "tokens.slint";
+
+component KeyCap inherits Rectangle {
+    in property <string> label;
+    in property <string> accessible-name;
+    in property <bool> special;
+    in property <bool> active;
+    in property <bool> primary;
+    callback pressed;
+    height: 50px;
+    border-radius: 12px;
+    background: root.primary ? (ta.pressed ? Tokens.accent.darker(15%) : Tokens.accent)
+        : ta.pressed ? #3a414a
+        : root.active ? #3a414a
+        : root.special ? Tokens.surface-2 : Tokens.surface-3;
+    accessible-role: button;
+    accessible-label: root.accessible-name != "" ? root.accessible-name : root.label;
+    accessible-action-default => { root.pressed(); }
+    Text {
+        text: root.label;
+        color: root.primary ? Tokens.accent-ink : Tokens.text;
+        font-size: 19px;
+        font-weight: 600;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    ta := TouchArea { clicked => { root.pressed(); } }
+}
+
+export component Keyboard inherits VerticalLayout {
+    // A character, or "⌫" (erase) / "⏎" (done).
+    callback key(string);
+    in-out property <bool> upper: true;
+    in-out property <bool> symbols;
+    spacing: 6px;
+
+    property <[[string]]> letters: [
+        ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
+        ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"],
+        ["a", "s", "d", "f", "g", "h", "j", "k", "l", "⌫"],
+        ["⇧", "z", "x", "c", "v", "b", "n", "m", "=", "."],
+    ];
+    property <[[string]]> marks: [
+        ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
+        ["!", "@", "#", "$", "%", "&", "*", "(", ")", "/"],
+        ["\"", "'", ";", ",", "?", "+", "[", "]", "<", "⌫"],
+        ["⇧", ">", "{", "}", "|", "~", "^", "`", "=", "."],
+    ];
+
+    for row in root.symbols ? root.marks : root.letters: HorizontalLayout {
+        spacing: 6px;
+        for k in row: KeyCap {
+            horizontal-stretch: 1;
+            label: (!root.symbols && root.upper) ? k.to-uppercase() : k;
+            accessible-name: k == "⌫" ? @tr("Erase") : k == "⇧" ? @tr("Shift") : "";
+            special: k == "⌫" || k == "⇧";
+            active: k == "⇧" && root.upper;
+            pressed => {
+                if (k == "⇧") {
+                    root.upper = !root.upper;
+                } else if (k == "⌫") {
+                    root.key("⌫");
+                } else {
+                    root.key((!root.symbols && root.upper) ? k.to-uppercase() : k);
+                }
+            }
+        }
+    }
+    HorizontalLayout {
+        spacing: 6px;
+        KeyCap {
+            horizontal-stretch: 2;
+            label: root.symbols ? "abc" : "#+=";
+            accessible-name: root.symbols ? @tr("Letters") : @tr("Symbols");
+            special: true;
+            pressed => { root.symbols = !root.symbols; }
+        }
+        KeyCap { horizontal-stretch: 2; label: "_"; pressed => { root.key("_"); } }
+        KeyCap { horizontal-stretch: 2; label: "-"; pressed => { root.key("-"); } }
+        KeyCap { horizontal-stretch: 8; label: @tr("space"); accessible-name: @tr("Space"); pressed => { root.key(" "); } }
+        KeyCap { horizontal-stretch: 4; label: "⏎"; accessible-name: @tr("Done"); primary: true; pressed => { root.key("⏎"); } }
+    }
+}

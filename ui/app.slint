@@ -9,8 +9,9 @@ import { Toast } from "kit/toast.slint";
 import { HomeScreen } from "screens/home.slint";
 import { HeatingScreen } from "screens/heating.slint";
 import { MotionScreen, ExtruderScreen } from "screens/motion.slint";
+import { ToolsScreen, ConsoleScreen, MacrosScreen, ConsoleLine } from "screens/tools.slint";
 import { FilesScreen, FileScreen, FileItem, FileInfo } from "screens/files.slint";
-export { FileItem, FileInfo }
+export { FileItem, FileInfo, ConsoleLine }
 import { PrintingScreen, PrintDoneScreen } from "screens/print.slint";
 
 // Embedded into the binary (see build.rs): the printer has no system fonts.
@@ -69,6 +70,14 @@ export component AppWindow inherits Window {
     callback adjust-z(float);
     callback set-pressure-advance(float);
     callback set-light-level(float);
+    callback run-gcode(string);
+    callback clear-console();
+    callback apply-key(string, string) -> string;
+    in property <[ConsoleLine]> console-lines;
+    in property <[string]> macros;
+    in-out property <string> console-text;
+    in-out property <bool> console-keyboard;
+    in-out property <string> macro-pending;
     callback move-axis(int, float);
     callback motors-off();
     callback extrude(float, float);
@@ -157,6 +166,7 @@ export component AppWindow inherits Window {
         Rail {
             active: !root.ready ? "" : (root.screen == "fans" || root.screen == "heating" || root.screen == "motion" || root.screen == "extruder" || root.screen == "light" || root.screen == "speed" || root.screen == "zoffset") ? "control"
                 : (root.screen == "control" || root.screen == "tools" || root.screen == "settings" || root.screen == "messages") ? root.screen
+                : (root.screen == "console" || root.screen == "macros") ? "tools"
                 : "home";
             navigate(section) => { root.screen = section; }
             emergency-stop => { root.emergency-stop(); }
@@ -239,6 +249,24 @@ export component AppWindow inherits Window {
                 root.keypad-hint = "0 … " + round(which == 0 ? root.nozzle-limit : root.bed-limit);
                 root.overlay = "keypad";
             }
+        }
+        if root.ready && root.screen == "tools": ToolsScreen {
+            macro-count: root.macros.length;
+            open(target) => { root.screen = target; }
+        }
+        if root.ready && root.screen == "console": ConsoleScreen {
+            lines: root.console-lines;
+            text <=> root.console-text;
+            keyboard-open <=> root.console-keyboard;
+            back => { root.screen = "tools"; }
+            run(script) => { root.run-gcode(script); }
+            clear => { root.clear-console(); }
+            apply-key(t, k) => { return root.apply-key(t, k); }
+        }
+        if root.ready && root.screen == "macros": MacrosScreen {
+            macros: root.macros;
+            back => { root.screen = "tools"; }
+            pick(name) => { root.macro-pending = name; root.overlay = "run-macro"; }
         }
         if root.ready && root.screen == "settings": SettingsScreen { }
         if root.ready && root.screen == "fans": FansScreen {
@@ -380,6 +408,13 @@ export component AppWindow inherits Window {
         confirm-text: @tr("Delete");
         danger: true;
         confirmed => { root.overlay = ""; root.delete-file(root.open-path); root.screen = "files"; }
+        cancelled => { root.overlay = ""; }
+    }
+    if root.overlay == "run-macro": Dialog {
+        title: @tr("Run {}?", root.macro-pending);
+        message: @tr("The macro starts at once on the printer.");
+        confirm-text: @tr("Run");
+        confirmed => { root.overlay = ""; root.run-gcode(root.macro-pending); }
         cancelled => { root.overlay = ""; }
     }
     if root.overlay == "keypad": Keypad {

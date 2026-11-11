@@ -3,6 +3,10 @@ import { Tokens } from "tokens.slint";
 
 export component ScrollList inherits Rectangle {
     in property <length> spacing: Tokens.gap-s;
+    // Jump to the newest content, for logs that grow at the bottom.
+    public function scroll-to-end() {
+        flick.content-y = min(0px, flick.height - flick.content-height);
+    }
     flick := Flickable {
         width: root.width - 14px;
         x: 0;
