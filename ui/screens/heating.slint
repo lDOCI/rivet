@@ -9,6 +9,9 @@ component Preset inherits Rectangle {
     in property <string> name;
     in property <int> temp;
     callback picked(int);
+    // Equal quarters, whatever the names.
+    preferred-width: 0px;
+    min-width: 0px;
     horizontal-stretch: 1;
     height: 60px;
     border-radius: Tokens.r-s;
@@ -90,6 +93,12 @@ export component HeatingScreen inherits VerticalLayout {
     in property <float> bed-target;
     in property <float> max-nozzle: 350;
     in property <float> max-bed: 130;
+    // Seconds until the target, from how fast the heater is rising; -1 when not known.
+    in property <int> nozzle-eta: -1;
+    in property <int> bed-eta: -1;
+    // Presets, graph and PID open screens of their own; the row shows once they exist.
+    in property <bool> has-heat-links;
+    callback open(string);
     // 0 nozzle, 1 bed
     in-out property <int> heater;
     callback back;
@@ -100,6 +109,7 @@ export component HeatingScreen inherits VerticalLayout {
     property <float> current: root.is-bed ? root.bed : root.nozzle;
     property <float> target: root.is-bed ? root.bed-target : root.nozzle-target;
     property <float> maximum: root.is-bed ? root.max-bed : root.max-nozzle;
+    property <int> eta: root.is-bed ? root.bed-eta : root.nozzle-eta;
 
     // The prototype's main: padding 16 20 16 16, gap 4.
     padding: Tokens.pad;
@@ -120,6 +130,8 @@ export component HeatingScreen inherits VerticalLayout {
             HeatChip {
                 active: root.target > 0;
                 text: root.target <= 0 ? @tr("switched off")
+                    : root.current < root.target - 2 && root.eta >= 60 ? @tr("heating · ~{} min left", round(root.eta / 60))
+                    : root.current < root.target - 2 && root.eta > 0 ? @tr("heating · ~{} s left", root.eta)
                     : root.current < root.target - 2 ? @tr("heating")
                     : root.current > root.target + 2 ? @tr("cooling to {}°", round(root.target))
                     : @tr("holding temperature");
@@ -143,7 +155,8 @@ export component HeatingScreen inherits VerticalLayout {
                     VerticalLayout {
                         alignment: center;
                         spacing: 2px;
-                        Text { text: round(root.current) + "°"; color: Tokens.text; font-size: 76px; font-weight: 800; horizontal-alignment: center; }
+                        // line-height 1 in the prototype: the line is 76 px, not the font's natural height.
+                        Text { text: round(root.current) + "°"; color: Tokens.text; font-size: 76px; font-weight: 800; letter-spacing: -3.04px; height: 76px; horizontal-alignment: center; vertical-alignment: center; }
                         Text { text: @tr("now"); color: Tokens.text-dim; font-size: 16px; horizontal-alignment: center; }
                     }
                 }
@@ -169,6 +182,7 @@ export component HeatingScreen inherits VerticalLayout {
                     color: Tokens.text;
                     font-size: 56px;
                     font-weight: 800;
+                    letter-spacing: -1.68px; // -0.03em
                     horizontal-alignment: center;
                     vertical-alignment: center;
                 }
@@ -202,6 +216,34 @@ export component HeatingScreen inherits VerticalLayout {
                 Preset { name: "PETG"; temp: root.is-bed ? 80 : 240; picked(t) => { root.set-target(root.heater, t); } }
                 Preset { name: "ABS"; temp: root.is-bed ? 100 : 250; picked(t) => { root.set-target(root.heater, t); } }
                 Preset { name: "TPU"; temp: root.is-bed ? 50 : 225; picked(t) => { root.set-target(root.heater, t); } }
+            }
+            if root.has-heat-links: HorizontalLayout {
+                spacing: 6px;
+                for link in [
+                    { key: "heat-presets", label: @tr("Presets") },
+                    { key: "temp-graph", label: @tr("Graph") },
+                    { key: "pid", label: "PID" },
+                ]: Rectangle {
+                    // Equal thirds, whatever the words.
+                    preferred-width: 0px;
+                    min-width: 0px;
+                    horizontal-stretch: 1;
+                    height: 56px;
+                    border-radius: Tokens.r-s;
+                    background: ta.pressed ? Tokens.surface-2 : Tokens.surface-1;
+                    accessible-role: button;
+                    accessible-label: link.label;
+                    accessible-action-default => { root.open(link.key); }
+                    Text {
+                        text: link.label;
+                        color: Tokens.text-2;
+                        font-size: 14px;
+                        font-weight: 600;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                    ta := TouchArea { clicked => { root.open(link.key); } }
+                }
             }
             Rectangle {
                 height: 56px;

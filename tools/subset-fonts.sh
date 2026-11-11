@@ -18,12 +18,29 @@ U+2248,U+2260-2265,U+FFFD"
 # kern/liga/calt for normal text, tnum for digits that don't jump (temperatures).
 FEATURES="kern,liga,calt,tnum,case,ccmp,locl,mark,mkmk"
 
-for weight in Regular SemiBold Bold; do
+for weight in Regular Medium SemiBold Bold ExtraBold; do
   pyftsubset "$SRC/Inter-$weight.ttf" \
     --unicodes="$UNICODES" \
     --layout-features="$FEATURES" \
     --no-hinting \
     --desubroutinize \
     --output-file="$OUT/Inter-$weight.ttf"
+  # The subset keeps only the legacy names, where Medium/SemiBold/ExtraBold are
+  # families of their own ("Inter SemiBold"): then `font-family: Inter` with weight
+  # 600 never finds them. Make every file family "Inter"; the weight class picks it.
+  python3 - "$OUT/Inter-$weight.ttf" <<'PY'
+import sys
+from fontTools.ttLib import TTFont
+path = sys.argv[1]
+f = TTFont(path)
+name = f["name"]
+style = "Bold" if f["OS/2"].usWeightClass == 700 else "Regular"
+for rec in list(name.names):
+    if rec.nameID in (16, 17):
+        name.removeNames(nameID=rec.nameID)
+name.setName("Inter", 1, 3, 1, 0x409)
+name.setName(style, 2, 3, 1, 0x409)
+f.save(path)
+PY
   printf '%-10s %7d bytes\n' "$weight" "$(wc -c < "$OUT/Inter-$weight.ttf")"
 done

@@ -1,7 +1,7 @@
 //! Network side: owns the Moonraker client and printer state, pushes
 //! throttled snapshots to the UI thread and executes UI commands.
 
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use model::{Connection, Klippy, PrinterState, Snapshot};
 use moonraker::{Client, Event};
@@ -143,6 +143,8 @@ pub enum Command {
         level: f32,
         white: bool,
     },
+    /// Rivet's own setting, kept in Moonraker's database: light on when Rivet starts.
+    SetLightOnStart(bool),
     /// G-code typed in the console or a macro to run.
     Gcode(String),
     ClearConsole,
@@ -172,6 +174,10 @@ pub async fn run(
     let (resync_tx, mut resync_rx) = mpsc::unbounded_channel::<Internal>();
     let mut shown_console = u64::MAX;
     let mut shown_macros: Vec<String> = Vec::new();
+    // "Turn on at startup" is applied once per start of Rivet, when the light is known.
+    let mut light_start_done = false;
+    let mut nozzle_rate = HeatRate::default();
+    let mut bed_rate = HeatRate::default();
 
     let mut tick = tokio::time::interval(UI_TICK);
     tick.set_missed_tick_behavior(MissedTickBehavior::Skip);
@@ -245,6 +251,25 @@ pub async fn run(
                     });
                 }
                 let snap = state.snapshot();
+                let now = Instant::now();
+                let etas = (
+                    nozzle_rate.eta(now, &snap.extruder),
+                    bed_rate.eta(now, &snap.bed),
+                );
+                if etas != (nozzle_rate.shown, bed_rate.shown) {
+                    nozzle_rate.shown = etas.0;
+                    bed_rate.shown = etas.1;
+                    let _ = ui.upgrade_in_event_loop(move |ui| {
+                        ui.set_nozzle_eta(etas.0);
+                        ui.set_bed_eta(etas.1);
+                    });
+                }
+                if !light_start_done && snap.klippy == Klippy::Ready {
+                    if let Some(light) = snap.light.clone() {
+                        light_start_done = true;
+                        tokio::spawn(light_on_start(client.clone(), ui.clone(), light));
+                    }
+                }
                 if last_pushed.as_ref() != Some(&snap) {
                     // A finished job lands in history; so does the first look
                     // after the printer becomes ready.
@@ -689,6 +714,87 @@ fn predict(state: &mut PrinterState, cmd: &Command) {
     }
 }
 
+/// How fast a heater is rising, to say how long until its target.
+#[derive(Default)]
+struct HeatRate {
+    /// Last sample, taken at most once a second.
+    last: Option<(Instant, f64)>,
+    /// Smoothed rise, °C per second.
+    rate: f64,
+    /// What the screen shows now, seconds; -1 = nothing.
+    shown: i32,
+}
+
+impl HeatRate {
+    /// Seconds until `heater` reaches its target, or -1 when it is not heating
+    /// or the rise is too small or too new to say.
+    fn eta(&mut self, now: Instant, heater: &model::Heater) -> i32 {
+        let t = heater.temperature;
+        match self.last {
+            Some((at, prev)) => {
+                let dt = now.duration_since(at).as_secs_f64();
+                if dt < 1.0 {
+                    return self.shown;
+                }
+                let r = (t - prev) / dt;
+                // Smooth over a few seconds; a fresh start takes the first rate.
+                self.rate = if self.rate == 0.0 {
+                    r
+                } else {
+                    self.rate * 0.7 + r * 0.3
+                };
+                self.last = Some((now, t));
+            }
+            None => {
+                self.last = Some((now, t));
+                self.shown = -1;
+                return -1;
+            }
+        }
+        let left = heater.target - t;
+        if heater.target <= 0.0 || left <= 2.0 || self.rate < 0.2 {
+            return -1;
+        }
+        // Nearer seconds than the noise suggests are not worth showing.
+        ((left / self.rate).round() as i32).clamp(1, 3600)
+    }
+}
+
+/// Rivet's settings live in Moonraker's database under this namespace.
+const DB_NAMESPACE: &str = "rivet";
+
+/// Show the saved "turn on at startup" and, when it is on, turn the light on.
+async fn light_on_start(client: Client, ui: slint::Weak<AppWindow>, light: model::Light) {
+    let on = match client
+        .call_timeout(
+            "server.database.get_item",
+            json!({ "namespace": DB_NAMESPACE, "key": "light_on_start" }),
+            SETUP_TIMEOUT,
+        )
+        .await
+    {
+        Ok(item) => item["value"].as_bool().unwrap_or(false),
+        // Never saved: the namespace or key does not exist yet.
+        Err(err) => {
+            tracing::debug!(%err, "light_on_start not saved");
+            false
+        }
+    };
+    let _ = ui.upgrade_in_event_loop(move |ui| ui.set_light_on_start(on));
+    if on && !light.on {
+        let cmd = Command::SetLight {
+            name: light.name.clone(),
+            level: 1.0,
+            white: light.white,
+        };
+        if let Some(code) = gcode_for(&cmd) {
+            if let Err(err) = client.gcode(&code).await {
+                tracing::warn!(%err, "light on at startup failed");
+            }
+        }
+    }
+}
+
 /// Read the current values back after a command failed.
 async fn resync_status(client: &Client, state: &mut PrinterState) {
     let mut objects: Vec<String> = state.leds.clone();
@@ -777,6 +883,13 @@ async fn execute(
             .await
             .map(drop),
         Command::Gcode(script) => client.gcode(script).await,
+        Command::SetLightOnStart(on) => client
+            .call(
+                "server.database.post_item",
+                json!({ "namespace": DB_NAMESPACE, "key": "light_on_start", "value": on }),
+            )
+            .await
+            .map(drop),
         Command::ClearConsole => Ok(()),
         Command::ListFiles => list_files(client, ui, thumbs).await,
         Command::FileDetails(path) => file_details(client, ui, thumbs, path).await,

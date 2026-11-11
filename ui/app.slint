@@ -2,7 +2,8 @@ import { Tokens } from "kit/tokens.slint";
 import { Rail } from "kit/rail.slint";
 import { ControlScreen } from "screens/control.slint";
 import { SettingsScreen } from "screens/settings.slint";
-import { FansScreen, FanRow, PrintTuneScreen, PrintMoreScreen, LightScreen, SpeedScreen, ZOffsetScreen } from "screens/tune.slint";
+import { FansScreen, FanRow, PrintTuneScreen, PrintMoreScreen, SpeedScreen, ZOffsetScreen } from "screens/tune.slint";
+import { LightForm } from "generated/forms.slint";
 import { Dialog, Keypad } from "kit/dialogs.slint";
 import { StatusScreen } from "screens/status.slint";
 import { Toast } from "kit/toast.slint";
@@ -16,8 +17,11 @@ import { PrintingScreen, PrintDoneScreen } from "screens/print.slint";
 
 // Embedded into the binary (see build.rs): the printer has no system fonts.
 import "../assets/fonts/Inter-Regular.ttf";
+import "../assets/fonts/Inter-Medium.ttf";
 import "../assets/fonts/Inter-SemiBold.ttf";
 import "../assets/fonts/Inter-Bold.ttf";
+// 800: titles and big numbers in the prototype.
+import "../assets/fonts/Inter-ExtraBold.ttf";
 
 export component AppWindow inherits Window {
     width: 800px;
@@ -70,6 +74,7 @@ export component AppWindow inherits Window {
     callback adjust-z(float);
     callback set-pressure-advance(float);
     callback set-light-level(float);
+    callback set-light-on-start(bool);
     callback run-gcode(string);
     callback clear-console();
     callback apply-key(string, string) -> string;
@@ -129,6 +134,13 @@ export component AppWindow inherits Window {
     in property <float> light-level;
     in property <string> light-name;
     in property <bool> light-white;
+    // Seconds until each heater reaches its target; -1 when not known.
+    in property <int> nozzle-eta: -1;
+    in property <int> bed-eta: -1;
+    // Heat presets, temperature graph and PID screens exist (not yet).
+    in property <bool> has-heat-links;
+    // Rivet's own setting, read from Moonraker's database.
+    in-out property <bool> light-on-start;
     property <float> tune-z-start;
     // Which value the keypad is editing: "speed" | "flow" | "z" | "pa".
     property <string> keypad-target;
@@ -193,11 +205,22 @@ export component AppWindow inherits Window {
                 if (target == "fans" || target == "heating" || target == "motion" || target == "extruder" || target == "light" || target == "speed" || target == "zoffset") { root.screen = target; }
             }
         }
-        if root.ready && root.screen == "light": LightScreen {
-            has-light: root.has-light;
-            level: root.light-level;
+        if root.ready && root.screen == "light": LightForm {
+            light-shown: root.has-light;
+            light-on: root.light-on;
+            brightness-shown: root.has-light;
+            brightness-source: root.light-level;
+            on-start-shown: root.has-light;
+            on-start-on: root.light-on-start;
             back => { root.screen = "control"; }
-            set-level(v) => { root.set-light-level(v); }
+            toggled(key, on) => {
+                if (key == "light") { root.set-light-level(on ? 100 : 0); }
+                if (key == "on-start") {
+                    root.light-on-start = on;
+                    root.set-light-on-start(on);
+                }
+            }
+            bar-committed(key, v) => { root.set-light-level(v); }
         }
         if root.ready && root.screen == "speed": SpeedScreen {
             speed: root.speed-percent;
@@ -242,6 +265,9 @@ export component AppWindow inherits Window {
             max-nozzle: root.nozzle-limit;
             max-bed: root.bed-limit;
             heater <=> root.heating-heater;
+            nozzle-eta: root.nozzle-eta;
+            bed-eta: root.bed-eta;
+            has-heat-links: root.has-heat-links;
             back => { root.screen = "control"; }
             set-target(which, t) => { if (which == 0) { root.set-nozzle(t); } else { root.set-bed(t); } }
             edit(which) => {

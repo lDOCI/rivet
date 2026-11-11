@@ -30,6 +30,11 @@ fn main() -> anyhow::Result<()> {
         lang_env.as_deref().or(config.language.as_deref()),
         std::env::var("LANG").ok().as_deref(),
     ));
+    // --screen <name>: open on that screen (proof shots on the printer); the rail
+    // and back buttons work as usual from there.
+    if let Some(screen) = flag_value("--screen") {
+        ui.set_screen(screen.into());
+    }
     let (cmd_tx, cmd_rx) = mpsc::unbounded_channel();
     wire_callbacks(&ui, &cmd_tx);
 
@@ -185,6 +190,12 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
                     white: ui.get_light_white(),
                 });
             }
+        });
+    }
+    {
+        let tx = tx.clone();
+        ui.on_set_light_on_start(move |on| {
+            let _ = tx.send(Command::SetLightOnStart(on));
         });
     }
     {

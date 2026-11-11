@@ -24,42 +24,19 @@ export component BarFill inherits Rectangle {
     property <float> inset: root.r - sqrt(max(0, root.r * root.r - (root.r - root.d) * (root.r - root.d)));
     // Lower than a corner: where the top edge cuts the bottom corner circles.
     property <float> cut: root.r - sqrt(max(0, root.r * root.r - (root.r - root.f) * (root.r - root.f)));
-    // Mid-track: flat top, rounded bottom.
-    if root.f >= root.r && root.d >= root.r: Path {
+    // From the corner radius up: a rectangle, so the gradient shows (the
+    // renderer fills paths with one colour). Bottom corners follow the track;
+    // near the top, the top corners round in as the track's do.
+    if root.f >= root.r: Rectangle {
         x: 0px;
         y: root.d * 1px;
         width: root.w * 1px;
         height: root.f * 1px;
-        viewbox-width: root.w;
-        viewbox-height: root.f;
-        fill: root.fill;
-        MoveTo { x: 0; y: 0; }
-        LineTo { x: root.w; y: 0; }
-        LineTo { x: root.w; y: root.f - root.r; }
-        ArcTo { radius-x: root.r; radius-y: root.r; x: root.w - root.r; y: root.f; sweep: true; }
-        LineTo { x: root.r; y: root.f; }
-        ArcTo { radius-x: root.r; radius-y: root.r; x: 0; y: root.f - root.r; sweep: true; }
-        Close {}
-    }
-    // Nearly full: the top corners follow the track's corners too.
-    if root.f >= root.r && root.d < root.r: Path {
-        x: 0px;
-        y: root.d * 1px;
-        width: root.w * 1px;
-        height: root.f * 1px;
-        viewbox-width: root.w;
-        viewbox-height: root.f;
-        fill: root.fill;
-        MoveTo { x: root.inset; y: 0; }
-        LineTo { x: root.w - root.inset; y: 0; }
-        ArcTo { radius-x: root.r; radius-y: root.r; x: root.w; y: root.r - root.d; sweep: true; }
-        LineTo { x: root.w; y: root.f - root.r; }
-        ArcTo { radius-x: root.r; radius-y: root.r; x: root.w - root.r; y: root.f; sweep: true; }
-        LineTo { x: root.r; y: root.f; }
-        ArcTo { radius-x: root.r; radius-y: root.r; x: 0; y: root.f - root.r; sweep: true; }
-        LineTo { x: 0; y: root.r - root.d; }
-        ArcTo { radius-x: root.r; radius-y: root.r; x: root.inset; y: 0; sweep: true; }
-        Close {}
+        border-bottom-left-radius: root.r * 1px;
+        border-bottom-right-radius: root.r * 1px;
+        border-top-left-radius: max(0, root.r - root.d) * 1px;
+        border-top-right-radius: max(0, root.r - root.d) * 1px;
+        background: root.fill;
     }
     // Lower than the corner radius: a cap of the bottom corners.
     if root.f > 0.5 && root.f < root.r: Path {

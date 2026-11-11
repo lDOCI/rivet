@@ -1,0 +1,9 @@
+# List pages of the prototype that Rivet builds with FormScreen, and a name for each row.
+# tools/gen-forms.py reads the rows from docs/ux/style/<Page>.dc.html; a row without a
+# name here fails the build. The name becomes the row's properties in app.slint
+# (`<name>-shown`, `-on`, `-value`, ...). `en`: English msgid where i18n has none.
+
+[Light]
+component = "LightForm"
+rows = { r0 = "light", r1 = "brightness", r2 = "on-start" }
+en = { "Подсветка" = "Lights", "Яркость" = "Brightness", "Включать при старте" = "Turn on at startup" }

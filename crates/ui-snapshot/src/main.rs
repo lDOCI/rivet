@@ -191,8 +191,11 @@ fn show(ui: &AppWindow, name: &str) {
         }
         "light" => {
             ui.set_screen("light".into());
+            // The prototype page's state: on, 80 %, on at startup.
             ui.set_has_light(true);
+            ui.set_light_on(true);
             ui.set_light_level(80.0);
+            ui.set_light_on_start(true);
         }
         "speed" | "zoffset" => {
             ui.set_screen(name.into());
@@ -245,6 +248,14 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_heating_heater(i32::from(name == "heating-bed"));
             ui.set_max_nozzle(350.0);
             ui.set_max_bed(130.0);
+            // The prototype's values, whatever an earlier scene left behind.
+            ui.set_extruder_temp(187.0);
+            ui.set_extruder_target(240.0);
+            ui.set_bed_temp(23.0);
+            ui.set_bed_target(0.0);
+            // As in the prototype: rising, about 38 s to go; the links row shown.
+            ui.set_nozzle_eta(38);
+            ui.set_has_heat_links(true);
         }
         "offline" | "startup" | "klippy-offline" | "error" => {
             ui.set_link_state(name.into());

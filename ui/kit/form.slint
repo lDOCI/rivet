@@ -1,0 +1,168 @@
+// The one layout of every list page of the prototype (docs/ux/style, pages with `ROWS`):
+// header, then sliders as vertical bars on the left and the other rows in a scrolling
+// column on the right. Pages fill it from ui/generated/forms.slint, which
+// tools/gen-forms.py writes from the prototype itself: order, kinds, titles, steps.
+import { Tokens } from "tokens.slint";
+import { Header, PrimaryButton, SectionLabel } from "controls.slint";
+import { LinkRow, InfoRow, ActionRow, ToggleRow, SegmentedRow } from "rows.slint";
+import { VBar, Stepper, FineStepper } from "values.slint";
+import { ScrollList } from "scroll.slint";
+
+// One row of the right column. `kind` is the prototype's: section, link, info, toggle,
+// stepper, fine, seg, action. Fields a kind does not use stay empty.
+export struct FormRow {
+    kind: string,
+    key: string,
+    title: string,
+    sub: string,
+    // link / info: text on the right; stepper / fine: the formatted value.
+    value: string,
+    // info: "danger" | "ok" | ""; action: "accent" (filled) | "danger" | "".
+    tone: string,
+    // toggle
+    on: bool,
+    // seg
+    opts: [string],
+    sel: int,
+    // link: icon path
+    icon: string,
+    // stepper: one step; fine: big and small steps, labels, and the starting value.
+    big: float,
+    small: float,
+    changed: bool,
+    was: string,
+    // false when this printer has nothing behind the row: then it takes no room.
+    shown: bool,
+}
+
+// A slider of the prototype: drawn as a vertical bar left of the rows.
+export struct FormBar {
+    key: string,
+    title: string,
+    // The bar's own value, and the printer's live one (-1: none).
+    value: float,
+    source: float,
+    min: float,
+    max: float,
+    step: float,
+    big-step: float,
+    unit: string,
+    off-at-zero: bool,
+    shown: bool,
+}
+
+export component FormScreen inherits VerticalLayout {
+    in property <string> title;
+    in property <[FormBar]> bars;
+    in property <[FormRow]> rows;
+    callback back;
+    // link and action rows
+    callback activate(string);
+    callback toggled(string, bool);
+    callback bar-committed(string, float);
+    // stepper and fine rows: by how much, in the value's units
+    callback stepped(string, float);
+    // tap on a stepper's value: type the number
+    callback edit(string);
+    callback picked(string, int);
+
+    horizontal-stretch: 1;
+    padding: Tokens.pad;
+    padding-bottom: 0;
+    spacing: 10px;
+    Header { title: root.title; back-clicked => { root.back(); } }
+    HorizontalLayout {
+        vertical-stretch: 1;
+        // 16 between bars and rows; each bar carries its own 10 on the right.
+        spacing: 6px;
+        if root.bars.length > 0: HorizontalLayout {
+            padding-bottom: Tokens.pad;
+            for b in root.bars: HorizontalLayout {
+                padding-right: b.shown ? 10px : 0px;
+                if b.shown: VBar {
+                    label: b.title;
+                    minimum: b.min;
+                    maximum: b.max;
+                    step: b.step;
+                    big-step: b.big-step;
+                    unit: b.unit;
+                    off-at-zero: b.off-at-zero;
+                    value: b.value;
+                    source: b.source;
+                    committed(v) => { root.bar-committed(b.key, v); }
+                }
+            }
+        }
+        ScrollList {
+            horizontal-stretch: 1;
+            spacing: 0px;
+            for r in root.rows: VerticalLayout {
+                // The gap lives in the row, so a hidden row leaves none.
+                padding-bottom: r.shown ? 8px : 0px;
+                if r.shown && r.kind == "section": HorizontalLayout {
+                    padding-top: 8px;
+                    padding-left: 4px;
+                    SectionLabel { text: r.title; }
+                }
+                if r.shown && r.kind == "link": LinkRow {
+                    title: r.title;
+                    sub: r.sub;
+                    value: r.value;
+                    icon: r.icon;
+                    clicked => { root.activate(r.key); }
+                }
+                if r.shown && r.kind == "info": InfoRow {
+                    title: r.title;
+                    sub: r.sub;
+                    value: r.value;
+                    value-color: r.tone == "danger" ? Tokens.danger : r.tone == "ok" ? Tokens.accent : Tokens.text;
+                }
+                if r.shown && r.kind == "toggle": ToggleRow {
+                    title: r.title;
+                    sub: r.sub;
+                    checked: r.on;
+                    toggled(v) => { root.toggled(r.key, v); }
+                }
+                if r.shown && r.kind == "stepper": Stepper {
+                    title: r.title;
+                    sub: r.sub;
+                    label: r.value;
+                    decrement => { root.stepped(r.key, -r.big); }
+                    increment => { root.stepped(r.key, r.big); }
+                    edit => { root.edit(r.key); }
+                }
+                if r.shown && r.kind == "fine": FineStepper {
+                    title: r.title;
+                    sub: r.sub;
+                    label: r.value;
+                    changed: r.changed;
+                    was: r.was;
+                    big: r.big;
+                    small: r.small;
+                    big-step: r.big;
+                    small-step: r.small;
+                    step(d) => { root.stepped(r.key, d); }
+                    edit => { root.edit(r.key); }
+                }
+                if r.shown && r.kind == "seg": SegmentedRow {
+                    title: r.title;
+                    sub: r.sub;
+                    options: r.opts;
+                    selected: r.sel;
+                    picked(i) => { root.picked(r.key, i); }
+                }
+                if r.shown && r.kind == "action" && r.tone == "accent": PrimaryButton {
+                    text: r.title;
+                    sub: r.sub;
+                    clicked => { root.activate(r.key); }
+                }
+                if r.shown && r.kind == "action" && r.tone != "accent": ActionRow {
+                    title: r.title;
+                    sub: r.sub;
+                    danger: r.tone == "danger";
+                    clicked => { root.activate(r.key); }
+                }
+            }
+        }
+    }
+}

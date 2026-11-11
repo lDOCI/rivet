@@ -190,30 +190,6 @@ export component PrintMoreScreen inherits VerticalLayout {
     }
 }
 
-export component LightScreen inherits VerticalLayout {
-    horizontal-stretch: 1;
-    in property <bool> has-light;
-    in property <float> level;
-    callback back;
-    callback set-level(float);
-    padding: Tokens.pad;
-    padding-bottom: 0;
-    spacing: 10px;
-    Header { title: @tr("Light"); back-clicked => { root.back(); } }
-    HorizontalLayout {
-        vertical-stretch: 1;
-        padding-bottom: Tokens.pad;
-        alignment: start;
-        if root.has-light: VBar {
-            label: @tr("Light");
-            value: root.level;
-            off-at-zero: true;
-            step: 5;
-            committed(v) => { root.set-level(v); }
-        }
-    }
-}
-
 export component SpeedScreen inherits VerticalLayout {
     horizontal-stretch: 1;
     in property <float> speed: 100;

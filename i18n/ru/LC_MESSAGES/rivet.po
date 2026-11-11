@@ -542,3 +542,24 @@ msgstr "выключен"
 
 msgid "holding temperature"
 msgstr "держит температуру"
+
+msgid "Lights"
+msgstr "Подсветка"
+
+msgid "Brightness"
+msgstr "Яркость"
+
+msgid "Turn on at startup"
+msgstr "Включать при старте"
+
+msgid "heating · ~{} s left"
+msgstr "нагревается · ещё ~{} с"
+
+msgid "heating · ~{} min left"
+msgstr "нагревается · ещё ~{} мин"
+
+msgid "Presets"
+msgstr "Пресеты"
+
+msgid "Graph"
+msgstr "График"
