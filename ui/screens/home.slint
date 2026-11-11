@@ -5,6 +5,7 @@ import { Icons } from "../kit/icons.slint";
 import { Icon } from "../kit/controls.slint";
 import { Gauge } from "../kit/gauge.slint";
 import { Format } from "../kit/format.slint";
+import { Thumb } from "../kit/thumb.slint";
 
 component HeaterRow inherits Rectangle {
     in property <string> name;
@@ -44,6 +45,8 @@ export component HomeScreen inherits VerticalLayout {
     in property <int> last-minutes;
     in property <int> last-days-ago: -1;
     in property <bool> last-completed: true;
+    in property <image> last-thumb;
+    in property <bool> has-last-thumb;
     callback open(string);
     callback print-again;
     padding: Tokens.pad;
@@ -65,15 +68,15 @@ export component HomeScreen inherits VerticalLayout {
                 HorizontalLayout {
                     alignment: center;
                     vertical-stretch: 1;
-                    Rectangle {
+                    Thumb {
                         max-width: 232px;
                         max-height: 232px;
                         preferred-width: 232px;
                         preferred-height: 232px;
                         border-radius: Tokens.r-m;
-                        background: #1a1f27;
-                        // Thumbnails come with the Files screen.
-                        Icon { d: Icons.printer; size: 88px; weight: 1.2; color: Tokens.text-faint; }
+                        icon-size: 88px;
+                        source: root.last-thumb;
+                        has: root.has-last-thumb;
                     }
                 }
                 HorizontalLayout {

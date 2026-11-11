@@ -22,7 +22,7 @@ fn select_several_and_delete() {
         name: n.into(),
         days_ago: 1,
         size_kb: 10,
-        selected: false,
+        ..Default::default()
     });
     ui.set_files(ModelRc::new(VecModel::from(items.to_vec())));
     ui.set_link_state("ready".into());

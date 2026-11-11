@@ -4,3 +4,4 @@
 slint::include_modules!();
 
 pub mod engine;
+pub mod thumbs;

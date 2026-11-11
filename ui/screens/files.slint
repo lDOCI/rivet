@@ -4,6 +4,7 @@ import { Icons } from "../kit/icons.slint";
 import { Icon, Header, IconButton, PrimaryButton, SecondaryButton, DangerButton } from "../kit/controls.slint";
 import { Format } from "../kit/format.slint";
 import { ScrollList } from "../kit/scroll.slint";
+import { Thumb } from "../kit/thumb.slint";
 
 export struct FileItem {
     // Path under gcodes, what Moonraker takes back.
@@ -12,6 +13,8 @@ export struct FileItem {
     days-ago: int,
     size-kb: int,
     selected: bool,
+    thumb: image,
+    has-thumb: bool,
 }
 
 // Slicer data and checks for the opened file. -1 = not in the file.
@@ -24,6 +27,8 @@ export struct FileInfo {
     nozzle: float,
     // 1 same as the printer, 0 differs, -1 unknown.
     nozzle-check: int,
+    thumb: image,
+    has-thumb: bool,
 }
 
 component FileCard inherits Rectangle {
@@ -42,12 +47,11 @@ component FileCard inherits Rectangle {
     VerticalLayout {
         padding: 10px;
         spacing: 6px;
-        Rectangle {
+        Thumb {
             vertical-stretch: 1;
             border-radius: Tokens.r-s;
-            background: #1a1f27;
-            // The model thumbnail replaces this icon in a later step.
-            Icon { d: Icons.printer; size: 56px; weight: 1.3; color: Tokens.text-faint; }
+            source: root.item.thumb;
+            has: root.item.has-thumb;
         }
         Text { text: root.item.name; color: Tokens.text; font-size: 15px; font-weight: 700; overflow: elide; }
         Text {
@@ -209,12 +213,13 @@ export component FileScreen inherits Rectangle {
             width: 264px;
             spacing: 12px;
             HorizontalLayout { alignment: start; IconButton { icon: "m15 18-6-6 6-6"; label: @tr("Back to files"); clicked => { root.back(); } } }
-            Rectangle {
+            Thumb {
                 width: 264px;
                 height: 264px;
                 border-radius: Tokens.r-l;
-                background: #1a1f27;
-                Icon { d: Icons.printer; size: 120px; weight: 1.2; color: Tokens.text-faint; }
+                icon-size: 120px;
+                source: root.info.thumb;
+                has: root.loaded && root.info.has-thumb;
             }
         }
         VerticalLayout {

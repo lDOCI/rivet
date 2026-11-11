@@ -10,7 +10,7 @@ use slint::{
         software_renderer::{MinimalSoftwareWindow, RepaintBufferType},
         Platform, WindowAdapter,
     },
-    ComponentHandle, PhysicalSize, PlatformError, Rgb8Pixel,
+    ComponentHandle, PhysicalSize, PlatformError, Rgb8Pixel, Rgba8Pixel,
 };
 
 const WIDTH: u32 = 800;
@@ -101,11 +101,15 @@ fn show(ui: &AppWindow, name: &str) {
     };
     match name {
         "home" => {
+            ui.set_last_thumb(fake_preview());
+            ui.set_has_last_thumb(true);
             ui.set_last_name("fan_duct_2.gcode".into());
             ui.set_last_minutes(83);
             ui.set_last_days_ago(1);
         }
         "printing" => {
+            ui.set_print_thumb(fake_preview());
+            ui.set_has_print_thumb(true);
             print("printing", 0.42);
             ui.set_layer(76);
             ui.set_total_layers(180);
@@ -142,7 +146,9 @@ fn show(ui: &AppWindow, name: &str) {
                         name: (*n).into(),
                         days_ago: *d,
                         size_kb: *kb,
-                        selected: false,
+                        thumb: fake_preview(),
+                        has_thumb: true,
+                        ..Default::default()
                     })
                     .collect()
             };
@@ -159,6 +165,8 @@ fn show(ui: &AppWindow, name: &str) {
                     layers: 180,
                     nozzle: 0.4,
                     nozzle_check: 1,
+                    thumb: fake_preview(),
+                    has_thumb: true,
                 });
             } else {
                 ui.set_screen("files".into());
@@ -197,6 +205,22 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_screen(screen.into());
         }
     }
+}
+
+/// A stand-in preview so snapshots show how a real one is clipped and fitted.
+fn fake_preview() -> slint::Image {
+    let (w, h) = (200u32, 120u32);
+    let mut buf = slint::SharedPixelBuffer::<Rgba8Pixel>::new(w, h);
+    for (i, px) in buf.make_mut_slice().iter_mut().enumerate() {
+        let (x, y) = ((i as u32 % w) as f32, (i as u32 / w) as f32);
+        let inside = ((x - 100.0).powi(2) + (y - 60.0).powi(2)).sqrt() < 45.0;
+        *px = if inside {
+            Rgba8Pixel::new(93, 125, 224, 255)
+        } else {
+            Rgba8Pixel::new(40 + (x / 4.0) as u8, 50, 70 + (y / 2.0) as u8, 255)
+        };
+    }
+    slint::Image::from_rgba8(buf)
 }
 
 fn write_png(path: &PathBuf, buf: &[Rgb8Pixel]) -> anyhow::Result<()> {
