@@ -145,6 +145,42 @@ pub fn decode_png(bytes: &[u8]) -> Option<Rgba> {
 
 /// Shrink by a whole factor with a box filter so the image is at most
 /// `max_width` wide. Smaller images are kept as they are.
+/// Small previews (slicers often write only 140×110) scaled up to `width` with
+/// bilinear filtering: the screen's renderer scales images by nearest pixel,
+/// which turns them into blocks.
+pub fn upscale(img: Rgba, width: u32) -> Rgba {
+    if img.width == 0 || img.height == 0 || img.width >= width {
+        return img;
+    }
+    let height = (u64::from(img.height) * u64::from(width) / u64::from(img.width)).max(1) as u32;
+    let sx = img.width as f32 / width as f32;
+    let sy = img.height as f32 / height as f32;
+    let px = |x: u32, y: u32, c: usize| f32::from(img.data[((y * img.width + x) * 4) as usize + c]);
+    let mut data = Vec::with_capacity((width * height * 4) as usize);
+    for y in 0..height {
+        let fy = ((y as f32 + 0.5) * sy - 0.5).max(0.0);
+        let y0 = (fy as u32).min(img.height - 1);
+        let y1 = (y0 + 1).min(img.height - 1);
+        let ty = fy - y0 as f32;
+        for x in 0..width {
+            let fx = ((x as f32 + 0.5) * sx - 0.5).max(0.0);
+            let x0 = (fx as u32).min(img.width - 1);
+            let x1 = (x0 + 1).min(img.width - 1);
+            let tx = fx - x0 as f32;
+            for c in 0..4 {
+                let top = px(x0, y0, c) * (1.0 - tx) + px(x1, y0, c) * tx;
+                let bottom = px(x0, y1, c) * (1.0 - tx) + px(x1, y1, c) * tx;
+                data.push((top * (1.0 - ty) + bottom * ty).round() as u8);
+            }
+        }
+    }
+    Rgba {
+        width,
+        height,
+        data,
+    }
+}
+
 pub fn downscale(img: Rgba, max_width: u32) -> Rgba {
     let f = img.width.div_ceil(max_width).max(1);
     if f == 1 {
@@ -249,6 +285,21 @@ mod tests {
         let rgba = decode_png(&png_bytes(1, 1, png::ColorType::Rgba, &[1, 2, 3, 4])).unwrap();
         assert_eq!(rgba.data, [1, 2, 3, 4]);
         assert!(decode_png(b"not a png").is_none());
+    }
+
+    #[test]
+    fn upscale_keeps_the_aspect_and_blends() {
+        let img = Rgba {
+            width: 2,
+            height: 1,
+            data: vec![0, 0, 0, 255, 200, 200, 200, 255],
+        };
+        let big = upscale(img, 4);
+        assert_eq!((big.width, big.height), (4, 2));
+        // Ends keep the source colours, the middle is between them.
+        assert_eq!(big.data[0], 0);
+        assert!(big.data[4] > 0 && big.data[4] < 200);
+        assert_eq!(big.data[12], 200);
     }
 
     #[test]

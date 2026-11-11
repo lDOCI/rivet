@@ -3,6 +3,9 @@ import { Tokens } from "tokens.slint";
 
 export component ScrollList inherits Rectangle {
     in property <length> spacing: Tokens.gap-s;
+    // Where the list is scrolled to (0 or negative); bind it to keep the place
+    // when the screen is left and opened again.
+    in-out property <length> scroll-y <=> flick.content-y;
     // Jump to the newest content, for logs that grow at the bottom.
     public function scroll-to-end() {
         flick.content-y = min(0px, flick.height - flick.content-height);

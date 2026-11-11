@@ -6,6 +6,7 @@
 
 pub mod pixel;
 pub mod reconnect;
+pub mod screen;
 pub mod touch_state;
 
 #[cfg(target_os = "linux")]

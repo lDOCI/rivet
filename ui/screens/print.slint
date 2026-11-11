@@ -310,3 +310,90 @@ export component PrintDoneScreen inherits Rectangle {
         }
     }
 }
+
+// The print screensaver (prototype: Ambient): full screen, no rail, big progress.
+export component AmbientScreen inherits Rectangle {
+    in property <float> progress;
+    in property <int> remaining-minutes: -1;
+    in property <string> eta-clock;
+    in property <int> layer: -1;
+    in property <int> total-layers: -1;
+    in property <float> nozzle;
+    in property <float> bed;
+    callback dismiss;
+    x: 0;
+    y: 0;
+    width: 800px;
+    height: 480px;
+    background: #050607;
+    accessible-role: button;
+    accessible-label: @tr("Print {}%, tap to open", round(root.progress * 100));
+    property <float> p: max(0.0001, min(0.9999, root.progress));
+    property <angle> sweep: -90deg + root.p * 360deg;
+    HorizontalLayout {
+        padding-top: 40px;
+        padding-bottom: 40px;
+        padding-left: 48px;
+        padding-right: 48px;
+        spacing: 48px;
+        alignment: start;
+        Rectangle {
+            width: 360px;
+            height: 360px;
+            y: (parent.height - self.height) / 2;
+            // Band r 158–174 (the prototype's r 166, width 16): this renderer strokes
+            // inside the line, so the line runs at the outer edge.
+            Path {
+                width: 360px;
+                height: 360px;
+                viewbox-width: 360;
+                viewbox-height: 360;
+                stroke: #111418;
+                stroke-width: 16px;
+                commands: "M180 6 A174 174 0 1 1 179.99 6";
+            }
+            Path {
+                width: 360px;
+                height: 360px;
+                viewbox-width: 360;
+                viewbox-height: 360;
+                stroke: Tokens.accent-hi;
+                stroke-width: 16px;
+                stroke-line-cap: round;
+                MoveTo { x: 180; y: 6; }
+                ArcTo {
+                    radius-x: 174;
+                    radius-y: 174;
+                    x: 180 + 174 * cos(root.sweep);
+                    y: 180 + 174 * sin(root.sweep);
+                    large-arc: root.p > 0.5;
+                    sweep: true;
+                }
+            }
+            HorizontalLayout {
+                alignment: center;
+                Text { text: round(root.progress * 100); color: Tokens.text; font-size: 132px; font-weight: 800; letter-spacing: -6.6px; vertical-alignment: center; }
+                Text { text: "%"; color: #7d8792; font-size: 56px; font-weight: 800; vertical-alignment: center; y: 18px; }
+            }
+        }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            alignment: center;
+            spacing: 6px;
+            if root.remaining-minutes >= 0: Text { text: @tr("Left"); color: #7d8792; font-size: 18px; font-weight: 600; }
+            if root.remaining-minutes >= 0: Text { text: Format.duration(root.remaining-minutes); color: Tokens.text; font-size: 84px; font-weight: 800; letter-spacing: -2.52px; height: 84px; vertical-alignment: center; }
+            if root.eta-clock != "": Text { text: @tr("done at {}", root.eta-clock); color: Tokens.text-2; font-size: 24px; }
+            Rectangle { height: 31px; Rectangle { y: 18px; height: 1px; background: #1a1e23; } }
+            if root.layer >= 0 && root.total-layers > 0: Text { text: @tr("layer {} of {}", root.layer, root.total-layers); color: Tokens.text-dim; font-size: 18px; }
+            Text { text: @tr("nozzle {}° · bed {}°", round(root.nozzle), round(root.bed)); color: Tokens.text-dim; font-size: 18px; }
+        }
+    }
+    Text {
+        x: parent.width - self.width - 48px;
+        y: parent.height - self.height - 22px;
+        text: @tr("Tap to open");
+        color: #4a525c;
+        font-size: 14px;
+    }
+    TouchArea { clicked => { root.dismiss(); } }
+}

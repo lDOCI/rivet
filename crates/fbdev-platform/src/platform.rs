@@ -98,7 +98,21 @@ struct FbPlatform {
     rotation_applied: Cell<bool>,
     shared: Arc<Shared>,
     wake_read: OwnedFd,
+    /// Screen sleep: the backlight, when the last touch was, whether it sleeps,
+    /// whether the finger that woke it is still down, and wake requests handled.
+    backlight: RefCell<crate::screen::backlight::Backlight>,
+    last_touch: Cell<Instant>,
+    asleep: Cell<bool>,
+    swallow: Cell<bool>,
+    wakes_seen: Cell<u64>,
+    /// A finger lift not yet passed on: a finger on this panel loses contact for a
+    /// few milliseconds mid-swipe, which would turn a scroll into taps. A press
+    /// within RELEASE_DEBOUNCE continues the same touch instead.
+    pending_release: Cell<Option<(Instant, f32, f32)>>,
 }
+
+/// How long a lifted finger may be gone and still count as the same touch.
+const RELEASE_DEBOUNCE: Duration = Duration::from_millis(60);
 
 /// Open the framebuffer and touch device and install the platform.
 /// Call before creating any Slint component.
@@ -158,6 +172,12 @@ pub fn init(config: Config) -> anyhow::Result<()> {
             wake_write,
         }),
         wake_read,
+        backlight: RefCell::new(crate::screen::backlight::Backlight::open()),
+        last_touch: Cell::new(Instant::now()),
+        asleep: Cell::new(false),
+        swallow: Cell::new(false),
+        wakes_seen: Cell::new(crate::screen::wake_requests()),
+        pending_release: Cell::new(None),
     };
     slint::platform::set_platform(Box::new(platform))
         .map_err(|e| anyhow::anyhow!("set Slint platform: {e}"))?;
@@ -194,7 +214,27 @@ impl FbPlatform {
         let Some(dev) = touch.as_mut() else { return };
         let window = self.window.clone();
         let result = dev.read(|action| {
+            self.last_touch.set(Instant::now());
+            crate::screen::touched();
+            // A touch on a sleeping screen only wakes it; the rest of that touch,
+            // up to the finger lifting, goes nowhere.
+            if self.asleep.get() && matches!(action, TouchAction::Pressed { .. }) {
+                self.set_awake(true);
+                self.swallow.set(true);
+            }
+            if self.swallow.get() {
+                if matches!(action, TouchAction::Released { .. }) {
+                    self.swallow.set(false);
+                }
+                return;
+            }
             let event = match action {
+                // Back within the debounce time: the same touch goes on.
+                TouchAction::Pressed { x, y } if self.pending_release.take().is_some() => {
+                    WindowEvent::PointerMoved {
+                        position: LogicalPosition::new(x, y),
+                    }
+                }
                 TouchAction::Pressed { x, y } => WindowEvent::PointerPressed {
                     position: LogicalPosition::new(x, y),
                     button: PointerEventButton::Left,
@@ -202,15 +242,13 @@ impl FbPlatform {
                 TouchAction::Moved { x, y } => WindowEvent::PointerMoved {
                     position: LogicalPosition::new(x, y),
                 },
-                TouchAction::Released { x, y } => WindowEvent::PointerReleased {
-                    position: LogicalPosition::new(x, y),
-                    button: PointerEventButton::Left,
-                },
+                // Held back; `flush_release` passes it on once the finger stays up.
+                TouchAction::Released { x, y } => {
+                    self.pending_release.set(Some((Instant::now(), x, y)));
+                    return;
+                }
             };
             window.window().dispatch_event(event);
-            if matches!(action, TouchAction::Released { .. }) {
-                window.window().dispatch_event(WindowEvent::PointerExited);
-            }
         });
         if let Err(err) = result {
             tracing::error!(%err, "touch device lost, will keep retrying");
@@ -219,6 +257,50 @@ impl FbPlatform {
             // A finger that was down when the panel vanished must not leave a
             // button stuck pressed.
             window.window().dispatch_event(WindowEvent::PointerExited);
+        }
+    }
+
+    /// Pass on a finger lift once it has lasted the debounce time.
+    fn flush_release(&self) {
+        if let Some((at, x, y)) = self.pending_release.get() {
+            if at.elapsed() >= RELEASE_DEBOUNCE {
+                self.pending_release.set(None);
+                let window = self.window.window();
+                window.dispatch_event(WindowEvent::PointerReleased {
+                    position: LogicalPosition::new(x, y),
+                    button: PointerEventButton::Left,
+                });
+                window.dispatch_event(WindowEvent::PointerExited);
+            }
+        }
+    }
+
+    fn set_awake(&self, on: bool) {
+        if self.asleep.get() == !on {
+            return;
+        }
+        tracing::info!(on, "screen");
+        self.backlight.borrow_mut().set_on(on);
+        self.asleep.set(!on);
+        if on {
+            self.last_touch.set(Instant::now());
+        }
+    }
+
+    /// Sleep after the idle time unless kept awake; wake on request.
+    fn manage_sleep(&self) {
+        let requests = crate::screen::wake_requests();
+        if requests != self.wakes_seen.replace(requests) || crate::screen::keep_awake() {
+            self.set_awake(true);
+            return;
+        }
+        if !self.backlight.borrow().available() || self.asleep.get() {
+            return;
+        }
+        if let Some(after) = crate::screen::sleep_after() {
+            if self.last_touch.get().elapsed() >= after {
+                self.set_awake(false);
+            }
         }
     }
 
@@ -291,9 +373,13 @@ impl Platform for FbPlatform {
             }
 
             self.dispatch_touch();
+            self.flush_release();
+            self.manage_sleep();
             self.draw();
 
-            let timeout = if self.window.window().has_active_animations() {
+            let timeout = if self.pending_release.get().is_some() {
+                Some(RELEASE_DEBOUNCE / 4)
+            } else if self.window.window().has_active_animations() {
                 Some(FRAME)
             } else {
                 Some(

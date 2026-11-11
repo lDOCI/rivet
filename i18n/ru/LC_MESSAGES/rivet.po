@@ -963,3 +963,12 @@ msgstr "Если повторяется во время печати — про�
 
 msgid "Log"
 msgstr "Журнал"
+
+msgid "Print {}%, tap to open"
+msgstr "Печать {}%, коснитесь, чтобы открыть"
+
+msgid "Left"
+msgstr "Осталось"
+
+msgid "Tap to open"
+msgstr "Коснитесь, чтобы открыть"

@@ -29,7 +29,7 @@ PAIRS = {
     "settings": "Settings", "offline": "Offline", "error": "KlipperError",
     "motion-more": "MotionAdvanced", "file-actions": "FileActions",
     "layer-pause": "LayerPause", "retraction": "Retraction", "dryer": "Dryer",
-    "spools": "Spools", "devices": "Devices",
+    "spools": "Spools", "devices": "Devices", "ambient": "Ambient",
 }
 
 def main():

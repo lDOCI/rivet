@@ -90,7 +90,10 @@ async fn preview(
         .await
         .inspect_err(|err| tracing::debug!(%err, file, "thumbnail fetch failed"))
         .ok()?;
-    let img = thumbs::downscale(thumbs::decode_png(&body)?, thumbs::MAX_WIDTH);
+    let img = thumbs::upscale(
+        thumbs::downscale(thumbs::decode_png(&body)?, thumbs::MAX_WIDTH),
+        thumbs::MAX_WIDTH,
+    );
     let size = img.data.len();
     let buf = Preview::clone_from_slice(&img.data, img.width, img.height);
     thumbs.cache.lock().ok()?.insert(file, buf.clone(), size);
@@ -388,6 +391,18 @@ pub async fn run(
                         snap.caps.clone(),
                         resync_tx.clone(),
                     ));
+                }
+                // The screen stays on while printing, and wakes when a print ends or
+                // Klipper stops, so the result or the error is there to see.
+                #[cfg(feature = "fbdev")]
+                {
+                    let running = matches!(snap.print_state.as_str(), "printing" | "paused");
+                    fbdev_platform::screen::set_keep_awake(running);
+                    if last_pushed.as_ref().is_some_and(|p| {
+                        p.print_state != snap.print_state || (p.klippy != snap.klippy && snap.klippy != Klippy::Ready)
+                    }) {
+                        fbdev_platform::screen::wake();
+                    }
                 }
                 // A print just ended: what was waiting for it.
                 if snap.print_state != last_print_state {
@@ -916,6 +931,9 @@ fn spawn_print_thumb(
 /// "15:20" in the printer's timezone, or nothing when no timezone is set: a clock
 /// that silently shows UTC would be wrong (KlipperMod points /etc/localtime at
 /// printer_data/config/timezone, which exists once a timezone is chosen).
+// libc::time_t is deprecated in name only (it widens in a later musl): it is the
+// type localtime_r takes here.
+#[allow(deprecated)]
 fn local_clock(unix: f64) -> Option<String> {
     if std::fs::metadata("/etc/localtime").is_err() {
         return None;
@@ -1056,6 +1074,14 @@ async fn load_settings(
     let flag = |key: &str| saved[key].as_bool().unwrap_or(false);
     let number = |key: &str, default: f64| saved[key].as_f64().unwrap_or(default) as f32;
     let light_on = flag("light_on_start");
+    // Minutes without a touch before the screen sleeps; 0 = never.
+    #[cfg(feature = "fbdev")]
+    {
+        let minutes = saved["screen_sleep_min"].as_f64().unwrap_or(10.0);
+        fbdev_platform::screen::set_sleep_after(
+            (minutes > 0.0).then(|| Duration::from_secs_f64(minutes * 60.0)),
+        );
+    }
     let (invert, jog_xy, jog_z) = (
         [flag("invert_x"), flag("invert_y"), flag("invert_z")],
         number("jog_xy_speed", 100.0),

@@ -38,6 +38,28 @@ fn main() -> anyhow::Result<()> {
     let (cmd_tx, cmd_rx) = mpsc::unbounded_channel();
     wire_callbacks(&ui, &cmd_tx);
 
+    // While printing, the screensaver takes the place of screen sleep.
+    #[cfg(feature = "fbdev")]
+    let _ambient = {
+        let weak = ui.as_weak();
+        let timer = slint::Timer::default();
+        timer.start(
+            slint::TimerMode::Repeated,
+            std::time::Duration::from_secs(1),
+            move || {
+                let Some(ui) = weak.upgrade() else { return };
+                let printing = matches!(ui.get_print_state().as_str(), "printing" | "paused");
+                let idle = fbdev_platform::screen::sleep_after()
+                    .is_some_and(|after| fbdev_platform::screen::idle() >= after);
+                if printing && idle && !ui.get_ambient() {
+                    ui.set_ambient(true);
+                } else if !printing && ui.get_ambient() {
+                    ui.set_ambient(false);
+                }
+            },
+        );
+        timer
+    };
     let weak = ui.as_weak();
     std::thread::Builder::new()
         .name("net".into())

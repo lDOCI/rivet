@@ -43,6 +43,7 @@ const ALL: &[&str] = &[
     "motion-more",
     "file-actions",
     "layer-pause",
+    "ambient",
     "retraction",
     "dryer",
     "spools",
@@ -108,6 +109,7 @@ fn main() -> anyhow::Result<()> {
 fn show(ui: &AppWindow, name: &str) {
     ui.set_link_state("ready".into());
     ui.set_overlay("".into());
+    ui.set_ambient(false);
     ui.set_toast_kind("".into());
     ui.set_screen("home".into());
     ui.set_print_state("standby".into());
@@ -258,6 +260,14 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_goto_x(0.0);
             ui.set_goto_y(0.0);
             ui.set_goto_z(10.0);
+        }
+        "ambient" => {
+            // The prototype page's values.
+            print("printing", 0.42);
+            ui.set_layer(76);
+            ui.set_total_layers(180);
+            ui.set_eta_clock("15:20".into());
+            ui.set_ambient(true);
         }
         "layer-pause" => {
             print("printing", 0.42);

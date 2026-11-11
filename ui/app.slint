@@ -23,7 +23,7 @@ import { MotionScreen } from "screens/motion.slint";
 import { ToolsScreen, ConsoleScreen, MacrosScreen, ConsoleLine } from "screens/tools.slint";
 import { FilesScreen, FileScreen, FileItem, FileInfo } from "screens/files.slint";
 export { FileItem, FileInfo, ConsoleLine, FanRow }
-import { PrintingScreen, PrintDoneScreen } from "screens/print.slint";
+import { PrintingScreen, PrintDoneScreen, AmbientScreen } from "screens/print.slint";
 
 // Embedded into the binary (see build.rs): the printer has no system fonts.
 import "../assets/fonts/Inter-Regular.ttf";
@@ -171,6 +171,8 @@ export component AppWindow inherits Window {
     in property <int> files-usb;
     // The Files screen shows the USB stick instead of the printer's storage.
     in-out property <bool> files-on-usb;
+    // Where the file list was scrolled to.
+    in-out property <length> files-scroll;
     in property <string> spool-material;
     in property <color> spool-color;
     in property <string> loaded-material;
@@ -180,6 +182,8 @@ export component AppWindow inherits Window {
     in-out property <int> dry-material: 1;
     in-out property <float> dry-hours: 4;
     callback dry(float, int);
+    // The print screensaver is up (set after idle time while printing).
+    in-out property <bool> ambient;
     // Rivet's own settings, saved in Moonraker's database.
     callback save-flag(string, bool);
     callback save-number(string, float);
@@ -645,7 +649,7 @@ export component AppWindow inherits Window {
             material-color: root.has-active-spool && root.spool-material != "" ? root.spool-color : root.loaded-color;
             print-again => { root.start-print(root.last-name); }
             open(target) => {
-                if (target == "files") { root.refresh-files(); root.screen = "files"; }
+                if (target == "files") { root.files-scroll = 0; root.refresh-files(); root.screen = "files"; }
                 if (target == "heating" || target == "heating-bed") { root.heating-heater = target == "heating-bed" ? 1 : 0; root.screen = "heating"; }
                 // The filament wizard comes later in this wave; until then, the Extruder.
                 if (target == "filament") { root.screen = "extruder"; }
@@ -656,7 +660,8 @@ export component AppWindow inherits Window {
             local-count: root.files-local;
             usb-count: root.files-usb;
             on-usb <=> root.files-on-usb;
-            storage-changed(usb) => { root.refresh-files(); }
+            scroll-y <=> root.files-scroll;
+            storage-changed(usb) => { root.files-scroll = 0; root.refresh-files(); }
             select-mode <=> root.select-mode;
             selected-count <=> root.selected-count;
             back => { root.screen = "home"; }
@@ -757,5 +762,16 @@ export component AppWindow inherits Window {
             else { root.form-set(root.keypad-target, v); }
         }
         cancelled => { root.overlay = ""; }
+    }
+    // Above everything, rail included; a touch closes it and presses nothing below.
+    if root.ambient && root.busy: AmbientScreen {
+        progress: root.progress;
+        remaining-minutes: root.remaining-minutes;
+        eta-clock: root.eta-clock;
+        layer: root.layer;
+        total-layers: root.total-layers;
+        nozzle: root.extruder-temp;
+        bed: root.bed-temp;
+        dismiss => { root.ambient = false; root.screen = "home"; }
     }
 }

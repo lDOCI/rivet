@@ -94,6 +94,8 @@ export component FilesScreen inherits VerticalLayout {
     in property <int> local-count;
     in property <int> usb-count;
     in-out property <bool> on-usb;
+    // Scroll position, kept by the app: back from a file lands where it was.
+    in-out property <length> scroll-y;
     callback storage-changed(bool);
     callback back;
     callback open(string);
@@ -171,6 +173,7 @@ export component FilesScreen inherits VerticalLayout {
     }
     if root.files.length > 0: ScrollList {
         vertical-stretch: 1;
+        scroll-y <=> root.scroll-y;
         Rectangle {
             height: root.rows * root.card-height + max(0, root.rows - 1) * root.gap;
             for item[i] in root.files: FileCard {
