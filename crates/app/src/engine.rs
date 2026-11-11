@@ -8,13 +8,101 @@ use moonraker::{Client, Event};
 use serde_json::{json, Value};
 use tokio::{sync::mpsc, time::MissedTickBehavior};
 
-use crate::AppWindow;
+use std::sync::{
+    atomic::{AtomicU64, Ordering},
+    Arc, Mutex,
+};
+
+use slint::{Rgba8Pixel, SharedPixelBuffer};
+
+use crate::{thumbs, AppWindow};
 
 /// UI refresh cap. Moonraker sends ~4 updates/s while printing.
 const UI_TICK: Duration = Duration::from_millis(100);
 /// Setup calls run inline in the event loop, so a hung Moonraker must not
 /// stall UI updates for the default 30 s.
 const SETUP_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// Decoded preview, shared between the cache and the UI without copying.
+type Preview = SharedPixelBuffer<Rgba8Pixel>;
+
+/// Cache limit for decoded previews. The printer has ~38 MB free in total.
+const THUMB_CACHE_BYTES: usize = 3 * 1024 * 1024;
+/// Files whose preview is fetched after a list loads (newest first).
+const THUMB_PREFETCH: usize = 24;
+
+/// Where previews come from and what is already decoded.
+pub struct Thumbs {
+    host: String,
+    cache: Mutex<thumbs::Cache<Preview>>,
+    /// Bumped on every list reload so a stale prefetch stops early.
+    generation: AtomicU64,
+}
+
+impl Thumbs {
+    fn new(url: &str) -> Arc<Self> {
+        // ws://host:port/websocket -> host:port
+        let host = url
+            .split_once("://")
+            .map_or(url, |(_, rest)| rest)
+            .split('/')
+            .next()
+            .unwrap_or_default()
+            .to_owned();
+        Arc::new(Self {
+            host,
+            cache: Mutex::new(thumbs::Cache::new(THUMB_CACHE_BYTES)),
+            generation: AtomicU64::new(0),
+        })
+    }
+}
+
+/// Preview for a G-code file, from cache or the printer. `None` when the file
+/// has no PNG preview or anything on the way fails: the UI keeps its icon.
+async fn preview(
+    client: &Client,
+    thumbs: &Thumbs,
+    file: &str,
+    meta: Option<model::FileMeta>,
+) -> Option<Preview> {
+    if let Some(hit) = thumbs.cache.lock().ok()?.get(file) {
+        return Some(hit);
+    }
+    let meta = match meta {
+        Some(m) => m,
+        None => model::parse_file_meta(
+            &client
+                .call_timeout(
+                    "server.files.metadata",
+                    json!({ "filename": file }),
+                    SETUP_TIMEOUT,
+                )
+                .await
+                .ok()?,
+        ),
+    };
+    let wanted = model::best_thumbnail(&meta.thumbnails, thumbs::MAX_WIDTH)?;
+    let path = format!(
+        "/server/files/gcodes/{}",
+        thumbs::encode_path(&model::thumbnail_path(file, &wanted.relative_path))
+    );
+    let body = thumbs::http_get(&thumbs.host, &path)
+        .await
+        .inspect_err(|err| tracing::debug!(%err, file, "thumbnail fetch failed"))
+        .ok()?;
+    let img = thumbs::downscale(thumbs::decode_png(&body)?, thumbs::MAX_WIDTH);
+    let size = img.data.len();
+    let buf = Preview::clone_from_slice(&img.data, img.width, img.height);
+    thumbs.cache.lock().ok()?.insert(file, buf.clone(), size);
+    Some(buf)
+}
+
+fn image_of(preview: Option<Preview>) -> (slint::Image, bool) {
+    match preview {
+        Some(buf) => (slint::Image::from_rgba8(buf), true),
+        None => (slint::Image::default(), false),
+    }
+}
 
 #[derive(Debug, Clone)]
 pub enum Command {
@@ -55,6 +143,8 @@ pub async fn run(
     ui: slint::Weak<AppWindow>,
     mut cmds: mpsc::UnboundedReceiver<Command>,
 ) {
+    let thumbs = Thumbs::new(&url);
+    let mut print_thumb_for = String::new();
     let (client, mut events) = Client::spawn(url);
     let mut state = PrinterState::default();
     let mut last_pushed: Option<Snapshot> = None;
@@ -76,9 +166,10 @@ pub async fn run(
                 predict(&mut state, &cmd);
                 let client = client.clone();
                 let ui = ui.clone();
+                let thumbs = thumbs.clone();
                 let resync = resync_tx.clone();
                 tokio::spawn(async move {
-                    if let Err(err) = execute(&client, &cmd, &ui).await {
+                    if let Err(err) = execute(&client, &cmd, &ui, &thumbs).await {
                         tracing::warn!(?cmd, %err, "command failed");
                         let _ = resync.send(());
                         let (kind, detail) = toast_for(&err);
@@ -101,10 +192,15 @@ pub async fn run(
                     let changed = last_pushed.as_ref().is_none_or(|p| {
                         p.print_state != snap.print_state || p.klippy != snap.klippy
                     });
+                    // The preview of whatever is printing.
+                    if ready && snap.filename != print_thumb_for {
+                        print_thumb_for.clone_from(&snap.filename);
+                        spawn_print_thumb(&client, &ui, &thumbs, &print_thumb_for);
+                    }
                     push(&ui, snap.clone());
                     last_pushed = Some(snap);
                     if ready && changed {
-                        refresh_history(&client, &ui).await;
+                        refresh_history(&client, &ui, &thumbs).await;
                     }
                 }
             }
@@ -157,7 +253,7 @@ async fn handle_event(ev: Event, client: &Client, state: &mut PrinterState) {
 
 /// Newest job in history, for «print again» on Home. A printer without
 /// history (component off) simply has none.
-async fn refresh_history(client: &Client, ui: &slint::Weak<AppWindow>) {
+async fn refresh_history(client: &Client, ui: &slint::Weak<AppWindow>, thumbs: &Arc<Thumbs>) {
     let params = json!({ "limit": 1, "order": "desc" });
     let last = match client
         .call_timeout("server.history.list", params, SETUP_TIMEOUT)
@@ -169,6 +265,22 @@ async fn refresh_history(client: &Client, ui: &slint::Weak<AppWindow>) {
             None
         }
     };
+    if let Some(l) = &last {
+        let (client, ui, thumbs, name) = (
+            client.clone(),
+            ui.clone(),
+            thumbs.clone(),
+            l.filename.clone(),
+        );
+        tokio::spawn(async move {
+            let image = preview(&client, &thumbs, &name, None).await;
+            let _ = ui.upgrade_in_event_loop(move |ui| {
+                let (img, has) = image_of(image);
+                ui.set_last_thumb(img);
+                ui.set_has_last_thumb(has);
+            });
+        });
+    }
     let _ = ui.upgrade_in_event_loop(move |ui| match last {
         Some(l) => {
             let now = unix_now();
@@ -266,7 +378,11 @@ async fn printer_nozzle(client: &Client) -> Option<f64> {
         .await
 }
 
-async fn list_files(client: &Client, ui: &slint::Weak<AppWindow>) -> Result<(), moonraker::Error> {
+async fn list_files(
+    client: &Client,
+    ui: &slint::Weak<AppWindow>,
+    thumbs: &Arc<Thumbs>,
+) -> Result<(), moonraker::Error> {
     let result = client
         .call_timeout(
             "server.files.list",
@@ -275,25 +391,62 @@ async fn list_files(client: &Client, ui: &slint::Weak<AppWindow>) -> Result<(), 
         )
         .await?;
     let now = unix_now();
-    let items: Vec<crate::FileItem> = model::parse_file_list(&result)
-        .into_iter()
-        .map(|f| crate::FileItem {
-            name: f
-                .path
-                .rsplit('/')
-                .next()
-                .unwrap_or(&f.path)
-                .trim_end_matches(".gcode")
-                .trim_end_matches(".GCODE")
-                .into(),
-            path: f.path.as_str().into(),
-            days_ago: ((now - f.modified).max(0.0) / 86_400.0) as i32,
-            size_kb: (f.size / 1024) as i32,
-            selected: false,
+    let files = model::parse_file_list(&result);
+    // Plain data here; the UI thread builds the rows (images are not Send).
+    let rows: Vec<(String, String, i32, i32)> = files
+        .iter()
+        .map(|f| {
+            let name = f.path.rsplit('/').next().unwrap_or(&f.path);
+            let name = name
+                .strip_suffix(".gcode")
+                .or_else(|| name.strip_suffix(".GCODE"))
+                .unwrap_or(name);
+            (
+                f.path.clone(),
+                name.to_owned(),
+                ((now - f.modified).max(0.0) / 86_400.0) as i32,
+                (f.size / 1024) as i32,
+            )
         })
         .collect();
+    let paths: Vec<String> = files.into_iter().map(|f| f.path).collect();
     let _ = ui.upgrade_in_event_loop(move |ui| {
+        let items: Vec<crate::FileItem> = rows
+            .into_iter()
+            .map(|(path, name, days_ago, size_kb)| crate::FileItem {
+                path: path.into(),
+                name: name.into(),
+                days_ago,
+                size_kb,
+                ..Default::default()
+            })
+            .collect();
         ui.set_files(slint::ModelRc::new(slint::VecModel::from(items)));
+    });
+
+    // Previews arrive one by one, newest first, and appear as they land.
+    let generation = thumbs.generation.fetch_add(1, Ordering::SeqCst) + 1;
+    let (client, ui, thumbs) = (client.clone(), ui.clone(), thumbs.clone());
+    tokio::spawn(async move {
+        for path in paths.into_iter().take(THUMB_PREFETCH) {
+            if thumbs.generation.load(Ordering::SeqCst) != generation {
+                return;
+            }
+            let Some(buf) = preview(&client, &thumbs, &path, None).await else {
+                continue;
+            };
+            let _ = ui.upgrade_in_event_loop(move |ui| {
+                use slint::Model;
+                let files = ui.get_files();
+                let row = (0..files.row_count())
+                    .find(|&i| files.row_data(i).is_some_and(|f| f.path == path.as_str()));
+                if let Some((i, mut item)) = row.and_then(|i| Some((i, files.row_data(i)?))) {
+                    item.thumb = slint::Image::from_rgba8(buf);
+                    item.has_thumb = true;
+                    files.set_row_data(i, item);
+                }
+            });
+        }
     });
     Ok(())
 }
@@ -301,6 +454,7 @@ async fn list_files(client: &Client, ui: &slint::Weak<AppWindow>) -> Result<(), 
 async fn file_details(
     client: &Client,
     ui: &slint::Weak<AppWindow>,
+    thumbs: &Arc<Thumbs>,
     path: &str,
 ) -> Result<(), moonraker::Error> {
     let result = client
@@ -317,17 +471,45 @@ async fn file_details(
         (Some(file), Some(printer)) => i32::from((file - printer).abs() < 0.001),
         _ => -1,
     };
-    let info = crate::FileInfo {
-        path: path.into(),
-        minutes: meta.estimated_secs.map_or(-1, |s| s.div_ceil(60) as i32),
-        filament: meta.filament_type.unwrap_or_default().into(),
-        grams: meta.filament_grams.map_or(-1, |g| g.round() as i32),
-        layers: meta.layers.map_or(-1, |l| l as i32),
-        nozzle: meta.nozzle_diameter.map_or(-1.0, |n| n as f32),
-        nozzle_check,
-    };
-    let _ = ui.upgrade_in_event_loop(move |ui| ui.set_file_info(info));
+    let image = preview(client, thumbs, path, Some(meta.clone())).await;
+    let path = path.to_owned();
+    let _ = ui.upgrade_in_event_loop(move |ui| {
+        let (thumb, has_thumb) = image_of(image);
+        ui.set_file_info(crate::FileInfo {
+            path: path.into(),
+            minutes: meta.estimated_secs.map_or(-1, |s| s.div_ceil(60) as i32),
+            filament: meta.filament_type.unwrap_or_default().into(),
+            grams: meta.filament_grams.map_or(-1, |g| g.round() as i32),
+            layers: meta.layers.map_or(-1, |l| l as i32),
+            nozzle: meta.nozzle_diameter.map_or(-1.0, |n| n as f32),
+            nozzle_check,
+            thumb,
+            has_thumb,
+        });
+    });
     Ok(())
+}
+
+/// Fetch the preview of the file now printing and show it.
+fn spawn_print_thumb(
+    client: &Client,
+    ui: &slint::Weak<AppWindow>,
+    thumbs: &Arc<Thumbs>,
+    file: &str,
+) {
+    let (client, ui, thumbs, file) = (client.clone(), ui.clone(), thumbs.clone(), file.to_owned());
+    tokio::spawn(async move {
+        let image = if file.is_empty() {
+            None
+        } else {
+            preview(&client, &thumbs, &file, None).await
+        };
+        let _ = ui.upgrade_in_event_loop(move |ui| {
+            let (img, has) = image_of(image);
+            ui.set_print_thumb(img);
+            ui.set_has_print_thumb(has);
+        });
+    });
 }
 
 fn unix_now() -> f64 {
@@ -399,6 +581,7 @@ async fn execute(
     client: &Client,
     cmd: &Command,
     ui: &slint::Weak<AppWindow>,
+    thumbs: &Arc<Thumbs>,
 ) -> Result<(), moonraker::Error> {
     if let Some(code) = gcode_for(cmd) {
         return client.gcode(&code).await;
@@ -427,8 +610,8 @@ async fn execute(
             .call("printer.print.start", json!({ "filename": file }))
             .await
             .map(drop),
-        Command::ListFiles => list_files(client, ui).await,
-        Command::FileDetails(path) => file_details(client, ui, path).await,
+        Command::ListFiles => list_files(client, ui, thumbs).await,
+        Command::FileDetails(path) => file_details(client, ui, thumbs, path).await,
         Command::DeleteFiles(paths) => {
             for path in paths {
                 client
@@ -438,7 +621,7 @@ async fn execute(
                     )
                     .await?;
             }
-            list_files(client, ui).await
+            list_files(client, ui, thumbs).await
         }
         Command::SetSpeed(_)
         | Command::SetFlow(_)

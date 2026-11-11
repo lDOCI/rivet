@@ -46,6 +46,11 @@ export component AppWindow inherits Window {
     in property <int> last-minutes;
     in property <int> last-days-ago: -1;
     in property <bool> last-completed: true;
+    in property <image> last-thumb;
+    in property <bool> has-last-thumb;
+    // Preview of the file being printed.
+    in property <image> print-thumb;
+    in property <bool> has-print-thumb;
     // "Done" screen was acknowledged; a new print resets it.
     property <bool> done-dismissed;
     changed print-state => {
@@ -162,6 +167,8 @@ export component AppWindow inherits Window {
 
         if root.screen == "home" && root.ready && root.busy: PrintingScreen {
             filename: root.filename;
+            thumb: root.print-thumb;
+            has-thumb: root.has-print-thumb;
             progress: root.progress;
             paused: root.print-state == "paused";
             remaining-minutes: root.remaining-minutes;
@@ -181,6 +188,8 @@ export component AppWindow inherits Window {
         }
         if root.screen == "home" && root.ready && !root.busy && root.print-state == "complete" && !root.done-dismissed: PrintDoneScreen {
             filename: root.filename;
+            thumb: root.print-thumb;
+            has-thumb: root.has-print-thumb;
             elapsed-minutes: root.elapsed-minutes;
             bed: root.bed-temp;
             dismiss => { root.done-dismissed = true; }
@@ -195,6 +204,8 @@ export component AppWindow inherits Window {
             last-minutes: root.last-minutes;
             last-days-ago: root.last-days-ago;
             last-completed: root.last-completed;
+            last-thumb: root.last-thumb;
+            has-last-thumb: root.has-last-thumb;
             print-again => { root.start-print(root.last-name); }
             open(target) => { root.refresh-files(); root.screen = target; }
         }

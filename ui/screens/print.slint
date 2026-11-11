@@ -3,6 +3,7 @@ import { Tokens } from "../kit/tokens.slint";
 import { Icons } from "../kit/icons.slint";
 import { Icon, ActionTile, PrimaryButton, SecondaryButton } from "../kit/controls.slint";
 import { Format } from "../kit/format.slint";
+import { Thumb } from "../kit/thumb.slint";
 
 component HeaterChip inherits Rectangle {
     in property <string> name;
@@ -33,6 +34,8 @@ component HeaterChip inherits Rectangle {
 export component PrintingScreen inherits Rectangle {
     horizontal-stretch: 1;
     in property <string> filename;
+    in property <image> thumb;
+    in property <bool> has-thumb;
     in property <float> progress;
     in property <bool> paused;
     in property <int> remaining-minutes: -1;
@@ -98,8 +101,16 @@ export component PrintingScreen inherits Rectangle {
                     height: parent.height - 52px;
                     border-radius: self.width / 2;
                     background: #161a20;
-                    // The model thumbnail replaces this with the Files screen.
-                    Icon { d: Icons.printer; size: 96px; weight: 1.2; color: Tokens.text-faint; }
+                    // The software renderer does not clip images to a circle, so
+                    // the preview is the square that fits inside it.
+                    Thumb {
+                        width: 168px;
+                        height: 168px;
+                        background: transparent;
+                        icon-size: 96px;
+                        source: root.thumb;
+                        has: root.has-thumb;
+                    }
                 }
             }
             Text {
@@ -184,6 +195,8 @@ export component PrintingScreen inherits Rectangle {
 export component PrintDoneScreen inherits Rectangle {
     horizontal-stretch: 1;
     in property <string> filename;
+    in property <image> thumb;
+    in property <bool> has-thumb;
     in property <int> elapsed-minutes;
     in property <float> bed;
     callback dismiss;
@@ -200,9 +213,12 @@ export component PrintDoneScreen inherits Rectangle {
             Rectangle {
                 width: 250px;
                 height: 250px;
-                border-radius: Tokens.r-xl;
-                background: #1a1f27;
-                Icon { d: Icons.printer; size: 120px; weight: 1.2; color: Tokens.text-faint; }
+                Thumb {
+                    border-radius: Tokens.r-xl;
+                    icon-size: 120px;
+                    source: root.thumb;
+                    has: root.has-thumb;
+                }
                 Rectangle {
                     x: parent.width - self.width - 14px;
                     y: 14px;

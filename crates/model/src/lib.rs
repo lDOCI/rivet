@@ -159,6 +159,38 @@ pub fn parse_file_list(result: &Value) -> Vec<FileEntry> {
     files
 }
 
+/// A preview image the slicer embedded; the file lives next to the G-code.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ThumbRef {
+    pub width: u32,
+    pub height: u32,
+    /// Relative to the G-code file's folder, e.g. `.thumbs/x-300x300.png`.
+    pub relative_path: String,
+}
+
+/// The smallest image at least `want` pixels wide, else the largest one.
+/// Only PNG: that is what the decoder reads.
+pub fn best_thumbnail(thumbs: &[ThumbRef], want: u32) -> Option<&ThumbRef> {
+    let png = || {
+        thumbs
+            .iter()
+            .filter(|t| t.relative_path.to_ascii_lowercase().ends_with(".png"))
+    };
+    png()
+        .filter(|t| t.width >= want)
+        .min_by_key(|t| t.width)
+        .or_else(|| png().max_by_key(|t| t.width))
+}
+
+/// Path under the server's file root for a thumbnail of `file`, both
+/// relative to `gcodes`.
+pub fn thumbnail_path(file: &str, relative: &str) -> String {
+    match file.rsplit_once('/') {
+        Some((dir, _)) => format!("{dir}/{relative}"),
+        None => relative.to_owned(),
+    }
+}
+
 /// What the slicer wrote into a file, from `server.files.metadata`. Every
 /// field is optional: slicers differ and some files carry none of it.
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -168,6 +200,7 @@ pub struct FileMeta {
     pub filament_grams: Option<f64>,
     pub layers: Option<u32>,
     pub nozzle_diameter: Option<f64>,
+    pub thumbnails: Vec<ThumbRef>,
 }
 
 pub fn parse_file_meta(result: &Value) -> FileMeta {
@@ -182,6 +215,20 @@ pub fn parse_file_meta(result: &Value) -> FileMeta {
         filament_grams: num("filament_weight_total"),
         layers: num("layer_count").map(|v| v as u32),
         nozzle_diameter: num("nozzle_diameter"),
+        thumbnails: result
+            .get("thumbnails")
+            .and_then(Value::as_array)
+            .map(Vec::as_slice)
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|t| {
+                Some(ThumbRef {
+                    width: t.get("width")?.as_u64()? as u32,
+                    height: t.get("height")?.as_u64()? as u32,
+                    relative_path: t.get("relative_path")?.as_str()?.to_owned(),
+                })
+            })
+            .collect(),
     }
 }
 
@@ -501,6 +548,34 @@ mod tests {
         assert_eq!(
             parse_file_meta(&json!({ "filament_type": "", "estimated_time": 0 })),
             FileMeta::default()
+        );
+    }
+
+    #[test]
+    fn thumbnails_from_metadata_and_choice() {
+        let meta = parse_file_meta(&json!({ "thumbnails": [
+            { "width": 32, "height": 32, "size": 1, "relative_path": ".thumbs/x-32x32.png" },
+            { "width": 300, "height": 300, "size": 2, "relative_path": ".thumbs/x-300x300.png" },
+            { "width": 600, "height": 600, "size": 3, "relative_path": ".thumbs/x-600.jpg" },
+            { "width": 220, "height": 124, "size": 4, "relative_path": ".thumbs/x-220x124.png" },
+        ]}));
+        assert_eq!(meta.thumbnails.len(), 4);
+        // 200 wanted: the smallest PNG that is wide enough, not the jpg.
+        assert_eq!(best_thumbnail(&meta.thumbnails, 200).unwrap().width, 220);
+        // Nothing wide enough: the largest PNG.
+        assert_eq!(best_thumbnail(&meta.thumbnails, 900).unwrap().width, 300);
+        assert!(best_thumbnail(&[], 200).is_none());
+    }
+
+    #[test]
+    fn thumbnail_lives_next_to_the_file() {
+        assert_eq!(
+            thumbnail_path("a.gcode", ".thumbs/a-300x300.png"),
+            ".thumbs/a-300x300.png"
+        );
+        assert_eq!(
+            thumbnail_path("sub/dir/a.gcode", ".thumbs/a-300x300.png"),
+            "sub/dir/.thumbs/a-300x300.png"
         );
     }
 
