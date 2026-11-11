@@ -26,6 +26,9 @@ const ALL: &[&str] = &[
     "fans",
     "tune",
     "more",
+    "files",
+    "files-empty",
+    "file",
     "dialog",
     "keypad",
     "toast",
@@ -118,6 +121,48 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_screen("more".into());
             ui.set_has_light(true);
             ui.set_light_on(true);
+        }
+        "files" | "files-empty" | "file" => {
+            let names = [
+                ("fan_duct_2", 1, 4410),
+                ("benchy", 3, 2250),
+                ("spool_holder_v3", 8, 12800),
+                ("electronics_cover", 12, 980),
+                ("calibration_cube", 30, 310),
+                ("screwdriver_organizer", 31, 8800),
+                ("vase_spiral", 40, 1500),
+            ];
+            let items: Vec<rivet::FileItem> = if name == "files-empty" {
+                Vec::new()
+            } else {
+                names
+                    .iter()
+                    .map(|(n, d, kb)| rivet::FileItem {
+                        path: format!("{n}.gcode").as_str().into(),
+                        name: (*n).into(),
+                        days_ago: *d,
+                        size_kb: *kb,
+                        selected: false,
+                    })
+                    .collect()
+            };
+            ui.set_files(slint::ModelRc::new(slint::VecModel::from(items)));
+            if name == "file" {
+                ui.set_screen("file".into());
+                ui.set_open_path("fan_duct_2.gcode".into());
+                ui.set_open_name("fan_duct_2.gcode".into());
+                ui.set_file_info(rivet::FileInfo {
+                    path: "fan_duct_2.gcode".into(),
+                    minutes: 83,
+                    filament: "PETG".into(),
+                    grams: 18,
+                    layers: 180,
+                    nozzle: 0.4,
+                    nozzle_check: 1,
+                });
+            } else {
+                ui.set_screen("files".into());
+            }
         }
         "home-empty" => {}
         "paused" => print("paused", 0.42),

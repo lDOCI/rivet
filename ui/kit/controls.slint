@@ -190,3 +190,20 @@ export component ActionTile inherits Rectangle {
     }
     ta := TouchArea { clicked => { root.clicked(); } }
 }
+
+// Square icon button in a header (select, filter, more).
+export component IconButton inherits Rectangle {
+    in property <string> icon;
+    in property <string> label;
+    in property <bool> filled;
+    callback clicked;
+    width: Tokens.touch;
+    height: Tokens.touch;
+    border-radius: Tokens.r-m;
+    background: ta.pressed ? Tokens.surface-2 : Tokens.surface-1;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-action-default => { root.clicked(); }
+    Icon { d: root.icon; size: 24px; filled: root.filled; }
+    ta := TouchArea { clicked => { root.clicked(); } }
+}
