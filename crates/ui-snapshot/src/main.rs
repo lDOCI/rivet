@@ -63,6 +63,7 @@ const ALL: &[&str] = &[
     "runout",
     "prompt",
     "exclude",
+    "messages",
     "keypad",
     "toast",
 ];
@@ -537,6 +538,34 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_filename("Корпус вентилятора №2.gcode".into());
             ui.set_progress(0.42);
             ui.set_overlay("cancel-print".into());
+        }
+        "messages" => {
+            ui.set_screen("messages".into());
+            let m = |kind: &str, title: &str, sub: &str, days: i32, clock: &str, unread: bool| {
+                rivet::MessageRow {
+                    kind: kind.into(),
+                    title: title.into(),
+                    sub: sub.into(),
+                    days,
+                    clock: clock.into(),
+                    unread,
+                }
+            };
+            let rows = vec![
+                m("done", "Корпус вентилятора №2", "", 0, "14:02", true),
+                m(
+                    "klipper",
+                    "",
+                    "Option 'max_accel_to_decel' in section 'printer' is deprecated",
+                    -1,
+                    "",
+                    false,
+                ),
+                m("stopped", "Benchy", "", 1, "", false),
+                m("save", "", "", -1, "", false),
+            ];
+            ui.set_messages(slint::ModelRc::new(slint::VecModel::from(rows)));
+            ui.set_unread(true);
         }
         "exclude" => {
             print("printing", 0.42);

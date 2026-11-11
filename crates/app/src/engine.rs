@@ -212,6 +212,9 @@ pub enum Command {
         from: String,
         to: String,
     },
+    /// Read the messages again; mark all of them read.
+    ListMessages,
+    ReadMessages,
     /// Moonraker's print queue: read it, add files, start (true) or pause it, empty it.
     ListQueue,
     QueueAdd(Vec<String>),
@@ -469,6 +472,7 @@ pub async fn run(
                     last_pushed = Some(snap);
                     if ready && changed {
                         refresh_history(&client, &ui, &thumbs).await;
+                        list_messages(&client, &ui).await;
                     }
                 }
             }
@@ -569,6 +573,97 @@ fn push_console(ui: &slint::Weak<AppWindow>, lines: &[(String, model::LineKind)]
             .collect();
         ui.set_console_lines(slint::ModelRc::new(slint::VecModel::from(items)));
     });
+}
+
+/// Messages: finished prints, what Klipper and Moonraker warn about, Moonraker's
+/// news. Read up to the time saved in Rivet's database (`messages_read`).
+async fn list_messages(client: &Client, ui: &slint::Weak<AppWindow>) {
+    let call = |method: &'static str, params: Value| async move {
+        client
+            .call_timeout(method, params, SETUP_TIMEOUT)
+            .await
+            .unwrap_or(Value::Null)
+    };
+    let jobs = call(
+        "server.history.list",
+        json!({ "limit": 10, "order": "desc" }),
+    )
+    .await;
+    let config = call(
+        "printer.objects.query",
+        json!({ "objects": { "configfile": ["save_config_pending", "warnings"] } }),
+    )
+    .await;
+    let info = call("server.info", json!({})).await;
+    let news = call(
+        "server.announcements.list",
+        json!({ "include_dismissed": false }),
+    )
+    .await;
+    let read = call(
+        "server.database.get_item",
+        json!({ "namespace": DB_NAMESPACE, "key": "messages_read" }),
+    )
+    .await["value"]
+        .as_f64()
+        .unwrap_or(0.0);
+    let mut messages = model::standing_messages(&config["status"]["configfile"], &info);
+    let mut dated = model::job_messages(&jobs);
+    dated.extend(model::news_messages(&news));
+    dated.sort_by(|a, b| b.time.total_cmp(&a.time));
+    messages.extend(dated);
+    let now = unix_now();
+    let rows: Vec<(model::Message, i32, String, bool)> = messages
+        .into_iter()
+        .map(|m| {
+            let days = if m.time > 0.0 {
+                days_between(m.time, now)
+            } else {
+                -1
+            };
+            let clock = if days == 0 {
+                local_clock(m.time).unwrap_or_default()
+            } else {
+                String::new()
+            };
+            let unread = m.time > read;
+            (m, days, clock, unread)
+        })
+        .collect();
+    let _ = ui.upgrade_in_event_loop(move |ui| {
+        let unread = rows.iter().any(|r| r.3);
+        let items: Vec<crate::MessageRow> = rows
+            .into_iter()
+            .map(|(m, days, clock, unread)| crate::MessageRow {
+                kind: m.kind.into(),
+                title: crate::files::title(&m.title).into(),
+                sub: m.sub.into(),
+                days,
+                clock: clock.into(),
+                unread,
+            })
+            .collect();
+        ui.set_messages(slint::ModelRc::new(slint::VecModel::from(items)));
+        ui.set_unread(unread);
+    });
+}
+
+/// Calendar days from `then` to `now` in local time (UTC without a timezone).
+#[allow(deprecated)]
+fn days_between(then: f64, now: f64) -> i32 {
+    // Local day number: seconds shifted by the zone's offset, in whole days.
+    let day = |t: f64| {
+        let secs = t as libc::time_t;
+        // SAFETY: localtime_r only writes into the struct we pass.
+        let mut tm: libc::tm = unsafe { std::mem::zeroed() };
+        let offset = if unsafe { libc::localtime_r(&secs, &mut tm).is_null() } {
+            0
+        } else {
+            tm.tm_gmtoff as i64
+        };
+        (t as i64 + offset).div_euclid(86_400)
+    };
+    (day(now) - day(then)).max(0) as i32
 }
 
 /// Newest job in history, for «print again» on Home. A printer without
@@ -1597,6 +1692,20 @@ async fn execute(
                 .await?;
             let usb = from.to_ascii_lowercase().starts_with("usb/");
             list_files(client, ui, thumbs, usb).await
+        }
+        Command::ListMessages => {
+            list_messages(client, ui).await;
+            Ok(())
+        }
+        Command::ReadMessages => {
+            client
+                .call(
+                    "server.database.post_item",
+                    json!({ "namespace": DB_NAMESPACE, "key": "messages_read", "value": unix_now() }),
+                )
+                .await?;
+            list_messages(client, ui).await;
+            Ok(())
         }
         Command::ListQueue => {
             list_queue(client, ui).await;

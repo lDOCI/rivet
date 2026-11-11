@@ -758,6 +758,111 @@ pub fn parse_file_meta(result: &Value) -> FileMeta {
     }
 }
 
+/// A message for the Messages screen. `time` 0: a standing condition (no date).
+#[derive(Debug, Clone, PartialEq)]
+pub struct Message {
+    /// "done", "stopped", "failed", "save", "klipper", "moonraker", "news"
+    pub kind: String,
+    /// Words from the source (file name, warning text, announcement); the
+    /// screen adds its own title for the kinds it knows.
+    pub title: String,
+    pub sub: String,
+    pub time: f64,
+}
+
+/// Finished jobs from `server.history.list` (newest first) as messages.
+pub fn job_messages(result: &Value) -> Vec<Message> {
+    result
+        .get("jobs")
+        .and_then(Value::as_array)
+        .map(Vec::as_slice)
+        .unwrap_or_default()
+        .iter()
+        .filter_map(|job| {
+            let kind = match job.get("status")?.as_str()? {
+                "completed" => "done",
+                "cancelled" => "stopped",
+                "in_progress" => return None,
+                _ => "failed",
+            };
+            let file = job.get("filename")?.as_str()?;
+            Some(Message {
+                kind: kind.to_owned(),
+                title: file.to_owned(),
+                sub: String::new(),
+                time: job.get("end_time").and_then(Value::as_f64).unwrap_or(0.0),
+            })
+        })
+        .collect()
+}
+
+/// Standing conditions from Klipper's `configfile` and Moonraker's `server.info`.
+pub fn standing_messages(configfile: &Value, server_info: &Value) -> Vec<Message> {
+    let mut out = Vec::new();
+    if configfile["save_config_pending"].as_bool() == Some(true) {
+        out.push(Message {
+            kind: "save".into(),
+            title: String::new(),
+            sub: String::new(),
+            time: 0.0,
+        });
+    }
+    let text = |v: &Value| {
+        v.get("message")
+            .and_then(Value::as_str)
+            .or_else(|| v.as_str())
+            .map(str::to_owned)
+    };
+    for w in configfile["warnings"]
+        .as_array()
+        .map(Vec::as_slice)
+        .unwrap_or_default()
+    {
+        if let Some(m) = text(w) {
+            out.push(Message {
+                kind: "klipper".into(),
+                title: String::new(),
+                sub: m,
+                time: 0.0,
+            });
+        }
+    }
+    for w in server_info["warnings"]
+        .as_array()
+        .map(Vec::as_slice)
+        .unwrap_or_default()
+    {
+        if let Some(m) = text(w) {
+            out.push(Message {
+                kind: "moonraker".into(),
+                title: String::new(),
+                sub: m,
+                time: 0.0,
+            });
+        }
+    }
+    out
+}
+
+/// Moonraker announcements not dismissed (`server.announcements.list`).
+pub fn news_messages(result: &Value) -> Vec<Message> {
+    result["entries"]
+        .as_array()
+        .map(Vec::as_slice)
+        .unwrap_or_default()
+        .iter()
+        .filter(|e| e["dismissed"].as_bool() != Some(true))
+        .filter_map(|e| {
+            Some(Message {
+                kind: "news".into(),
+                title: e["title"].as_str()?.to_owned(),
+                sub: e["description"].as_str().unwrap_or_default().to_owned(),
+                time: e["date"].as_f64().unwrap_or(0.0),
+            })
+        })
+        .collect()
+}
+
 /// Last finished job from `server.history.list`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LastPrint {
@@ -1219,6 +1324,30 @@ mod tests {
         assert_eq!(error_kind("Something else"), "");
         assert_eq!(error_kind("Shutdown due to webhooks request"), "estop");
         assert_eq!(error_kind("Shutdown due to M112 command"), "estop");
+    }
+
+    #[test]
+    fn messages_from_sources() {
+        let jobs = job_messages(&serde_json::json!({ "jobs": [
+            { "filename": "a.gcode", "status": "completed", "end_time": 10.0 },
+            { "filename": "b.gcode", "status": "cancelled", "end_time": 5.0 },
+            { "filename": "c.gcode", "status": "klippy_shutdown", "end_time": 1.0 },
+            { "filename": "d.gcode", "status": "in_progress" }
+        ]}));
+        let kinds: Vec<&str> = jobs.iter().map(|m| m.kind.as_str()).collect();
+        assert_eq!(kinds, ["done", "stopped", "failed"]);
+        let standing = standing_messages(
+            &serde_json::json!({ "save_config_pending": true, "warnings": [{ "type": "deprecated_option", "message": "Option 'x' is deprecated" }] }),
+            &serde_json::json!({ "warnings": ["Moonraker is old"] }),
+        );
+        let kinds: Vec<&str> = standing.iter().map(|m| m.kind.as_str()).collect();
+        assert_eq!(kinds, ["save", "klipper", "moonraker"]);
+        assert_eq!(standing[1].sub, "Option 'x' is deprecated");
+        let news = news_messages(&serde_json::json!({ "entries": [
+            { "title": "New", "description": "d", "date": 3.0, "dismissed": false },
+            { "title": "Old", "description": "d", "date": 2.0, "dismissed": true }
+        ]}));
+        assert_eq!(news.len(), 1);
     }
 
     #[test]

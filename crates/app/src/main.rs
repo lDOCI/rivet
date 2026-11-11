@@ -459,6 +459,8 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
     }
     ui.on_queue_clear(send(Command::QueueClear));
     ui.on_refresh_queue(send(Command::ListQueue));
+    ui.on_refresh_messages(send(Command::ListMessages));
+    ui.on_read_messages(send(Command::ReadMessages));
     {
         let weak = ui.as_weak();
         ui.on_select_all(move |on| {

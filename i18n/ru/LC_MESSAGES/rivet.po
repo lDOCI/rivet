@@ -1161,3 +1161,45 @@ msgstr "Пропустить «{}»?"
 
 msgid "The printer stops printing this part until the end. It cannot be brought back."
 msgstr "Принтер больше не будет печатать эту деталь. Вернуть её нельзя."
+
+msgid "Print finished"
+msgstr "Печать завершена"
+
+msgid "Print stopped by hand"
+msgstr "Печать остановлена вручную"
+
+msgid "Print cut short by an error"
+msgstr "Печать прервана ошибкой"
+
+msgid "Klipper: the config needs saving"
+msgstr "Klipper: нужно сохранить конфиг"
+
+msgid "Klipper warns"
+msgstr "Предупреждение Klipper"
+
+msgid "Moonraker warns"
+msgstr "Предупреждение Moonraker"
+
+msgid "after a calibration · tap to save, Klipper restarts"
+msgstr "после калибровки · коснитесь, чтобы сохранить; Klipper перезапустится"
+
+msgid "Mark all read"
+msgstr "Прочитать все"
+
+msgid "No messages"
+msgstr "Сообщений нет"
+
+msgid "Finished prints and warnings from the printer show up here."
+msgstr "Здесь появятся завершённые печати и предупреждения принтера."
+
+msgid "Save the config?"
+msgstr "Сохранить конфиг?"
+
+msgid "Klipper restarts to save it: save once the print is over."
+msgstr "Для сохранения Klipper перезапустится — сохраните после печати."
+
+msgid "Klipper restarts to save it: about 10 seconds."
+msgstr "Для сохранения Klipper перезапустится, это около 10 секунд."
+
+msgid "OK"
+msgstr "Понятно"

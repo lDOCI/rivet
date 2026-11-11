@@ -26,6 +26,8 @@ import { MotionScreen } from "screens/motion.slint";
 import { ToolsScreen, ConsoleScreen, MacrosScreen, ConsoleLine } from "screens/tools.slint";
 import { FilesScreen, FileScreen, FileItem, FileInfo, FindScreen, RenameScreen, MoveScreen } from "screens/files.slint";
 export { FileItem, FileInfo, ConsoleLine, FanRow }
+import { MessagesScreen, MessageRow } from "screens/messages.slint";
+export { MessageRow }
 import { PrintingScreen, PrintDoneScreen, AmbientScreen, RunoutScreen, ExcludeScreen, PlateObject } from "screens/print.slint";
 export { PlateObject }
 
@@ -348,6 +350,12 @@ export component AppWindow inherits Window {
     in-out property <string> skip-title;
     in-out property <string> exclude-picked;
 
+    // Messages and whether any is new (the dot on the rail).
+    in property <[MessageRow]> messages;
+    in property <bool> unread;
+    callback refresh-messages();
+    callback read-messages();
+
     // A macro's prompt (action:prompt), shown over everything.
     in property <bool> prompt-shown;
     in property <string> prompt-title;
@@ -363,7 +371,11 @@ export component AppWindow inherits Window {
                 : (root.screen == "control" || root.screen == "tools" || root.screen == "settings" || root.screen == "messages") ? root.screen
                 : (root.screen == "console" || root.screen == "macros") ? "tools"
                 : "home";
-            navigate(section) => { root.screen = section; }
+            unread: root.unread;
+            navigate(section) => {
+                if (section == "messages") { root.refresh-messages(); }
+                root.screen = section;
+            }
             emergency-stop => { root.emergency-stop(); }
         }
 
@@ -591,6 +603,12 @@ export component AppWindow inherits Window {
             back => { root.screen = "control"; }
             set-fan(object, v) => { root.set-fan(object, v); }
             set-air(mode) => { root.set-air(mode); }
+        }
+        if root.ready && root.screen == "messages": MessagesScreen {
+            messages: root.messages;
+            unread: root.unread;
+            read-all => { root.read-messages(); }
+            save-config => { root.overlay = "save-config"; }
         }
         if root.ready && root.screen == "exclude": ExcludeScreen {
             objects: root.plate-objects;
@@ -891,6 +909,14 @@ export component AppWindow inherits Window {
         confirm-text: @tr("Clear");
         danger: true;
         confirmed => { root.overlay = ""; root.queue-clear(); }
+        cancelled => { root.overlay = ""; }
+    }
+    if root.overlay == "save-config": Dialog {
+        title: @tr("Save the config?");
+        // Saving restarts Klipper: never during a print.
+        message: root.busy ? @tr("Klipper restarts to save it: save once the print is over.") : @tr("Klipper restarts to save it: about 10 seconds.");
+        confirm-text: root.busy ? @tr("OK") : @tr("Save");
+        confirmed => { root.overlay = ""; if (!root.busy) { root.run-gcode("SAVE_CONFIG"); } }
         cancelled => { root.overlay = ""; }
     }
     if root.overlay == "skip-object": Dialog {

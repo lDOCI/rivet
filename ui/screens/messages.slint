@@ -1,0 +1,133 @@
+// What happened and what needs a look: finished prints, Klipper and Moonraker
+// warnings, Moonraker's news. The prototype's Messages page.
+import { Tokens } from "../kit/tokens.slint";
+import { Icon, Header } from "../kit/controls.slint";
+import { Format } from "../kit/format.slint";
+import { ScrollList } from "../kit/scroll.slint";
+
+export struct MessageRow {
+    // "done", "stopped", "failed", "save", "klipper", "moonraker", "news"
+    kind: string,
+    // File name (prints), the announcement's title (news); else empty.
+    title: string,
+    sub: string,
+    // Days ago (-1: a standing condition); today's clock when the timezone is set.
+    days: int,
+    clock: string,
+    unread: bool,
+}
+
+component MessageItem inherits Rectangle {
+    in property <MessageRow> m;
+    callback clicked;
+    property <bool> job: m.kind == "done" || m.kind == "stopped" || m.kind == "failed";
+    property <bool> warn: m.kind == "klipper" || m.kind == "moonraker";
+    property <color> tint: m.kind == "done" ? Tokens.accent
+        : m.kind == "failed" ? Tokens.danger
+        : root.warn ? Tokens.warn
+        : #60a5fa;
+    min-height: 85px;
+    border-radius: 22px;
+    background: ta.pressed && m.kind == "save" ? Tokens.surface-2 : Tokens.surface-1;
+    HorizontalLayout {
+        padding-left: 18px;
+        padding-right: 18px;
+        padding-top: 14px;
+        padding-bottom: 14px;
+        spacing: 16px;
+        VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: 48px;
+                height: 48px;
+                border-radius: 16px;
+                background: root.tint.with-alpha(0.13);
+                if m.kind == "done": Icon { d: "M5 12.5l4.5 4.5L19 7"; size: 26px; weight: 2.4; color: root.tint; }
+                if m.kind == "stopped": Rectangle { width: 12px; height: 12px; border-radius: 3px; border-width: 2px; border-color: root.tint; }
+                if m.kind == "failed" || root.warn: Text { text: "!"; color: root.tint; font-size: 20px; font-weight: 800; horizontal-alignment: center; vertical-alignment: center; }
+                if m.kind == "save": Icon { d: "M12 19V5 M6 11 l6-6 6 6"; size: 24px; weight: 2.2; color: root.tint; }
+                if m.kind == "news": Icon { d: "M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18 M12 11v6 M12 7.5v.5"; size: 24px; weight: 2; color: root.tint; }
+            }
+        }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            alignment: center;
+            spacing: 3px;
+            Text {
+                text: m.kind == "done" ? @tr("Print finished")
+                    : m.kind == "stopped" ? @tr("Print stopped by hand")
+                    : m.kind == "failed" ? @tr("Print cut short by an error")
+                    : m.kind == "save" ? @tr("Klipper: the config needs saving")
+                    : m.kind == "klipper" ? @tr("Klipper warns")
+                    : m.kind == "moonraker" ? @tr("Moonraker warns")
+                    : m.title;
+                color: Tokens.text;
+                font-size: 18px;
+                font-weight: 700;
+                overflow: elide;
+            }
+            Text {
+                text: root.job ? m.title
+                    : m.kind == "save" ? @tr("after a calibration · tap to save, Klipper restarts")
+                    : m.sub;
+                color: Tokens.text-dim;
+                font-size: 14px;
+                wrap: word-wrap;
+                max-height: 40px;
+                overflow: elide;
+            }
+        }
+        if m.days >= 0: Text {
+            text: m.clock != "" ? m.clock : Format.age(m.days);
+            color: Tokens.text-faint;
+            font-size: 14px;
+            vertical-alignment: center;
+        }
+        VerticalLayout {
+            alignment: center;
+            width: 10px;
+            if m.unread: Rectangle { width: 10px; height: 10px; border-radius: 5px; background: Tokens.accent; }
+        }
+    }
+    ta := TouchArea { clicked => { root.clicked(); } }
+}
+
+export component MessagesScreen inherits VerticalLayout {
+    horizontal-stretch: 1;
+    in property <[MessageRow]> messages;
+    in property <bool> unread;
+    callback read-all;
+    callback save-config;
+    padding: Tokens.pad;
+    padding-bottom: 0;
+    spacing: 12px;
+    Header {
+        title: @tr("Messages");
+        back: false;
+        if root.unread: Rectangle {
+            width: 150px;
+            height: Tokens.touch;
+            border-radius: 20px;
+            background: read-ta.pressed ? Tokens.surface-2 : Tokens.surface-1;
+            accessible-role: button;
+            accessible-label: @tr("Mark all read");
+            accessible-action-default => { root.read-all(); }
+            Text { text: @tr("Mark all read"); color: #c7cdd4; font-size: 15px; font-weight: 600; horizontal-alignment: center; vertical-alignment: center; }
+            read-ta := TouchArea { clicked => { root.read-all(); } }
+        }
+    }
+    if root.messages.length == 0: VerticalLayout {
+        vertical-stretch: 1;
+        alignment: center;
+        spacing: 8px;
+        Text { text: @tr("No messages"); color: Tokens.text; font-size: Tokens.title; font-weight: 800; horizontal-alignment: center; }
+        Text { text: @tr("Finished prints and warnings from the printer show up here."); color: Tokens.text-dim; font-size: Tokens.body; horizontal-alignment: center; }
+    }
+    if root.messages.length > 0: ScrollList {
+        vertical-stretch: 1;
+        for m in root.messages: MessageItem {
+            m: m;
+            clicked => { if (m.kind == "save") { root.save-config(); } }
+        }
+    }
+}
