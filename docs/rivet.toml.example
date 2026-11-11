@@ -1,0 +1,8 @@
+# Copy to /data/printer_data/config/rivet.toml (KlipperMod) or next to the binary.
+# Command line (--lang, --moonraker) and environment (RIVET_LANG, RIVET_MOONRAKER) win over this file.
+
+# Interface language: "en" or "ru". Without it Rivet follows the system LANG, then English.
+language = "ru"
+
+# Moonraker websocket. The default is the printer itself.
+# moonraker = "ws://127.0.0.1:7125/websocket"
