@@ -103,8 +103,9 @@ struct FbPlatform {
 /// Open the framebuffer and touch device and install the platform.
 /// Call before creating any Slint component.
 pub fn init(config: Config) -> anyhow::Result<()> {
-    let framebuffer = Framebuffer::open(&config.framebuffer)
+    let mut framebuffer = Framebuffer::open(&config.framebuffer)
         .with_context(|| format!("open framebuffer {}", config.framebuffer.display()))?;
+    framebuffer.set_full_copy(config.rotation != Rotation::Deg0);
 
     let (ui_w, ui_h) = if config.rotation.is_transposed() {
         (framebuffer.height, framebuffer.width)

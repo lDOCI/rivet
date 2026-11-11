@@ -60,6 +60,10 @@ case "$cmd" in
     stop_rivet
     echo "stopping Guppy ($guppy)"
     run "$guppy stop" || true
+    # The init script kills by pid file; make sure no Guppy process still owns the screen.
+    # (pidof, not ps|grep: the grep would match this very command line)
+    run "sleep 1; killall guppyscreen 2>/dev/null; sleep 1; if pidof guppyscreen >/dev/null; then echo 'Guppy still running' >&2; exit 1; fi" \
+      || { echo "could not stop Guppy, not starting Rivet" >&2; exit 1; }
     echo "starting Rivet"
     # shellcheck disable=SC2029
     run "nohup $remote_bin ${RIVET_ARGS:-} >$logfile 2>&1 </dev/null & echo \$! >$pidfile"
@@ -76,7 +80,7 @@ case "$cmd" in
     ;;
   status)
     run "if [ -f $pidfile ] && kill -0 \$(cat $pidfile) 2>/dev/null; then echo 'Rivet: running (pid '\$(cat $pidfile)')'; else echo 'Rivet: not running'; fi"
-    run "ps | grep -i '[g]uppy' || echo 'Guppy: not running'"
+    run "ps | grep '[g]uppyscreen' || echo 'Guppy: not running'"
     ;;
   log)
     run "tail -n 100 $logfile"
