@@ -26,7 +26,8 @@ import { MotionScreen } from "screens/motion.slint";
 import { ToolsScreen, ConsoleScreen, MacrosScreen, ConsoleLine } from "screens/tools.slint";
 import { FilesScreen, FileScreen, FileItem, FileInfo, FindScreen, RenameScreen, MoveScreen } from "screens/files.slint";
 export { FileItem, FileInfo, ConsoleLine, FanRow }
-import { PrintingScreen, PrintDoneScreen, AmbientScreen, RunoutScreen } from "screens/print.slint";
+import { PrintingScreen, PrintDoneScreen, AmbientScreen, RunoutScreen, ExcludeScreen, PlateObject } from "screens/print.slint";
+export { PlateObject }
 
 // Embedded into the binary (see build.rs): the printer has no system fonts.
 import "../assets/fonts/Inter-Regular.ttf";
@@ -341,6 +342,12 @@ export component AppWindow inherits Window {
     in-out property <bool> runout;
     changed filament-out => { if (root.filament-out && root.print-state == "paused") { root.runout = true; } }
 
+    // Labelled objects of the print (exclude_object); the one to skip, asked.
+    in property <[PlateObject]> plate-objects;
+    in-out property <string> skip-name;
+    in-out property <string> skip-title;
+    in-out property <string> exclude-picked;
+
     // A macro's prompt (action:prompt), shown over everything.
     in property <bool> prompt-shown;
     in property <string> prompt-title;
@@ -585,8 +592,16 @@ export component AppWindow inherits Window {
             set-fan(object, v) => { root.set-fan(object, v); }
             set-air(mode) => { root.set-air(mode); }
         }
+        if root.ready && root.screen == "exclude": ExcludeScreen {
+            objects: root.plate-objects;
+            picked <=> root.exclude-picked;
+            back => { root.exclude-picked = ""; root.screen = "more"; }
+            skip(name, title) => { root.skip-name = name; root.skip-title = title; root.overlay = "skip-object"; }
+        }
         if root.ready && root.screen == "more": MoreForm {
             layer-pause-shown: root.has-pause-layer;
+            exclude-shown: root.plate-objects.length > 1;
+            exclude-sub: @tr("{n} part" | "{n} parts" % root.plate-objects.length);
             layer-pause-sub: root.pause-next ? @tr("At the next layer")
                 : root.pause-at-layer > 0 ? @tr("pause at layer {}", root.pause-at-layer)
                 : @tr("next or chosen");
@@ -603,6 +618,7 @@ export component AppWindow inherits Window {
                     root.pause-layer-pick = root.pause-at-layer > root.layer ? root.pause-at-layer : root.layer + 1;
                     root.screen = "layer-pause";
                 }
+                if (key == "exclude") { root.screen = "exclude"; }
             }
             toggled(key, on) => {
                 if (key == "light") { root.set-light-level(on ? 100 : 0); }
@@ -875,6 +891,18 @@ export component AppWindow inherits Window {
         confirm-text: @tr("Clear");
         danger: true;
         confirmed => { root.overlay = ""; root.queue-clear(); }
+        cancelled => { root.overlay = ""; }
+    }
+    if root.overlay == "skip-object": Dialog {
+        title: @tr("Skip “{}”?", root.skip-title);
+        message: @tr("The printer stops printing this part until the end. It cannot be brought back.");
+        confirm-text: @tr("Skip");
+        danger: true;
+        confirmed => {
+            root.overlay = "";
+            root.exclude-picked = "";
+            root.run-gcode("EXCLUDE_OBJECT NAME=" + root.skip-name);
+        }
         cancelled => { root.overlay = ""; }
     }
     if root.overlay == "delete-file": Dialog {

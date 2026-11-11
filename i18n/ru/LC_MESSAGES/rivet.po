@@ -1134,3 +1134,30 @@ msgstr "ИЗ МАКРОСА"
 
 msgid "Close"
 msgstr "Закрыть"
+
+msgid "{n} part"
+msgid_plural "{n} parts"
+msgstr[0] "{n} деталь"
+msgstr[1] "{n} детали"
+msgstr[2] "{n} деталей"
+
+msgid "The bed from above"
+msgstr "Стол, вид сверху"
+
+msgid "Skip objects"
+msgstr "Пропуск объектов"
+
+msgid "Tap the part on the bed that came loose or went wrong."
+msgstr "Коснитесь детали на столе, которая отклеилась или испортилась."
+
+msgid "Outlined: already skipped. A white edge: printing now."
+msgstr "Контуром — уже пропущенные, белая рамка — печатается сейчас."
+
+msgid "Skip"
+msgstr "Пропустить"
+
+msgid "Skip “{}”?"
+msgstr "Пропустить «{}»?"
+
+msgid "The printer stops printing this part until the end. It cannot be brought back."
+msgstr "Принтер больше не будет печатать эту деталь. Вернуть её нельзя."

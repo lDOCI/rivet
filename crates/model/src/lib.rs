@@ -275,6 +275,44 @@ pub struct Snapshot {
     pub can_extrude: bool,
     /// A switched-on runout sensor sees no filament.
     pub filament_out: bool,
+    /// Objects of the print (`exclude_object`), when the slicer labelled them.
+    pub objects: Vec<PrintObject>,
+}
+
+/// One labelled object of the print, by its outline's bounding box (mm).
+#[derive(Debug, Clone, PartialEq)]
+pub struct PrintObject {
+    pub name: String,
+    pub min: [f64; 2],
+    pub max: [f64; 2],
+    pub excluded: bool,
+    pub current: bool,
+}
+
+/// An object name as a person reads it: slicers add `.stl`, `_id_0_copy_1`
+/// and the like ("CASE.STL_ID_0_COPY_0" → "CASE"; second copies keep "2").
+pub fn object_title(name: &str) -> String {
+    let lower = name.to_ascii_lowercase();
+    let mut title = name.to_owned();
+    if let Some(i) = lower
+        .find(".stl")
+        .or_else(|| lower.find(".step"))
+        .or_else(|| lower.find(".3mf"))
+        .or_else(|| lower.find(".obj"))
+    {
+        title.truncate(i);
+    } else if let Some(i) = lower.find("_id_") {
+        title.truncate(i);
+    }
+    let copy = lower
+        .rsplit_once("copy_")
+        .and_then(|(_, n)| n.parse::<u32>().ok())
+        .filter(|n| *n > 0);
+    let title = title.replace('_', " ").trim().to_owned();
+    match copy {
+        Some(n) => format!("{title} {}", n + 1),
+        None => title,
+    }
 }
 
 /// Whether a person can set the fan.
@@ -936,6 +974,50 @@ impl PrinterState {
         })
     }
 
+    fn print_objects(&self) -> Vec<PrintObject> {
+        let names = |field: &str| -> Vec<&str> {
+            self.field("exclude_object", field)
+                .and_then(Value::as_array)
+                .map(|a| a.iter().filter_map(Value::as_str).collect())
+                .unwrap_or_default()
+        };
+        let excluded = names("excluded_objects");
+        let current = self.str("exclude_object", "current_object");
+        self.field("exclude_object", "objects")
+            .and_then(Value::as_array)
+            .map(Vec::as_slice)
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|o| {
+                let name = o.get("name")?.as_str()?;
+                let point = |p: &Value| Some([p.get(0)?.as_f64()?, p.get(1)?.as_f64()?]);
+                let mut points: Vec<[f64; 2]> = o
+                    .get("polygon")
+                    .and_then(Value::as_array)
+                    .map(|ps| ps.iter().filter_map(point).collect())
+                    .unwrap_or_default();
+                // No outline: a small square around the centre.
+                if points.is_empty() {
+                    let [x, y] = point(o.get("center")?)?;
+                    points = vec![[x - 5.0, y - 5.0], [x + 5.0, y + 5.0]];
+                }
+                let min = points
+                    .iter()
+                    .fold([f64::MAX; 2], |m, p| [m[0].min(p[0]), m[1].min(p[1])]);
+                let max = points
+                    .iter()
+                    .fold([f64::MIN; 2], |m, p| [m[0].max(p[0]), m[1].max(p[1])]);
+                Some(PrintObject {
+                    name: name.to_owned(),
+                    min,
+                    max,
+                    excluded: excluded.contains(&name),
+                    current: current == name,
+                })
+            })
+            .collect()
+    }
+
     pub fn snapshot(&self) -> Snapshot {
         // M73-driven progress wins over file-position progress when present.
         let display = self.f64("display_status", "progress");
@@ -1035,6 +1117,7 @@ impl PrinterState {
                 .field("extruder", "can_extrude")
                 .and_then(Value::as_bool)
                 .unwrap_or(false),
+            objects: self.print_objects(),
             filament_out: self.status.as_object().is_some_and(|objects| {
                 objects.iter().any(|(name, v)| {
                     is_filament_sensor(name)
@@ -1136,6 +1219,30 @@ mod tests {
         assert_eq!(error_kind("Something else"), "");
         assert_eq!(error_kind("Shutdown due to webhooks request"), "estop");
         assert_eq!(error_kind("Shutdown due to M112 command"), "estop");
+    }
+
+    #[test]
+    fn print_objects() {
+        let mut st = PrinterState::default();
+        st.apply_status(serde_json::json!({ "exclude_object": {
+            "objects": [
+                { "name": "CASE.STL_ID_0_COPY_0", "center": [50.0, 50.0],
+                  "polygon": [[40.0, 45.0], [60.0, 45.0], [60.0, 55.0], [40.0, 55.0]] },
+                { "name": "CLIP", "center": [-10.0, 20.0] }
+            ],
+            "excluded_objects": ["CLIP"],
+            "current_object": "CASE.STL_ID_0_COPY_0"
+        }}));
+        let o = st.snapshot().objects;
+        assert_eq!(o.len(), 2);
+        assert_eq!((o[0].min, o[0].max), ([40.0, 45.0], [60.0, 55.0]));
+        assert!(o[0].current && !o[0].excluded);
+        assert_eq!((o[1].min, o[1].max), ([-15.0, 15.0], [-5.0, 25.0]));
+        assert!(o[1].excluded);
+        assert_eq!(object_title("CASE.STL_ID_0_COPY_0"), "CASE");
+        assert_eq!(object_title("CASE.STL_ID_0_COPY_1"), "CASE 2");
+        assert_eq!(object_title("Fan_duct_id_2_copy_0"), "Fan duct");
+        assert_eq!(object_title("CLIP"), "CLIP");
     }
 
     #[test]

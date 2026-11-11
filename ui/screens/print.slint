@@ -530,3 +530,113 @@ export component RunoutScreen inherits Rectangle {
         }
     }
 }
+
+// One labelled object of the print on the plate map; position and size are
+// fractions of the bed (0..1, y from the back).
+export struct PlateObject {
+    name: string,
+    title: string,
+    x: float,
+    y: float,
+    w: float,
+    h: float,
+    excluded: bool,
+    current: bool,
+}
+
+// Skip objects: the plate seen from above, tap a part, then Skip. The
+// prototype's Exclude page.
+export component ExcludeScreen inherits Rectangle {
+    horizontal-stretch: 1;
+    in property <[PlateObject]> objects;
+    in-out property <string> picked;
+    property <string> picked-title;
+    callback skip(string, string);
+    callback back;
+    HorizontalLayout {
+        padding: Tokens.pad;
+        spacing: 16px;
+        Rectangle {
+            width: 448px;
+            border-radius: 24px;
+            background: Tokens.surface-1;
+            accessible-role: groupbox;
+            accessible-label: @tr("The bed from above");
+            plate := Rectangle {
+                x: 12px;
+                y: 12px;
+                width: parent.width - 24px;
+                height: parent.height - 24px;
+                border-radius: 16px;
+                background: #1b1f25;
+                clip: true;
+                // A 20 mm-ish grid, as the prototype's plate.
+                for i in 11: Rectangle { x: (i + 1) * parent.width / 12; width: 1px; height: parent.height; background: #ffffff0a; }
+                for i in 11: Rectangle { y: (i + 1) * parent.height / 12; height: 1px; width: parent.width; background: #ffffff0a; }
+                for o in root.objects: Rectangle {
+                    // Tiny parts still get a finger-sized target.
+                    property <length> bw: max(36px, o.w * parent.width);
+                    property <length> bh: max(36px, o.h * parent.height);
+                    x: o.x * parent.width + (o.w * parent.width - self.bw) / 2;
+                    y: o.y * parent.height + (o.h * parent.height - self.bh) / 2;
+                    width: self.bw;
+                    height: self.bh;
+                    border-radius: min(18px, min(self.width, self.height) / 4);
+                    background: o.excluded ? transparent : o.name == root.picked ? Tokens.danger-solid : #4466cc;
+                    border-width: o.excluded ? 2px : o.current ? 3px : 0;
+                    border-color: o.excluded ? Tokens.text-faint : #ffffff;
+                    accessible-role: button;
+                    accessible-label: o.title;
+                    accessible-checkable: true;
+                    accessible-checked: o.name == root.picked;
+                    Text {
+                        width: parent.width - 8px;
+                        text: o.title;
+                        color: o.excluded ? Tokens.text-faint : #ffffff;
+                        font-size: 13px;
+                        font-weight: 700;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                        overflow: elide;
+                    }
+                    TouchArea { clicked => { if (!o.excluded) { root.picked = root.picked == o.name ? "" : o.name; root.picked-title = o.title; } } }
+                }
+            }
+        }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            padding-top: 4px;
+            spacing: 0;
+            Text { text: @tr("Skip objects"); color: Tokens.text; font-size: 26px; font-weight: 800; wrap: word-wrap; }
+            Rectangle { height: 10px; }
+            Text { text: @tr("Tap the part on the bed that came loose or went wrong."); color: Tokens.text-dim; font-size: 16px; wrap: word-wrap; }
+            Rectangle { vertical-stretch: 1; }
+            Text { text: @tr("Outlined: already skipped. A white edge: printing now."); color: Tokens.text-faint; font-size: 14px; wrap: word-wrap; }
+            Rectangle { height: 10px; }
+            HorizontalLayout {
+                height: 80px;
+                spacing: 10px;
+                Rectangle {
+                    horizontal-stretch: 1;
+                    border-radius: 20px;
+                    background: back-ta.pressed ? Tokens.surface-3 : Tokens.surface-2;
+                    accessible-role: button;
+                    accessible-label: @tr("Back");
+                    accessible-action-default => { root.back(); }
+                    Text { text: @tr("Back"); color: Tokens.text; font-size: 18px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+                    back-ta := TouchArea { clicked => { root.back(); } }
+                }
+                Rectangle {
+                    horizontal-stretch: 1.5;
+                    border-radius: 20px;
+                    background: root.picked == "" ? #1a1e23 : skip-ta.pressed ? Tokens.danger-solid.darker(15%) : Tokens.danger-solid;
+                    accessible-role: button;
+                    accessible-label: @tr("Skip");
+                    accessible-action-default => { if (root.picked != "") { root.skip(root.picked, root.picked-title); } }
+                    Text { text: @tr("Skip"); color: root.picked == "" ? #4a525c : #ffffff; font-size: 18px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+                    skip-ta := TouchArea { clicked => { if (root.picked != "") { root.skip(root.picked, root.picked-title); } } }
+                }
+            }
+        }
+    }
+}

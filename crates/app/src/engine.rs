@@ -1826,6 +1826,28 @@ fn push(ui: &slint::Weak<AppWindow>, s: Snapshot) {
         ui.set_axis_max_z(s.axis_max[2] as f32);
         ui.set_can_extrude(s.can_extrude);
         ui.set_filament_out(s.filament_out);
+        // Objects on the plate as fractions of the bed, Y up (top of the map = back).
+        let (w, h) = (
+            (s.axis_max[0] - s.axis_min[0]).max(1.0),
+            (s.axis_max[1] - s.axis_min[1]).max(1.0),
+        );
+        let objects: Vec<crate::PlateObject> = s
+            .objects
+            .iter()
+            .map(|o| crate::PlateObject {
+                name: o.name.as_str().into(),
+                title: model::object_title(&o.name).into(),
+                x: ((o.min[0] - s.axis_min[0]) / w) as f32,
+                y: ((s.axis_max[1] - o.max[1]) / h) as f32,
+                w: ((o.max[0] - o.min[0]) / w) as f32,
+                h: ((o.max[1] - o.min[1]) / h) as f32,
+                excluded: o.excluded,
+                current: o.current,
+            })
+            .collect();
+        replace_if_changed(&ui.get_plate_objects(), objects, |m| {
+            ui.set_plate_objects(m)
+        });
         ui.set_has_load_macros(s.caps.load_filament);
         ui.set_min_extrude_temp(s.limits.min_extrude_temp as f32);
         ui.set_max_nozzle(s.limits.extruder_max as f32);

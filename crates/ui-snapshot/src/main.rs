@@ -62,6 +62,7 @@ const ALL: &[&str] = &[
     "estop",
     "runout",
     "prompt",
+    "exclude",
     "keypad",
     "toast",
 ];
@@ -536,6 +537,29 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_filename("Корпус вентилятора №2.gcode".into());
             ui.set_progress(0.42);
             ui.set_overlay("cancel-print".into());
+        }
+        "exclude" => {
+            print("printing", 0.42);
+            ui.set_screen("exclude".into());
+            // The prototype's plate: three parts and a skipped clip (fractions of a 224 mm bed).
+            let o =
+                |name: &str, x: f32, y: f32, w: f32, h: f32, excluded: bool| rivet::PlateObject {
+                    name: name.into(),
+                    title: name.into(),
+                    x,
+                    y,
+                    w,
+                    h,
+                    excluded,
+                    current: false,
+                };
+            let objects = vec![
+                o("Корпус 1", 0.1415, 0.1651, 0.283, 0.283, false),
+                o("Корпус 2", 0.5425, 0.1651, 0.283, 0.283, false),
+                o("Крышка", 0.1415, 0.566, 0.3538, 0.2264, false),
+                o("Клипса", 0.6156, 0.5896, 0.1792, 0.1792, true),
+            ];
+            ui.set_plate_objects(slint::ModelRc::new(slint::VecModel::from(objects)));
         }
         "prompt" => {
             ui.set_prompt_title("Смена филамента".into());

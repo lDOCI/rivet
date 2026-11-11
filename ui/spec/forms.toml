@@ -36,7 +36,7 @@ r7 = "reset-speed"
 component = "MoreForm"
 [PrintMore.rows]
 r0 = { name = "layer-pause", data = ["sub"] }
-r1 = { name = "exclude", data = ["sub"], later = "wave 2: the exclude-objects screen (map of the plate)" }
+r1 = { name = "exclude", data = ["sub"] }
 r2 = { name = "camera", later = "the camera view (MJPEG stream) is not built" }
 r3 = "light"
 r4 = { name = "timelapse", data = ["sub"] }
