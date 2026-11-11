@@ -16,6 +16,10 @@ use slint::{
 const WIDTH: u32 = 800;
 const HEIGHT: u32 = 480;
 const ALL: &[&str] = &[
+    "offline",
+    "startup",
+    "klippy-offline",
+    "error",
     "home",
     "home-empty",
     "printing",
@@ -87,6 +91,7 @@ fn main() -> anyhow::Result<()> {
 /// Put the window into the state a snapshot name stands for. The overlay ones
 /// sit on top of a real screen.
 fn show(ui: &AppWindow, name: &str) {
+    ui.set_link_state("ready".into());
     ui.set_overlay("".into());
     ui.set_toast_kind("".into());
     ui.set_screen("home".into());
@@ -195,6 +200,10 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_heating_heater(i32::from(name == "heating-bed"));
             ui.set_max_nozzle(350.0);
             ui.set_max_bed(130.0);
+        }
+        "offline" | "startup" | "klippy-offline" | "error" => {
+            ui.set_link_state(name.into());
+            ui.set_klippy_message("MCU 'mcu' shutdown: Timer too close".into());
         }
         "home-empty" => {}
         "paused" => print("paused", 0.42),

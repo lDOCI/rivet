@@ -64,13 +64,6 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
         }
     };
 
-    {
-        let tx = tx.clone();
-        ui.on_preheat(move |extruder, bed| {
-            let _ = tx.send(Command::Preheat { extruder, bed });
-        });
-    }
-    ui.on_cooldown(send(Command::Cooldown));
     ui.on_home_all(send(Command::HomeAll));
     ui.on_pause_print(send(Command::Pause));
     ui.on_resume_print(send(Command::Resume));

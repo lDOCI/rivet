@@ -106,11 +106,6 @@ fn image_of(preview: Option<Preview>) -> (slint::Image, bool) {
 
 #[derive(Debug, Clone)]
 pub enum Command {
-    Preheat {
-        extruder: f32,
-        bed: f32,
-    },
-    Cooldown,
     HomeAll,
     Pause,
     Resume,
@@ -658,12 +653,6 @@ async fn execute(
         return client.gcode(&code).await;
     }
     match cmd {
-        Command::Preheat { extruder, bed } => {
-            client
-                .gcode(&format!("M104 S{extruder:.0}\nM140 S{bed:.0}"))
-                .await
-        }
-        Command::Cooldown => client.gcode("TURN_OFF_HEATERS").await,
         Command::HomeAll => client.gcode("G28").await,
         Command::Pause => client
             .call("printer.print.pause", Value::Null)
