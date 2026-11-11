@@ -1839,6 +1839,22 @@ fn set_fans(ui: &AppWindow, fans: &[model::Fan], air_modes: bool) {
 }
 
 /// Replace a list on the screen only when something in it changed.
+/// An object's outline as path commands in a 1000×1000 box over the whole bed
+/// (X right, Y up: the back of the bed at the top), as Mainsail draws it.
+fn plate_path(points: &[[f64; 2]], min: [f64; 3], max: [f64; 3]) -> String {
+    let (w, h) = ((max[0] - min[0]).max(1.0), (max[1] - min[1]).max(1.0));
+    let mut out = String::new();
+    for (i, p) in points.iter().enumerate() {
+        let x = (p[0] - min[0]) / w * 1000.0;
+        let y = (max[1] - p[1]) / h * 1000.0;
+        out.push_str(&format!("{}{x:.1} {y:.1} ", if i == 0 { "M" } else { "L" }));
+    }
+    if !out.is_empty() {
+        out.push('Z');
+    }
+    out
+}
+
 fn replace_if_changed<T: Clone + PartialEq + 'static>(
     shown: &slint::ModelRc<T>,
     rows: Vec<T>,
@@ -1946,6 +1962,9 @@ fn push(ui: &slint::Weak<AppWindow>, s: Snapshot) {
             .map(|o| crate::PlateObject {
                 name: o.name.as_str().into(),
                 title: model::object_title(&o.name).into(),
+                shape: plate_path(&o.polygon, s.axis_min, s.axis_max).into(),
+                cx: ((o.center[0] - s.axis_min[0]) / w) as f32,
+                cy: ((s.axis_max[1] - o.center[1]) / h) as f32,
                 x: ((o.min[0] - s.axis_min[0]) / w) as f32,
                 y: ((s.axis_max[1] - o.max[1]) / h) as f32,
                 w: ((o.max[0] - o.min[0]) / w) as f32,

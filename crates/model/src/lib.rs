@@ -283,6 +283,10 @@ pub struct Snapshot {
 #[derive(Debug, Clone, PartialEq)]
 pub struct PrintObject {
     pub name: String,
+    /// The slicer's outline, mm (a small square at the centre when it sent none).
+    pub polygon: Vec<[f64; 2]>,
+    /// Where Klipper says the object's centre is, mm.
+    pub center: [f64; 2],
     pub min: [f64; 2],
     pub max: [f64; 2],
     pub excluded: bool,
@@ -1104,7 +1108,12 @@ impl PrinterState {
                 // No outline: a small square around the centre.
                 if points.is_empty() {
                     let [x, y] = point(o.get("center")?)?;
-                    points = vec![[x - 5.0, y - 5.0], [x + 5.0, y + 5.0]];
+                    points = vec![
+                        [x - 5.0, y - 5.0],
+                        [x + 5.0, y - 5.0],
+                        [x + 5.0, y + 5.0],
+                        [x - 5.0, y + 5.0],
+                    ];
                 }
                 let min = points
                     .iter()
@@ -1112,8 +1121,14 @@ impl PrinterState {
                 let max = points
                     .iter()
                     .fold([f64::MIN; 2], |m, p| [m[0].max(p[0]), m[1].max(p[1])]);
+                let center = o
+                    .get("center")
+                    .and_then(point)
+                    .unwrap_or([(min[0] + max[0]) / 2.0, (min[1] + max[1]) / 2.0]);
                 Some(PrintObject {
                     name: name.to_owned(),
+                    polygon: points,
+                    center,
                     min,
                     max,
                     excluded: excluded.contains(&name),

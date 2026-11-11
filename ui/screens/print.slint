@@ -536,6 +536,11 @@ export component RunoutScreen inherits Rectangle {
 export struct PlateObject {
     name: string,
     title: string,
+    // The slicer's outline as path commands over the whole bed (1000×1000 box).
+    shape: string,
+    // Centre, fractions of the bed.
+    cx: float,
+    cy: float,
     x: float,
     y: float,
     w: float,
@@ -573,31 +578,49 @@ export component ExcludeScreen inherits Rectangle {
                 // A 20 mm-ish grid, as the prototype's plate.
                 for i in 11: Rectangle { x: (i + 1) * parent.width / 12; width: 1px; height: parent.height; background: #ffffff0a; }
                 for i in 11: Rectangle { y: (i + 1) * parent.height / 12; height: 1px; width: parent.width; background: #ffffff0a; }
+                // Outlines where they really are, as Mainsail and Fluidd draw them.
+                for o in root.objects: Path {
+                    width: parent.width;
+                    height: parent.height;
+                    viewbox-width: 1000;
+                    viewbox-height: 1000;
+                    commands: o.shape;
+                    fill: o.excluded ? transparent : o.name == root.picked ? Tokens.danger-solid : o.current ? #5b7fe6 : #4466cc;
+                    stroke: o.excluded ? Tokens.text-faint : o.current ? #ffffff : o.name == root.picked ? #ffb4be : #6d8ff0;
+                    stroke-width: o.current ? 2px : 1.5px;
+                }
+                // Centre marks, names, and a finger-sized target around each part.
                 for o in root.objects: Rectangle {
-                    // Tiny parts still get a finger-sized target.
-                    property <length> bw: max(36px, o.w * parent.width);
-                    property <length> bh: max(36px, o.h * parent.height);
-                    x: o.x * parent.width + (o.w * parent.width - self.bw) / 2;
-                    y: o.y * parent.height + (o.h * parent.height - self.bh) / 2;
+                    property <length> bw: max(44px, o.w * parent.width);
+                    property <length> bh: max(44px, o.h * parent.height);
+                    x: o.cx * parent.width - self.bw / 2;
+                    y: o.cy * parent.height - self.bh / 2;
                     width: self.bw;
                     height: self.bh;
-                    border-radius: min(18px, min(self.width, self.height) / 4);
-                    background: o.excluded ? transparent : o.name == root.picked ? Tokens.danger-solid : #4466cc;
-                    border-width: o.excluded ? 2px : o.current ? 3px : 0;
-                    border-color: o.excluded ? Tokens.text-faint : #ffffff;
                     accessible-role: button;
                     accessible-label: o.title;
                     accessible-checkable: true;
                     accessible-checked: o.name == root.picked;
-                    Text {
-                        width: parent.width - 8px;
-                        text: o.title;
-                        color: o.excluded ? Tokens.text-faint : #ffffff;
-                        font-size: 13px;
-                        font-weight: 700;
-                        horizontal-alignment: center;
-                        vertical-alignment: center;
-                        overflow: elide;
+                    Rectangle { width: 9px; height: 1.5px; background: #ffffffb3; }
+                    Rectangle { width: 1.5px; height: 9px; background: #ffffffb3; }
+                    // The name on a dark tag under the centre mark: readable on any fill.
+                    Rectangle {
+                        y: parent.height / 2 + 7px;
+                        width: min(label.preferred-width + 12px, 130px);
+                        height: 18px;
+                        x: (parent.width - self.width) / 2;
+                        border-radius: 6px;
+                        background: #0b0d10b3;
+                        label := Text {
+                            width: parent.width - 12px;
+                            text: o.title;
+                            color: o.excluded ? Tokens.text-faint : #ffffff;
+                            font-size: 12px;
+                            font-weight: 700;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                            overflow: elide;
+                        }
                     }
                     TouchArea { clicked => { if (!o.excluded) { root.picked = root.picked == o.name ? "" : o.name; root.picked-title = o.title; } } }
                 }

@@ -570,23 +570,72 @@ fn show(ui: &AppWindow, name: &str) {
         "exclude" => {
             print("printing", 0.42);
             ui.set_screen("exclude".into());
-            // The prototype's plate: three parts and a skipped clip (fractions of a 224 mm bed).
-            let o =
-                |name: &str, x: f32, y: f32, w: f32, h: f32, excluded: bool| rivet::PlateObject {
+            // Four parts on a 224 mm bed as a slicer would label them: an L-shaped
+            // housing, a round lid, a long bar, and a small clip already skipped.
+            let bed = 112.0_f32;
+            let o = |name: &str, pts: &[(f32, f32)], excluded: bool, current: bool| {
+                let (mut x0, mut y0, mut x1, mut y1) = (f32::MAX, f32::MAX, f32::MIN, f32::MIN);
+                let mut shape = String::new();
+                for (i, (x, y)) in pts.iter().enumerate() {
+                    (x0, y0, x1, y1) = (x0.min(*x), y0.min(*y), x1.max(*x), y1.max(*y));
+                    let (px, py) = (
+                        (x + bed) / (2.0 * bed) * 1000.0,
+                        (bed - y) / (2.0 * bed) * 1000.0,
+                    );
+                    shape.push_str(&format!(
+                        "{}{px:.1} {py:.1} ",
+                        if i == 0 { "M" } else { "L" }
+                    ));
+                }
+                shape.push('Z');
+                let f = |v: f32| (v + bed) / (2.0 * bed);
+                rivet::PlateObject {
                     name: name.into(),
                     title: name.into(),
-                    x,
-                    y,
-                    w,
-                    h,
+                    shape: shape.into(),
+                    cx: f((x0 + x1) / 2.0),
+                    cy: 1.0 - f((y0 + y1) / 2.0),
+                    x: f(x0),
+                    y: 1.0 - f(y1),
+                    w: (x1 - x0) / (2.0 * bed),
+                    h: (y1 - y0) / (2.0 * bed),
                     excluded,
-                    current: false,
-                };
+                    current,
+                }
+            };
+            let lid: Vec<(f32, f32)> = (0..16)
+                .map(|k| {
+                    let a = k as f32 / 16.0 * std::f32::consts::TAU;
+                    (30.0 + 26.0 * a.cos(), 40.0 + 26.0 * a.sin())
+                })
+                .collect();
             let objects = vec![
-                o("Корпус 1", 0.1415, 0.1651, 0.283, 0.283, false),
-                o("Корпус 2", 0.5425, 0.1651, 0.283, 0.283, false),
-                o("Крышка", 0.1415, 0.566, 0.3538, 0.2264, false),
-                o("Клипса", 0.6156, 0.5896, 0.1792, 0.1792, true),
+                o(
+                    "Корпус",
+                    &[
+                        (-80.0, 10.0),
+                        (-20.0, 10.0),
+                        (-20.0, 35.0),
+                        (-50.0, 35.0),
+                        (-50.0, 75.0),
+                        (-80.0, 75.0),
+                    ],
+                    false,
+                    true,
+                ),
+                o("Крышка", &lid, false, false),
+                o(
+                    "Планка",
+                    &[(-70.0, -60.0), (40.0, -60.0), (40.0, -45.0), (-70.0, -45.0)],
+                    false,
+                    false,
+                ),
+                o(
+                    "Клипса",
+                    &[(62.0, -30.0), (78.0, -30.0), (78.0, -14.0), (62.0, -14.0)],
+                    true,
+                    false,
+                ),
             ];
             ui.set_plate_objects(slint::ModelRc::new(slint::VecModel::from(objects)));
         }
