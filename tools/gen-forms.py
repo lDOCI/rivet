@@ -61,6 +61,15 @@ def num(v):
     return str(int(v)) if v.is_integer() else repr(v)
 
 
+def dots(path):
+    """'M12 19.5h.01' (a dot drawn as a zero-length round-capped line) as a tiny
+    circle: the printer's renderer draws nothing for zero-length strokes."""
+    def circle(m):
+        x, y, r = float(m.group(1)), float(m.group(2)), 0.35
+        return f"M{x - r:g} {y:g}a{r:g} {r:g} 0 1 0 {2 * r:g} 0a{r:g} {r:g} 0 1 0 -{2 * r:g} 0"
+    return re.sub(r"M(-?[\d.]+) (-?[\d.]+)h\.01", circle, path)
+
+
 def leading_number(text):
     # "5 мм" -> 5, "PLA 50°" -> 50
     m = re.search(r"(-?\d+(?:[.,]\d+)?)", text)
@@ -208,7 +217,7 @@ def main():
                 kt = r["t"] + (", " + unit.strip() if unit.strip() else "")
                 edits.append(f'        if (key == "{n}") {{ root.edit-number(key, {tr(page, kt)}, {lo_e}, {hi_e}, root.{n}-num, {dec}); }}')
             if kind == "link" and r.get("ic"):
-                f.append(f"icon: {s(' '.join(r['ic']))}")
+                f.append(f"icon: {s(dots(' '.join(r['ic'])))}")
             items.append("{ " + ", ".join(f) + " }")
 
         out.append(f"// {page}.dc.html")

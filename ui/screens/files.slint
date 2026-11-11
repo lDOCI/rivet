@@ -338,7 +338,7 @@ export component FileScreen inherits Rectangle {
                     accessible-role: button;
                     accessible-label: @tr("File actions");
                     accessible-action-default => { root.more(); }
-                    Icon { d: "M5 12h.01 M12 12h.01 M19 12h.01"; size: 26px; weight: 3; color: Tokens.text; }
+                    Icon { d: Icons.more; filled: true; size: 26px; weight: 0.5; color: Tokens.text; }
                     dots := TouchArea { clicked => { root.more(); } }
                 }
                 Rectangle {
