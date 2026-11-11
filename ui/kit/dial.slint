@@ -38,16 +38,29 @@ export component HeatDial inherits Rectangle {
         return a > 270 ? -1 : max(0, min(root.maximum, round(a / 270 * root.maximum / root.step) * root.step));
     }
 
+    // All coordinates are in real pixels (the prototype's 300-unit circle times
+    // `s`), so the arc, the dot and the text can never drift apart.
+    // This renderer draws a path's stroke on the inside of the line, an SVG
+    // draws it centred. The band's middle is at radius 120 (where the dot
+    // sits), so the line itself runs at the band's outer edge, 130.
     // Track: the whole 270° arc.
     Path {
         width: parent.width;
         height: parent.height;
-        viewbox-width: 300;
-        viewbox-height: 300;
+        viewbox-width: root.width / 1px;
+        viewbox-height: root.height / 1px;
         stroke: #171b21;
         stroke-width: 20px * root.s;
         stroke-line-cap: round;
-        commands: "M65.147 234.853 A120 120 0 1 1 234.853 234.853";
+        MoveTo { x: (150 + 130 * cos(135deg)) * root.s; y: (150 + 130 * sin(135deg)) * root.s; }
+        ArcTo {
+            radius-x: 130 * root.s;
+            radius-y: 130 * root.s;
+            x: (150 + 130 * cos(45deg)) * root.s;
+            y: (150 + 130 * sin(45deg)) * root.s;
+            large-arc: true;
+            sweep: true;
+        }
     }
     // Current temperature: yellow to orange, bottom left to top right. The
     // renderer has no gradient on strokes, so the arc is drawn as short
@@ -58,18 +71,18 @@ export component HeatDial inherits Rectangle {
         property <float> t: (2 + cos(self.from + 4.5deg) - sin(self.from + 4.5deg)) / 4;
         width: parent.width;
         height: parent.height;
-        viewbox-width: 300;
-        viewbox-height: 300;
+        viewbox-width: root.width / 1px;
+        viewbox-height: root.height / 1px;
         visible: root.current-end > self.from;
         stroke: Tokens.heat-1.mix(Tokens.heat-2, self.t);
         stroke-width: 20px * root.s;
         stroke-line-cap: round;
-        MoveTo { x: 150 + 120 * cos(parent.from); y: 150 + 120 * sin(parent.from); }
+        MoveTo { x: (150 + 130 * cos(parent.from)) * root.s; y: (150 + 130 * sin(parent.from)) * root.s; }
         ArcTo {
-            radius-x: 120;
-            radius-y: 120;
-            x: 150 + 120 * cos(parent.to);
-            y: 150 + 120 * sin(parent.to);
+            radius-x: 130 * root.s;
+            radius-y: 130 * root.s;
+            x: (150 + 130 * cos(parent.to)) * root.s;
+            y: (150 + 130 * sin(parent.to)) * root.s;
             sweep: true;
         }
     }

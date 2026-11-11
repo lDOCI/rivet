@@ -80,7 +80,9 @@ export component VBar inherits VerticalLayout {
                     root.local = root.from-y(self.mouse-y);
                 }
                 if (e.kind == PointerEventKind.up) {
-                    root.committed(root.shown);
+                    // By now the finger is up, so `shown` is the printer's old value again:
+                    // send what the finger set.
+                    root.committed(root.source >= 0 ? root.local : root.value);
                 }
             }
             moved => {
@@ -245,7 +247,7 @@ export component SliderRow inherits Rectangle {
                 drag := TouchArea {
                     pointer-event(e) => {
                         if (e.kind == PointerEventKind.down) { root.local = root.from-x(self.mouse-x); }
-                        if (e.kind == PointerEventKind.up) { root.committed(root.shown); }
+                        if (e.kind == PointerEventKind.up) { root.committed(root.local); }
                     }
                     moved => { if (self.pressed) { root.local = root.from-x(self.mouse-x); } }
                 }

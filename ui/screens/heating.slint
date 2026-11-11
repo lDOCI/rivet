@@ -101,9 +101,10 @@ export component HeatingScreen inherits VerticalLayout {
     property <float> target: root.is-bed ? root.bed-target : root.nozzle-target;
     property <float> maximum: root.is-bed ? root.max-bed : root.max-nozzle;
 
+    // The prototype's main: padding 16 20 16 16, gap 4.
     padding: Tokens.pad;
-    padding-bottom: 0;
-    spacing: 10px;
+    padding-right: 20px;
+    spacing: 4px;
 
     HorizontalLayout {
         height: Tokens.header;
