@@ -4,7 +4,7 @@ import { Tokens } from "kit/tokens.slint";
 import { Rail } from "kit/rail.slint";
 import { ControlScreen } from "screens/control.slint";
 import { SettingsScreen } from "screens/settings.slint";
-import { FansScreen, PrintTuneScreen } from "screens/tune.slint";
+import { FansScreen, PrintTuneScreen, PrintMoreScreen } from "screens/tune.slint";
 import { Dialog, Keypad } from "kit/dialogs.slint";
 import { Toast } from "kit/toast.slint";
 import { HomeScreen } from "screens/home.slint";
@@ -58,6 +58,25 @@ export component AppWindow inherits Window {
     callback cancel-print();
     callback emergency-stop();
     callback start-print(string);
+    callback set-speed(float);
+    callback set-flow(float);
+    callback adjust-z(float);
+    callback set-pressure-advance(float);
+    callback set-light(bool);
+
+    // Live values for tuning and the light, straight from Klipper.
+    in property <float> speed-percent: 100;
+    in property <float> flow-percent: 100;
+    in property <float> z-offset;
+    in property <float> pressure-advance;
+    in property <int> fan-percent;
+    in property <bool> has-light;
+    in-out property <bool> light-on;
+    in property <string> light-name;
+    in property <bool> light-white;
+    property <float> tune-z-start;
+    // Which value the keypad is editing: "speed" | "flow" | "z" | "pa".
+    property <string> keypad-target;
     callback firmware-restart();
 
     // Command feedback from the engine: "" | "not-connected" | "timeout" | "rpc".
@@ -67,12 +86,12 @@ export component AppWindow inherits Window {
 
     // Overlay on top of everything: "" | "cancel-print" | "keypad".
     in-out property <string> overlay;
-    in property <string> keypad-title;
-    in property <string> keypad-hint;
-    in property <string> keypad-current;
-    in property <float> keypad-min;
-    in property <float> keypad-max: 999;
-    in property <bool> keypad-negative;
+    in-out property <string> keypad-title;
+    in-out property <string> keypad-hint;
+    in-out property <string> keypad-current;
+    in-out property <float> keypad-min;
+    in-out property <float> keypad-max: 999;
+    in-out property <bool> keypad-negative;
     callback keypad-done(float);
 
     // Current screen. Rail sections: home, control, tools, settings, messages.
@@ -93,7 +112,36 @@ export component AppWindow inherits Window {
         }
         if root.screen == "settings": SettingsScreen { }
         if root.screen == "fans": FansScreen { back => { root.screen = "control"; } }
-        if root.screen == "tune": PrintTuneScreen { back => { root.screen = "home"; } }
+        if root.screen == "more": PrintMoreScreen {
+            has-light: root.has-light;
+            light-on <=> root.light-on;
+            back => { root.screen = "home"; }
+            set-light(on) => { root.set-light(on); }
+        }
+        if root.screen == "tune": PrintTuneScreen {
+            speed: root.speed-percent;
+            flow: root.flow-percent;
+            z-offset: root.z-offset;
+            z-start: root.tune-z-start;
+            pressure-advance: root.pressure-advance;
+            fan-percent: root.fan-percent;
+            back => { root.screen = "home"; }
+            open-fans => { root.screen = "fans"; }
+            set-speed(p) => { root.set-speed(p); }
+            set-flow(p) => { root.set-flow(p); }
+            adjust-z(d) => { root.adjust-z(d); }
+            set-pressure-advance(v) => { root.set-pressure-advance(v); }
+            edit(what) => {
+                root.keypad-target = what;
+                root.keypad-negative = what == "z";
+                root.keypad-title = what == "speed" ? @tr("Speed, %") : what == "flow" ? @tr("Flow, %") : what == "z" ? @tr("Z-offset, mm") : @tr("Pressure advance");
+                root.keypad-current = what == "speed" ? "" + round(root.speed-percent) : what == "flow" ? "" + round(root.flow-percent) : what == "z" ? "" + round(root.z-offset * 100) / 100 : "" + round(root.pressure-advance * 1000) / 1000;
+                root.keypad-min = what == "speed" ? 10 : what == "flow" ? 50 : what == "z" ? -2 : 0;
+                root.keypad-max = what == "speed" ? 300 : what == "flow" ? 150 : what == "z" ? 2 : 1;
+                root.keypad-hint = what == "speed" ? "10 … 300" : what == "flow" ? "50 … 150" : what == "z" ? "−2 … 2" : "0 … 1";
+                root.overlay = "keypad";
+            }
+        }
 
         if root.screen == "home" && root.ready && root.busy: PrintingScreen {
             filename: root.filename;
@@ -109,7 +157,9 @@ export component AppWindow inherits Window {
             bed-target: root.bed-target;
             pause => { root.pause-print(); }
             resume => { root.resume-print(); }
-            tune => { root.screen = "tune"; }
+            tune => { root.tune-z-start = root.z-offset; root.screen = "tune"; }
+            has-more: root.has-light;
+            more => { root.screen = "more"; }
             cancel => { root.overlay = "cancel-print"; }
         }
         if root.screen == "home" && root.ready && !root.busy && root.print-state == "complete" && !root.done-dismissed: PrintDoneScreen {
@@ -303,7 +353,14 @@ export component AppWindow inherits Window {
         minimum: root.keypad-min;
         maximum: root.keypad-max;
         allow-negative: root.keypad-negative;
-        done(v) => { root.overlay = ""; root.keypad-done(v); }
+        done(v) => {
+            root.overlay = "";
+            root.keypad-done(v);
+            if (root.keypad-target == "speed") { root.set-speed(v); }
+            else if (root.keypad-target == "flow") { root.set-flow(v); }
+            else if (root.keypad-target == "z") { root.adjust-z(v - root.z-offset); }
+            else if (root.keypad-target == "pa") { root.set-pressure-advance(v); }
+        }
         cancelled => { root.overlay = ""; }
     }
 }

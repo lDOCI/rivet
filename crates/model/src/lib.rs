@@ -52,10 +52,25 @@ pub fn subscription() -> Value {
     })
 }
 
+/// The base subscription plus what this printer actually has, from
+/// `printer.objects.list`: every `led …` object, so Rivet shows only the
+/// lights that exist.
+pub fn subscription_for(available: &[String]) -> Value {
+    let mut sub = subscription();
+    if let Some(objects) = sub["objects"].as_object_mut() {
+        for name in available.iter().filter(|n| n.starts_with("led ")) {
+            objects.insert(name.clone(), Value::Null);
+        }
+    }
+    sub
+}
+
 #[derive(Debug, Default)]
 pub struct PrinterState {
     pub connection: Connection,
     pub klippy: Klippy,
+    /// `led …` objects of this printer, set before subscribing.
+    pub leds: Vec<String>,
     status: Value,
 }
 
@@ -85,6 +100,25 @@ pub struct Snapshot {
     /// Only when the slicer sends them (`SET_PRINT_STATS_INFO`); else `None`.
     pub layer: Option<u32>,
     pub total_layers: Option<u32>,
+    /// Speed and flow factors in percent (100 = as sliced).
+    pub speed_percent: f64,
+    pub flow_percent: f64,
+    /// Live Z offset, mm (`gcode_move.homing_origin[2]`).
+    pub z_offset: f64,
+    pub pressure_advance: f64,
+    /// Part fan, percent.
+    pub fan_percent: f64,
+    pub light: Option<Light>,
+}
+
+/// The first light of the printer.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Light {
+    /// Klipper name without the `led ` prefix.
+    pub name: String,
+    pub on: bool,
+    /// Has a white channel (RGBW). Otherwise it is RGB.
+    pub white: bool,
 }
 
 /// Last finished job from `server.history.list`.
@@ -121,6 +155,23 @@ impl PrinterState {
     /// Merge a `notify_status_update` delta.
     pub fn apply_status(&mut self, delta: Value) {
         merge(&mut self.status, delta);
+    }
+
+    /// Lights found on the printer (`led …` object names).
+    pub fn set_leds(&mut self, leds: impl IntoIterator<Item = String>) {
+        self.leds = leds.into_iter().collect();
+    }
+
+    /// Show a Z-offset change before Klipper reports it back.
+    pub fn adjust_z_offset(&mut self, delta: f64) {
+        let origin = self
+            .status
+            .get_mut("gcode_move")
+            .and_then(|g| g.get_mut("homing_origin"))
+            .and_then(Value::as_array_mut);
+        if let Some(z) = origin.and_then(|o| o.get_mut(2)) {
+            *z = json!(z.as_f64().unwrap_or(0.0) + delta);
+        }
     }
 
     pub fn clear_status(&mut self) {
@@ -170,6 +221,20 @@ impl PrinterState {
                 .map(|n| n as u32)
         };
 
+        let light = self.leds.first().map(|object| {
+            let channels = self
+                .field(object, "color_data")
+                .and_then(|c| c.get(0))
+                .and_then(Value::as_array)
+                .cloned()
+                .unwrap_or_default();
+            Light {
+                name: object.trim_start_matches("led ").to_owned(),
+                on: channels.iter().any(|v| v.as_f64().unwrap_or(0.0) > 0.0),
+                white: channels.len() == 4,
+            }
+        });
+
         Snapshot {
             connection: self.connection,
             klippy: self.klippy,
@@ -183,6 +248,16 @@ impl PrinterState {
             remaining_secs,
             layer: layer("current_layer"),
             total_layers: layer("total_layer"),
+            speed_percent: self.f64("gcode_move", "speed_factor") * 100.0,
+            flow_percent: self.f64("gcode_move", "extrude_factor") * 100.0,
+            z_offset: self
+                .field("gcode_move", "homing_origin")
+                .and_then(|o| o.get(2))
+                .and_then(Value::as_f64)
+                .unwrap_or(0.0),
+            pressure_advance: self.f64("extruder", "pressure_advance"),
+            fan_percent: self.f64("fan", "speed") * 100.0,
+            light,
         }
     }
 }
@@ -284,6 +359,52 @@ mod tests {
         assert_eq!(last.duration_secs, 4980);
         assert!(last.completed);
         assert_eq!(parse_last_print(&json!({ "jobs": [] })), None);
+    }
+
+    #[test]
+    fn tuning_values_and_light() {
+        let mut state = PrinterState {
+            leds: vec!["led chamber_led".into()],
+            ..Default::default()
+        };
+        state.replace_status(json!({
+            "gcode_move": { "speed_factor": 1.1, "extrude_factor": 0.95,
+                            "homing_origin": [0.0, 0.0, -0.12, 0.0] },
+            "extruder": { "pressure_advance": 0.035 },
+            "fan": { "speed": 0.6 },
+            "led chamber_led": { "color_data": [[0.0, 0.0, 0.0, 0.8]] },
+        }));
+        let snap = state.snapshot();
+        assert_eq!(snap.speed_percent.round(), 110.0);
+        assert_eq!(snap.flow_percent.round(), 95.0);
+        assert_eq!(snap.z_offset, -0.12);
+        assert_eq!(snap.pressure_advance, 0.035);
+        assert_eq!(snap.fan_percent.round(), 60.0);
+        let light = snap.light.unwrap();
+        assert_eq!(light.name, "chamber_led");
+        assert!(light.on && light.white);
+
+        state.apply_status(json!({ "led chamber_led": { "color_data": [[0.0, 0.0, 0.0, 0.0]] } }));
+        assert!(!state.snapshot().light.unwrap().on);
+    }
+
+    #[test]
+    fn subscription_adds_only_leds_that_exist() {
+        let names = ["extruder".to_owned(), "led chamber_led".to_owned()];
+        let sub = subscription_for(&names);
+        assert!(sub["objects"].get("led chamber_led").is_some());
+        assert!(sub["objects"].get("extruder").is_some());
+        assert!(subscription_for(&[])["objects"]
+            .get("led chamber_led")
+            .is_none());
+    }
+
+    #[test]
+    fn z_offset_adjust_is_shown_at_once() {
+        let mut state = PrinterState::default();
+        state.replace_status(json!({ "gcode_move": { "homing_origin": [0.0, 0.0, -0.12, 0.0] } }));
+        state.adjust_z_offset(0.05);
+        assert!((state.snapshot().z_offset + 0.07).abs() < 1e-9);
     }
 
     #[test]

@@ -81,6 +81,43 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
             let _ = tx.send(Command::StartPrint(file.to_string()));
         });
     }
+    {
+        let tx = tx.clone();
+        ui.on_set_speed(move |p| {
+            let _ = tx.send(Command::SetSpeed(p));
+        });
+    }
+    {
+        let tx = tx.clone();
+        ui.on_set_flow(move |p| {
+            let _ = tx.send(Command::SetFlow(p));
+        });
+    }
+    {
+        let tx = tx.clone();
+        ui.on_adjust_z(move |d| {
+            let _ = tx.send(Command::AdjustZ(d));
+        });
+    }
+    {
+        let tx = tx.clone();
+        ui.on_set_pressure_advance(move |v| {
+            let _ = tx.send(Command::SetPressureAdvance(v));
+        });
+    }
+    {
+        let tx = tx.clone();
+        let weak = ui.as_weak();
+        ui.on_set_light(move |on| {
+            if let Some(ui) = weak.upgrade() {
+                let _ = tx.send(Command::SetLight {
+                    name: ui.get_light_name().to_string(),
+                    on,
+                    white: ui.get_light_white(),
+                });
+            }
+        });
+    }
     ui.on_emergency_stop(send(Command::EmergencyStop));
     ui.on_firmware_restart(send(Command::FirmwareRestart));
 }

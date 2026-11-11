@@ -59,3 +59,28 @@ fn limits_used_by_the_ui_come_from_config() {
     assert_eq!(s["printer"]["max_velocity"], 600.0);
     assert_eq!(s["printer"]["max_accel"], 20000.0);
 }
+
+#[test]
+fn light_and_tuning_values_from_the_real_status() {
+    let mut status = load("status.json");
+    let objects = load("objects_list.json");
+    let names: Vec<String> = objects["result"]["objects"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|v| v.as_str().map(str::to_owned))
+        .collect();
+    let sub = model::subscription_for(&names);
+    assert!(sub["objects"].get("led chamber_led").is_some());
+
+    let mut state = PrinterState::default();
+    state.set_leds(names.into_iter().filter(|n| n.starts_with("led ")));
+    state.replace_status(status["result"]["status"].take());
+    let snap = state.snapshot();
+    assert_eq!(snap.speed_percent, 100.0);
+    assert_eq!(snap.flow_percent, 100.0);
+    assert_eq!(snap.pressure_advance, 0.035);
+    let light = snap.light.unwrap();
+    assert_eq!(light.name, "chamber_led");
+    assert!(light.white && light.on);
+}
