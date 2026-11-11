@@ -84,3 +84,12 @@ fn light_and_tuning_values_from_the_real_status() {
     assert_eq!(light.name, "chamber_led");
     assert!(light.white && light.on);
 }
+
+#[test]
+fn heater_limits_of_the_real_printer() {
+    let cfg = load("configfile.json");
+    let limits = model::parse_limits(&cfg["result"]["status"]["configfile"]["settings"]);
+    assert_eq!(limits.extruder_max, 350.0);
+    assert_eq!(limits.bed_max, 130.0);
+    assert_eq!(limits.nozzle_diameter, 0.4);
+}

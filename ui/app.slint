@@ -8,6 +8,7 @@ import { FansScreen, PrintTuneScreen, PrintMoreScreen } from "screens/tune.slint
 import { Dialog, Keypad } from "kit/dialogs.slint";
 import { Toast } from "kit/toast.slint";
 import { HomeScreen } from "screens/home.slint";
+import { HeatingScreen } from "screens/heating.slint";
 import { FilesScreen, FileScreen, FileItem, FileInfo } from "screens/files.slint";
 export { FileItem, FileInfo }
 import { PrintingScreen, PrintDoneScreen } from "screens/print.slint";
@@ -70,6 +71,15 @@ export component AppWindow inherits Window {
     callback adjust-z(float);
     callback set-pressure-advance(float);
     callback set-light(bool);
+    callback set-fan(float);
+    callback set-nozzle(float);
+    callback set-bed(float);
+    // Heater limits from the printer config; 0 until known.
+    in property <float> max-nozzle;
+    in property <float> max-bed;
+    property <float> nozzle-limit: root.max-nozzle > 0 ? root.max-nozzle : 350;
+    property <float> bed-limit: root.max-bed > 0 ? root.max-bed : 130;
+    in-out property <int> heating-heater;
     callback refresh-files();
     callback open-file(string);
     callback delete-selected();
@@ -122,7 +132,7 @@ export component AppWindow inherits Window {
 
     HorizontalLayout {
         Rail {
-            active: root.screen == "fans" ? "control"
+            active: (root.screen == "fans" || root.screen == "heating") ? "control"
                 : (root.screen == "control" || root.screen == "tools" || root.screen == "settings" || root.screen == "messages") ? root.screen
                 : "home";
             navigate(section) => { root.screen = section; }
@@ -130,10 +140,47 @@ export component AppWindow inherits Window {
         }
 
         if root.screen == "control": ControlScreen {
-            open(target) => { root.screen = target == "fans" ? "fans" : root.screen; }
+            nozzle: root.extruder-temp;
+            nozzle-target: root.extruder-target;
+            bed: root.bed-temp;
+            bed-target: root.bed-target;
+            max-nozzle: root.nozzle-limit;
+            max-bed: root.bed-limit;
+            fan-percent: root.fan-percent;
+            light-text: root.has-light ? (root.light-on ? @tr("on") : @tr("off")) : "";
+            speed-percent: round(root.speed-percent);
+            z-offset: root.z-offset;
+            open(target) => {
+                if (target == "fans" || target == "heating") { root.screen = target; }
+            }
+        }
+        if root.screen == "heating": HeatingScreen {
+            nozzle: root.extruder-temp;
+            nozzle-target: root.extruder-target;
+            bed: root.bed-temp;
+            bed-target: root.bed-target;
+            max-nozzle: root.nozzle-limit;
+            max-bed: root.bed-limit;
+            heater <=> root.heating-heater;
+            back => { root.screen = "control"; }
+            set-target(which, t) => { if (which == 0) { root.set-nozzle(t); } else { root.set-bed(t); } }
+            edit(which) => {
+                root.keypad-target = which == 0 ? "nozzle" : "bed";
+                root.keypad-negative = false;
+                root.keypad-title = which == 0 ? @tr("Nozzle, °C") : @tr("Bed, °C");
+                root.keypad-current = "" + round(which == 0 ? root.extruder-target : root.bed-target);
+                root.keypad-min = 0;
+                root.keypad-max = which == 0 ? root.nozzle-limit : root.bed-limit;
+                root.keypad-hint = "0 … " + round(which == 0 ? root.nozzle-limit : root.bed-limit);
+                root.overlay = "keypad";
+            }
         }
         if root.screen == "settings": SettingsScreen { }
-        if root.screen == "fans": FansScreen { back => { root.screen = "control"; } }
+        if root.screen == "fans": FansScreen {
+            part-fan: root.fan-percent;
+            back => { root.screen = "control"; }
+            set-fan(name, v) => { root.set-fan(v); }
+        }
         if root.screen == "more": PrintMoreScreen {
             has-light: root.has-light;
             light-on <=> root.light-on;
@@ -204,6 +251,8 @@ export component AppWindow inherits Window {
             last-minutes: root.last-minutes;
             last-days-ago: root.last-days-ago;
             last-completed: root.last-completed;
+            max-nozzle: root.nozzle-limit;
+            max-bed: root.bed-limit;
             last-thumb: root.last-thumb;
             has-last-thumb: root.has-last-thumb;
             print-again => { root.start-print(root.last-name); }
@@ -432,6 +481,8 @@ export component AppWindow inherits Window {
             else if (root.keypad-target == "flow") { root.set-flow(v); }
             else if (root.keypad-target == "z") { root.adjust-z(v - root.z-offset); }
             else if (root.keypad-target == "pa") { root.set-pressure-advance(v); }
+            else if (root.keypad-target == "nozzle") { root.set-nozzle(v); }
+            else if (root.keypad-target == "bed") { root.set-bed(v); }
         }
         cancelled => { root.overlay = ""; }
     }

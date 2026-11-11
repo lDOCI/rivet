@@ -5,6 +5,13 @@ export global Format {
         return minutes >= 60 ? @tr("{} h {} min", floor(minutes / 60), mod(minutes, 60)) : @tr("{} min", minutes);
     }
 
+    // Signed number with fixed decimals; "−" is the real minus sign, and a
+    // value that rounds to zero has no sign.
+    pure callback signed(float, int) -> string;
+    signed(v, digits) => {
+        return (round(abs(v) * pow(10, digits)) == 0 ? "" : v < 0 ? "−" : "") + round(abs(v) * pow(10, digits)) / pow(10, digits);
+    }
+
     pure callback age(int) -> string;
     age(days) => {
         return days <= 0 ? @tr("today") : days == 1 ? @tr("yesterday") : @tr("{n} day ago" | "{n} days ago" % days);

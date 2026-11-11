@@ -3,17 +3,21 @@ import { Icons } from "../kit/icons.slint";
 import { Header } from "../kit/controls.slint";
 import { Tile } from "../kit/rows.slint";
 import { Gauge } from "../kit/gauge.slint";
+import { Format } from "../kit/format.slint";
 
 export component ControlScreen inherits VerticalLayout {
     horizontal-stretch: 1;
-    in property <float> nozzle: 187;
-    in property <float> nozzle-target: 240;
-    in property <float> bed: 23;
-    in property <float> bed-target: 0;
-    in property <int> fan-percent: 60;
-    in property <int> light-percent: 70;
+    in property <float> nozzle;
+    in property <float> nozzle-target;
+    in property <float> bed;
+    in property <float> bed-target;
+    in property <float> max-nozzle: 350;
+    in property <float> max-bed: 130;
+    in property <int> fan-percent;
+    // "" when the printer has no light.
+    in property <string> light-text;
     in property <int> speed-percent: 100;
-    in property <string> z-offset: "−0.12";
+    in property <float> z-offset;
     callback open(string);
     padding: Tokens.pad;
     spacing: Tokens.gap;
@@ -29,8 +33,8 @@ export component ControlScreen inherits VerticalLayout {
                 HorizontalLayout {
                     spacing: 8px;
                     alignment: start;
-                    Gauge { current: root.nozzle; target: root.nozzle-target; maximum: 350; }
-                    Gauge { current: root.bed; target: root.bed-target; maximum: 130; }
+                    Gauge { current: root.nozzle; target: root.nozzle-target; maximum: root.max-nozzle; }
+                    Gauge { current: root.bed; target: root.bed-target; maximum: root.max-bed; }
                 }
             }
             Tile { icon: Icons.move; label: @tr("Motion"); sub: @tr("axes, homing, motors"); clicked => { root.open("motion"); } }
@@ -38,9 +42,9 @@ export component ControlScreen inherits VerticalLayout {
             Tile { icon: Icons.fan; value: root.fan-percent + "%"; label: @tr("Part fan"); clicked => { root.open("fans"); } }
         }
         Row {
-            Tile { icon: Icons.bulb; value: root.light-percent + "%"; label: @tr("Light"); clicked => { root.open("light"); } }
+            Tile { icon: Icons.bulb; value: root.light-text != "" ? root.light-text : "—"; label: @tr("Light"); clicked => { root.open("light"); } }
             Tile { icon: Icons.gauge; value: root.speed-percent + "%"; label: @tr("Speed"); clicked => { root.open("speed"); } }
-            Tile { icon: Icons.zoff; value: root.z-offset + " " + @tr("mm"); label: @tr("Z-offset"); clicked => { root.open("zoffset"); } }
+            Tile { icon: Icons.zoff; value: Format.signed(root.z-offset, 2) + " " + @tr("mm"); label: @tr("Z-offset"); clicked => { root.open("zoffset"); } }
             Tile { icon: Icons.plug; label: @tr("Devices"); sub: @tr("power, outputs"); clicked => { root.open("devices"); } }
         }
     }
