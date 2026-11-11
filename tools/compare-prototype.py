@@ -27,6 +27,7 @@ PAIRS = {
     "speed": "Speed", "zoffset": "ZOffset",
     "tools": "Tools", "console": "Console", "macros": "Macros",
     "settings": "Settings", "offline": "Offline", "error": "KlipperError",
+    "motion-more": "MotionAdvanced", "file-actions": "FileActions",
 }
 
 def main():

@@ -1,9 +1,101 @@
 # List pages of the prototype that Rivet builds with FormScreen, and a name for each row.
-# tools/gen-forms.py reads the rows from docs/ux/style/<Page>.dc.html; a row without a
-# name here fails the build. The name becomes the row's properties in app.slint
-# (`<name>-shown`, `-on`, `-value`, ...). `en`: English msgid where i18n has none.
+# tools/gen-forms.py reads the rows from docs/ux/style/<Page>.dc.html; a row without an
+# entry here fails the build. The name becomes the row's properties in app.slint
+# (`<name>-shown`, `-on`, `-num`, `-value`, ...) and the key of its callbacks.
+#   name                               static row: everything from the prototype
+#   { name, data = [...] }             title / sub / value / range / tone from live data
+#   { name, later = "why" }            hidden until that function exists
+# Page keys: component, title = "data" (title from live data), back = false, en (msgids).
 
 [Light]
 component = "LightForm"
 rows = { r0 = "light", r1 = "brightness", r2 = "on-start" }
 en = { "Подсветка" = "Lights", "Яркость" = "Brightness", "Включать при старте" = "Turn on at startup" }
+
+[Speed]
+component = "SpeedForm"
+[Speed.rows]
+r0 = "speed"
+r1 = "flow"
+r2 = "reset-speed"
+r3 = { name = "now", data = ["value"] }
+
+[PrintTune]
+component = "TuneForm"
+[PrintTune.rows]
+r0 = "speed"
+r1 = "flow"
+r2 = "z"
+r3 = { name = "save-z", later = "saving needs SAVE_CONFIG, which restarts Klipper: the save-config flow (after the print) is not built" }
+r4 = "pa"
+r5 = { name = "temps", data = ["sub"] }
+r6 = { name = "fans", data = ["sub"] }
+r7 = "reset-speed"
+
+[PrintMore]
+component = "MoreForm"
+[PrintMore.rows]
+r0 = { name = "layer-pause", later = "M4: pause at layer" }
+r1 = { name = "exclude", data = ["sub"], later = "M4: exclude objects" }
+r2 = { name = "camera", later = "M4: camera" }
+r3 = "light"
+r4 = { name = "timelapse", data = ["sub"], later = "M4: timelapse" }
+r5 = { name = "off-after", later = "M2: power off after print (System)" }
+
+[Extruder]
+component = "ExtruderForm"
+[Extruder.rows]
+r0 = { name = "nozzle", data = ["sub", "value"] }
+r1 = "length"
+r2 = "rate"
+r3 = "extrude"
+r4 = "retract"
+r5 = { name = "filament", later = "wave 2: filament wizard" }
+r6 = { name = "load", later = "wave 2: filament wizard" }
+r7 = { name = "unload", later = "wave 2: filament wizard" }
+r8 = { name = "spools", data = ["sub"], later = "M4: Spoolman" }
+r9 = { name = "retraction", data = ["sub"], later = "M4: firmware retraction" }
+r10 = { name = "dryer", later = "M4: filament dryer" }
+
+[Settings]
+component = "SettingsForm"
+back = false
+[Settings.rows]
+r0 = { name = "network", data = ["sub"] }
+r1 = { name = "screen", data = ["sub"] }
+r2 = { name = "lock", data = ["sub"] }
+r3 = "sound"
+r4 = { name = "language", data = ["sub"] }
+r5 = "safety"
+r6 = { name = "printers", data = ["sub"] }
+r7 = { name = "updates", data = ["sub"] }
+r8 = "system"
+
+[FileActions]
+component = "FileActionsForm"
+title = "data"
+[FileActions.rows]
+r0 = { name = "queue", later = "M4: print queue" }
+r1 = { name = "rename", later = "the prototype has no name dialog yet" }
+r2 = { name = "move", later = "the prototype has no folder picker yet" }
+r3 = "delete"
+
+[MotionAdvanced]
+component = "MotionMoreForm"
+[MotionAdvanced.rows]
+r0 = "park"
+r1 = "home-all"
+r2 = "home-xy"
+r3 = "home-z"
+r4 = "goto"
+r5 = { name = "goto-x", data = ["sub", "range"] }
+r6 = { name = "goto-y", data = ["sub", "range"] }
+r7 = { name = "goto-z", data = ["sub", "range"] }
+r8 = "go"
+r9 = "jog"
+r10 = "jog-xy"
+r11 = "jog-z"
+r12 = "invert-x"
+r13 = "invert-y"
+r14 = "invert-z"
+r15 = { name = "endstops", data = ["sub"] }

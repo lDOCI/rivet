@@ -409,7 +409,7 @@ msgid "Fans"
 msgstr "Вентиляторы"
 
 msgid "The slicer may change the part fan on the next layer."
-msgstr "Слайсер может изменить обдув на следующем слое."
+msgstr "Слайсер может поменять обдув модели на следующем слое."
 
 msgid "Print tuning"
 msgstr "Подстройка печати"
@@ -563,3 +563,183 @@ msgstr "Пресеты"
 
 msgid "Graph"
 msgstr "График"
+
+msgid "10 mm"
+msgstr "10 мм"
+
+msgid "100 mm"
+msgstr "100 мм"
+
+msgid "25 mm"
+msgstr "25 мм"
+
+msgid "5 mm"
+msgstr "5 мм"
+
+msgid "50 mm"
+msgstr "50 мм"
+
+msgid "X, mm"
+msgstr "X, мм"
+
+msgid "Y, mm"
+msgstr "Y, мм"
+
+msgid "Z, mm"
+msgstr "Z, мм"
+
+msgid "Back to 100% / 100%"
+msgstr "Вернуть 100% / 100%"
+
+msgid "All axes"
+msgstr "Все оси"
+
+msgid "Unload filament"
+msgstr "Выгрузить пруток"
+
+msgid "Power off after print"
+msgstr "Выключить после печати"
+
+msgid "Motion · more"
+msgstr "Движение · ещё"
+
+msgid "Add to queue"
+msgstr "Добавить в очередь"
+
+msgid "Load / change filament"
+msgstr "Заправить / сменить пруток"
+
+msgid "Invert X"
+msgstr "Инвертировать X"
+
+msgid "Invert Y"
+msgstr "Инвертировать Y"
+
+msgid "Invert Z"
+msgstr "Инвертировать Z"
+
+msgid "Spoolman spools"
+msgstr "Катушки Spoolman"
+
+msgid "JOG SETTINGS"
+msgstr "НАСТРОЙКИ ДЖОЙСТИКА"
+
+msgid "HOMING"
+msgstr "ПАРКОВКА"
+
+msgid "GO TO POSITION"
+msgstr "ПЕРЕЙТИ В ТОЧКУ"
+
+msgid "Pause at layer"
+msgstr "Пауза на слое"
+
+msgid "Rename"
+msgstr "Переименовать"
+
+msgid "Move to folder"
+msgstr "Переместить в папку"
+
+msgid "Go"
+msgstr "Поехать"
+
+msgid "Check endstops"
+msgstr "Проверить концевики"
+
+msgid "Exclude objects"
+msgstr "Пропуск объектов"
+
+msgid "Firmware retraction"
+msgstr "Ретракт прошивки"
+
+msgid "Now"
+msgstr "Сейчас"
+
+msgid "XY speed"
+msgstr "Скорость XY"
+
+msgid "XY speed, mm/s"
+msgstr "Скорость XY, мм/с"
+
+msgid "Z speed"
+msgstr "Скорость Z"
+
+msgid "Z speed, mm/s"
+msgstr "Скорость Z, мм/с"
+
+msgid "Save Z-offset"
+msgstr "Сохранить Z-offset"
+
+msgid "Dry filament on the bed"
+msgstr "Сушка филамента на столе"
+
+msgid "Timelapse"
+msgstr "Таймлапс"
+
+msgid "Temperatures"
+msgstr "Температуры"
+
+msgid "XY only"
+msgstr "Только XY"
+
+msgid "Z only"
+msgstr "Только Z"
+
+msgid "FILAMENT"
+msgstr "ФИЛАМЕНТ"
+
+msgid "the chosen length"
+msgstr "выбранную длину"
+
+msgid "saved after the print"
+msgstr "запишется после печати"
+
+msgid "wizard: heat, feed, check the colour"
+msgstr "мастер: нагрев, протяжка, проверка цвета"
+
+msgid "heats and pulls it out"
+msgstr "нагреет и вытянет"
+
+msgid "back into the extruder"
+msgstr "обратно в экструдер"
+
+msgid "of the slicer"
+msgstr "от слайсера"
+
+msgid "confirmations"
+msgstr "подтверждения"
+
+msgid "real toolhead speed"
+msgstr "реальная скорость головы"
+
+msgid "signal at the end of a print"
+msgstr "сигнал в конце печати"
+
+msgid "next or chosen"
+msgstr "следующий или выбранный"
+
+msgid "the bed as a dryer"
+msgstr "стол как сушилка"
+
+msgid "on this screen only"
+msgstr "только на экране"
+
+msgid "pressed"
+msgstr "нажат"
+
+msgid "open"
+msgstr "открыт"
+
+msgid "pressed or not"
+msgstr "нажаты или нет"
+
+msgid "More…"
+msgstr "Ещё…"
+
+msgid "nozzle {}° · bed {}°"
+msgstr "сопло {}° · стол {}°"
+
+msgid "to extrude, needs ≥ {}°"
+msgstr "для выдавливания нужно ≥ {}°"
+
+msgid "Above 150% quality and strength usually drop."
+msgstr "Выше 150% качество и прочность обычно падают."

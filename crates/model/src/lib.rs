@@ -50,6 +50,7 @@ pub fn subscription() -> Value {
             "toolhead": null,
             "gcode_move": null,
             "fan": null,
+            "motion_report": ["live_velocity"],
         }
     })
 }
@@ -122,6 +123,8 @@ pub struct Snapshot {
     /// Live Z offset, mm (`gcode_move.homing_origin[2]`).
     pub z_offset: f64,
     pub pressure_advance: f64,
+    /// Real toolhead speed, mm/s (`motion_report.live_velocity`).
+    pub live_velocity: f64,
     /// Part fan, percent.
     pub fan_percent: f64,
     /// Every fan of the printer: the part fan first, then the ones that can
@@ -637,6 +640,7 @@ impl PrinterState {
                 .and_then(Value::as_f64)
                 .unwrap_or(0.0),
             pressure_advance: self.f64("extruder", "pressure_advance"),
+            live_velocity: self.f64("motion_report", "live_velocity"),
             fan_percent: self.f64("fan", "speed") * 100.0,
             fans: self.fans(),
             air_mode: self.air_mode(),

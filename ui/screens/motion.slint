@@ -46,6 +46,8 @@ export component MotionScreen inherits Rectangle {
     callback move-axis(int, float);
     callback home-all;
     callback motors-off;
+    // Motion · more: homing per axis, go to a point, jog settings.
+    callback more;
 
     property <bool> any-homed: root.homed-x || root.homed-y || root.homed-z;
 
@@ -128,63 +130,11 @@ export component MotionScreen inherits Rectangle {
             MoveButton { vertical-stretch: 1; text: "Z +1"; enabled: root.homed-z; clicked => { root.move-axis(2, 1); } }
             MoveButton { vertical-stretch: 1; text: "Z −1"; enabled: root.homed-z; clicked => { root.move-axis(2, -1); } }
             MoveButton { vertical-stretch: 1; text: "Z −10"; big: true; enabled: root.homed-z; clicked => { root.move-axis(2, -10); } }
-            SecondaryButton { text: @tr("Motors off"); min-height: 64px; clicked => { root.motors-off(); } }
-        }
-    }
-}
-
-export component ExtruderScreen inherits VerticalLayout {
-    horizontal-stretch: 1;
-    in property <float> nozzle;
-    in property <float> nozzle-target;
-    in property <float> min-temp;
-    in property <bool> can-extrude;
-    callback back;
-    callback extrude(float, float);
-    padding: Tokens.pad;
-    padding-bottom: Tokens.pad;
-    spacing: 10px;
-
-    in-out property <int> length-index: 2;
-    in-out property <int> speed-index: 1;
-    property <[float]> lengths: [5, 10, 25, 50, 100];
-    property <[float]> speeds: [2, 5, 10, 15];
-
-    Header { title: @tr("Extruder"); back-clicked => { root.back(); } }
-    ScrollList {
-        vertical-stretch: 1;
-        InfoRow {
-            title: @tr("Nozzle");
-            sub: root.can-extrude ? @tr("hot enough to extrude") : (root.min-temp > 0 ? @tr("needs at least {}°", round(root.min-temp)) : @tr("too cold to extrude"));
-            value: round(root.nozzle) + "° / " + round(root.nozzle-target) + "°";
-            value-color: root.can-extrude ? Tokens.accent-hi : Tokens.text;
-        }
-        SegmentedRow {
-            title: @tr("Length");
-            sub: @tr("per press");
-            options: ["5 " + @tr("mm"), "10 " + @tr("mm"), "25 " + @tr("mm"), "50 " + @tr("mm"), "100 " + @tr("mm")];
-            selected <=> root.length-index;
-        }
-        SegmentedRow {
-            title: @tr("Speed");
-            sub: @tr("mm/s");
-            options: ["2", "5", "10", "15"];
-            selected <=> root.speed-index;
-        }
-    }
-    HorizontalLayout {
-        spacing: Tokens.gap;
-        SecondaryButton {
-            text: @tr("Retract");
-            font-size: Tokens.row-title;
-            min-height: Tokens.touch-primary;
-            enabled: root.can-extrude;
-            clicked => { root.extrude(-root.lengths[root.length-index], root.speeds[root.speed-index]); }
-        }
-        PrimaryButton {
-            text: @tr("Extrude");
-            enabled: root.can-extrude;
-            clicked => { root.extrude(root.lengths[root.length-index], root.speeds[root.speed-index]); }
+            HorizontalLayout {
+                spacing: 7px;
+                SecondaryButton { text: @tr("Motors off"); min-height: 64px; clicked => { root.motors-off(); } }
+                SecondaryButton { text: @tr("More…"); min-height: 64px; clicked => { root.more(); } }
+            }
         }
     }
 }

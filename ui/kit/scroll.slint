@@ -8,11 +8,14 @@ export component ScrollList inherits Rectangle {
         flick.content-y = min(0px, flick.height - flick.content-height);
     }
     flick := Flickable {
-        width: root.width - 14px;
+        // The prototype's list keeps 10 px on the right for its scrollbar.
+        width: root.width - 10px;
         x: 0;
         height: root.height;
         interactive: true;
         VerticalLayout {
+            // A list never stretches its rows to fill the height.
+            alignment: start;
             spacing: root.spacing;
             padding-bottom: Tokens.pad;
             @children

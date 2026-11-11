@@ -729,7 +729,7 @@ def build():
     form('Fan', 'Вентиляторы', 'control', 'Control.dc.html', [
         SL('Обдув', '', 60, 0, 100, 5, '%', src='fan.speed', fmt='off0'),
         SL('Камера', '', 0, 0, 100, 5, '%', src='fan_generic chamber_fan.speed', fmt='off0'),
-        SG('Воздух в камере', 'AD5M Pro', ['Выкл.', 'Фильтр', 'Вытяжка'], 0, src='only when AIR_CIRCULATION_* macros exist'),
+        SG('Воздух в камере', '', ['Выкл.', 'Фильтр', 'Вытяжка'], 0, src='only when AIR_CIRCULATION_* macros exist'),
         S('АВТОМАТИЧЕСКИЕ'),
         I('Хотэнд', '100%', 'включается сам от 50°', src='heater_fan hotend_fan.speed'),
         I('Драйверы', '0%', 'работает, пока включены моторы', src='controller_fan stepper_driver_fan.speed'),

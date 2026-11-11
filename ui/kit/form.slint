@@ -19,7 +19,7 @@ export struct FormRow {
     value: string,
     // info: "danger" | "ok" | ""; action: "accent" (filled) | "danger" | "".
     tone: string,
-    // toggle
+    // toggle: on; action: enabled
     on: bool,
     // seg
     opts: [string],
@@ -29,6 +29,10 @@ export struct FormRow {
     // stepper: one step; fine: big and small steps, labels, and the starting value.
     big: float,
     small: float,
+    // fine: step labels as the prototype writes them ("0.05"): a number turned into
+    // text here would follow the locale ("0,05").
+    big-label: string,
+    small-label: string,
     changed: bool,
     was: string,
     // false when this printer has nothing behind the row: then it takes no room.
@@ -53,6 +57,9 @@ export struct FormBar {
 
 export component FormScreen inherits VerticalLayout {
     in property <string> title;
+    in property <bool> has-back: true;
+    // One line under the header, as some prototype pages have.
+    in property <string> intro;
     in property <[FormBar]> bars;
     in property <[FormRow]> rows;
     callback back;
@@ -70,7 +77,9 @@ export component FormScreen inherits VerticalLayout {
     padding: Tokens.pad;
     padding-bottom: 0;
     spacing: 10px;
-    Header { title: root.title; back-clicked => { root.back(); } }
+    Header { title: root.title; back: root.has-back; back-clicked => { root.back(); } }
+    // line-height 1.45 in the prototype: 15 px text on a 21.75 px line.
+    if root.intro != "": Text { text: root.intro; color: Tokens.text-dim; font-size: 15px; min-height: 21.75px; vertical-alignment: center; wrap: word-wrap; }
     HorizontalLayout {
         vertical-stretch: 1;
         // 16 between bars and rows; each bar carries its own 10 on the right.
@@ -137,8 +146,8 @@ export component FormScreen inherits VerticalLayout {
                     label: r.value;
                     changed: r.changed;
                     was: r.was;
-                    big: r.big;
-                    small: r.small;
+                    big: r.big-label;
+                    small: r.small-label;
                     big-step: r.big;
                     small-step: r.small;
                     step(d) => { root.stepped(r.key, d); }
@@ -154,12 +163,14 @@ export component FormScreen inherits VerticalLayout {
                 if r.shown && r.kind == "action" && r.tone == "accent": PrimaryButton {
                     text: r.title;
                     sub: r.sub;
+                    enabled: r.on;
                     clicked => { root.activate(r.key); }
                 }
                 if r.shown && r.kind == "action" && r.tone != "accent": ActionRow {
                     title: r.title;
                     sub: r.sub;
                     danger: r.tone == "danger";
+                    enabled: r.on;
                     clicked => { root.activate(r.key); }
                 }
             }

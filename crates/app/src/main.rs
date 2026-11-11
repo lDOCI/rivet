@@ -128,10 +128,19 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
     }
     {
         let tx = tx.clone();
+        let weak = ui.as_weak();
+        // Jog speed from the saved settings (Motion · more), mm/s.
         ui.on_move_axis(move |axis, delta| {
+            let Some(ui) = weak.upgrade() else { return };
+            let speed = if axis == 2 {
+                ui.get_jog_z_speed()
+            } else {
+                ui.get_jog_xy_speed()
+            };
             let _ = tx.send(Command::Move {
                 axis: axis as usize,
                 delta,
+                speed,
             });
         });
     }
@@ -194,8 +203,39 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
     }
     {
         let tx = tx.clone();
-        ui.on_set_light_on_start(move |on| {
-            let _ = tx.send(Command::SetLightOnStart(on));
+        ui.on_save_flag(move |key, on| {
+            let _ = tx.send(Command::SaveSetting {
+                key: key.to_string(),
+                value: on.into(),
+            });
+        });
+    }
+    {
+        let tx = tx.clone();
+        ui.on_save_number(move |key, v| {
+            let _ = tx.send(Command::SaveSetting {
+                key: key.to_string(),
+                value: f64::from(v).into(),
+            });
+        });
+    }
+    {
+        let tx = tx.clone();
+        let weak = ui.as_weak();
+        ui.on_go_to(move |x, y, z| {
+            let Some(ui) = weak.upgrade() else { return };
+            let _ = tx.send(Command::GoTo {
+                x,
+                y,
+                z,
+                speed: ui.get_jog_xy_speed(),
+            });
+        });
+    }
+    {
+        let tx = tx.clone();
+        ui.on_query_endstops(move || {
+            let _ = tx.send(Command::QueryEndstops);
         });
     }
     {

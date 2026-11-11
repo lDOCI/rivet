@@ -22,4 +22,17 @@ export global Format {
     size(kb) => {
         return kb < 1024 ? @tr("{} KB", max(1, kb)) : @tr("{} MB", round(kb / 102.4) / 10);
     }
+
+    // Fixed decimals, padded ("0.10", "−0.005"); "−" is the real minus sign and a
+    // value that rounds to zero has no sign. Up to 3 decimals.
+    pure callback fixed(float, int) -> string;
+    fixed(v, digits) => {
+        return (round(abs(v) * pow(10, digits)) == 0 ? "" : v < 0 ? "−" : "")
+            + floor(round(abs(v) * pow(10, digits)) / pow(10, digits))
+            + (digits <= 0 ? "" : "." + (
+                digits >= 3 && mod(round(abs(v) * pow(10, digits)), pow(10, digits)) < 10 ? "00"
+                : digits >= 3 && mod(round(abs(v) * pow(10, digits)), pow(10, digits)) < 100 ? "0"
+                : digits == 2 && mod(round(abs(v) * pow(10, digits)), pow(10, digits)) < 10 ? "0"
+                : "") + mod(round(abs(v) * pow(10, digits)), pow(10, digits)));
+    }
 }

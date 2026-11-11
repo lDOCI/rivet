@@ -80,6 +80,7 @@ export component ActionRow inherits Rectangle {
     in property <string> title;
     in property <string> sub;
     in property <bool> danger;
+    in property <bool> enabled: true;
     callback clicked;
     min-height: Tokens.touch;
     border-radius: Tokens.r-m;
@@ -94,10 +95,10 @@ export component ActionRow inherits Rectangle {
         padding-bottom: 10px;
         alignment: center;
         spacing: 2px;
-        Text { text: root.title; color: root.danger ? Tokens.danger : Tokens.accent; font-size: 17px; font-weight: 700; }
+        Text { text: root.title; color: !root.enabled ? Tokens.text-faint : root.danger ? Tokens.danger : Tokens.accent; font-size: 17px; font-weight: 700; }
         if root.sub != "": Text { text: root.sub; color: Tokens.text-dim; font-size: Tokens.caption; }
     }
-    ta := TouchArea { clicked => { root.clicked(); } }
+    ta := TouchArea { enabled: root.enabled; clicked => { root.clicked(); } }
 }
 
 export component Switch inherits Rectangle {
@@ -200,8 +201,10 @@ export component SegmentedRow inherits Rectangle {
     callback picked(int);
     // Title column 150 + buttons 280 + gap 14 + the card's own padding.
     property <bool> stacked: root.width < 150px + 280px + 14px + 28px;
-    // Stacked: padding 10+10, title 22 (+ caption 19), gap 10, buttons 64.
-    min-height: root.stacked ? (root.sub != "" ? 135px : 116px) : 84px;
+    // Stacked (the prototype's flex-wrap): padding 10+10, title 21 (+ 2 + caption 17),
+    // gap 12, buttons 64 — 117 px without a caption, as measured on the prototype.
+    min-height: root.stacked ? (root.sub != "" ? 136px : 117px) : 84px;
+    max-height: root.stacked ? (root.sub != "" ? 136px : 117px) : 1000px;
     border-radius: Tokens.r-m;
     background: Tokens.surface-1;
 
@@ -209,16 +212,19 @@ export component SegmentedRow inherits Rectangle {
         padding: 10px;
         padding-left: 18px;
         spacing: 14px;
+        // As the prototype's flex 1 1 150px / 1 1 280px: both grow by the same amount.
         VerticalLayout {
             alignment: center;
             spacing: 2px;
             min-width: 150px;
+            preferred-width: 150px;
             horizontal-stretch: 1;
             Text { text: root.title; color: Tokens.text; font-size: Tokens.row-title; font-weight: 700; overflow: elide; }
             if root.sub != "": Text { text: root.sub; color: Tokens.text-dim; font-size: Tokens.caption; overflow: elide; }
         }
         Segmented {
-            horizontal-stretch: 2;
+            preferred-width: 280px;
+            horizontal-stretch: 1;
             options: root.options;
             selected <=> root.selected;
             picked(i) => { root.picked(i); }
@@ -227,7 +233,8 @@ export component SegmentedRow inherits Rectangle {
     if root.stacked: VerticalLayout {
         padding: 10px;
         padding-left: 18px;
-        spacing: 10px;
+        spacing: 12px;
+        alignment: start;
         VerticalLayout {
             spacing: 2px;
             Text { text: root.title; color: Tokens.text; font-size: Tokens.row-title; font-weight: 700; overflow: elide; }

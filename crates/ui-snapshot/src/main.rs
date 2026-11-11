@@ -40,6 +40,8 @@ const ALL: &[&str] = &[
     "speed",
     "zoffset",
     "extruder",
+    "motion-more",
+    "file-actions",
     "heating-bed",
     "files",
     "files-empty",
@@ -132,11 +134,16 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_total_layers(180);
         }
         "tune" => {
+            // The prototype page's values.
             ui.set_screen("tune".into());
-            ui.set_speed_percent(110.0);
-            ui.set_z_offset(-0.07);
-            ui.set_pressure_advance(0.035);
+            ui.set_speed_percent(100.0);
+            ui.set_flow_percent(100.0);
+            ui.set_z_offset(-0.12);
+            ui.set_tune_z_start(-0.12);
+            ui.set_pressure_advance(0.04);
             ui.set_fan_percent(60);
+            ui.set_extruder_temp(240.0);
+            ui.set_bed_temp(80.0);
         }
         "more" => {
             ui.set_screen("more".into());
@@ -197,7 +204,33 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_light_level(80.0);
             ui.set_light_on_start(true);
         }
-        "speed" | "zoffset" => {
+        "speed" => {
+            // The prototype page's values: 100 % / 100 %, the head at 86 mm/s.
+            ui.set_screen("speed".into());
+            ui.set_speed_percent(100.0);
+            ui.set_flow_percent(100.0);
+            ui.set_live_velocity(86.0);
+        }
+        "motion-more" => {
+            ui.set_screen("motion-more".into());
+            ui.set_homed_x(true);
+            ui.set_homed_y(true);
+            ui.set_homed_z(true);
+            ui.set_axis_min_x(-112.0);
+            ui.set_axis_max_x(112.0);
+            ui.set_axis_min_y(-112.0);
+            ui.set_axis_max_y(112.0);
+            ui.set_axis_min_z(-10.0);
+            ui.set_axis_max_z(230.0);
+            ui.set_goto_x(0.0);
+            ui.set_goto_y(0.0);
+            ui.set_goto_z(10.0);
+        }
+        "file-actions" => {
+            ui.set_screen("file-actions".into());
+            ui.set_open_name("Корпус вентилятора №2".into());
+        }
+        "zoffset" => {
             ui.set_screen(name.into());
             ui.set_speed_percent(110.0);
             ui.set_z_offset(-0.07);
@@ -242,6 +275,8 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_screen("extruder".into());
             ui.set_can_extrude(true);
             ui.set_min_extrude_temp(170.0);
+            ui.set_extruder_temp(240.0);
+            ui.set_extruder_target(240.0);
         }
         "heating" | "heating-bed" => {
             ui.set_screen("heating".into());
@@ -309,36 +344,9 @@ fn show(ui: &AppWindow, name: &str) {
                     0.0,
                 ),
             ]));
-            ui.set_fan_extras(model(vec![
-                row(
-                    "fan_generic internal_fan",
-                    "internal_fan",
-                    "Internal fan",
-                    1,
-                    100.0,
-                    0,
-                    0.0,
-                ),
-                row(
-                    "fan_generic external_fan",
-                    "external_fan",
-                    "External fan",
-                    1,
-                    0.0,
-                    0,
-                    0.0,
-                ),
-            ]));
+            // With air modes the engine shows no inside/outside rows (set_fans).
+            ui.set_fan_extras(model(vec![]));
             ui.set_fan_autos(model(vec![
-                row(
-                    "controller_fan stepper_driver_fan",
-                    "stepper_driver_fan",
-                    "Stepper driver fan",
-                    2,
-                    0.0,
-                    2,
-                    0.0,
-                ),
                 row(
                     "heater_fan hotend_fan",
                     "hotend_fan",
@@ -348,8 +356,18 @@ fn show(ui: &AppWindow, name: &str) {
                     1,
                     50.0,
                 ),
+                row(
+                    "controller_fan stepper_driver_fan",
+                    "stepper_driver_fan",
+                    "Stepper driver fan",
+                    2,
+                    0.0,
+                    2,
+                    0.0,
+                ),
             ]));
-            ui.set_air_mode(1);
+            // As in the prototype: air off; inside/outside fans belong to the air modes.
+            ui.set_air_mode(0);
             ui.set_print_state("standby".into());
             ui.set_screen("fans".into());
         }

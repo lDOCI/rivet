@@ -1,15 +1,15 @@
 import { Tokens } from "kit/tokens.slint";
 import { Rail } from "kit/rail.slint";
 import { ControlScreen } from "screens/control.slint";
-import { SettingsScreen } from "screens/settings.slint";
-import { FansScreen, FanRow, PrintTuneScreen, PrintMoreScreen, SpeedScreen, ZOffsetScreen } from "screens/tune.slint";
-import { LightForm } from "generated/forms.slint";
+import { FansScreen, FanRow, ZOffsetScreen } from "screens/tune.slint";
+import { LightForm, SpeedForm, TuneForm, MoreForm, ExtruderForm, SettingsForm, FileActionsForm, MotionMoreForm } from "generated/forms.slint";
+import { Format } from "kit/format.slint";
 import { Dialog, Keypad } from "kit/dialogs.slint";
 import { StatusScreen } from "screens/status.slint";
 import { Toast } from "kit/toast.slint";
 import { HomeScreen } from "screens/home.slint";
 import { HeatingScreen } from "screens/heating.slint";
-import { MotionScreen, ExtruderScreen } from "screens/motion.slint";
+import { MotionScreen } from "screens/motion.slint";
 import { ToolsScreen, ConsoleScreen, MacrosScreen, ConsoleLine } from "screens/tools.slint";
 import { FilesScreen, FileScreen, FileItem, FileInfo } from "screens/files.slint";
 export { FileItem, FileInfo, ConsoleLine, FanRow }
@@ -74,7 +74,6 @@ export component AppWindow inherits Window {
     callback adjust-z(float);
     callback set-pressure-advance(float);
     callback set-light-level(float);
-    callback set-light-on-start(bool);
     callback run-gcode(string);
     callback clear-console();
     callback apply-key(string, string) -> string;
@@ -93,6 +92,36 @@ export component AppWindow inherits Window {
     in property <bool> homed-x;
     in property <bool> homed-y;
     in property <bool> homed-z;
+    // Axis travel from the printer's config, mm.
+    in property <float> axis-min-x;
+    in property <float> axis-min-y;
+    in property <float> axis-min-z;
+    in property <float> axis-max-x;
+    in property <float> axis-max-y;
+    in property <float> axis-max-z;
+    // Motion · more: where to go, jog speeds (mm/s), screen-only axis inversion.
+    in-out property <float> goto-x;
+    in-out property <float> goto-y;
+    in-out property <float> goto-z: 10;
+    in-out property <float> jog-xy-speed: 100;
+    in-out property <float> jog-z-speed: 10;
+    in-out property <bool> invert-x;
+    in-out property <bool> invert-y;
+    in-out property <bool> invert-z;
+    // Last endstop check: 1 pressed, 0 open, -1 not asked yet.
+    in property <int> endstop-x: -1;
+    in property <int> endstop-y: -1;
+    in property <int> endstop-z: -1;
+    callback go-to(float, float, float);
+    callback query-endstops();
+    // Real toolhead speed, mm/s.
+    in property <float> live-velocity;
+    // Extruder: chosen length and speed (indexes into the prototype's options).
+    in-out property <int> extrude-length: 2;
+    in-out property <int> extrude-rate: 1;
+    // Rivet's own settings, saved in Moonraker's database.
+    callback save-flag(string, bool);
+    callback save-number(string, float);
     in property <bool> can-extrude;
     in property <float> min-extrude-temp;
     callback set-fan(string, float);
@@ -141,7 +170,8 @@ export component AppWindow inherits Window {
     in property <bool> has-heat-links;
     // Rivet's own setting, read from Moonraker's database.
     in-out property <bool> light-on-start;
-    property <float> tune-z-start;
+    // Z offset when the tuning screen opened: the «was» of its stepper.
+    in-out property <float> tune-z-start;
     // Which value the keypad is editing: "speed" | "flow" | "z" | "pa".
     property <string> keypad-target;
     callback firmware-restart();
@@ -176,12 +206,39 @@ export component AppWindow inherits Window {
         root.overlay = "keypad";
     }
 
+    // Keypad for a row of a generated screen: key, title, range, current value, decimals.
+    function open-number(key: string, title: string, lo: float, hi: float, current: float, digits: int) {
+        root.keypad-target = key;
+        root.keypad-negative = lo < 0;
+        root.keypad-title = title;
+        root.keypad-current = "" + round(current * pow(10, digits)) / pow(10, digits);
+        root.keypad-min = lo;
+        root.keypad-max = hi;
+        root.keypad-hint = Format.fixed(lo, digits) + " … " + Format.fixed(hi, digits);
+        root.overlay = "keypad";
+    }
+    // A new value for a row of a generated screen, by the row's key.
+    function form-set(key: string, v: float) {
+        if (key == "speed") { root.set-speed(v); }
+        else if (key == "flow") { root.set-flow(v); }
+        else if (key == "z") { root.adjust-z(v - root.z-offset); }
+        else if (key == "pa") { root.set-pressure-advance(v); }
+        else if (key == "goto-x") { root.goto-x = v; }
+        else if (key == "goto-y") { root.goto-y = v; }
+        else if (key == "goto-z") { root.goto-z = v; }
+        else if (key == "jog-xy") { root.jog-xy-speed = v; root.save-number("jog_xy_speed", v); }
+        else if (key == "jog-z") { root.jog-z-speed = v; root.save-number("jog_z_speed", v); }
+    }
+    pure function endstop(v: int) -> string {
+        return v == 1 ? @tr("pressed") : @tr("open");
+    }
+
     property <bool> ready: root.link-state == "ready";
     property <bool> busy: root.ready && (root.print-state == "printing" || root.print-state == "paused");
 
     HorizontalLayout {
         Rail {
-            active: !root.ready ? "" : (root.screen == "fans" || root.screen == "heating" || root.screen == "motion" || root.screen == "extruder" || root.screen == "light" || root.screen == "speed" || root.screen == "zoffset") ? "control"
+            active: !root.ready ? "" : (root.screen == "fans" || root.screen == "heating" || root.screen == "motion" || root.screen == "extruder" || root.screen == "light" || root.screen == "speed" || root.screen == "zoffset" || root.screen == "motion-more") ? "control"
                 : (root.screen == "control" || root.screen == "tools" || root.screen == "settings" || root.screen == "messages") ? root.screen
                 : (root.screen == "console" || root.screen == "macros") ? "tools"
                 : "home";
@@ -217,18 +274,19 @@ export component AppWindow inherits Window {
                 if (key == "light") { root.set-light-level(on ? 100 : 0); }
                 if (key == "on-start") {
                     root.light-on-start = on;
-                    root.set-light-on-start(on);
+                    root.save-flag("light_on_start", on);
                 }
             }
             bar-committed(key, v) => { root.set-light-level(v); }
         }
-        if root.ready && root.screen == "speed": SpeedScreen {
-            speed: root.speed-percent;
-            flow: root.flow-percent;
+        if root.ready && root.screen == "speed": SpeedForm {
+            speed-num: root.speed-percent;
+            flow-num: root.flow-percent;
+            now-value: round(root.live-velocity) + " " + @tr("mm/s");
             back => { root.screen = "control"; }
-            set-speed(p) => { root.set-speed(p); }
-            set-flow(p) => { root.set-flow(p); }
-            edit(what) => { root.open-tune-keypad(what); }
+            set-value(key, v) => { root.form-set(key, v); }
+            edit-number(key, t, lo, hi, v, d) => { root.open-number(key, t, lo, hi, v, d); }
+            activate(key) => { if (key == "reset-speed") { root.set-speed(100); root.set-flow(100); } }
         }
         if root.ready && root.screen == "zoffset": ZOffsetScreen {
             z-offset: root.z-offset;
@@ -245,17 +303,73 @@ export component AppWindow inherits Window {
             homed-y: root.homed-y;
             homed-z: root.homed-z;
             back => { root.screen = "control"; }
-            move-axis(axis, d) => { root.move-axis(axis, d); }
+            // Inversion is for this screen's buttons only (Motion · more).
+            move-axis(axis, d) => {
+                root.move-axis(axis, (axis == 0 && root.invert-x) || (axis == 1 && root.invert-y) || (axis == 2 && root.invert-z) ? -d : d);
+            }
+            more => {
+                root.goto-x = root.position-x;
+                root.goto-y = root.position-y;
+                root.goto-z = root.position-z;
+                root.screen = "motion-more";
+            }
             home-all => { root.home-all(); }
             motors-off => { root.motors-off(); }
         }
-        if root.ready && root.screen == "extruder": ExtruderScreen {
-            nozzle: root.extruder-temp;
-            nozzle-target: root.extruder-target;
-            min-temp: root.min-extrude-temp;
-            can-extrude: root.can-extrude;
+        if root.ready && root.screen == "extruder": ExtruderForm {
+            nozzle-sub: root.min-extrude-temp > 0 ? @tr("to extrude, needs ≥ {}°", round(root.min-extrude-temp))
+                : root.can-extrude ? @tr("hot enough to extrude") : @tr("too cold to extrude");
+            nozzle-value: round(root.extruder-temp) + "° / " + round(root.extruder-target) + "°";
+            length-sel: root.extrude-length;
+            rate-sel: root.extrude-rate;
+            extrude-enabled: root.can-extrude;
+            retract-enabled: root.can-extrude;
             back => { root.screen = "control"; }
-            extrude(len, speed) => { root.extrude(len, speed); }
+            picked(key, i) => {
+                if (key == "length") { root.extrude-length = i; }
+                if (key == "rate") { root.extrude-rate = i; }
+            }
+            activate(key) => {
+                if (key == "extrude") { root.extrude(self.length-values[root.extrude-length], self.rate-values[root.extrude-rate]); }
+                if (key == "retract") { root.extrude(-self.length-values[root.extrude-length], self.rate-values[root.extrude-rate]); }
+            }
+        }
+        if root.ready && root.screen == "motion-more": MotionMoreForm {
+            goto-x-num: root.goto-x;
+            goto-y-num: root.goto-y;
+            goto-z-num: root.goto-z;
+            goto-x-min: root.axis-min-x;
+            goto-y-min: root.axis-min-y;
+            goto-z-min: root.axis-min-z;
+            goto-x-max: root.axis-max-x;
+            goto-y-max: root.axis-max-y;
+            goto-z-max: root.axis-max-z;
+            goto-x-sub: Format.fixed(root.axis-min-x, 0) + " … " + Format.fixed(root.axis-max-x, 0);
+            goto-y-sub: Format.fixed(root.axis-min-y, 0) + " … " + Format.fixed(root.axis-max-y, 0);
+            goto-z-sub: Format.fixed(root.axis-min-z, 0) + " … " + Format.fixed(root.axis-max-z, 0);
+            go-enabled: root.homed-x && root.homed-y && root.homed-z;
+            jog-xy-num: root.jog-xy-speed;
+            jog-z-num: root.jog-z-speed;
+            invert-x-on: root.invert-x;
+            invert-y-on: root.invert-y;
+            invert-z-on: root.invert-z;
+            endstops-sub: root.endstop-x < 0 ? @tr("pressed or not")
+                : "X " + root.endstop(root.endstop-x) + " · Y " + root.endstop(root.endstop-y) + " · Z " + root.endstop(root.endstop-z);
+            back => { root.screen = "motion"; }
+            set-value(key, v) => { root.form-set(key, v); }
+            edit-number(key, t, lo, hi, v, d) => { root.open-number(key, t, lo, hi, v, d); }
+            activate(key) => {
+                if (key == "home-all") { root.run-gcode("G28"); }
+                if (key == "home-xy") { root.run-gcode("G28 X Y"); }
+                if (key == "home-z") { root.run-gcode("G28 Z"); }
+                if (key == "go") { root.go-to(root.goto-x, root.goto-y, root.goto-z); }
+                if (key == "endstops") { root.query-endstops(); }
+            }
+            toggled(key, on) => {
+                if (key == "invert-x") { root.invert-x = on; root.save-flag("invert_x", on); }
+                if (key == "invert-y") { root.invert-y = on; root.save-flag("invert_y", on); }
+                if (key == "invert-z") { root.invert-z = on; root.save-flag("invert_z", on); }
+            }
         }
         if root.ready && root.screen == "heating": HeatingScreen {
             nozzle: root.extruder-temp;
@@ -299,7 +413,8 @@ export component AppWindow inherits Window {
             back => { root.screen = "tools"; }
             pick(name) => { root.macro-pending = name; root.overlay = "run-macro"; }
         }
-        if root.ready && root.screen == "settings": SettingsScreen { }
+        // The rows open M2 screens; until those exist they do nothing.
+        if root.ready && root.screen == "settings": SettingsForm { }
         if root.ready && root.screen == "fans": FansScreen {
             bars: root.fan-bars;
             extras: root.fan-extras;
@@ -309,26 +424,28 @@ export component AppWindow inherits Window {
             set-fan(object, v) => { root.set-fan(object, v); }
             set-air(mode) => { root.set-air(mode); }
         }
-        if root.ready && root.screen == "more": PrintMoreScreen {
-            has-light: root.has-light;
-            light-on <=> root.light-on;
+        if root.ready && root.screen == "more": MoreForm {
+            light-shown: root.has-light;
+            light-on: root.light-on;
             back => { root.screen = "home"; }
-            set-light(on) => { root.set-light-level(on ? 100 : 0); }
+            toggled(key, on) => { if (key == "light") { root.set-light-level(on ? 100 : 0); } }
         }
-        if root.ready && root.screen == "tune": PrintTuneScreen {
-            speed: root.speed-percent;
-            flow: root.flow-percent;
-            z-offset: root.z-offset;
-            z-start: root.tune-z-start;
-            pressure-advance: root.pressure-advance;
-            fan-percent: root.fan-percent;
+        if root.ready && root.screen == "tune": TuneForm {
+            speed-num: root.speed-percent;
+            flow-num: root.flow-percent;
+            z-num: root.z-offset;
+            z-was-num: root.tune-z-start;
+            pa-num: root.pressure-advance;
+            temps-sub: @tr("nozzle {}° · bed {}°", round(root.extruder-temp), round(root.bed-temp));
+            fans-sub: @tr("part fan {}%", root.fan-percent);
             back => { root.screen = "home"; }
-            open-fans => { root.screen = "fans"; }
-            set-speed(p) => { root.set-speed(p); }
-            set-flow(p) => { root.set-flow(p); }
-            adjust-z(d) => { root.adjust-z(d); }
-            set-pressure-advance(v) => { root.set-pressure-advance(v); }
-            edit(what) => { root.open-tune-keypad(what); }
+            set-value(key, v) => { root.form-set(key, v); }
+            edit-number(key, t, lo, hi, v, d) => { root.open-number(key, t, lo, hi, v, d); }
+            activate(key) => {
+                if (key == "temps") { root.screen = "heating"; }
+                if (key == "fans") { root.screen = "fans"; }
+                if (key == "reset-speed") { root.set-speed(100); root.set-flow(100); }
+            }
         }
 
         if root.ready && root.screen == "home" && root.busy: PrintingScreen {
@@ -397,7 +514,12 @@ export component AppWindow inherits Window {
             info: root.file-info;
             back => { root.screen = "files"; }
             print-file => { root.start-print(root.open-path); root.screen = "home"; }
-            delete => { root.overlay = "delete-file"; }
+            delete => { root.screen = "file-actions"; }
+        }
+        if root.ready && root.screen == "file-actions": FileActionsForm {
+            page-title: root.open-name;
+            back => { root.screen = "file"; }
+            activate(key) => { if (key == "delete") { root.overlay = "delete-file"; } }
         }
         if !root.ready: StatusScreen {
             state: root.link-state;
@@ -462,12 +584,9 @@ export component AppWindow inherits Window {
         done(v) => {
             root.overlay = "";
             root.keypad-done(v);
-            if (root.keypad-target == "speed") { root.set-speed(v); }
-            else if (root.keypad-target == "flow") { root.set-flow(v); }
-            else if (root.keypad-target == "z") { root.adjust-z(v - root.z-offset); }
-            else if (root.keypad-target == "pa") { root.set-pressure-advance(v); }
-            else if (root.keypad-target == "nozzle") { root.set-nozzle(v); }
+            if (root.keypad-target == "nozzle") { root.set-nozzle(v); }
             else if (root.keypad-target == "bed") { root.set-bed(v); }
+            else { root.form-set(root.keypad-target, v); }
         }
         cancelled => { root.overlay = ""; }
     }

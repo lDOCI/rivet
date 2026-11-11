@@ -123,11 +123,21 @@ pub enum Command {
     },
     /// Chamber air: 0 off, 1 filter, 2 exhaust (the printer's own macros).
     SetAir(u8),
-    /// Move one axis (0 X, 1 Y, 2 Z) by `delta` mm from where it is.
+    /// Move one axis (0 X, 1 Y, 2 Z) by `delta` mm from where it is, at `speed` mm/s.
     Move {
         axis: usize,
         delta: f32,
+        speed: f32,
     },
+    /// Go to a position (absolute, mm) at `speed` mm/s.
+    GoTo {
+        x: f32,
+        y: f32,
+        z: f32,
+        speed: f32,
+    },
+    /// Ask Klipper which endstops are pressed; the answer goes to the screen.
+    QueryEndstops,
     MotorsOff,
     /// Push (positive) or pull (negative) filament: mm and mm/s.
     Extrude {
@@ -143,8 +153,11 @@ pub enum Command {
         level: f32,
         white: bool,
     },
-    /// Rivet's own setting, kept in Moonraker's database: light on when Rivet starts.
-    SetLightOnStart(bool),
+    /// One of Rivet's own settings, kept in Moonraker's database (namespace `rivet`).
+    SaveSetting {
+        key: String,
+        value: Value,
+    },
     /// G-code typed in the console or a macro to run.
     Gcode(String),
     ClearConsole,
@@ -202,9 +215,9 @@ pub async fn run(
                     _ => {}
                 }
                 let cmd = match cmd {
-                    Command::Move { axis, delta } => {
+                    Command::Move { axis, delta, speed } => {
                         match clamp_move(&state.snapshot(), axis, delta) {
-                            Some(delta) => Command::Move { axis, delta },
+                            Some(delta) => Command::Move { axis, delta, speed },
                             None => continue,
                         }
                     }
@@ -265,10 +278,8 @@ pub async fn run(
                     });
                 }
                 if !light_start_done && snap.klippy == Klippy::Ready {
-                    if let Some(light) = snap.light.clone() {
-                        light_start_done = true;
-                        tokio::spawn(light_on_start(client.clone(), ui.clone(), light));
-                    }
+                    light_start_done = true;
+                    tokio::spawn(load_settings(client.clone(), ui.clone(), snap.light.clone()));
                 }
                 if last_pushed.as_ref() != Some(&snap) {
                     // A finished job lands in history; so does the first look
@@ -763,25 +774,41 @@ impl HeatRate {
 /// Rivet's settings live in Moonraker's database under this namespace.
 const DB_NAMESPACE: &str = "rivet";
 
-/// Show the saved "turn on at startup" and, when it is on, turn the light on.
-async fn light_on_start(client: Client, ui: slint::Weak<AppWindow>, light: model::Light) {
-    let on = match client
+/// Read Rivet's saved settings once Klipper is ready, show them, and act on
+/// "turn the light on at startup".
+async fn load_settings(client: Client, ui: slint::Weak<AppWindow>, light: Option<model::Light>) {
+    let saved = match client
         .call_timeout(
             "server.database.get_item",
-            json!({ "namespace": DB_NAMESPACE, "key": "light_on_start" }),
+            json!({ "namespace": DB_NAMESPACE }),
             SETUP_TIMEOUT,
         )
         .await
     {
-        Ok(item) => item["value"].as_bool().unwrap_or(false),
-        // Never saved: the namespace or key does not exist yet.
+        Ok(mut item) => item["value"].take(),
+        // Nothing saved yet: the namespace does not exist.
         Err(err) => {
-            tracing::debug!(%err, "light_on_start not saved");
-            false
+            tracing::debug!(%err, "no saved settings");
+            Value::Null
         }
     };
-    let _ = ui.upgrade_in_event_loop(move |ui| ui.set_light_on_start(on));
-    if on && !light.on {
+    let flag = |key: &str| saved[key].as_bool().unwrap_or(false);
+    let number = |key: &str, default: f64| saved[key].as_f64().unwrap_or(default) as f32;
+    let light_on = flag("light_on_start");
+    let (invert, jog_xy, jog_z) = (
+        [flag("invert_x"), flag("invert_y"), flag("invert_z")],
+        number("jog_xy_speed", 100.0),
+        number("jog_z_speed", 10.0),
+    );
+    let _ = ui.upgrade_in_event_loop(move |ui| {
+        ui.set_light_on_start(light_on);
+        ui.set_invert_x(invert[0]);
+        ui.set_invert_y(invert[1]);
+        ui.set_invert_z(invert[2]);
+        ui.set_jog_xy_speed(jog_xy);
+        ui.set_jog_z_speed(jog_z);
+    });
+    if let Some(light) = light.filter(|l| light_on && !l.on) {
         let cmd = Command::SetLight {
             name: light.name.clone(),
             level: 1.0,
@@ -793,6 +820,28 @@ async fn light_on_start(client: Client, ui: slint::Weak<AppWindow>, light: model
             }
         }
     }
+}
+
+/// Ask Klipper which endstops are pressed and show it: 1 pressed, 0 open, -1 unknown.
+async fn query_endstops(
+    client: &Client,
+    ui: &slint::Weak<AppWindow>,
+) -> Result<(), moonraker::Error> {
+    let status = client
+        .call("printer.query_endstops.status", Value::Null)
+        .await?;
+    let state = |axis: &str| match status[axis].as_str() {
+        Some(s) if s.eq_ignore_ascii_case("triggered") => 1,
+        Some(_) => 0,
+        None => -1,
+    };
+    let (x, y, z) = (state("x"), state("y"), state("z"));
+    let _ = ui.upgrade_in_event_loop(move |ui| {
+        ui.set_endstop_x(x);
+        ui.set_endstop_y(y);
+        ui.set_endstop_z(z);
+    });
+    Ok(())
 }
 
 /// Read the current values back after a command failed.
@@ -814,13 +863,18 @@ fn gcode_for(cmd: &Command) -> Option<String> {
         Command::SetSpeed(p) => format!("M220 S{p:.0}"),
         Command::SetFlow(p) => format!("M221 S{p:.0}"),
         Command::SetNozzle(t) => format!("M104 S{t:.0}"),
-        Command::Move { axis, delta } => {
-            let (letter, feed) = [("X", 6000), ("Y", 6000), ("Z", 600)][(*axis).min(2)];
+        Command::Move { axis, delta, speed } => {
+            let letter = ["X", "Y", "Z"][(*axis).min(2)];
+            let feed = speed * 60.0;
             // Relative for this move only; the printer's modes come back after.
             format!(
-                "SAVE_GCODE_STATE NAME=RIVET\nG91\nG1 {letter}{delta:.3} F{feed}\nRESTORE_GCODE_STATE NAME=RIVET"
+                "SAVE_GCODE_STATE NAME=RIVET\nG91\nG1 {letter}{delta:.3} F{feed:.0}\nRESTORE_GCODE_STATE NAME=RIVET"
             )
         }
+        Command::GoTo { x, y, z, speed } => format!(
+            "SAVE_GCODE_STATE NAME=RIVET\nG90\nG1 X{x:.2} Y{y:.2} Z{z:.2} F{:.0}\nRESTORE_GCODE_STATE NAME=RIVET",
+            speed * 60.0
+        ),
         Command::MotorsOff => "M84".to_owned(),
         Command::Extrude { length, speed } => format!(
             "SAVE_GCODE_STATE NAME=RIVET\nM83\nG1 E{length:.1} F{:.0}\nRESTORE_GCODE_STATE NAME=RIVET",
@@ -883,13 +937,14 @@ async fn execute(
             .await
             .map(drop),
         Command::Gcode(script) => client.gcode(script).await,
-        Command::SetLightOnStart(on) => client
+        Command::SaveSetting { key, value } => client
             .call(
                 "server.database.post_item",
-                json!({ "namespace": DB_NAMESPACE, "key": "light_on_start", "value": on }),
+                json!({ "namespace": DB_NAMESPACE, "key": key, "value": value }),
             )
             .await
             .map(drop),
+        Command::QueryEndstops => query_endstops(client, ui).await,
         Command::ClearConsole => Ok(()),
         Command::ListFiles => list_files(client, ui, thumbs).await,
         Command::FileDetails(path) => file_details(client, ui, thumbs, path).await,
@@ -909,6 +964,7 @@ async fn execute(
         | Command::SetFan { .. }
         | Command::SetAir(_)
         | Command::Move { .. }
+        | Command::GoTo { .. }
         | Command::MotorsOff
         | Command::Extrude { .. }
         | Command::SetNozzle(_)
@@ -941,8 +997,10 @@ fn toast_for(err: &moonraker::Error) -> (&'static str, String) {
 
 /// Put the fans on the screen: the part fan and the first settable one get a
 /// bar of their own, further settable fans are rows (how the prototype lays
-/// the screen out), automatic ones are listed read-only.
-fn set_fans(ui: &AppWindow, fans: &[model::Fan]) {
+/// the screen out), automatic ones are listed read-only. With chamber air modes
+/// (AD5M Pro), the inside and outside fans belong to those modes, as in the
+/// prototype: no rows of their own.
+fn set_fans(ui: &AppWindow, fans: &[model::Fan], air_modes: bool) {
     let first_generic = fans.iter().position(|f| f.kind == model::FanKind::Generic);
     let row = |f: &model::Fan| {
         let (trigger, value) = match f.trigger {
@@ -973,7 +1031,11 @@ fn set_fans(ui: &AppWindow, fans: &[model::Fan]) {
             .collect()
     };
     let bars = pick(&|i, f| f.kind == model::FanKind::Part || first_generic == Some(i));
-    let extras = pick(&|i, f| f.kind == model::FanKind::Generic && first_generic != Some(i));
+    let extras = pick(&|i, f| {
+        f.kind == model::FanKind::Generic
+            && first_generic != Some(i)
+            && !(air_modes && matches!(f.name.as_str(), "internal_fan" | "external_fan"))
+    });
     let autos = pick(&|_, f| f.kind == model::FanKind::Auto);
     update_rows(&ui.get_fan_bars(), bars, |m| ui.set_fan_bars(m));
     update_rows(&ui.get_fan_extras(), extras, |m| ui.set_fan_extras(m));
@@ -1045,6 +1107,12 @@ fn push(ui: &slint::Weak<AppWindow>, s: Snapshot) {
         ui.set_homed_x(s.homed_axes.contains('x'));
         ui.set_homed_y(s.homed_axes.contains('y'));
         ui.set_homed_z(s.homed_axes.contains('z'));
+        ui.set_axis_min_x(s.axis_min[0] as f32);
+        ui.set_axis_min_y(s.axis_min[1] as f32);
+        ui.set_axis_min_z(s.axis_min[2] as f32);
+        ui.set_axis_max_x(s.axis_max[0] as f32);
+        ui.set_axis_max_y(s.axis_max[1] as f32);
+        ui.set_axis_max_z(s.axis_max[2] as f32);
         ui.set_can_extrude(s.can_extrude);
         ui.set_min_extrude_temp(s.limits.min_extrude_temp as f32);
         ui.set_max_nozzle(s.limits.extruder_max as f32);
@@ -1053,8 +1121,9 @@ fn push(ui: &slint::Weak<AppWindow>, s: Snapshot) {
         ui.set_flow_percent(s.flow_percent as f32);
         ui.set_z_offset(s.z_offset as f32);
         ui.set_pressure_advance(s.pressure_advance as f32);
+        ui.set_live_velocity(s.live_velocity as f32);
         ui.set_fan_percent(s.fan_percent.round() as i32);
-        set_fans(&ui, &s.fans);
+        set_fans(&ui, &s.fans, s.air_mode.is_some());
         ui.set_air_mode(s.air_mode.map_or(-1, i32::from));
         ui.set_has_light(s.light.is_some());
         if let Some(l) = &s.light {
@@ -1149,6 +1218,7 @@ mod tests {
         let code = gcode_for(&Command::Move {
             axis: 1,
             delta: -10.0,
+            speed: 100.0,
         })
         .unwrap();
         assert_eq!(
@@ -1157,7 +1227,8 @@ mod tests {
         );
         assert!(gcode_for(&Command::Move {
             axis: 2,
-            delta: 1.0
+            delta: 1.0,
+            speed: 10.0,
         })
         .unwrap()
         .contains("Z1.000 F600"));
