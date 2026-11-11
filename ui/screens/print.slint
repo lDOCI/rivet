@@ -397,3 +397,136 @@ export component AmbientScreen inherits Rectangle {
     }
     TouchArea { clicked => { root.dismiss(); } }
 }
+
+component RunoutStep inherits Rectangle {
+    in property <string> number;
+    in property <string> title;
+    in property <string> sub;
+    in property <bool> enabled: true;
+    callback clicked;
+    height: 72px;
+    border-radius: 20px;
+    background: ta.pressed && root.enabled ? Tokens.surface-2 : Tokens.surface-1;
+    opacity: root.enabled ? 1 : 0.45;
+    accessible-role: button;
+    accessible-label: root.title;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+    HorizontalLayout {
+        padding-left: 18px;
+        padding-right: 18px;
+        spacing: 14px;
+        VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: 40px;
+                height: 40px;
+                border-radius: 20px;
+                background: Tokens.surface-2;
+                Text { text: root.number; color: #5eead4; font-size: 17px; font-weight: 800; horizontal-alignment: center; vertical-alignment: center; }
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            spacing: 2px;
+            Text { text: root.title; color: Tokens.text; font-size: 17px; font-weight: 700; overflow: elide; }
+            Text { text: root.sub; color: Tokens.text-dim; font-size: 14px; overflow: elide; }
+        }
+    }
+    ta := TouchArea { clicked => { if (root.enabled) { root.clicked(); } } }
+}
+
+// The runout sensor paused the print: what happened on the left, the way back
+// on the right. The prototype's Runout page.
+export component RunoutScreen inherits Rectangle {
+    horizontal-stretch: 1;
+    in property <int> layer: -1;
+    in property <int> total-layers: -1;
+    in property <float> progress;
+    // The printer has LOAD_FILAMENT / UNLOAD_FILAMENT.
+    in property <bool> has-load-macros;
+    // Klipper lets the extruder move (hot enough).
+    in property <bool> can-extrude;
+    // The sensor sees filament again.
+    in property <bool> filament-back;
+    callback unload;
+    callback load;
+    callback purge;
+    callback cancel;
+    callback resume;
+    HorizontalLayout {
+        padding: Tokens.pad;
+        spacing: 16px;
+        Rectangle {
+            width: 240px;
+            border-radius: 24px;
+            background: #fbbf2414;
+            VerticalLayout {
+                padding: 20px;
+                spacing: 0;
+                HorizontalLayout {
+                    alignment: start;
+                    Rectangle {
+                        width: 52px;
+                        height: 52px;
+                        border-radius: 18px;
+                        background: #fbbf2429;
+                        Icon { d: Icons.pause; size: 28px; weight: 2.4; color: Tokens.warn; }
+                    }
+                }
+                Rectangle { height: 14px; }
+                Text { text: @tr("Out of filament"); color: Tokens.text; font-size: 24px; font-weight: 800; wrap: word-wrap; }
+                Rectangle { height: 10px; }
+                Text {
+                    text: root.layer > 0 && root.total-layers > 0
+                        ? @tr("Paused at layer {} of {}. The nozzle stays hot.", root.layer, root.total-layers)
+                        : @tr("Paused at {}%. The nozzle stays hot.", round(root.progress * 100));
+                    color: #c7cdd4;
+                    font-size: 15px;
+                    wrap: word-wrap;
+                }
+                Rectangle { vertical-stretch: 1; }
+                Rectangle {
+                    height: 64px;
+                    border-radius: 18px;
+                    background: cancel-ta.pressed ? #fb4b5e33 : Tokens.danger-soft;
+                    accessible-role: button;
+                    accessible-label: @tr("Cancel print");
+                    accessible-action-default => { root.cancel(); }
+                    Text { text: @tr("Cancel print"); color: Tokens.danger; font-size: 16px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+                    cancel-ta := TouchArea { clicked => { root.cancel(); } }
+                }
+            }
+        }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            spacing: 8px;
+            if root.has-load-macros: RunoutStep {
+                number: "1";
+                title: @tr("Unload what is left");
+                sub: @tr("heat and pull the broken end out");
+                clicked => { root.unload(); }
+            }
+            if root.has-load-macros: RunoutStep {
+                number: "2";
+                title: @tr("Load a new strand");
+                sub: @tr("heat and feed it to the nozzle");
+                clicked => { root.load(); }
+            }
+            RunoutStep {
+                number: root.has-load-macros ? "3" : "1";
+                title: @tr("Purge the nozzle");
+                sub: root.can-extrude ? @tr("25 mm, until the colour runs clean") : @tr("the nozzle is not hot enough yet");
+                enabled: root.can-extrude;
+                clicked => { root.purge(); }
+            }
+            Rectangle { vertical-stretch: 1; }
+            PrimaryButton {
+                min-height: 80px;
+                text: @tr("Resume print");
+                sub: root.filament-back ? "" : @tr("the sensor sees no filament yet");
+                enabled: root.filament-back;
+                clicked => { root.resume(); }
+            }
+        }
+    }
+}

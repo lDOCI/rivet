@@ -1071,3 +1071,60 @@ msgstr "Высота {} мм — больше хода Z ({} мм)"
 
 msgid "Copy to the printer"
 msgstr "Скопировать на принтер"
+
+msgid "Stop the print?"
+msgstr "Остановить печать?"
+
+msgid "{}% of “{}” is done. This print cannot be resumed later."
+msgstr "Готово {}% печати «{}». Продолжить её потом не получится."
+
+msgid "Stop printing"
+msgstr "Остановить"
+
+msgid "Don't stop"
+msgstr "Не останавливать"
+
+msgid "Heaters and motors are off. The print stopped at {}% and cannot be resumed."
+msgstr "Нагрев и моторы выключены. Печать прервана на {}% — продолжить её нельзя."
+
+msgid "Heaters and motors are off."
+msgstr "Нагрев и моторы выключены."
+
+msgid "The heaters cool down by themselves. A restart takes about 10 seconds."
+msgstr "Нагреватели остывают сами. Перезапуск займёт около 10 секунд."
+
+msgid "Out of filament"
+msgstr "Закончился филамент"
+
+msgid "Paused at layer {} of {}. The nozzle stays hot."
+msgstr "Печать на паузе на слое {} из {}. Сопло держит температуру."
+
+msgid "Paused at {}%. The nozzle stays hot."
+msgstr "Печать на паузе на {}%. Сопло держит температуру."
+
+msgid "Unload what is left"
+msgstr "Выгрузить остаток"
+
+msgid "heat and pull the broken end out"
+msgstr "нагреем и вытянем обрывок"
+
+msgid "Load a new strand"
+msgstr "Заправить новый пруток"
+
+msgid "heat and feed it to the nozzle"
+msgstr "нагреем и подадим до сопла"
+
+msgid "Purge the nozzle"
+msgstr "Прочистить сопло"
+
+msgid "25 mm, until the colour runs clean"
+msgstr "25 мм, чтобы пошёл чистый цвет"
+
+msgid "the nozzle is not hot enough yet"
+msgstr "сопло ещё не нагрето"
+
+msgid "Resume print"
+msgstr "Продолжить печать"
+
+msgid "the sensor sees no filament yet"
+msgstr "датчик пока не видит пруток"

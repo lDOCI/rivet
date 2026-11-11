@@ -16,7 +16,7 @@ export global Strings {
 import { Format } from "kit/format.slint";
 // Rust formats durations for rows it builds (the queue) the same way.
 export { Format }
-import { Dialog, Keypad } from "kit/dialogs.slint";
+import { Dialog, Keypad, StopDialog } from "kit/dialogs.slint";
 import { StatusScreen } from "screens/status.slint";
 import { Toast } from "kit/toast.slint";
 import { HomeScreen } from "screens/home.slint";
@@ -25,7 +25,7 @@ import { MotionScreen } from "screens/motion.slint";
 import { ToolsScreen, ConsoleScreen, MacrosScreen, ConsoleLine } from "screens/tools.slint";
 import { FilesScreen, FileScreen, FileItem, FileInfo, FindScreen, RenameScreen, MoveScreen } from "screens/files.slint";
 export { FileItem, FileInfo, ConsoleLine, FanRow }
-import { PrintingScreen, PrintDoneScreen, AmbientScreen } from "screens/print.slint";
+import { PrintingScreen, PrintDoneScreen, AmbientScreen, RunoutScreen } from "screens/print.slint";
 
 // Embedded into the binary (see build.rs): the printer has no system fonts.
 import "../assets/fonts/Inter-Regular.ttf";
@@ -73,6 +73,7 @@ export component AppWindow inherits Window {
     property <bool> done-dismissed;
     changed print-state => {
         if (self.print-state != "complete") { self.done-dismissed = false; }
+        if (self.print-state != "paused") { self.runout = false; } else if (self.filament-out) { self.runout = true; }
     }
 
     callback home-all();
@@ -330,6 +331,14 @@ export component AppWindow inherits Window {
         else if (key == "dry-hours") { root.dry-hours = v; }
         else if (key == "retract-length" || key == "retract-speed" || key == "unretract-extra" || key == "unretract-speed") { root.set-retraction(key, v); }
     }
+
+    // Runout: the sensor sees no filament; the printer has load/unload macros.
+    in property <bool> filament-out;
+    in property <bool> has-load-macros;
+    // The runout screen stays up from the pause it caused until the print goes on
+    // or ends, also once new filament is in.
+    in-out property <bool> runout;
+    changed filament-out => { if (root.filament-out && root.print-state == "paused") { root.runout = true; } }
 
     property <bool> ready: root.link-state == "ready";
     property <bool> busy: root.ready && (root.print-state == "printing" || root.print-state == "paused");
@@ -628,7 +637,20 @@ export component AppWindow inherits Window {
             }
         }
 
-        if root.ready && root.screen == "home" && root.busy: PrintingScreen {
+        if root.ready && root.screen == "home" && root.busy && root.runout: RunoutScreen {
+            layer: root.layer;
+            total-layers: root.total-layers;
+            progress: root.progress;
+            has-load-macros: root.has-load-macros;
+            can-extrude: root.can-extrude;
+            filament-back: !root.filament-out;
+            unload => { root.run-gcode("UNLOAD_FILAMENT"); }
+            load => { root.run-gcode("LOAD_FILAMENT"); }
+            purge => { root.extrude(25, 5); }
+            cancel => { root.overlay = "cancel-print"; }
+            resume => { root.resume-print(); }
+        }
+        if root.ready && root.screen == "home" && root.busy && !root.runout: PrintingScreen {
             filename: root.filename;
             thumb: root.print-thumb;
             has-thumb: root.has-print-thumb;
@@ -811,12 +833,11 @@ export component AppWindow inherits Window {
             : root.toast-detail;
         dismissed => { root.toast-kind = ""; }
     }
-    if root.overlay == "cancel-print": Dialog {
-        title: @tr("Cancel print?");
-        message: root.filename + "\n" + @tr("The heaters turn off. The job cannot be resumed.");
-        confirm-text: @tr("Cancel print");
-        cancel-text: @tr("Keep printing");
-        danger: true;
+    if root.overlay == "cancel-print": StopDialog {
+        title: @tr("Stop the print?");
+        message: @tr("{}% of “{}” is done. This print cannot be resumed later.", round(root.progress * 100), root.file-title(root.filename));
+        confirm-text: @tr("Stop printing");
+        cancel-text: @tr("Don't stop");
         confirmed => { root.overlay = ""; root.cancel-print(); }
         cancelled => { root.overlay = ""; }
     }

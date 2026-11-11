@@ -57,6 +57,11 @@ pub fn subscription() -> Value {
 
 const PAUSE_MACRO: &str = "gcode_macro SET_PRINT_STATS_INFO";
 
+/// A runout sensor: `filament_switch_sensor …` or `filament_motion_sensor …`.
+fn is_filament_sensor(name: &str) -> bool {
+    name.starts_with("filament_switch_sensor ") || name.starts_with("filament_motion_sensor ")
+}
+
 /// An `output_pin` meant for the user (names starting with `_` are internal).
 fn is_user_pin(name: &str) -> bool {
     name.strip_prefix("output_pin ")
@@ -123,10 +128,9 @@ pub struct Retraction {
 pub fn subscription_for(available: &[String]) -> Value {
     let mut sub = subscription();
     if let Some(objects) = sub["objects"].as_object_mut() {
-        for name in available
-            .iter()
-            .filter(|n| n.starts_with("led ") || is_fan_object(n) || is_user_pin(n))
-        {
+        for name in available.iter().filter(|n| {
+            n.starts_with("led ") || is_fan_object(n) || is_user_pin(n) || is_filament_sensor(n)
+        }) {
             objects.insert(name.clone(), Value::Null);
         }
         for name in ["firmware_retraction", "exclude_object"] {
@@ -228,6 +232,8 @@ pub struct Snapshot {
     pub axis_max: [f64; 3],
     /// Klipper's own answer: nozzle hot enough to extrude.
     pub can_extrude: bool,
+    /// A switched-on runout sensor sees no filament.
+    pub filament_out: bool,
 }
 
 /// Whether a person can set the fan.
@@ -385,7 +391,10 @@ pub fn macro_managed_pins(config: &Value) -> Vec<String> {
 /// screen; "" when Rivet does not know it (the message is still shown as is).
 pub fn error_kind(message: &str) -> &'static str {
     let m = message.to_ascii_lowercase();
-    if m.contains("timer too close") || m.contains("rescheduled timer in the past") {
+    // Klipper's own words for M112 and for Moonraker's emergency_stop.
+    if m.contains("m112") || m.contains("webhooks request") || m.contains("emergency stop") {
+        "estop"
+    } else if m.contains("timer too close") || m.contains("rescheduled timer in the past") {
         "timer"
     } else if m.contains("lost communication with mcu") || m.contains("unable to connect") {
         "lost"
@@ -946,6 +955,13 @@ impl PrinterState {
                 .field("extruder", "can_extrude")
                 .and_then(Value::as_bool)
                 .unwrap_or(false),
+            filament_out: self.status.as_object().is_some_and(|objects| {
+                objects.iter().any(|(name, v)| {
+                    is_filament_sensor(name)
+                        && v["enabled"].as_bool().unwrap_or(true)
+                        && v["filament_detected"].as_bool() == Some(false)
+                })
+            }),
         }
     }
 }
@@ -1038,6 +1054,25 @@ mod tests {
         assert_eq!(error_kind("MCU 'mcu' shutdown: Timer too close"), "timer");
         assert_eq!(error_kind("Lost communication with MCU 'mcu'"), "lost");
         assert_eq!(error_kind("Something else"), "");
+        assert_eq!(error_kind("Shutdown due to webhooks request"), "estop");
+        assert_eq!(error_kind("Shutdown due to M112 command"), "estop");
+    }
+
+    #[test]
+    fn runout_sensor() {
+        let mut st = PrinterState::default();
+        st.apply_status(serde_json::json!({
+            "filament_switch_sensor runout_sensor": { "enabled": true, "filament_detected": true }
+        }));
+        assert!(!st.snapshot().filament_out);
+        st.apply_status(serde_json::json!({
+            "filament_switch_sensor runout_sensor": { "filament_detected": false }
+        }));
+        assert!(st.snapshot().filament_out);
+        st.apply_status(serde_json::json!({
+            "filament_switch_sensor runout_sensor": { "enabled": false }
+        }));
+        assert!(!st.snapshot().filament_out);
     }
 
     #[test]

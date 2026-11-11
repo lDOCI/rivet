@@ -59,6 +59,8 @@ const ALL: &[&str] = &[
     "queue",
     "queue-empty",
     "dialog",
+    "estop",
+    "runout",
     "keypad",
     "toast",
 ];
@@ -120,6 +122,8 @@ fn main() -> anyhow::Result<()> {
 fn show(ui: &AppWindow, name: &str) {
     ui.set_link_state("ready".into());
     ui.set_overlay("".into());
+    ui.set_runout(false);
+    ui.set_filament_out(false);
     ui.set_ambient(false);
     ui.set_toast_kind("".into());
     ui.set_screen("home".into());
@@ -527,9 +531,25 @@ fn show(ui: &AppWindow, name: &str) {
         "dialog" => {
             ui.set_screen("home".into());
             ui.set_print_state("printing".into());
-            ui.set_filename("benchy.gcode".into());
+            ui.set_filename("Корпус вентилятора №2.gcode".into());
             ui.set_progress(0.42);
             ui.set_overlay("cancel-print".into());
+        }
+        "runout" => {
+            print("paused", 0.42);
+            ui.set_layer(76);
+            ui.set_total_layers(180);
+            ui.set_has_load_macros(true);
+            ui.set_can_extrude(true);
+            ui.set_filament_out(true);
+            ui.set_runout(true);
+        }
+        "estop" => {
+            ui.set_link_state("error".into());
+            ui.set_print_state("error".into());
+            ui.set_progress(0.42);
+            ui.set_error_kind("estop".into());
+            ui.set_klippy_message("Shutdown due to webhooks request".into());
         }
         "keypad" => {
             ui.set_screen("control".into());

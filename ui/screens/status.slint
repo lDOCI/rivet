@@ -41,10 +41,47 @@ export component StatusScreen inherits Rectangle {
     callback retry;
     callback log;
 
-    property <bool> is-error: root.state == "error";
+    property <bool> is-error: root.state == "error" && root.kind != "estop";
+    property <bool> is-estop: root.state == "error" && root.kind == "estop";
+
+    // Emergency stop (the user's own): the prototype's EStop page, no Klipper
+    // message to read, just what is off and how to come back.
+    if root.is-estop: VerticalLayout {
+        padding-left: 40px;
+        padding-right: 40px;
+        alignment: center;
+        HorizontalLayout {
+            alignment: start;
+            Rectangle {
+                width: 72px;
+                height: 72px;
+                border-radius: 24px;
+                background: #fb4b5e29;
+                Icon { d: "M8 2.5h8l5.5 5.5v8L16 21.5H8L2.5 16V8z M12 7.5v5.5 M12 16.5v.5"; size: 36px; weight: 2; color: Tokens.danger; }
+            }
+        }
+        Rectangle { height: 14px; }
+        Text { text: @tr("Emergency stop"); color: Tokens.text; font-size: 32px; font-weight: 800; letter-spacing: -0.64px; }
+        Rectangle { height: 14px; }
+        Text {
+            text: root.progress > 0 ? @tr("Heaters and motors are off. The print stopped at {}% and cannot be resumed.", round(root.progress * 100)) : @tr("Heaters and motors are off.");
+            color: #c7cdd4;
+            font-size: 18px;
+            wrap: word-wrap;
+            max-width: 560px;
+        }
+        Rectangle { height: 26px; }
+        HorizontalLayout {
+            spacing: 12px;
+            BigButton { height: 84px; preferred-width: 0px; min-width: 0px; horizontal-stretch: 1.3; primary: true; text: @tr("Restart firmware"); clicked => { root.restart-firmware(); } }
+            BigButton { height: 84px; preferred-width: 0px; min-width: 0px; horizontal-stretch: 1; text: @tr("Log"); clicked => { root.log(); } }
+        }
+        Rectangle { height: 14px; }
+        Text { text: @tr("The heaters cool down by themselves. A restart takes about 10 seconds."); color: Tokens.text-faint; font-size: 14px; wrap: word-wrap; }
+    }
 
     // Offline / starting / Klipper off: centred.
-    if !root.is-error: VerticalLayout {
+    if !root.is-error && !root.is-estop: VerticalLayout {
         padding: 24px;
         padding-left: 40px;
         padding-right: 40px;

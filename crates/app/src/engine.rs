@@ -1798,6 +1798,8 @@ fn push(ui: &slint::Weak<AppWindow>, s: Snapshot) {
         ui.set_axis_max_y(s.axis_max[1] as f32);
         ui.set_axis_max_z(s.axis_max[2] as f32);
         ui.set_can_extrude(s.can_extrude);
+        ui.set_filament_out(s.filament_out);
+        ui.set_has_load_macros(s.caps.load_filament);
         ui.set_min_extrude_temp(s.limits.min_extrude_temp as f32);
         ui.set_max_nozzle(s.limits.extruder_max as f32);
         ui.set_max_bed(s.limits.bed_max as f32);
