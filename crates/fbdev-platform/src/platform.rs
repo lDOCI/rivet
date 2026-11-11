@@ -3,12 +3,13 @@
 use std::{
     cell::{Cell, RefCell},
     os::fd::{AsRawFd, FromRawFd, OwnedFd},
+    path::PathBuf,
     rc::Rc,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,
     },
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use anyhow::Context;
@@ -20,7 +21,13 @@ use slint::{
     EventLoopError, LogicalPosition, PhysicalSize, PlatformError,
 };
 
-use crate::{framebuffer::Framebuffer, touch::Touch, touch_state::TouchAction, Config, Rotation};
+use crate::{
+    framebuffer::Framebuffer,
+    reconnect::Retry,
+    touch::Touch,
+    touch_state::{TouchAction, TouchTransform},
+    Config, Rotation,
+};
 
 /// Upper bound on idle sleep so a stuck timer can't freeze the UI forever.
 const MAX_IDLE: Duration = Duration::from_secs(1);
@@ -62,10 +69,31 @@ impl EventLoopProxy for Proxy {
     }
 }
 
+/// What is needed to open the touch device again after it disappears.
+struct TouchSource {
+    path: Option<PathBuf>,
+    width: f32,
+    height: f32,
+    transform: TouchTransform,
+}
+
+impl TouchSource {
+    fn open(&self) -> std::io::Result<Touch> {
+        Touch::open(
+            self.path.as_deref(),
+            self.width,
+            self.height,
+            self.transform,
+        )
+    }
+}
+
 struct FbPlatform {
     window: Rc<MinimalSoftwareWindow>,
     framebuffer: RefCell<Framebuffer>,
     touch: RefCell<Option<Touch>>,
+    touch_source: TouchSource,
+    touch_retry: RefCell<Retry>,
     rotation: Rotation,
     rotation_applied: Cell<bool>,
     shared: Arc<Shared>,
@@ -84,16 +112,20 @@ pub fn init(config: Config) -> anyhow::Result<()> {
         (framebuffer.width, framebuffer.height)
     };
 
-    // A missing touch panel shouldn't keep the status display from working.
-    let touch = match Touch::open(
-        config.touch.as_deref(),
-        ui_w as f32,
-        ui_h as f32,
-        config.touch_transform,
-    ) {
+    // A missing touch panel shouldn't keep the status display from working;
+    // the event loop keeps retrying, so it also appears if it shows up later.
+    let touch_source = TouchSource {
+        path: config.touch.clone(),
+        width: ui_w as f32,
+        height: ui_h as f32,
+        transform: config.touch_transform,
+    };
+    let mut touch_retry = Retry::default();
+    let touch = match touch_source.open() {
         Ok(t) => Some(t),
         Err(err) => {
-            tracing::warn!(%err, "touch input unavailable");
+            tracing::warn!(%err, "touch input unavailable, will keep retrying");
+            touch_retry.failed(Instant::now());
             None
         }
     };
@@ -115,6 +147,8 @@ pub fn init(config: Config) -> anyhow::Result<()> {
         window,
         framebuffer: RefCell::new(framebuffer),
         touch: RefCell::new(touch),
+        touch_source,
+        touch_retry: RefCell::new(touch_retry),
         rotation: config.rotation,
         rotation_applied: Cell::new(false),
         shared: Arc::new(Shared {
@@ -130,8 +164,32 @@ pub fn init(config: Config) -> anyhow::Result<()> {
 }
 
 impl FbPlatform {
+    /// Reopen the touch device when it is missing and the retry delay has passed.
+    fn reconnect_touch(&self, touch: &mut Option<Touch>) {
+        let now = Instant::now();
+        let mut retry = self.touch_retry.borrow_mut();
+        if touch.is_some() || !retry.due(now) {
+            return;
+        }
+        match self.touch_source.open() {
+            Ok(dev) => {
+                tracing::info!("touch input is back");
+                retry.recovered();
+                *touch = Some(dev);
+            }
+            Err(err) => {
+                if retry.failed(now) {
+                    tracing::warn!(%err, "touch input unavailable, will keep retrying");
+                } else {
+                    tracing::debug!(%err, "touch reopen failed");
+                }
+            }
+        }
+    }
+
     fn dispatch_touch(&self) {
         let mut touch = self.touch.borrow_mut();
+        self.reconnect_touch(&mut touch);
         let Some(dev) = touch.as_mut() else { return };
         let window = self.window.clone();
         let result = dev.read(|action| {
@@ -154,8 +212,12 @@ impl FbPlatform {
             }
         });
         if let Err(err) = result {
-            tracing::error!(%err, "touch device lost");
+            tracing::error!(%err, "touch device lost, will keep retrying");
             *touch = None;
+            self.touch_retry.borrow_mut().lost(Instant::now());
+            // A finger that was down when the panel vanished must not leave a
+            // button stuck pressed.
+            window.window().dispatch_event(WindowEvent::PointerExited);
         }
     }
 
