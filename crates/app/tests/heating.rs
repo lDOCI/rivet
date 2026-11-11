@@ -19,6 +19,8 @@ fn heating() {
 
 fn dragging_the_dial_sends_one_target_on_release() {
     let ui = AppWindow::new().unwrap();
+    // The labels below are English whatever language the machine uses.
+    rivet::apply_language("en");
     ui.set_link_state("ready".into());
     ui.set_max_nozzle(350.0);
     ui.set_extruder_temp(25.0);
@@ -71,6 +73,8 @@ fn dragging_the_dial_sends_one_target_on_release() {
 
 fn keypad_value_goes_to_the_heater_that_was_open() {
     let ui = AppWindow::new().unwrap();
+    // The labels below are English whatever language the machine uses.
+    rivet::apply_language("en");
     ui.set_link_state("ready".into());
     ui.set_max_bed(130.0);
     ui.set_screen("heating".into());

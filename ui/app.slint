@@ -336,7 +336,7 @@ export component AppWindow inherits Window {
         cancelled => { root.overlay = ""; }
     }
     if root.overlay == "delete-files": Dialog {
-        title: root.selected-count == 1 ? @tr("Delete 1 file?") : @tr("Delete {} files?", root.selected-count);
+        title: @tr("Delete {n} file?" | "Delete {n} files?" % root.selected-count);
         message: @tr("They are removed from the printer. This cannot be undone.");
         confirm-text: @tr("Delete");
         danger: true;

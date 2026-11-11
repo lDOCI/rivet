@@ -1,0 +1,442 @@
+# Russian translation of the Rivet interface.
+# Check for missing strings: tools/extract-tr.py --check
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: ru\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+msgid "Delete {n} file?"
+msgid_plural "Delete {n} files?"
+msgstr[0] "Удалить {n} файл?"
+msgstr[1] "Удалить {n} файла?"
+msgstr[2] "Удалить {n} файлов?"
+
+msgid "on"
+msgstr "вкл."
+
+msgid "off"
+msgstr "выкл."
+
+msgid "Nozzle, °C"
+msgstr "Сопло, °C"
+
+msgid "Bed, °C"
+msgstr "Стол, °C"
+
+msgid "Speed, %"
+msgstr "Скорость, %"
+
+msgid "Flow, %"
+msgstr "Поток, %"
+
+msgid "Z-offset, mm"
+msgstr "Z-offset, мм"
+
+msgid "Pressure advance"
+msgstr "Pressure advance"
+
+msgid "No connection to the printer"
+msgstr "Нет связи с принтером"
+
+msgid "The printer did not answer"
+msgstr "Принтер не ответил"
+
+msgid "Cancel print?"
+msgstr "Отменить печать?"
+
+msgid "The heaters turn off. The job cannot be resumed."
+msgstr "Нагрев выключится. Продолжить печать будет нельзя."
+
+msgid "Cancel print"
+msgstr "Отменить печать"
+
+msgid "Keep printing"
+msgstr "Продолжить печать"
+
+msgid "They are removed from the printer. This cannot be undone."
+msgstr "Файлы удалятся с принтера. Отменить это нельзя."
+
+msgid "Delete"
+msgstr "Удалить"
+
+msgid "Delete this file?"
+msgstr "Удалить этот файл?"
+
+msgid "It is removed from the printer. This cannot be undone."
+msgstr "Файл удалится с принтера. Отменить это нельзя."
+
+msgid "Back"
+msgstr "Назад"
+
+msgid "Target temperature"
+msgstr "Целевая температура"
+
+msgid "Cancel"
+msgstr "Отмена"
+
+msgid "Done"
+msgstr "Готово"
+
+msgid "{n} day ago"
+msgid_plural "{n} days ago"
+msgstr[0] "{n} день назад"
+msgstr[1] "{n} дня назад"
+msgstr[2] "{n} дней назад"
+
+msgid "{} h {} min"
+msgstr "{} ч {} мин"
+
+msgid "{} min"
+msgstr "{} мин"
+
+msgid "today"
+msgstr "сегодня"
+
+msgid "yesterday"
+msgstr "вчера"
+
+msgid "{} KB"
+msgstr "{} КБ"
+
+msgid "{} MB"
+msgstr "{} МБ"
+
+msgid "Home"
+msgstr "Главная"
+
+msgid "Control"
+msgstr "Управление"
+
+msgid "Tools"
+msgstr "Инструменты"
+
+msgid "Settings"
+msgstr "Настройки"
+
+msgid "Messages"
+msgstr "Сообщения"
+
+msgid "Emergency stop"
+msgstr "Аварийная остановка"
+
+msgid "Stop"
+msgstr "Стоп"
+
+msgid "Off"
+msgstr "Выкл."
+
+msgid "was {}"
+msgstr "было {}"
+
+msgid "Heating"
+msgstr "Нагрев"
+
+msgid "nozzle → {}°"
+msgstr "сопло → {}°"
+
+msgid "nozzle off"
+msgstr "сопло выкл."
+
+msgid "bed → {}°"
+msgstr "стол → {}°"
+
+msgid "bed off"
+msgstr "стол выкл."
+
+msgid "Motion"
+msgstr "Движение"
+
+msgid "axes, homing, motors"
+msgstr "оси, парковка, моторы"
+
+msgid "Extruder"
+msgstr "Экструдер"
+
+msgid "extrude, load filament"
+msgstr "выдавить, заправка"
+
+msgid "Part fan"
+msgstr "Обдув"
+
+msgid "Light"
+msgstr "Свет"
+
+msgid "Speed"
+msgstr "Скорость"
+
+msgid "mm"
+msgstr "мм"
+
+msgid "Z-offset"
+msgstr "Z-offset"
+
+msgid "Devices"
+msgstr "Устройства"
+
+msgid "power, outputs"
+msgstr "питание, пины"
+
+msgid "{n} layer"
+msgid_plural "{n} layers"
+msgstr[0] "{n} слой"
+msgstr[1] "{n} слоя"
+msgstr[2] "{n} слоёв"
+
+msgid "Files"
+msgstr "Файлы"
+
+msgid "Select several"
+msgstr "Выбрать несколько"
+
+msgid "Selected: {}"
+msgstr "Выбрано: {}"
+
+msgid "Pick files"
+msgstr "Выберите файлы"
+
+msgid "Cancel selection"
+msgstr "Отменить выбор"
+
+msgid "Clear all"
+msgstr "Снять все"
+
+msgid "Select all"
+msgstr "Выбрать все"
+
+msgid "No G-code files yet"
+msgstr "Файлов G-code пока нет"
+
+msgid "Send a model from your slicer."
+msgstr "Отправьте модель из слайсера."
+
+msgid "Delete {}"
+msgstr "Удалить {}"
+
+msgid "Back to files"
+msgstr "Назад к файлам"
+
+msgid "{} g"
+msgstr "{} г"
+
+msgid "Nozzle {} mm: same as the printer"
+msgstr "Сопло {} мм — как у принтера"
+
+msgid "Sliced for a {} mm nozzle: not the printer's"
+msgstr "Нарезано под сопло {} мм — у принтера другое"
+
+msgid "Delete file"
+msgstr "Удалить файл"
+
+msgid "Print"
+msgstr "Печать"
+
+msgid "Nozzle"
+msgstr "Сопло"
+
+msgid "Bed"
+msgstr "Стол"
+
+msgid "heating"
+msgstr "нагревается"
+
+msgid "cooling to {}°"
+msgstr "остывает до {}°"
+
+msgid "holding"
+msgstr "держит температуру"
+
+msgid "now"
+msgstr "сейчас"
+
+msgid "Enter a number"
+msgstr "Ввести число"
+
+msgid "Turn the bed heater off"
+msgstr "Выключить нагрев стола"
+
+msgid "Turn the nozzle heater off"
+msgstr "Выключить нагрев сопла"
+
+msgid "target {}°"
+msgstr "цель {}°"
+
+msgid "not heating"
+msgstr "не нагревается"
+
+msgid "Last print"
+msgstr "Последняя печать"
+
+msgid "stopped"
+msgstr "прервана"
+
+msgid "Print again"
+msgstr "Напечатать снова"
+
+msgid "Printer is ready"
+msgstr "Принтер готов"
+
+msgid "Send a model from your slicer or pick a file below. Your last print will show up here."
+msgstr "Отправьте модель из слайсера или выберите файл ниже. Здесь появится последняя печать."
+
+msgid "Home all axes"
+msgstr "Парковка всех осей"
+
+msgid "Motors are free: home first"
+msgstr "Моторы свободны · сначала парковка"
+
+msgid "Motors off"
+msgstr "Моторы выкл."
+
+msgid "hot enough to extrude"
+msgstr "достаточно горячее для выдавливания"
+
+msgid "needs at least {}°"
+msgstr "для выдавливания нужно не меньше {}°"
+
+msgid "too cold to extrude"
+msgstr "слишком холодное для выдавливания"
+
+msgid "Length"
+msgstr "Длина"
+
+msgid "per press"
+msgstr "за одно нажатие"
+
+msgid "mm/s"
+msgstr "мм/с"
+
+msgid "Retract"
+msgstr "Втянуть"
+
+msgid "Extrude"
+msgstr "Выдавить"
+
+msgid "Print progress"
+msgstr "Ход печати"
+
+msgid "Paused"
+msgstr "На паузе"
+
+msgid "Printing"
+msgstr "Печатается"
+
+msgid "{} left"
+msgstr "Осталось {}"
+
+msgid "{} in"
+msgstr "Идёт {}"
+
+msgid "layer {} of {}"
+msgstr "слой {} из {}"
+
+msgid "Pause"
+msgstr "Пауза"
+
+msgid "Resume"
+msgstr "Продолжить"
+
+msgid "Tune"
+msgstr "Подстройка"
+
+msgid "More"
+msgstr "Ещё"
+
+msgid "Time"
+msgstr "Время"
+
+msgid "Bed is still {}°: let it cool before taking the part off."
+msgstr "Стол ещё {}° — дайте ему остыть, прежде чем снимать деталь."
+
+msgid "Network"
+msgstr "Сеть"
+
+msgid "Screen"
+msgstr "Экран"
+
+msgid "Lock and PIN"
+msgstr "Блокировка и PIN"
+
+msgid "Sound"
+msgstr "Звук"
+
+msgid "Language and time"
+msgstr "Язык и время"
+
+msgid "Safety"
+msgstr "Безопасность"
+
+msgid "Printers"
+msgstr "Принтеры"
+
+msgid "Updates"
+msgstr "Обновления"
+
+msgid "System"
+msgstr "Система"
+
+msgid "restart, power off, about"
+msgstr "перезапуск, выключение, о системе"
+
+msgid "Klipper is starting"
+msgstr "Klipper запускается"
+
+msgid "Klipper is not running"
+msgstr "Klipper не запущен"
+
+msgid "The printer has stopped"
+msgstr "Принтер остановлен"
+
+msgid "Moonraker does not answer. Rivet keeps trying, and the screen updates by itself once the link is back."
+msgstr "Moonraker не отвечает. Rivet пробует снова, экран обновится сам, когда связь появится."
+
+msgid "This takes a few seconds. The screen updates by itself."
+msgstr "Это займёт несколько секунд. Экран обновится сам."
+
+msgid "Moonraker is reachable, but Klipper is off or restarting. The screen updates by itself."
+msgstr "Moonraker отвечает, но Klipper выключен или перезапускается. Экран обновится сам."
+
+msgid "Heaters and motors are off. A firmware restart usually brings the printer back."
+msgstr "Нагрев и моторы выключены. Обычно помогает перезапуск прошивки."
+
+msgid "Message from Klipper"
+msgstr "Сообщение Klipper"
+
+msgid "Restart firmware"
+msgstr "Перезапустить прошивку"
+
+msgid "Fans"
+msgstr "Вентиляторы"
+
+msgid "The slicer may change the part fan on the next layer."
+msgstr "Слайсер может изменить обдув на следующем слое."
+
+msgid "Print tuning"
+msgstr "Подстройка печати"
+
+msgid "of the slicer speed"
+msgstr "от скорости слайсера"
+
+msgid "Flow"
+msgstr "Поток"
+
+msgid "how much plastic"
+msgstr "сколько пластика"
+
+msgid "applies at once"
+msgstr "меняется сразу"
+
+msgid "sharper corners, less bulging"
+msgstr "чётче углы, меньше вздутий"
+
+msgid "part fan {}%"
+msgstr "обдув {}%"
+
+msgid "Reset speed and flow"
+msgstr "Сбросить скорость и поток"
+
+msgid "back to 100%"
+msgstr "обратно на 100%"
+
+msgid "During print"
+msgstr "Во время печати"

@@ -89,7 +89,7 @@ export component HomeScreen inherits VerticalLayout {
                         spacing: 4px;
                         Text { text: root.last-name; color: Tokens.text; font-size: 19px; font-weight: 700; overflow: elide; }
                         Text {
-                            text: (root.last-days-ago < 0 ? "" : root.last-days-ago == 0 ? @tr("today") + " · " : root.last-days-ago == 1 ? @tr("yesterday") + " · " : @tr("{} days ago", root.last-days-ago) + " · ")
+                            text: (root.last-days-ago < 0 ? "" : Format.age(root.last-days-ago) + " · ")
                                 + (root.last-completed ? "" : @tr("stopped") + " · ")
                                 + Format.duration(root.last-minutes);
                             color: Tokens.text-dim;

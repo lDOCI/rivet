@@ -10,6 +10,8 @@ use slint::ComponentHandle;
 fn status_replaces_screens_until_ready() {
     i_slint_backend_testing::init_no_event_loop();
     let ui = AppWindow::new().unwrap();
+    // The labels below are English whatever language the machine uses.
+    rivet::apply_language("en");
     ui.set_screen("control".into());
     ui.show().unwrap();
 

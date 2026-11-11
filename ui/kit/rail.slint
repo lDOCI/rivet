@@ -53,7 +53,10 @@ export component Rail inherits Rectangle {
     width: Tokens.rail-width;
     background: Tokens.rail;
     VerticalLayout {
+        // 4 px at the sides: «Инструменты» needs the width.
         padding: 8px;
+        padding-left: 4px;
+        padding-right: 4px;
         spacing: 4px;
         RailItem { label: @tr("Home"); icon: Icons.home; active: root.active == "home"; clicked => { root.navigate("home"); } }
         RailItem { label: @tr("Control"); icon: Icons.control; active: root.active == "control"; clicked => { root.navigate("control"); } }

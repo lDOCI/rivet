@@ -4,6 +4,10 @@ fn main() {
     let config = slint_build::CompilerConfiguration::new()
         // Fonts imported in .slint are embedded, so the device needs no system fonts.
         .embed_resources(slint_build::EmbedResourcesKind::EmbedFiles)
+        // Interface translations, one folder per language (see i18n/).
+        .with_bundled_translations("../../i18n")
+        // One flat catalogue: no per-component context in i18n/*.po.
+        .with_default_translation_context(slint_build::DefaultTranslationContext::None)
         // Debug info lets tests find elements by accessible label; keep it out
         // of release builds, the printer binary has a size budget.
         .with_debug_info(env::var("PROFILE").is_ok_and(|p| p != "release"));
