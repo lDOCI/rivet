@@ -5,6 +5,7 @@ slint::include_modules!();
 
 pub mod config;
 pub mod engine;
+pub mod files;
 pub mod logfile;
 pub mod thumbs;
 

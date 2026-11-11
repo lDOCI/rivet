@@ -90,10 +90,7 @@ async fn preview(
         .await
         .inspect_err(|err| tracing::debug!(%err, file, "thumbnail fetch failed"))
         .ok()?;
-    let img = thumbs::upscale(
-        thumbs::downscale(thumbs::decode_png(&body)?, thumbs::MAX_WIDTH),
-        thumbs::MAX_WIDTH,
-    );
+    let img = thumbs::prepare(thumbs::decode_png(&body)?);
     let size = img.data.len();
     let buf = Preview::clone_from_slice(&img.data, img.width, img.height);
     thumbs.cache.lock().ok()?.insert(file, buf.clone(), size);
@@ -205,6 +202,16 @@ pub enum Command {
     /// Slicer data and checks for one file, by its path in `gcodes`.
     FileDetails(String),
     DeleteFiles(Vec<String>),
+    /// Rename or move a file inside `gcodes`.
+    MoveFile {
+        from: String,
+        to: String,
+    },
+    /// Moonraker's print queue: read it, add files, start (true) or pause it, empty it.
+    ListQueue,
+    QueueAdd(Vec<String>),
+    QueueRun(bool),
+    QueueClear,
     /// Start a file again, by its path in `gcodes`.
     StartPrint(String),
     EmergencyStop,
@@ -779,6 +786,12 @@ async fn list_files(
     let now = unix_now();
     let files = model::parse_file_list(&result);
     set_file_counts(ui, &files);
+    // Where a file of this storage can be moved: the top and its folders (a USB
+    // stick's top is its usb/ folder).
+    let mut folders = model::folders(&files, usb);
+    if !usb {
+        folders.insert(0, String::new());
+    }
     let files: Vec<model::FileEntry> = files
         .into_iter()
         .filter(|f| f.path.to_ascii_lowercase().starts_with("usb/") == usb)
@@ -787,11 +800,7 @@ async fn list_files(
     let rows: Vec<(String, String, i32, i32)> = files
         .iter()
         .map(|f| {
-            let name = f.path.rsplit('/').next().unwrap_or(&f.path);
-            let name = name
-                .strip_suffix(".gcode")
-                .or_else(|| name.strip_suffix(".GCODE"))
-                .unwrap_or(name);
+            let name = crate::files::title(&f.path);
             (
                 f.path.clone(),
                 name.to_owned(),
@@ -804,15 +813,19 @@ async fn list_files(
     let _ = ui.upgrade_in_event_loop(move |ui| {
         let items: Vec<crate::FileItem> = rows
             .into_iter()
-            .map(|(path, name, days_ago, size_kb)| crate::FileItem {
+            .enumerate()
+            .map(|(rank, (path, name, days_ago, size_kb))| crate::FileItem {
                 path: path.into(),
                 name: name.into(),
+                rank: rank as i32,
                 days_ago,
                 size_kb,
                 ..Default::default()
             })
             .collect();
-        ui.set_files(slint::ModelRc::new(slint::VecModel::from(items)));
+        crate::files::set_all(&ui, items);
+        let folders: Vec<slint::SharedString> = folders.into_iter().map(Into::into).collect();
+        ui.set_move_folders(slint::ModelRc::new(slint::VecModel::from(folders)));
     });
 
     // Previews arrive one by one, newest first, and appear as they land.
@@ -836,26 +849,82 @@ async fn list_files(
                 .map(|m| model::parse_file_meta(&m));
             let buf = preview(&client, &thumbs, &path, meta.clone()).await;
             let _ = ui.upgrade_in_event_loop(move |ui| {
-                use slint::Model;
-                let files = ui.get_files();
-                let row = (0..files.row_count())
-                    .find(|&i| files.row_data(i).is_some_and(|f| f.path == path.as_str()));
-                if let Some((i, mut item)) = row.and_then(|i| Some((i, files.row_data(i)?))) {
-                    if let Some(buf) = buf {
-                        item.thumb = slint::Image::from_rgba8(buf);
+                let thumb = buf.map(slint::Image::from_rgba8);
+                crate::files::update(&ui, &path, |item| {
+                    if let Some(thumb) = &thumb {
+                        item.thumb = thumb.clone();
                         item.has_thumb = true;
                     }
-                    if let Some(meta) = meta {
+                    if let Some(meta) = &meta {
                         item.has_meta = true;
                         item.minutes = meta.estimated_secs.map_or(0, |s| s.div_ceil(60) as i32);
-                        item.material = meta.filament_type.unwrap_or_default().into();
+                        item.material = meta.filament_type.clone().unwrap_or_default().into();
                     }
-                    files.set_row_data(i, item);
-                }
+                });
             });
         }
     });
     Ok(())
+}
+
+/// Moonraker's print queue for the Files button and the Queue screen. A printer
+/// without the job_queue component gets no button (count -1).
+async fn list_queue(client: &Client, ui: &slint::Weak<AppWindow>) {
+    let Ok(result) = client
+        .call_timeout("server.job_queue.status", json!({}), SETUP_TIMEOUT)
+        .await
+    else {
+        let _ = ui.upgrade_in_event_loop(|ui| ui.set_queue_count(-1));
+        return;
+    };
+    let queue = model::parse_job_queue(&result);
+    // Print time and filament of each job, from the file's metadata.
+    let mut jobs = Vec::with_capacity(queue.jobs.len());
+    for job in queue.jobs {
+        let meta = client
+            .call_timeout(
+                "server.files.metadata",
+                json!({ "filename": job.path }),
+                SETUP_TIMEOUT,
+            )
+            .await
+            .ok()
+            .map(|m| model::parse_file_meta(&m));
+        let minutes = meta
+            .as_ref()
+            .and_then(|m| m.estimated_secs)
+            .map(|s| s.div_ceil(60) as i32);
+        let material = meta.and_then(|m| m.filament_type).unwrap_or_default();
+        jobs.push((job.path, minutes, material));
+    }
+    let state = queue.state;
+    let _ = ui.upgrade_in_event_loop(move |ui| {
+        let format = slint::ComponentHandle::global::<crate::Format>(&ui);
+        let total: i32 = jobs.iter().filter_map(|j| j.1).sum();
+        let rows: Vec<crate::FormRow> = jobs
+            .iter()
+            .enumerate()
+            .map(|(i, (path, minutes, material))| {
+                let sub: Vec<String> = minutes
+                    .map(|m| format.invoke_duration(m).to_string())
+                    .into_iter()
+                    .chain((!material.is_empty()).then(|| material.clone()))
+                    .collect();
+                crate::FormRow {
+                    kind: "link".into(),
+                    key: path.as_str().into(),
+                    title: format!("{} · {}", i + 1, crate::files::title(path)).into(),
+                    sub: sub.join(" · ").into(),
+                    shown: true,
+                    ..Default::default()
+                }
+            })
+            .collect();
+        ui.set_queue_count(rows.len() as i32);
+        ui.set_queue_rows(slint::ModelRc::new(slint::VecModel::from(rows)));
+        ui.set_queue_state(state.into());
+        ui.set_queue_minutes(total);
+    });
 }
 
 async fn file_details(
@@ -1472,7 +1541,48 @@ async fn execute(
             .await
             .map(drop),
         Command::ClearConsole => Ok(()),
-        Command::ListFiles { usb } => list_files(client, ui, thumbs, *usb).await,
+        Command::ListFiles { usb } => {
+            list_queue(client, ui).await;
+            list_files(client, ui, thumbs, *usb).await
+        }
+        Command::MoveFile { from, to } => {
+            client
+                .call(
+                    "server.files.move",
+                    json!({ "source": format!("gcodes/{from}"), "dest": format!("gcodes/{to}") }),
+                )
+                .await?;
+            let usb = from.to_ascii_lowercase().starts_with("usb/");
+            list_files(client, ui, thumbs, usb).await
+        }
+        Command::ListQueue => {
+            list_queue(client, ui).await;
+            Ok(())
+        }
+        Command::QueueAdd(paths) => {
+            client
+                .call("server.job_queue.post_job", json!({ "filenames": paths }))
+                .await?;
+            list_queue(client, ui).await;
+            Ok(())
+        }
+        Command::QueueRun(start) => {
+            let method = if *start {
+                "server.job_queue.start"
+            } else {
+                "server.job_queue.pause"
+            };
+            client.call(method, json!({})).await?;
+            list_queue(client, ui).await;
+            Ok(())
+        }
+        Command::QueueClear => {
+            client
+                .call("server.job_queue.delete_job", json!({ "all": true }))
+                .await?;
+            list_queue(client, ui).await;
+            Ok(())
+        }
         Command::FileDetails(path) => file_details(client, ui, thumbs, path).await,
         Command::DeleteFiles(paths) => {
             for path in paths {

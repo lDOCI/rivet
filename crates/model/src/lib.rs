@@ -485,6 +485,106 @@ pub fn parse_file_list(result: &Value) -> Vec<FileEntry> {
     files
 }
 
+/// The folder part of a path in `gcodes` ("" for the top).
+pub fn folder_of(path: &str) -> &str {
+    path.rsplit_once('/').map_or("", |(dir, _)| dir)
+}
+
+/// Where `path` goes when the user renames it to `name`: same folder, same
+/// extension (added unless typed). None when the name cannot be a file name.
+pub fn renamed(path: &str, name: &str) -> Option<String> {
+    let name = name.trim();
+    if name.is_empty() || name.contains('/') || name.starts_with('.') {
+        return None;
+    }
+    let file = path.rsplit('/').next().unwrap_or(path);
+    let ext = file.rfind('.').map_or("", |i| &file[i..]);
+    let name = if !ext.is_empty()
+        && name
+            .to_ascii_lowercase()
+            .ends_with(&ext.to_ascii_lowercase())
+    {
+        name.to_owned()
+    } else {
+        format!("{name}{ext}")
+    };
+    let dir = folder_of(path);
+    let to = if dir.is_empty() {
+        name
+    } else {
+        format!("{dir}/{name}")
+    };
+    (to != path).then_some(to)
+}
+
+/// `path` moved into `folder` ("" = the top), keeping its file name.
+pub fn moved(path: &str, folder: &str) -> Option<String> {
+    let file = path.rsplit('/').next().unwrap_or(path);
+    let to = if folder.is_empty() {
+        file.to_owned()
+    } else {
+        format!("{folder}/{file}")
+    };
+    (to != path).then_some(to)
+}
+
+/// The folders that hold files, sorted, without the top level; for "Move to
+/// folder". Folders under `usb/` belong to the stick and stay with it.
+pub fn folders(files: &[FileEntry], usb: bool) -> Vec<String> {
+    let mut out: Vec<String> = files
+        .iter()
+        .map(|f| folder_of(&f.path))
+        .filter(|d| !d.is_empty())
+        .filter(|d| {
+            let lower = d.to_ascii_lowercase();
+            (lower == "usb" || lower.starts_with("usb/")) == usb
+        })
+        .map(str::to_owned)
+        .collect();
+    out.sort_by_key(|d| d.to_lowercase());
+    out.dedup();
+    out
+}
+
+/// One job of Moonraker's print queue.
+#[derive(Debug, Clone, PartialEq)]
+pub struct QueuedJob {
+    pub id: String,
+    /// Path in `gcodes`.
+    pub path: String,
+}
+
+/// `server.job_queue.status`: "ready" (prints the next job when the printer is
+/// free), "paused" (waits for a start), "loading".
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct JobQueue {
+    pub state: String,
+    pub jobs: Vec<QueuedJob>,
+}
+
+pub fn parse_job_queue(result: &Value) -> JobQueue {
+    JobQueue {
+        state: result
+            .get("queue_state")
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .to_owned(),
+        jobs: result
+            .get("queued_jobs")
+            .and_then(Value::as_array)
+            .map(Vec::as_slice)
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|j| {
+                Some(QueuedJob {
+                    id: j.get("job_id")?.as_str()?.to_owned(),
+                    path: j.get("filename")?.as_str()?.to_owned(),
+                })
+            })
+            .collect(),
+    }
+}
+
 /// A preview image the slicer embedded; the file lives next to the G-code.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ThumbRef {
@@ -861,6 +961,68 @@ pub fn merge(dst: &mut Value, src: Value) {
             }
         }
         (dst, src) => *dst = src,
+    }
+}
+
+#[cfg(test)]
+mod file_tests {
+    use super::*;
+
+    #[test]
+    fn rename_keeps_folder_and_extension() {
+        assert_eq!(
+            renamed("a/Benchy.gcode", "Boat").as_deref(),
+            Some("a/Boat.gcode")
+        );
+        assert_eq!(
+            renamed("Benchy.gcode", " Boat.GCODE ").as_deref(),
+            Some("Boat.GCODE")
+        );
+        assert_eq!(renamed("Benchy.gcode", "Benchy"), None);
+        assert_eq!(renamed("Benchy.gcode", ""), None);
+        assert_eq!(renamed("Benchy.gcode", "x/y"), None);
+        assert_eq!(renamed("Benchy.gcode", ".hidden"), None);
+    }
+
+    #[test]
+    fn move_and_folders() {
+        assert_eq!(moved("a/b.gcode", "").as_deref(), Some("b.gcode"));
+        assert_eq!(moved("b.gcode", "parts").as_deref(), Some("parts/b.gcode"));
+        assert_eq!(moved("parts/b.gcode", "parts"), None);
+        let f = |p: &str| FileEntry {
+            path: p.into(),
+            modified: 0.0,
+            size: 0,
+        };
+        let files = [
+            f("x.gcode"),
+            f("Parts/a.gcode"),
+            f("boxes/b.gcode"),
+            f("Parts/c.gcode"),
+            f("usb/d.gcode"),
+            f("USB/e/f.gcode"),
+        ];
+        assert_eq!(folders(&files, false), ["boxes", "Parts"]);
+        assert_eq!(folders(&files, true), ["usb", "USB/e"]);
+    }
+
+    #[test]
+    fn job_queue() {
+        let q = parse_job_queue(&serde_json::json!({
+            "queue_state": "paused",
+            "queued_jobs": [
+                { "filename": "Benchy.gcode", "job_id": "0001", "time_added": 1.0 },
+                { "filename": "bad" }
+            ]
+        }));
+        assert_eq!(q.state, "paused");
+        assert_eq!(
+            q.jobs,
+            [QueuedJob {
+                id: "0001".into(),
+                path: "Benchy.gcode".into()
+            }]
+        );
     }
 }
 

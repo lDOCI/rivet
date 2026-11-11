@@ -4611,6 +4611,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "fontique",
+ "model",
  "png 0.17.16",
  "rivet",
  "slint",

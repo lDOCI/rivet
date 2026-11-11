@@ -327,16 +327,16 @@ export component SettingsForm inherits FormScreen {
 
 // FileActions.dc.html
 export component FileActionsForm inherits FormScreen {
-    // Добавить в очередь — later: M4: print queue
-    in property <bool> queue-shown: false;
+    // Добавить в очередь
+    in property <bool> queue-shown: true;
     in property <string> queue-sub: "";
     in property <bool> queue-enabled: true;
-    // Переименовать — later: the prototype has no name dialog yet
-    in property <bool> rename-shown: false;
+    // Переименовать
+    in property <bool> rename-shown: true;
     in property <string> rename-sub: "";
     in property <bool> rename-enabled: true;
-    // Переместить в папку — later: the prototype has no folder picker yet
-    in property <bool> move-shown: false;
+    // Переместить в папку
+    in property <bool> move-shown: true;
     in property <string> move-sub: "";
     in property <bool> move-enabled: true;
     // Удалить
@@ -359,6 +359,44 @@ export component FileActionsForm inherits FormScreen {
         { kind: "action", key: "rename", title: @tr("Rename"), sub: root.rename-sub, shown: root.rename-shown, on: root.rename-enabled },
         { kind: "action", key: "move", title: @tr("Move to folder"), sub: root.move-sub, shown: root.move-shown, on: root.move-enabled },
         { kind: "action", key: "delete", title: @tr("Delete"), sub: root.delete-sub, shown: root.delete-shown, tone: "danger", on: root.delete-enabled }
+    ];
+}
+
+// JobQueue.dc.html
+export component JobQueueForm inherits FormScreen {
+    // 1 · Benchy: a live list of link rows
+    in property <[FormRow]> jobs-items;
+    // Начать очередь
+    in property <bool> queue-run-shown: true;
+    in property <string> queue-run-title;
+    in property <string> queue-run-sub;
+    in property <bool> queue-run-enabled: true;
+    // Ждать подтверждения между печатями — later: Moonraker's automatic_transition is a moonraker.conf option, not something a screen can switch
+    in property <bool> queue-wait-shown: false;
+    in property <string> queue-wait-sub: @tr("to take the part off the bed");
+    in property <bool> queue-wait-on;
+    // Очистить очередь
+    in property <bool> queue-clear-shown: true;
+    in property <string> queue-clear-sub: "";
+    in property <bool> queue-clear-enabled: true;
+    title: @tr("Print queue");
+    // A stepper's new value, clamped to its range and rounded to its decimals.
+    callback set-value(string, float);
+    // Type a stepper's value: key, title, min, max, current, decimals.
+    callback edit-number(string, string, float, float, float, int);
+    stepped(key, d) => {
+    }
+    edit(key) => {
+    }
+    bars: [];
+    rows: [
+        
+    ];
+    rows-1: root.jobs-items;
+    rows-2: [
+        { kind: "action", key: "queue-run", title: root.queue-run-title, sub: root.queue-run-sub, shown: root.queue-run-shown, tone: "accent", on: root.queue-run-enabled },
+        { kind: "toggle", key: "queue-wait", title: @tr("Wait for a tap between prints"), sub: root.queue-wait-sub, shown: root.queue-wait-shown, on: root.queue-wait-on },
+        { kind: "action", key: "queue-clear", title: @tr("Clear the queue"), sub: root.queue-clear-sub, shown: root.queue-clear-shown, tone: "danger", on: root.queue-clear-enabled }
     ];
 }
 

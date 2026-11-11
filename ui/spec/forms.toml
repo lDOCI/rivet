@@ -75,10 +75,20 @@ r8 = "system"
 component = "FileActionsForm"
 title = "data"
 [FileActions.rows]
-r0 = { name = "queue", later = "M4: print queue" }
-r1 = { name = "rename", later = "the prototype has no name dialog yet" }
-r2 = { name = "move", later = "the prototype has no folder picker yet" }
+r0 = "queue"
+r1 = "rename"
+r2 = "move"
 r3 = "delete"
+
+[JobQueue]
+component = "JobQueueForm"
+en = { "Очередь печати" = "Print queue", "Ждать подтверждения между печатями" = "Wait for a tap between prints", "снять деталь со стола" = "to take the part off the bed", "Очистить очередь" = "Clear the queue" }
+[JobQueue.rows]
+r0 = { name = "jobs", repeat = true }
+r1 = { name = "jobs", example = true }
+r2 = { name = "queue-run", data = ["title", "sub"] }
+r3 = { name = "queue-wait", later = "Moonraker's automatic_transition is a moonraker.conf option, not something a screen can switch" }
+r4 = "queue-clear"
 
 [MotionAdvanced]
 component = "MotionMoreForm"

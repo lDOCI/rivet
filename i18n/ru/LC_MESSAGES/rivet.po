@@ -972,3 +972,96 @@ msgstr "Осталось"
 
 msgid "Tap to open"
 msgstr "Коснитесь, чтобы открыть"
+
+msgid "{n} job is removed from the queue. The files stay."
+msgid_plural "{n} jobs are removed from the queue. The files stay."
+msgstr[0] "Из очереди уйдёт {n} печать. Файлы останутся."
+msgstr[1] "Из очереди уйдут {n} печати. Файлы останутся."
+msgstr[2] "Из очереди уйдут {n} печатей. Файлы останутся."
+
+msgid "Start the queue"
+msgstr "Начать очередь"
+
+msgid "Pause the queue"
+msgstr "Остановить очередь"
+
+msgid "total {}"
+msgstr "всего {}"
+
+msgid "the next job starts when this print ends"
+msgstr "следующая начнётся после этой печати"
+
+msgid "the next job starts when the printer is free"
+msgstr "следующая начнётся, когда принтер свободен"
+
+msgid "The queue is empty"
+msgstr "Очередь пуста"
+
+msgid "Add a file from its menu, or several at once with Select."
+msgstr "Добавьте файл из его меню или сразу несколько через «Выбрать»."
+
+msgid "Clear the queue?"
+msgstr "Очистить очередь?"
+
+msgid "to take the part off the bed"
+msgstr "снять деталь со стола"
+
+msgid "Print queue"
+msgstr "Очередь печати"
+
+msgid "Wait for a tap between prints"
+msgstr "Ждать подтверждения между печатями"
+
+msgid "Clear the queue"
+msgstr "Очистить очередь"
+
+msgid "Latin letters"
+msgstr "Латинские буквы"
+
+msgid "Russian letters"
+msgstr "Русские буквы"
+
+msgid "Print queue, {}"
+msgstr "Очередь печати, {}"
+
+msgid "Search and sort"
+msgstr "Поиск и сортировка"
+
+msgid "Nothing found"
+msgstr "Ничего не нашлось"
+
+msgid "No file name has “{}”."
+msgstr "Нет файлов, в имени которых есть «{}»."
+
+msgid "To queue {}"
+msgstr "В очередь {}"
+
+msgid "To queue"
+msgstr "В очередь"
+
+msgid "Part of the file name"
+msgstr "Часть имени файла"
+
+msgid "Clear search"
+msgstr "Очистить поиск"
+
+msgid "Newest"
+msgstr "Новые"
+
+msgid "Name"
+msgstr "Имя"
+
+msgid "Print time"
+msgstr "Время печати"
+
+msgid "Size"
+msgstr "Размер"
+
+msgid "File name"
+msgstr "Имя файла"
+
+msgid "Files (top level)"
+msgstr "Файлы (верхний уровень)"
+
+msgid "here now"
+msgstr "файл здесь"

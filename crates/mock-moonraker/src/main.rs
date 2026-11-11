@@ -22,11 +22,49 @@ use tokio::{
 };
 use tokio_tungstenite::{accept_async, tungstenite::Message};
 
+/// A G-code file the mock pretends to have: path in `gcodes`, age in days,
+/// size, print minutes and filament, as a slicer would write them.
+#[derive(Debug, Clone)]
+struct MockFile {
+    path: String,
+    days: f64,
+    size: u64,
+    minutes: u64,
+    material: &'static str,
+}
+
 #[derive(Debug)]
 struct Sim {
     klippy: &'static str,
     state_message: String,
     status: Value,
+    files: Vec<MockFile>,
+    /// Print queue: (job id, path); "ready" or "paused".
+    queue: Vec<(String, String)>,
+    queue_state: &'static str,
+    next_job: u32,
+}
+
+fn mock_files() -> Vec<MockFile> {
+    let f = |path: &str, days: f64, size: u64, minutes: u64, material| MockFile {
+        path: path.into(),
+        days,
+        size,
+        minutes,
+        material,
+    };
+    vec![
+        f("Корпус вентилятора №2.gcode", 0.2, 2_400_000, 83, "PETG"),
+        f("Benchy.gcode", 1.0, 1_900_000, 52, "PLA"),
+        f("Держатель катушки v3.gcode", 2.0, 5_100_000, 185, "PETG"),
+        f("Крышка электроники.gcode", 3.0, 1_300_000, 41, "PLA"),
+        f("Калибровочный куб.gcode", 5.0, 400_000, 18, "PLA"),
+        f("Органайзер для отвёрток.gcode", 8.0, 3_600_000, 130, "PLA"),
+        f("Детали/Петля двери.gcode", 12.0, 900_000, 35, "PETG"),
+        f("usb/Кронштейн полки.gcode", 4.0, 1_700_000, 62, "PETG"),
+        f("usb/Ваза спираль.gcode", 6.0, 2_900_000, 160, "PLA"),
+        f("usb/Заглушка трубы 25 мм.gcode", 9.0, 200_000, 12, "PLA"),
+    ]
 }
 
 impl Sim {
@@ -52,6 +90,10 @@ impl Sim {
                 "controller_fan stepper_driver_fan": { "speed": 0.0 },
                 "configfile": { "settings": { "heater_fan hotend_fan": { "heater_temp": 50.0 } } },
             }),
+            files: mock_files(),
+            queue: Vec::new(),
+            queue_state: "paused",
+            next_job: 1,
         }
     }
 
@@ -320,6 +362,24 @@ async fn serve(stream: TcpStream, peer: SocketAddr, sim: Shared, push_tx: broadc
     tracing::info!(%peer, "client disconnected");
 }
 
+fn queue_status(sim: &Sim) -> Value {
+    json!({
+        "queue_state": sim.queue_state,
+        "queued_jobs": sim.queue.iter().map(|(id, path)| json!({
+            "filename": path,
+            "job_id": id,
+            "time_added": 0.0,
+            "time_in_queue": 0.0,
+        })).collect::<Vec<_>>(),
+    })
+}
+
+fn unix_now() -> f64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0.0, |d| d.as_secs_f64())
+}
+
 fn handle(sim: &Shared, req: &Value) -> (Option<Value>, Option<Push>) {
     let id = req.get("id").cloned();
     let method = req["method"].as_str().unwrap_or_default();
@@ -333,6 +393,104 @@ fn handle(sim: &Shared, req: &Value) -> (Option<Value>, Option<Push>) {
         "server.connection.identify" => Ok(json!({ "connection_id": 1 })),
         "server.info" => Ok(json!({ "klippy_connected": true, "klippy_state": sim.klippy })),
         "printer.info" => Ok(json!({ "state": sim.klippy, "state_message": sim.state_message })),
+        "server.files.list" => {
+            let now = unix_now();
+            Ok(Value::Array(
+                sim.files
+                    .iter()
+                    .map(|f| json!({ "path": f.path, "modified": now - f.days * 86_400.0, "size": f.size }))
+                    .collect(),
+            ))
+        }
+        "server.files.metadata" => {
+            let name = params["filename"].as_str().unwrap_or_default();
+            match sim.files.iter().find(|f| f.path == name) {
+                Some(f) => Ok(json!({
+                    "filename": f.path,
+                    "estimated_time": f.minutes * 60,
+                    "filament_type": f.material,
+                    "thumbnails": [],
+                })),
+                None => Err((404, "File does not exist")),
+            }
+        }
+        "server.files.delete_file" => {
+            let path = params["path"].as_str().unwrap_or_default();
+            let path = path.strip_prefix("gcodes/").unwrap_or(path);
+            let before = sim.files.len();
+            sim.files.retain(|f| f.path != path);
+            if sim.files.len() < before {
+                Ok(json!({ "item": { "path": path, "root": "gcodes" }, "action": "delete_file" }))
+            } else {
+                Err((404, "File does not exist"))
+            }
+        }
+        "server.files.move" => {
+            let strip = |k: &str| {
+                let v = params[k].as_str().unwrap_or_default();
+                v.strip_prefix("gcodes/").unwrap_or(v).to_owned()
+            };
+            let (from, to) = (strip("source"), strip("dest"));
+            if sim.files.iter().any(|f| f.path == to) {
+                Err((400, "Destination path already exists"))
+            } else if let Some(f) = sim.files.iter_mut().find(|f| f.path == from) {
+                f.path = to.clone();
+                for job in &mut sim.queue {
+                    if job.1 == from {
+                        job.1 = to.clone();
+                    }
+                }
+                Ok(json!({ "item": { "path": to, "root": "gcodes" }, "action": "move_file" }))
+            } else {
+                Err((404, "File does not exist"))
+            }
+        }
+        "server.job_queue.status" => Ok(queue_status(&sim)),
+        "server.job_queue.post_job" => {
+            let names: Vec<String> = params["filenames"]
+                .as_array()
+                .map(Vec::as_slice)
+                .unwrap_or_default()
+                .iter()
+                .filter_map(|v| v.as_str().map(str::to_owned))
+                .collect();
+            for name in names {
+                let id = format!("{:04}", sim.next_job);
+                sim.next_job += 1;
+                sim.queue.push((id, name));
+            }
+            Ok(queue_status(&sim))
+        }
+        "server.job_queue.delete_job" => {
+            if params["all"].as_bool() == Some(true) {
+                sim.queue.clear();
+            } else {
+                let ids: Vec<&str> = params["job_ids"]
+                    .as_array()
+                    .map(Vec::as_slice)
+                    .unwrap_or_default()
+                    .iter()
+                    .filter_map(Value::as_str)
+                    .collect();
+                let ids: Vec<String> = ids.into_iter().map(str::to_owned).collect();
+                sim.queue.retain(|j| !ids.contains(&j.0));
+            }
+            Ok(queue_status(&sim))
+        }
+        "server.job_queue.start" => {
+            sim.queue_state = "ready";
+            // An idle printer takes the first job at once, as Moonraker does.
+            let idle = sim.status["print_stats"]["state"].as_str() != Some("printing");
+            if idle && !sim.queue.is_empty() {
+                let (_, path) = sim.queue.remove(0);
+                sim.start_print(&path, &mut delta);
+            }
+            Ok(queue_status(&sim))
+        }
+        "server.job_queue.pause" => {
+            sim.queue_state = "paused";
+            Ok(queue_status(&sim))
+        }
         "printer.objects.list" => {
             let mut objects: Vec<String> = sim
                 .status

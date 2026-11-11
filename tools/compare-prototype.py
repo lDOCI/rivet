@@ -30,6 +30,7 @@ PAIRS = {
     "motion-more": "MotionAdvanced", "file-actions": "FileActions",
     "layer-pause": "LayerPause", "retraction": "Retraction", "dryer": "Dryer",
     "spools": "Spools", "devices": "Devices", "ambient": "Ambient",
+    "queue": "JobQueue",
 }
 
 def main():

@@ -2,7 +2,7 @@ import { Tokens } from "kit/tokens.slint";
 import { Rail } from "kit/rail.slint";
 import { ControlScreen } from "screens/control.slint";
 import { FansScreen, FanRow, ZOffsetScreen } from "screens/tune.slint";
-import { LightForm, SpeedForm, TuneForm, MoreForm, ExtruderForm, SettingsForm, FileActionsForm, MotionMoreForm, LayerPauseForm, RetractionForm, DryerForm, SpoolsForm, DevicesForm } from "generated/forms.slint";
+import { LightForm, SpeedForm, TuneForm, MoreForm, ExtruderForm, SettingsForm, FileActionsForm, JobQueueForm, MotionMoreForm, LayerPauseForm, RetractionForm, DryerForm, SpoolsForm, DevicesForm } from "generated/forms.slint";
 import { FormRow } from "kit/form.slint";
 
 export { FormRow }
@@ -14,6 +14,8 @@ export global Strings {
     out property <string> grams: @tr("{} g", "{}");
 }
 import { Format } from "kit/format.slint";
+// Rust formats durations for rows it builds (the queue) the same way.
+export { Format }
 import { Dialog, Keypad } from "kit/dialogs.slint";
 import { StatusScreen } from "screens/status.slint";
 import { Toast } from "kit/toast.slint";
@@ -21,7 +23,7 @@ import { HomeScreen } from "screens/home.slint";
 import { HeatingScreen } from "screens/heating.slint";
 import { MotionScreen } from "screens/motion.slint";
 import { ToolsScreen, ConsoleScreen, MacrosScreen, ConsoleLine } from "screens/tools.slint";
-import { FilesScreen, FileScreen, FileItem, FileInfo } from "screens/files.slint";
+import { FilesScreen, FileScreen, FileItem, FileInfo, FindScreen, RenameScreen, MoveScreen } from "screens/files.slint";
 export { FileItem, FileInfo, ConsoleLine, FanRow }
 import { PrintingScreen, PrintDoneScreen, AmbientScreen } from "screens/print.slint";
 
@@ -205,13 +207,43 @@ export component AppWindow inherits Window {
     callback delete-file(string);
     callback select-all(bool);
 
+    // Search and order of the file grid; Rust rebuilds the grid on files-view-changed.
+    in-out property <string> files-query;
+    in-out property <string> files-sort: "new";
+    callback files-view-changed();
+    // Russian interface: the keyboard starts with Russian letters for file names.
+    in property <bool> russian;
+    // Moonraker's print queue: rows, count (-1: the printer has no queue), state
+    // ("ready" prints on, "paused" waits for a start) and the jobs' total time.
+    in property <[FormRow]> queue-rows;
+    in property <int> queue-count: -1;
+    in property <string> queue-state;
+    in property <int> queue-minutes;
+    callback queue-files([string]);
+    callback queue-selected();
+    callback queue-run(bool);
+    callback queue-clear();
+    callback refresh-queue();
+    // Rename and move the open file.
+    in-out property <string> rename-text;
+    pure callback name-ok(string, string) -> bool;
+    callback rename-file(string, string);
+    // Where files of this storage can go: "" (the top) and its folders.
+    in property <[string]> move-folders;
+    callback move-file(string, string);
+
     // G-code files; the selection lives in the rows.
     in-out property <[FileItem]> files;
     in property <FileInfo> file-info;
     in-out property <int> selected-count;
-    property <bool> select-mode;
+    in-out property <bool> select-mode;
     in-out property <string> open-path;
     in-out property <string> open-name;
+    // The folder of the open file ("" for the top).
+    pure callback folder-of(string) -> string;
+    property <string> open-folder: root.folder-of(root.open-path);
+    // A file's name to show: no folder, no .gcode.
+    pure callback file-title(string) -> string;
 
     // Live values for tuning and the light, straight from Klipper.
     in property <float> speed-percent: 100;
@@ -664,10 +696,15 @@ export component AppWindow inherits Window {
             storage-changed(usb) => { root.files-scroll = 0; root.refresh-files(); }
             select-mode <=> root.select-mode;
             selected-count <=> root.selected-count;
+            queue-count: root.queue-count;
+            query: root.files-query;
+            queue => { root.refresh-queue(); root.screen = "queue"; }
+            find => { root.screen = "files-find"; }
+            queue-selected => { root.queue-selected(); root.select-mode = false; }
             back => { root.screen = "home"; }
             open(path) => {
                 root.open-path = path;
-                root.open-name = path;
+                root.open-name = root.file-title(path);
                 root.open-file(path);
                 root.screen = "file";
             }
@@ -685,8 +722,67 @@ export component AppWindow inherits Window {
         }
         if root.ready && root.screen == "file-actions": FileActionsForm {
             page-title: root.open-name;
+            queue-shown: root.queue-count >= 0;
+            move-shown: root.move-folders.length > 1;
             back => { root.screen = "file"; }
-            activate(key) => { if (key == "delete") { root.overlay = "delete-file"; } }
+            activate(key) => {
+                if (key == "delete") { root.overlay = "delete-file"; }
+                if (key == "queue") { root.queue-files([root.open-path]); root.screen = "queue"; }
+                if (key == "rename") { root.rename-text = root.open-name; root.screen = "file-rename"; }
+                if (key == "move") { root.screen = "file-move"; }
+            }
+        }
+        if root.ready && root.screen == "files-find": FindScreen {
+            query <=> root.files-query;
+            sort <=> root.files-sort;
+            cyrillic: root.russian;
+            changed => { root.files-scroll = 0; root.files-view-changed(); }
+            apply-key(t, k) => { return root.apply-key(t, k); }
+            back => { root.screen = "files"; }
+        }
+        if root.ready && root.screen == "file-rename": RenameScreen {
+            text <=> root.rename-text;
+            cyrillic: root.russian;
+            valid: root.name-ok(root.open-path, root.rename-text);
+            apply-key(t, k) => { return root.apply-key(t, k); }
+            done => { root.rename-file(root.open-path, root.rename-text); root.screen = "files"; }
+            back => { root.screen = "file-actions"; }
+        }
+        if root.ready && root.screen == "file-move": MoveScreen {
+            folders: root.move-folders;
+            current: root.open-folder;
+            picked(folder) => { root.move-file(root.open-path, folder); root.screen = "files"; }
+            back => { root.screen = "file-actions"; }
+        }
+        if root.ready && root.screen == "queue": Rectangle {
+            horizontal-stretch: 1;
+            JobQueueForm {
+                width: parent.width;
+                height: parent.height;
+                jobs-items: root.queue-rows;
+                queue-run-shown: root.queue-count > 0;
+                queue-run-title: root.queue-state == "paused" ? @tr("Start the queue") : @tr("Pause the queue");
+                queue-run-sub: root.queue-state == "paused" ? @tr("total {}", Format.duration(root.queue-minutes))
+                    : root.busy ? @tr("the next job starts when this print ends") : @tr("the next job starts when the printer is free");
+                queue-clear-shown: root.queue-count > 0;
+                back => { root.screen = "files"; }
+                activate(key) => {
+                    if (key == "queue-run") { root.queue-run(root.queue-state == "paused"); }
+                    if (key == "queue-clear") { root.overlay = "clear-queue"; }
+                    if (key != "queue-run" && key != "queue-clear") {
+                        root.open-path = key;
+                        root.open-name = root.file-title(key);
+                        root.open-file(key);
+                        root.screen = "file";
+                    }
+                }
+            }
+            if root.queue-count == 0: VerticalLayout {
+                alignment: center;
+                spacing: 8px;
+                Text { text: @tr("The queue is empty"); color: Tokens.text; font-size: Tokens.title; font-weight: 800; horizontal-alignment: center; }
+                Text { text: @tr("Add a file from its menu, or several at once with Select."); color: Tokens.text-dim; font-size: Tokens.body; horizontal-alignment: center; }
+            }
         }
         if !root.ready && root.screen != "console": StatusScreen {
             state: root.link-state;
@@ -730,6 +826,14 @@ export component AppWindow inherits Window {
             root.select-mode = false;
             root.selected-count = 0;
         }
+        cancelled => { root.overlay = ""; }
+    }
+    if root.overlay == "clear-queue": Dialog {
+        title: @tr("Clear the queue?");
+        message: @tr("{n} job is removed from the queue. The files stay." | "{n} jobs are removed from the queue. The files stay." % root.queue-count);
+        confirm-text: @tr("Clear");
+        danger: true;
+        confirmed => { root.overlay = ""; root.queue-clear(); }
         cancelled => { root.overlay = ""; }
     }
     if root.overlay == "delete-file": Dialog {

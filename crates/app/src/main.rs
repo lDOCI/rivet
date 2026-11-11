@@ -25,11 +25,13 @@ fn main() -> anyhow::Result<()> {
     // --lang, RIVET_LANG, rivet.toml, then the system's LANG.
     let lang_arg = flag_value("--lang");
     let lang_env = std::env::var("RIVET_LANG").ok();
-    rivet::apply_language(&rivet::language(
+    let lang = rivet::language(
         lang_arg.as_deref(),
         lang_env.as_deref().or(config.language.as_deref()),
         std::env::var("LANG").ok().as_deref(),
-    ));
+    );
+    rivet::apply_language(&lang);
+    ui.set_russian(lang == "ru");
     // --screen <name>: open on that screen (proof shots on the printer); the rail
     // and back buttons work as usual from there.
     if let Some(screen) = flag_value("--screen") {
@@ -379,6 +381,73 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
             }
         });
     }
+    {
+        let weak = ui.as_weak();
+        ui.on_files_view_changed(move || {
+            if let Some(ui) = weak.upgrade() {
+                rivet::files::show(&ui);
+            }
+        });
+    }
+    ui.on_file_title(|path| rivet::files::title(&path).into());
+    ui.on_folder_of(|path| model::folder_of(&path).into());
+    ui.on_name_ok(|path, name| model::renamed(&path, &name).is_some());
+    {
+        let tx = tx.clone();
+        ui.on_rename_file(move |path, name| {
+            if let Some(to) = model::renamed(&path, &name) {
+                let _ = tx.send(Command::MoveFile {
+                    from: path.to_string(),
+                    to,
+                });
+            }
+        });
+    }
+    {
+        let tx = tx.clone();
+        ui.on_move_file(move |path, folder| {
+            if let Some(to) = model::moved(&path, &folder) {
+                let _ = tx.send(Command::MoveFile {
+                    from: path.to_string(),
+                    to,
+                });
+            }
+        });
+    }
+    {
+        let tx = tx.clone();
+        ui.on_queue_files(move |paths| {
+            use slint::Model;
+            let paths: Vec<String> = paths.iter().map(|p| p.to_string()).collect();
+            let _ = tx.send(Command::QueueAdd(paths));
+        });
+    }
+    {
+        let tx = tx.clone();
+        let weak = ui.as_weak();
+        ui.on_queue_selected(move || {
+            use slint::Model;
+            let Some(ui) = weak.upgrade() else { return };
+            let paths: Vec<String> = ui
+                .get_files()
+                .iter()
+                .filter(|f| f.selected)
+                .map(|f| f.path.to_string())
+                .collect();
+            ui.invoke_select_all(false);
+            if !paths.is_empty() {
+                let _ = tx.send(Command::QueueAdd(paths));
+            }
+        });
+    }
+    {
+        let tx = tx.clone();
+        ui.on_queue_run(move |start| {
+            let _ = tx.send(Command::QueueRun(start));
+        });
+    }
+    ui.on_queue_clear(send(Command::QueueClear));
+    ui.on_refresh_queue(send(Command::ListQueue));
     {
         let weak = ui.as_weak();
         ui.on_select_all(move |on| {

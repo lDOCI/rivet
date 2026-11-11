@@ -51,7 +51,13 @@ const ALL: &[&str] = &[
     "heating-bed",
     "files",
     "files-empty",
+    "files-select",
+    "files-find",
     "file",
+    "file-rename",
+    "file-move",
+    "queue",
+    "queue-empty",
     "dialog",
     "keypad",
     "toast",
@@ -83,6 +89,11 @@ fn main() -> anyhow::Result<()> {
     let ui = AppWindow::new()?;
     // `RIVET_LANG=ru` renders the Russian interface to check string lengths.
     rivet::apply_language(&std::env::var("RIVET_LANG").unwrap_or_default());
+    ui.set_russian(std::env::var("RIVET_LANG").is_ok_and(|l| l == "ru"));
+    // The app's helpers that screens call (no engine here).
+    ui.on_file_title(|path| rivet::files::title(&path).into());
+    ui.on_folder_of(|path| model::folder_of(&path).into());
+    ui.on_name_ok(|path, name| model::renamed(&path, &name).is_some());
     ui.set_link_state("ready".into());
     ui.set_extruder_temp(187.0);
     ui.set_extruder_target(240.0);
@@ -178,7 +189,8 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_timelapse_on(true);
             ui.set_has_auto_shutdown(true);
         }
-        "files" | "files-empty" | "file" => {
+        "files" | "files-empty" | "files-select" | "files-find" | "file" | "file-rename"
+        | "file-move" => {
             // The prototype page's files: names, print time and filament from metadata.
             let names = [
                 ("Корпус вентилятора №2", 83, "PETG"),
@@ -194,9 +206,11 @@ fn show(ui: &AppWindow, name: &str) {
             } else {
                 names
                     .iter()
-                    .map(|(n, minutes, material)| rivet::FileItem {
+                    .enumerate()
+                    .map(|(i, (n, minutes, material))| rivet::FileItem {
                         path: format!("{n}.gcode").as_str().into(),
                         name: (*n).into(),
+                        rank: i as i32,
                         has_meta: true,
                         minutes: *minutes,
                         material: (*material).into(),
@@ -209,8 +223,34 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_files_local(24);
             ui.set_files_usb(3);
             ui.set_loaded_material("PETG".into());
-            ui.set_files(slint::ModelRc::new(slint::VecModel::from(items)));
-            if name == "file" {
+            ui.set_queue_count(2);
+            let folders: Vec<slint::SharedString> =
+                vec!["".into(), "Детали".into(), "Подарки".into()];
+            ui.set_move_folders(slint::ModelRc::new(slint::VecModel::from(folders)));
+            if name == "files-find" {
+                ui.set_files_query("кор".into());
+                ui.set_files_sort("name".into());
+            }
+            rivet::files::set_all(ui, items);
+            if name == "files-select" {
+                // Two files picked, as the prototype's select mode.
+                use slint::Model;
+                let files = ui.get_files();
+                for i in [0, 3] {
+                    if let Some(mut f) = files.row_data(i) {
+                        f.selected = true;
+                        files.set_row_data(i, f);
+                    }
+                }
+                ui.set_selected_count(2);
+                ui.set_select_mode(true);
+            }
+            if name == "files-find" || name == "file-rename" || name == "file-move" {
+                ui.set_screen(name.into());
+                ui.set_open_path("Корпус вентилятора №2.gcode".into());
+                ui.set_open_name("Корпус вентилятора №2".into());
+                ui.set_rename_text("Корпус вентилятора №3".into());
+            } else if name == "file" {
                 ui.set_screen("file".into());
                 ui.set_open_path("Корпус вентилятора №2.gcode".into());
                 ui.set_open_name("Корпус вентилятора №2".into());
@@ -361,6 +401,35 @@ fn show(ui: &AppWindow, name: &str) {
         "file-actions" => {
             ui.set_screen("file-actions".into());
             ui.set_open_name("Корпус вентилятора №2".into());
+            ui.set_queue_count(2);
+            let folders: Vec<slint::SharedString> = vec!["".into(), "Детали".into()];
+            ui.set_move_folders(slint::ModelRc::new(slint::VecModel::from(folders)));
+        }
+        "queue" | "queue-empty" => {
+            ui.set_screen("queue".into());
+            ui.set_queue_state("paused".into());
+            let jobs: &[(&str, &str)] = if name == "queue" {
+                &[
+                    ("1 · Benchy", "52 мин · PLA"),
+                    ("2 · Крышка электроники", "41 мин · PLA"),
+                ]
+            } else {
+                &[]
+            };
+            let rows: Vec<rivet::FormRow> = jobs
+                .iter()
+                .map(|(t, sub)| rivet::FormRow {
+                    kind: "link".into(),
+                    key: (*t).into(),
+                    title: (*t).into(),
+                    sub: (*sub).into(),
+                    shown: true,
+                    ..Default::default()
+                })
+                .collect();
+            ui.set_queue_count(rows.len() as i32);
+            ui.set_queue_minutes(93);
+            ui.set_queue_rows(slint::ModelRc::new(slint::VecModel::from(rows)));
         }
         "zoffset" => {
             // The prototype page's values: −0.12, unchanged since the screen opened.
@@ -553,19 +622,28 @@ fn show(ui: &AppWindow, name: &str) {
     }
 }
 
-/// A stand-in preview so snapshots show how a real one is clipped and fitted.
+/// A stand-in preview, shaped like a slicer's (a model on a transparent background,
+/// 140×110) and put through the same steps as a fetched one.
 fn fake_preview() -> slint::Image {
-    let (w, h) = (200u32, 120u32);
-    let mut buf = slint::SharedPixelBuffer::<Rgba8Pixel>::new(w, h);
-    for (i, px) in buf.make_mut_slice().iter_mut().enumerate() {
-        let (x, y) = ((i as u32 % w) as f32, (i as u32 / w) as f32);
-        let inside = ((x - 100.0).powi(2) + (y - 60.0).powi(2)).sqrt() < 45.0;
-        *px = if inside {
-            Rgba8Pixel::new(93, 125, 224, 255)
+    let (w, h) = (140u32, 110u32);
+    let mut data = Vec::with_capacity((w * h * 4) as usize);
+    for i in 0..w * h {
+        let (x, y) = ((i % w) as f32, (i / w) as f32);
+        let inside = ((x - 70.0).powi(2) / 2.0 + (y - 55.0).powi(2)).sqrt() < 30.0;
+        let shade = (y / 2.0) as u8;
+        data.extend(if inside {
+            [120 - shade, 140 - shade, 230, 255]
         } else {
-            Rgba8Pixel::new(40 + (x / 4.0) as u8, 50, 70 + (y / 2.0) as u8, 255)
-        };
+            [0; 4]
+        });
     }
+    let img = rivet::thumbs::prepare(rivet::thumbs::Rgba {
+        width: w,
+        height: h,
+        data,
+    });
+    let buf =
+        slint::SharedPixelBuffer::<Rgba8Pixel>::clone_from_slice(&img.data, img.width, img.height);
     slint::Image::from_rgba8(buf)
 }
 

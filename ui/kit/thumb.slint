@@ -9,9 +9,16 @@ export component Thumb inherits Rectangle {
     in property <length> icon-size: 56px;
     background: #1a1f27;
     clip: true;
+    // A preview smaller than its place is shown at its own size (sharp, as Fluidd
+    // shows it); only a larger one is scaled down to fit. Scaling a 140 px slicer
+    // preview up only blurs it.
+    // (The soft shadow under the model is part of the bitmap: thumbs::shadow.)
+    property <bool> fits: root.source.width * 1px <= root.width && root.source.height * 1px <= root.height;
     if root.has: Image {
-        width: parent.width;
-        height: parent.height;
+        width: root.fits ? root.source.width * 1px : parent.width;
+        height: root.fits ? root.source.height * 1px : parent.height;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
         source: root.source;
         image-fit: contain;
     }

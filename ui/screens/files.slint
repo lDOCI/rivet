@@ -5,11 +5,15 @@ import { Icon, Header, IconButton, PrimaryButton, SecondaryButton, DangerButton 
 import { Format } from "../kit/format.slint";
 import { ScrollList } from "../kit/scroll.slint";
 import { Thumb } from "../kit/thumb.slint";
+import { Keyboard } from "../kit/keyboard.slint";
+import { ActionRow, LinkRow, Segmented } from "../kit/rows.slint";
 
 export struct FileItem {
     // Path under gcodes, what Moonraker takes back.
     path: string,
     name: string,
+    // Place in the newest-first order Moonraker's list gives.
+    rank: int,
     days-ago: int,
     size-kb: int,
     selected: bool,
@@ -96,13 +100,20 @@ export component FilesScreen inherits VerticalLayout {
     in-out property <bool> on-usb;
     // Scroll position, kept by the app: back from a file lands where it was.
     in-out property <length> scroll-y;
+    // Moonraker's print queue: jobs in it, -1 when the printer has none.
+    in property <int> queue-count: -1;
+    // A search is on: the grid shows what matches.
+    in property <string> query;
     callback storage-changed(bool);
+    callback queue;
+    callback find;
+    callback queue-selected;
     callback back;
     callback open(string);
     callback select-all(bool);
     callback ask-delete;
     padding: Tokens.pad;
-    padding-bottom: 0;
+    padding-right: 20px;
     spacing: 12px;
 
     property <length> gap: 12px;
@@ -142,6 +153,40 @@ export component FilesScreen inherits VerticalLayout {
                 }
             }
         }
+        if root.queue-count >= 0: Rectangle {
+            width: Tokens.touch;
+            height: Tokens.touch;
+            border-radius: Tokens.r-m;
+            background: queue-ta.pressed ? Tokens.surface-2 : Tokens.surface-1;
+            accessible-role: button;
+            accessible-label: @tr("Print queue, {}", root.queue-count);
+            accessible-action-default => { root.queue(); }
+            Icon { d: Icons.queue; size: 24px; weight: 1.9; }
+            if root.queue-count > 0: Rectangle {
+                x: parent.width - self.width - 8px;
+                y: 8px;
+                width: max(18px, badge.preferred-width + 8px);
+                height: 18px;
+                border-radius: 9px;
+                background: Tokens.accent;
+                badge := Text { text: root.queue-count; color: Tokens.accent-ink; font-size: 11px; font-weight: 800; horizontal-alignment: center; vertical-alignment: center; }
+            }
+            queue-ta := TouchArea { clicked => { root.queue(); } }
+        }
+        Rectangle {
+            width: Tokens.touch;
+            height: Tokens.touch;
+            border-radius: Tokens.r-m;
+            background: find-ta.pressed ? Tokens.surface-2 : Tokens.surface-1;
+            // A search is on: the button says so.
+            border-width: root.query != "" ? 2px : 0;
+            border-color: Tokens.accent;
+            accessible-role: button;
+            accessible-label: @tr("Search and sort");
+            accessible-action-default => { root.find(); }
+            Icon { d: "M11 4.5a6.5 6.5 0 1 0 0 13a6.5 6.5 0 1 0 0-13 M16 16l4.5 4.5"; size: 24px; weight: 2; color: root.query != "" ? Tokens.accent : Tokens.text; }
+            find-ta := TouchArea { clicked => { root.find(); } }
+        }
         IconButton {
             icon: "M3.5 3.5h17v17h-17z M8 12l3 3 5-6";
             label: @tr("Select several");
@@ -168,8 +213,8 @@ export component FilesScreen inherits VerticalLayout {
         vertical-stretch: 1;
         alignment: center;
         spacing: 8px;
-        Text { text: @tr("No G-code files yet"); color: Tokens.text; font-size: Tokens.title; font-weight: 800; horizontal-alignment: center; }
-        Text { text: @tr("Send a model from your slicer."); color: Tokens.text-dim; font-size: Tokens.body; horizontal-alignment: center; }
+        Text { text: root.query != "" ? @tr("Nothing found") : @tr("No G-code files yet"); color: Tokens.text; font-size: Tokens.title; font-weight: 800; horizontal-alignment: center; }
+        Text { text: root.query != "" ? @tr("No file name has “{}”.", root.query) : @tr("Send a model from your slicer."); color: Tokens.text-dim; font-size: Tokens.body; horizontal-alignment: center; }
     }
     if root.files.length > 0: ScrollList {
         vertical-stretch: 1;
@@ -196,16 +241,175 @@ export component FilesScreen inherits VerticalLayout {
             }
         }
     }
-    if root.select-mode: Rectangle {
+    // Two halves, as the prototype: to the queue, delete.
+    if root.select-mode: HorizontalLayout {
         height: 76px;
-        if root.selected-count > 0: DangerButton {
-            text: @tr("Delete {}", root.selected-count);
-            clicked => { root.ask-delete(); }
-        }
-        if root.selected-count == 0: Rectangle {
+        spacing: 10px;
+        if root.queue-count >= 0: Rectangle {
+            horizontal-stretch: 1;
             border-radius: Tokens.r-m;
-            background: Tokens.surface-2;
-            Text { text: @tr("Delete"); color: Tokens.text-faint; font-size: Tokens.row-title; font-weight: 800; horizontal-alignment: center; vertical-alignment: center; }
+            background: to-queue.pressed && root.selected-count > 0 ? Tokens.surface-2 : Tokens.surface-1;
+            accessible-role: button;
+            accessible-label: root.selected-count > 0 ? @tr("To queue {}", root.selected-count) : @tr("To queue");
+            accessible-action-default => { if (root.selected-count > 0) { root.queue-selected(); } }
+            Text {
+                text: root.selected-count > 0 ? @tr("To queue {}", root.selected-count) : @tr("To queue");
+                color: root.selected-count > 0 ? Tokens.text : Tokens.text-faint;
+                font-size: 17px;
+                font-weight: 700;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+            to-queue := TouchArea { clicked => { if (root.selected-count > 0) { root.queue-selected(); } } }
+        }
+        Rectangle {
+            horizontal-stretch: 1;
+            border-radius: Tokens.r-m;
+            background: root.selected-count == 0 ? Tokens.surface-2 : del.pressed ? Tokens.danger-solid.darker(15%) : Tokens.danger-solid;
+            accessible-role: button;
+            accessible-label: root.selected-count > 0 ? @tr("Delete {}", root.selected-count) : @tr("Delete");
+            accessible-action-default => { if (root.selected-count > 0) { root.ask-delete(); } }
+            Text {
+                text: root.selected-count > 0 ? @tr("Delete {}", root.selected-count) : @tr("Delete");
+                color: root.selected-count > 0 ? #ffffff : Tokens.text-faint;
+                font-size: 17px;
+                font-weight: 800;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+            del := TouchArea { clicked => { if (root.selected-count > 0) { root.ask-delete(); } } }
+        }
+    }
+}
+
+// A line of text typed on the on-screen keyboard.
+component TextLine inherits Rectangle {
+    in property <string> text;
+    in property <string> placeholder;
+    height: 64px;
+    border-radius: 18px;
+    background: Tokens.surface-1;
+    border-width: 2px;
+    border-color: Tokens.accent;
+    Text {
+        x: 18px;
+        width: parent.width - 36px;
+        text: root.text != "" ? root.text + "▏" : "▏";
+        color: Tokens.text;
+        font-size: 19px;
+        font-weight: 600;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+    if root.text == "": Text {
+        x: 30px;
+        width: parent.width - 48px;
+        text: root.placeholder;
+        color: Tokens.text-faint;
+        font-size: 19px;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+}
+
+// Search the file names and pick the order of the grid. The grid follows as
+// the user types; back shows it.
+export component FindScreen inherits VerticalLayout {
+    horizontal-stretch: 1;
+    in-out property <string> query;
+    // "new" | "name" | "time" | "size"
+    in-out property <string> sort;
+    in property <bool> cyrillic;
+    callback changed;
+    callback back;
+    callback apply-key(string, string) -> string;
+    padding: Tokens.pad;
+    padding-right: 20px;
+    spacing: 10px;
+    property <[string]> keys: ["new", "name", "time", "size"];
+    HorizontalLayout {
+        height: 64px;
+        spacing: 10px;
+        IconButton { icon: "m15 18-6-6 6-6"; label: @tr("Back"); clicked => { root.back(); } }
+        TextLine { horizontal-stretch: 1; text: root.query; placeholder: @tr("Part of the file name"); }
+        if root.query != "": IconButton {
+            icon: "M6 6l12 12M18 6 6 18";
+            label: @tr("Clear search");
+            clicked => { root.query = ""; root.changed(); }
+        }
+    }
+    Segmented {
+        height: 56px;
+        options: [@tr("Newest"), @tr("Name"), @tr("Print time"), @tr("Size")];
+        selected: root.sort == "name" ? 1 : root.sort == "time" ? 2 : root.sort == "size" ? 3 : 0;
+        picked(i) => { root.sort = root.keys[i]; root.changed(); }
+    }
+    Rectangle { vertical-stretch: 1; }
+    Keyboard {
+        cyrillic: root.cyrillic;
+        upper: false;
+        key(k) => {
+            if (k == "⏎") { root.back(); } else { root.query = root.apply-key(root.query, k); root.changed(); }
+        }
+    }
+}
+
+// A new name for a file: the old one to edit, then Done.
+export component RenameScreen inherits VerticalLayout {
+    horizontal-stretch: 1;
+    in-out property <string> text;
+    in property <bool> cyrillic;
+    // The new name can be a file name (Rust checks).
+    in property <bool> valid;
+    callback done;
+    callback back;
+    callback apply-key(string, string) -> string;
+    padding: Tokens.pad;
+    padding-right: 20px;
+    spacing: 10px;
+    Header { title: @tr("Rename"); back-clicked => { root.back(); } }
+    HorizontalLayout {
+        spacing: 10px;
+        TextLine { horizontal-stretch: 1; text: root.text; placeholder: @tr("File name"); }
+        PrimaryButton {
+            width: 150px;
+            min-height: 64px;
+            text: @tr("Done");
+            enabled: root.valid;
+            clicked => { root.done(); }
+        }
+    }
+    Rectangle { vertical-stretch: 1; }
+    Keyboard {
+        cyrillic: root.cyrillic;
+        upper: false;
+        key(k) => {
+            if (k == "⏎") { if (root.valid) { root.done(); } } else { root.text = root.apply-key(root.text, k); }
+        }
+    }
+}
+
+// Where to move a file: the top of the storage or one of its folders.
+export component MoveScreen inherits VerticalLayout {
+    horizontal-stretch: 1;
+    in property <string> name;
+    // Folder paths; "" is the top.
+    in property <[string]> folders;
+    // The folder the file is in now.
+    in property <string> current;
+    callback picked(string);
+    callback back;
+    padding: Tokens.pad;
+    padding-bottom: 0;
+    spacing: Tokens.gap-s;
+    Header { title: @tr("Move to folder"); back-clicked => { root.back(); } }
+    ScrollList {
+        vertical-stretch: 1;
+        for folder in root.folders: LinkRow {
+            icon: Icons.folder;
+            title: folder == "" ? @tr("Files (top level)") : folder;
+            value: folder == root.current ? @tr("here now") : "";
+            clicked => { if (folder != root.current) { root.picked(folder); } }
         }
     }
 }

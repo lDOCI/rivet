@@ -10,6 +10,7 @@ publish = false
 [dependencies]
 anyhow.workspace = true
 rivet = { path = "../app", default-features = false }
+model.workspace = true
 slint = { workspace = true, features = ["renderer-software"] }
 png = "0.17"
 

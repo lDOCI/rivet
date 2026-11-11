@@ -24,19 +24,43 @@ export component BarFill inherits Rectangle {
     property <float> inset: root.r - sqrt(max(0, root.r * root.r - (root.r - root.d) * (root.r - root.d)));
     // Lower than a corner: where the top edge cuts the bottom corner circles.
     property <float> cut: root.r - sqrt(max(0, root.r * root.r - (root.r - root.f) * (root.r - root.f)));
-    // From the corner radius up: a rectangle, so the gradient shows (the
-    // renderer fills paths with one colour). Bottom corners follow the track;
-    // near the top, the top corners round in as the track's do.
+    // From the corner radius up. The printer's renderer (line by line) draws a
+    // gradient only in square rectangles: a rounded rectangle with a gradient comes
+    // out square there. So the rounded corners are solid: the gradient's end colour
+    // at the bottom, its start colour at the top when the fill reaches the track's
+    // top corners; the gradient runs in a square rectangle between them.
+    property <color> top-c: Tokens.accent-hi;
+    property <color> bottom-c: Tokens.accent;
+    // Where the square gradient part starts and ends, in px from the track's top.
+    property <float> g-top: max(root.d, root.r);
+    property <float> g-bottom: root.t - root.r;
     if root.f >= root.r: Rectangle {
+        // Bottom cap: solid, rounded, 2r high; the gradient covers its upper half.
+        x: 0px;
+        y: max(root.d, root.t - 2 * root.r) * 1px;
+        width: root.w * 1px;
+        height: min(root.f, 2 * root.r) * 1px;
+        border-radius: root.r * 1px;
+        background: root.bottom-c;
+    }
+    if root.d < root.r: Rectangle {
+        // Top cap, when the fill reaches the track's rounded top corners.
         x: 0px;
         y: root.d * 1px;
         width: root.w * 1px;
-        height: root.f * 1px;
-        border-bottom-left-radius: root.r * 1px;
-        border-bottom-right-radius: root.r * 1px;
-        border-top-left-radius: max(0, root.r - root.d) * 1px;
-        border-top-right-radius: max(0, root.r - root.d) * 1px;
-        background: root.fill;
+        height: 2 * root.r * 1px;
+        border-radius: root.r * 1px;
+        background: root.top-c;
+    }
+    if root.g-bottom > root.g-top: Rectangle {
+        x: 0px;
+        y: root.g-top * 1px;
+        width: root.w * 1px;
+        height: (root.g-bottom - root.g-top) * 1px;
+        // Ends exactly in the bottom cap's colour, so there is no seam.
+        background: @linear-gradient(180deg,
+            root.bottom-c.mix(root.top-c, (root.g-top - root.d) / max(1, root.g-bottom - root.d)) 0%,
+            root.bottom-c 100%);
     }
     // Lower than the corner radius: a cap of the bottom corners.
     if root.f > 0.5 && root.f < root.r: Path {
