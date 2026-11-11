@@ -7,6 +7,8 @@ import { SettingsScreen } from "screens/settings.slint";
 import { FansScreen, PrintTuneScreen } from "screens/tune.slint";
 import { Dialog, Keypad } from "kit/dialogs.slint";
 import { Toast } from "kit/toast.slint";
+import { HomeScreen } from "screens/home.slint";
+import { PrintingScreen, PrintDoneScreen } from "screens/print.slint";
 
 // Embedded into the binary (see build.rs): the printer has no system fonts.
 import "../assets/fonts/Inter-Regular.ttf";
@@ -32,6 +34,21 @@ export component AppWindow inherits Window {
     in property <string> print-state;
     in property <string> filename;
     in property <float> progress;
+    // -1 where the value is unknown (no estimate yet, slicer sent no layers).
+    in property <int> remaining-minutes: -1;
+    in property <int> elapsed-minutes;
+    in property <int> layer: -1;
+    in property <int> total-layers: -1;
+    // Newest job in history; empty name when there is none.
+    in property <string> last-name;
+    in property <int> last-minutes;
+    in property <int> last-days-ago: -1;
+    in property <bool> last-completed: true;
+    // "Done" screen was acknowledged; a new print resets it.
+    property <bool> done-dismissed;
+    changed print-state => {
+        if (self.print-state != "complete") { self.done-dismissed = false; }
+    }
 
     callback preheat(float, float);
     callback cooldown();
@@ -40,6 +57,7 @@ export component AppWindow inherits Window {
     callback resume-print();
     callback cancel-print();
     callback emergency-stop();
+    callback start-print(string);
     callback firmware-restart();
 
     // Command feedback from the engine: "" | "not-connected" | "timeout" | "rpc".
@@ -77,7 +95,43 @@ export component AppWindow inherits Window {
         if root.screen == "fans": FansScreen { back => { root.screen = "control"; } }
         if root.screen == "tune": PrintTuneScreen { back => { root.screen = "home"; } }
 
-        if root.screen == "home": VerticalLayout {
+        if root.screen == "home" && root.ready && root.busy: PrintingScreen {
+            filename: root.filename;
+            progress: root.progress;
+            paused: root.print-state == "paused";
+            remaining-minutes: root.remaining-minutes;
+            elapsed-minutes: root.elapsed-minutes;
+            layer: root.layer;
+            total-layers: root.total-layers;
+            nozzle: root.extruder-temp;
+            nozzle-target: root.extruder-target;
+            bed: root.bed-temp;
+            bed-target: root.bed-target;
+            pause => { root.pause-print(); }
+            resume => { root.resume-print(); }
+            tune => { root.screen = "tune"; }
+            cancel => { root.overlay = "cancel-print"; }
+        }
+        if root.screen == "home" && root.ready && !root.busy && root.print-state == "complete" && !root.done-dismissed: PrintDoneScreen {
+            filename: root.filename;
+            elapsed-minutes: root.elapsed-minutes;
+            bed: root.bed-temp;
+            dismiss => { root.done-dismissed = true; }
+            again => { root.start-print(root.filename); root.done-dismissed = true; }
+        }
+        if root.screen == "home" && root.ready && !root.busy && !(root.print-state == "complete" && !root.done-dismissed): HomeScreen {
+            nozzle: root.extruder-temp;
+            nozzle-target: root.extruder-target;
+            bed: root.bed-temp;
+            bed-target: root.bed-target;
+            last-name: root.last-name;
+            last-minutes: root.last-minutes;
+            last-days-ago: root.last-days-ago;
+            last-completed: root.last-completed;
+            print-again => { root.start-print(root.last-name); }
+        }
+        // Not ready (no link, Klipper starting or stopped): status and the way out.
+        if root.screen == "home" && !root.ready: VerticalLayout {
             padding: 16px;
             spacing: Metrics.gap;
 

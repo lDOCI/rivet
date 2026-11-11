@@ -1,0 +1,7 @@
+// Text for values the screens share.
+export global Format {
+    pure callback duration(int) -> string;
+    duration(minutes) => {
+        return minutes >= 60 ? @tr("{} h {} min", floor(minutes / 60), mod(minutes, 60)) : @tr("{} min", minutes);
+    }
+}

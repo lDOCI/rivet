@@ -18,12 +18,17 @@ const SETUP_TIMEOUT: Duration = Duration::from_secs(5);
 
 #[derive(Debug, Clone)]
 pub enum Command {
-    Preheat { extruder: f32, bed: f32 },
+    Preheat {
+        extruder: f32,
+        bed: f32,
+    },
     Cooldown,
     HomeAll,
     Pause,
     Resume,
     Cancel,
+    /// Start a file again, by its path in `gcodes`.
+    StartPrint(String),
     EmergencyStop,
     FirmwareRestart,
 }
@@ -64,8 +69,17 @@ pub async fn run(
             _ = tick.tick() => {
                 let snap = state.snapshot();
                 if last_pushed.as_ref() != Some(&snap) {
+                    // A finished job lands in history; so does the first look
+                    // after the printer becomes ready.
+                    let ready = snap.klippy == Klippy::Ready;
+                    let changed = last_pushed.as_ref().is_none_or(|p| {
+                        p.print_state != snap.print_state || p.klippy != snap.klippy
+                    });
                     push(&ui, snap.clone());
                     last_pushed = Some(snap);
+                    if ready && changed {
+                        refresh_history(&client, &ui).await;
+                    }
                 }
             }
         }
@@ -113,6 +127,38 @@ async fn handle_event(ev: Event, client: &Client, state: &mut PrinterState) {
             _ => {}
         },
     }
+}
+
+/// Newest job in history, for «print again» on Home. A printer without
+/// history (component off) simply has none.
+async fn refresh_history(client: &Client, ui: &slint::Weak<AppWindow>) {
+    let params = json!({ "limit": 1, "order": "desc" });
+    let last = match client
+        .call_timeout("server.history.list", params, SETUP_TIMEOUT)
+        .await
+    {
+        Ok(result) => model::parse_last_print(&result),
+        Err(err) => {
+            tracing::debug!(%err, "history unavailable");
+            None
+        }
+    };
+    let _ = ui.upgrade_in_event_loop(move |ui| match last {
+        Some(l) => {
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(0.0, |d| d.as_secs_f64());
+            ui.set_last_name(l.filename.as_str().into());
+            ui.set_last_minutes((l.duration_secs / 60) as i32);
+            ui.set_last_days_ago(if l.ended > 0.0 {
+                ((now - l.ended).max(0.0) / 86_400.0) as i32
+            } else {
+                -1
+            });
+            ui.set_last_completed(l.completed);
+        }
+        None => ui.set_last_name("".into()),
+    });
 }
 
 async fn refresh_klippy(client: &Client, state: &mut PrinterState) {
@@ -179,6 +225,10 @@ async fn execute(client: &Client, cmd: &Command) -> Result<(), moonraker::Error>
             .call("printer.print.cancel", Value::Null)
             .await
             .map(drop),
+        Command::StartPrint(file) => client
+            .call("printer.print.start", json!({ "filename": file }))
+            .await
+            .map(drop),
         Command::EmergencyStop => client
             .call("printer.emergency_stop", Value::Null)
             .await
@@ -220,6 +270,10 @@ fn push(ui: &slint::Weak<AppWindow>, s: Snapshot) {
         ui.set_print_state(s.print_state.as_str().into());
         ui.set_filename(s.filename.as_str().into());
         ui.set_progress(s.progress as f32);
+        ui.set_remaining_minutes(s.remaining_secs.map_or(-1, |t| t.div_ceil(60) as i32));
+        ui.set_elapsed_minutes((s.print_duration / 60.0) as i32);
+        ui.set_layer(s.layer.map_or(-1, |n| n as i32));
+        ui.set_total_layers(s.total_layers.map_or(-1, |n| n as i32));
     });
 }
 

@@ -75,6 +75,12 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
     ui.on_pause_print(send(Command::Pause));
     ui.on_resume_print(send(Command::Resume));
     ui.on_cancel_print(send(Command::Cancel));
+    {
+        let tx = tx.clone();
+        ui.on_start_print(move |file| {
+            let _ = tx.send(Command::StartPrint(file.to_string()));
+        });
+    }
     ui.on_emergency_stop(send(Command::EmergencyStop));
     ui.on_firmware_restart(send(Command::FirmwareRestart));
 }

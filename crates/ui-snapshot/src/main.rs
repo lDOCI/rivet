@@ -16,7 +16,18 @@ use slint::{
 const WIDTH: u32 = 800;
 const HEIGHT: u32 = 480;
 const ALL: &[&str] = &[
-    "home", "control", "settings", "fans", "tune", "dialog", "keypad", "toast",
+    "home",
+    "home-empty",
+    "printing",
+    "paused",
+    "done",
+    "control",
+    "settings",
+    "fans",
+    "tune",
+    "dialog",
+    "keypad",
+    "toast",
 ];
 
 struct Headless(Rc<MinimalSoftwareWindow>);
@@ -70,7 +81,39 @@ fn main() -> anyhow::Result<()> {
 fn show(ui: &AppWindow, name: &str) {
     ui.set_overlay("".into());
     ui.set_toast_kind("".into());
+    ui.set_screen("home".into());
+    ui.set_print_state("standby".into());
+    ui.set_last_name("".into());
+    let print = |state: &str, progress: f32| {
+        ui.set_print_state(state.into());
+        ui.set_filename("fan_duct_2.gcode".into());
+        ui.set_progress(progress);
+        ui.set_elapsed_minutes(35);
+        ui.set_remaining_minutes(48);
+        ui.set_extruder_target(240.0);
+        ui.set_extruder_temp(239.0);
+        ui.set_bed_target(80.0);
+        ui.set_bed_temp(80.0);
+    };
     match name {
+        "home" => {
+            ui.set_last_name("fan_duct_2.gcode".into());
+            ui.set_last_minutes(83);
+            ui.set_last_days_ago(1);
+        }
+        "printing" => {
+            print("printing", 0.42);
+            ui.set_layer(76);
+            ui.set_total_layers(180);
+        }
+        "home-empty" => {}
+        "paused" => print("paused", 0.42),
+        "done" => {
+            print("complete", 1.0);
+            ui.set_elapsed_minutes(83);
+            ui.set_bed_temp(61.0);
+            ui.set_bed_target(0.0);
+        }
         "dialog" => {
             ui.set_screen("home".into());
             ui.set_print_state("printing".into());

@@ -2,50 +2,7 @@ import { Tokens } from "../kit/tokens.slint";
 import { Icons } from "../kit/icons.slint";
 import { Header } from "../kit/controls.slint";
 import { Tile } from "../kit/rows.slint";
-
-// Live mini gauge for the heating tile: arc, current value inside, name under.
-component MiniGauge inherits VerticalLayout {
-    in property <float> current;
-    in property <float> target;
-    in property <float> maximum;
-    spacing: 2px;
-    Rectangle {
-        width: 44px;
-        height: 44px;
-        Path {
-            width: 44px;
-            height: 44px;
-            viewbox-width: 120;
-            viewbox-height: 120;
-            stroke: #232831;
-            stroke-width: 6px;
-            stroke-line-cap: round;
-            // 270° arc, start bottom-left.
-            commands: "M26.06 93.94 A48 48 0 1 1 93.94 93.94";
-        }
-        Path {
-            width: 44px;
-            height: 44px;
-            viewbox-width: 120;
-            viewbox-height: 120;
-            stroke: root.target > 0 ? Tokens.heat-2 : #4a525c;
-            stroke-width: 6px;
-            stroke-line-cap: round;
-            // Sweep proportional to current/maximum.
-            property <float> f: max(0.001, min(1, root.current / root.maximum));
-            property <angle> end: 135deg + self.f * 270deg;
-            commands: "M26.06 93.94 A48 48 0 " + (self.f > 0.6667 ? "1" : "0") + " 1 " + (60 + 48 * cos(self.end)) + " " + (60 + 48 * sin(self.end));
-        }
-        Text {
-            text: round(root.current) + "°";
-            color: Tokens.text;
-            font-size: 12px;
-            font-weight: 800;
-            horizontal-alignment: center;
-            vertical-alignment: center;
-        }
-    }
-}
+import { Gauge } from "../kit/gauge.slint";
 
 export component ControlScreen inherits VerticalLayout {
     horizontal-stretch: 1;
@@ -72,8 +29,8 @@ export component ControlScreen inherits VerticalLayout {
                 HorizontalLayout {
                     spacing: 8px;
                     alignment: start;
-                    MiniGauge { current: root.nozzle; target: root.nozzle-target; maximum: 350; }
-                    MiniGauge { current: root.bed; target: root.bed-target; maximum: 130; }
+                    Gauge { current: root.nozzle; target: root.nozzle-target; maximum: 350; }
+                    Gauge { current: root.bed; target: root.bed-target; maximum: 130; }
                 }
             }
             Tile { icon: Icons.move; label: @tr("Motion"); sub: @tr("axes, homing, motors"); clicked => { root.open("motion"); } }

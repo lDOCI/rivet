@@ -1,0 +1,43 @@
+// Temperature arc: 270°, current value inside, target marker as colour.
+import { Tokens } from "tokens.slint";
+
+export component Gauge inherits Rectangle {
+    in property <float> current;
+    in property <float> target;
+    in property <float> maximum: 350;
+    in property <length> size: 44px;
+    in property <length> value-size: 12px;
+    width: root.size;
+    height: root.size;
+    property <float> fraction: max(0.001, min(1, root.current / root.maximum));
+    property <angle> end: 135deg + self.fraction * 270deg;
+    Path {
+        width: parent.width;
+        height: parent.height;
+        viewbox-width: 120;
+        viewbox-height: 120;
+        stroke: #232831;
+        stroke-width: root.size * 0.1;
+        stroke-line-cap: round;
+        // 270° arc from the bottom left, clockwise.
+        commands: "M26.06 93.94 A48 48 0 1 1 93.94 93.94";
+    }
+    Path {
+        width: parent.width;
+        height: parent.height;
+        viewbox-width: 120;
+        viewbox-height: 120;
+        stroke: root.target > 0 ? Tokens.heat-2 : #4a525c;
+        stroke-width: root.size * 0.1;
+        stroke-line-cap: round;
+        commands: "M26.06 93.94 A48 48 0 " + (root.fraction > 0.6667 ? "1" : "0") + " 1 " + (60 + 48 * cos(root.end)) + " " + (60 + 48 * sin(root.end));
+    }
+    Text {
+        text: round(root.current) + "°";
+        color: Tokens.text;
+        font-size: root.value-size;
+        font-weight: 800;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+}

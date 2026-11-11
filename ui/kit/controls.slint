@@ -16,7 +16,9 @@ export component Icon inherits Path {
     stroke: root.color;
     stroke-width: root.weight * root.size / 24;
     stroke-line-cap: round;
-    fill: transparent;
+    // Solid shapes (play, pause, stop) fill with the same colour.
+    in property <bool> filled;
+    fill: root.filled ? root.color : transparent;
 }
 
 export component BackButton inherits Rectangle {
@@ -148,6 +150,43 @@ export component DangerButton inherits Rectangle {
         font-weight: 800;
         horizontal-alignment: center;
         vertical-alignment: center;
+    }
+    ta := TouchArea { clicked => { root.clicked(); } }
+}
+
+// Icon over a label, 84 px tall: the actions row of the print screen.
+export component ActionTile inherits Rectangle {
+    in property <string> icon;
+    in property <string> text;
+    in property <bool> filled;
+    in property <bool> danger;
+    callback clicked;
+    min-height: 84px;
+    border-radius: Tokens.r-m;
+    background: root.danger ? (ta.pressed ? #fb4b5e40 : Tokens.danger-soft) : (ta.pressed ? Tokens.surface-3 : Tokens.surface-2);
+    accessible-role: button;
+    accessible-label: root.text;
+    accessible-action-default => { root.clicked(); }
+    VerticalLayout {
+        alignment: center;
+        spacing: 6px;
+        HorizontalLayout {
+            alignment: center;
+            Icon {
+                d: root.icon;
+                size: 26px;
+                filled: root.filled;
+                color: root.danger ? Tokens.danger : Tokens.text;
+            }
+        }
+        Text {
+            text: root.text;
+            color: root.danger ? Tokens.danger : Tokens.text;
+            font-size: 15px;
+            font-weight: 600;
+            horizontal-alignment: center;
+            overflow: elide;
+        }
     }
     ta := TouchArea { clicked => { root.clicked(); } }
 }
