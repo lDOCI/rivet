@@ -112,6 +112,14 @@ pub struct Snapshot {
     pub fan_percent: f64,
     pub light: Option<Light>,
     pub limits: Limits,
+    /// Toolhead X, Y, Z in mm.
+    pub position: [f64; 3],
+    /// Axes Klipper knows the position of, e.g. `"xy"`; empty after motors off.
+    pub homed_axes: String,
+    pub axis_min: [f64; 3],
+    pub axis_max: [f64; 3],
+    /// Klipper's own answer: nozzle hot enough to extrude.
+    pub can_extrude: bool,
 }
 
 /// The first light of the printer.
@@ -130,6 +138,8 @@ pub struct Limits {
     pub extruder_max: f64,
     pub bed_max: f64,
     pub nozzle_diameter: f64,
+    /// Coldest nozzle that may extrude.
+    pub min_extrude_temp: f64,
 }
 
 /// Read limits from `configfile.settings`.
@@ -145,6 +155,7 @@ pub fn parse_limits(settings: &Value) -> Limits {
         extruder_max: num("extruder", "max_temp"),
         bed_max: num("heater_bed", "max_temp"),
         nozzle_diameter: num("extruder", "nozzle_diameter"),
+        min_extrude_temp: num("extruder", "min_extrude_temp"),
     }
 }
 
@@ -332,6 +343,17 @@ impl PrinterState {
             .unwrap_or_default()
     }
 
+    /// First three numbers of an `[x, y, z, e]` array.
+    fn axes(&self, object: &str, field: &str) -> [f64; 3] {
+        let mut out = [0.0; 3];
+        if let Some(a) = self.field(object, field).and_then(Value::as_array) {
+            for (o, v) in out.iter_mut().zip(a) {
+                *o = v.as_f64().unwrap_or(0.0);
+            }
+        }
+        out
+    }
+
     fn heater(&self, object: &str) -> Heater {
         Heater {
             temperature: self.f64(object, "temperature"),
@@ -397,6 +419,14 @@ impl PrinterState {
             fan_percent: self.f64("fan", "speed") * 100.0,
             light,
             limits: self.limits,
+            position: self.axes("toolhead", "position"),
+            homed_axes: self.str("toolhead", "homed_axes").to_owned(),
+            axis_min: self.axes("toolhead", "axis_minimum"),
+            axis_max: self.axes("toolhead", "axis_maximum"),
+            can_extrude: self
+                .field("extruder", "can_extrude")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
         }
     }
 }
@@ -618,6 +648,23 @@ mod tests {
             (350.0, 130.0, 0.4)
         );
         assert_eq!(parse_limits(&Value::Null), Limits::default());
+    }
+
+    #[test]
+    fn toolhead_position_axes_and_extrude() {
+        let mut state = PrinterState::default();
+        state.replace_status(json!({
+            "toolhead": { "position": [10.5, -20.0, 3.25, 7.0], "homed_axes": "xy",
+                          "axis_minimum": [-112.0, -112.0, -10.0, 0.0],
+                          "axis_maximum": [112.0, 112.0, 230.0, 0.0] },
+            "extruder": { "can_extrude": true },
+        }));
+        let s = state.snapshot();
+        assert_eq!(s.position, [10.5, -20.0, 3.25]);
+        assert_eq!(s.homed_axes, "xy");
+        assert_eq!((s.axis_min[2], s.axis_max[2]), (-10.0, 230.0));
+        assert!(s.can_extrude);
+        assert_eq!(PrinterState::default().snapshot().homed_axes, "");
     }
 
     #[test]

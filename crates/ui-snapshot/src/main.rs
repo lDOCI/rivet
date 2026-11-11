@@ -27,6 +27,8 @@ const ALL: &[&str] = &[
     "tune",
     "more",
     "heating",
+    "motion",
+    "extruder",
     "heating-bed",
     "files",
     "files-empty",
@@ -173,6 +175,20 @@ fn show(ui: &AppWindow, name: &str) {
             } else {
                 ui.set_screen("files".into());
             }
+        }
+        "motion" => {
+            ui.set_screen("motion".into());
+            ui.set_homed_x(true);
+            ui.set_homed_y(true);
+            ui.set_homed_z(true);
+            ui.set_position_x(10.0);
+            ui.set_position_y(-20.5);
+            ui.set_position_z(3.0);
+        }
+        "extruder" => {
+            ui.set_screen("extruder".into());
+            ui.set_can_extrude(true);
+            ui.set_min_extrude_temp(170.0);
         }
         "heating" | "heating-bed" => {
             ui.set_screen("heating".into());

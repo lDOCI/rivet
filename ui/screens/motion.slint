@@ -1,0 +1,190 @@
+// Moving the toolhead and the Z axis by hand, and pushing filament.
+import { Tokens } from "../kit/tokens.slint";
+import { Icons } from "../kit/icons.slint";
+import { Icon, BackButton, Header, PrimaryButton, SecondaryButton } from "../kit/controls.slint";
+import { InfoRow, SegmentedRow } from "../kit/rows.slint";
+import { ScrollList } from "../kit/scroll.slint";
+import { Format } from "../kit/format.slint";
+
+component Cell inherits Rectangle {
+    width: 84px;
+    height: 84px;
+}
+
+component MoveButton inherits Rectangle {
+    in property <string> text;
+    in property <bool> big;
+    in property <bool> enabled: true;
+    callback clicked;
+    border-radius: Tokens.r-m;
+    background: !root.enabled ? Tokens.surface-1 : ta.pressed ? Tokens.surface-3 : root.big ? #252a31 : #181c21;
+    opacity: root.enabled ? 1 : 0.4;
+    accessible-role: button;
+    accessible-label: root.text;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+    Text {
+        text: root.text;
+        color: root.big ? Tokens.text : Tokens.text-2;
+        font-size: root.big ? 18px : 17px;
+        font-weight: root.big ? 700 : 600;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    ta := TouchArea { enabled: root.enabled; clicked => { root.clicked(); } }
+}
+
+export component MotionScreen inherits Rectangle {
+    horizontal-stretch: 1;
+    in property <float> pos-x;
+    in property <float> pos-y;
+    in property <float> pos-z;
+    // Klipper only moves axes it knows the position of.
+    in property <bool> homed-x;
+    in property <bool> homed-y;
+    in property <bool> homed-z;
+    callback back;
+    callback move-axis(int, float);
+    callback home-all;
+    callback motors-off;
+
+    property <bool> any-homed: root.homed-x || root.homed-y || root.homed-z;
+
+    HorizontalLayout {
+        padding: Tokens.pad;
+        padding-right: 20px;
+        spacing: 16px;
+        GridLayout {
+            width: 448px;
+            spacing: 7px;
+            Row {
+                Cell { HorizontalLayout { alignment: start; VerticalLayout { alignment: start; BackButton { clicked => { root.back(); } } } } }
+                Cell { }
+                MoveButton { width: 84px; height: 84px; text: "Y +10"; big: true; enabled: root.homed-y; clicked => { root.move-axis(1, 10); } }
+                Cell { }
+                Cell { }
+            }
+            Row {
+                Cell { }
+                Cell { }
+                MoveButton { width: 84px; height: 84px; text: "+1"; enabled: root.homed-y; clicked => { root.move-axis(1, 1); } }
+                Cell { }
+                Cell { }
+            }
+            Row {
+                MoveButton { width: 84px; height: 84px; text: "X −10"; big: true; enabled: root.homed-x; clicked => { root.move-axis(0, -10); } }
+                MoveButton { width: 84px; height: 84px; text: "−1"; enabled: root.homed-x; clicked => { root.move-axis(0, -1); } }
+                Rectangle {
+                    width: 84px;
+                    height: 84px;
+                    border-radius: 42px;
+                    background: home.pressed ? #2dd4bf33 : Tokens.accent-soft;
+                    accessible-role: button;
+                    accessible-label: @tr("Home all axes");
+                    accessible-action-default => { root.home-all(); }
+                    Icon { d: Icons.home; size: 32px; color: Tokens.accent; }
+                    home := TouchArea { clicked => { root.home-all(); } }
+                }
+                MoveButton { width: 84px; height: 84px; text: "+1"; enabled: root.homed-x; clicked => { root.move-axis(0, 1); } }
+                MoveButton { width: 84px; height: 84px; text: "X +10"; big: true; enabled: root.homed-x; clicked => { root.move-axis(0, 10); } }
+            }
+            Row {
+                Cell { }
+                Cell { }
+                MoveButton { width: 84px; height: 84px; text: "−1"; enabled: root.homed-y; clicked => { root.move-axis(1, -1); } }
+                Cell { }
+                Cell { }
+            }
+            Row {
+                Cell { }
+                Cell { }
+                MoveButton { width: 84px; height: 84px; text: "Y −10"; big: true; enabled: root.homed-y; clicked => { root.move-axis(1, -10); } }
+                Cell { }
+                Cell { }
+            }
+        }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            spacing: 7px;
+            Rectangle {
+                height: 64px;
+                border-radius: Tokens.r-m;
+                background: Tokens.surface-1;
+                if !root.any-homed: Text {
+                    text: @tr("Motors are free: home first");
+                    color: Tokens.warn-text;
+                    font-size: 15px;
+                    font-weight: 600;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+                if root.any-homed: HorizontalLayout {
+                    alignment: space-around;
+                    Text { text: "X " + (root.homed-x ? Format.signed(root.pos-x, 1) : "—"); color: Tokens.text; font-size: 15px; font-weight: 700; vertical-alignment: center; }
+                    Text { text: "Y " + (root.homed-y ? Format.signed(root.pos-y, 1) : "—"); color: Tokens.text; font-size: 15px; font-weight: 700; vertical-alignment: center; }
+                    Text { text: "Z " + (root.homed-z ? Format.signed(root.pos-z, 1) : "—"); color: Tokens.text; font-size: 15px; font-weight: 700; vertical-alignment: center; }
+                }
+            }
+            MoveButton { vertical-stretch: 1; text: "Z +10"; big: true; enabled: root.homed-z; clicked => { root.move-axis(2, 10); } }
+            MoveButton { vertical-stretch: 1; text: "Z +1"; enabled: root.homed-z; clicked => { root.move-axis(2, 1); } }
+            MoveButton { vertical-stretch: 1; text: "Z −1"; enabled: root.homed-z; clicked => { root.move-axis(2, -1); } }
+            MoveButton { vertical-stretch: 1; text: "Z −10"; big: true; enabled: root.homed-z; clicked => { root.move-axis(2, -10); } }
+            SecondaryButton { text: @tr("Motors off"); min-height: 64px; clicked => { root.motors-off(); } }
+        }
+    }
+}
+
+export component ExtruderScreen inherits VerticalLayout {
+    horizontal-stretch: 1;
+    in property <float> nozzle;
+    in property <float> nozzle-target;
+    in property <float> min-temp;
+    in property <bool> can-extrude;
+    callback back;
+    callback extrude(float, float);
+    padding: Tokens.pad;
+    padding-bottom: Tokens.pad;
+    spacing: 10px;
+
+    in-out property <int> length-index: 2;
+    in-out property <int> speed-index: 1;
+    property <[float]> lengths: [5, 10, 25, 50, 100];
+    property <[float]> speeds: [2, 5, 10, 15];
+
+    Header { title: @tr("Extruder"); back-clicked => { root.back(); } }
+    ScrollList {
+        vertical-stretch: 1;
+        InfoRow {
+            title: @tr("Nozzle");
+            sub: root.can-extrude ? @tr("hot enough to extrude") : (root.min-temp > 0 ? @tr("needs at least {}°", round(root.min-temp)) : @tr("too cold to extrude"));
+            value: round(root.nozzle) + "° / " + round(root.nozzle-target) + "°";
+            value-color: root.can-extrude ? Tokens.accent-hi : Tokens.text;
+        }
+        SegmentedRow {
+            title: @tr("Length");
+            sub: @tr("per press");
+            options: ["5 " + @tr("mm"), "10 " + @tr("mm"), "25 " + @tr("mm"), "50 " + @tr("mm"), "100 " + @tr("mm")];
+            selected <=> root.length-index;
+        }
+        SegmentedRow {
+            title: @tr("Speed");
+            sub: @tr("mm/s");
+            options: ["2", "5", "10", "15"];
+            selected <=> root.speed-index;
+        }
+    }
+    HorizontalLayout {
+        spacing: Tokens.gap;
+        SecondaryButton {
+            text: @tr("Retract");
+            font-size: Tokens.row-title;
+            min-height: Tokens.touch-primary;
+            enabled: root.can-extrude;
+            clicked => { root.extrude(-root.lengths[root.length-index], root.speeds[root.speed-index]); }
+        }
+        PrimaryButton {
+            text: @tr("Extrude");
+            enabled: root.can-extrude;
+            clicked => { root.extrude(root.lengths[root.length-index], root.speeds[root.speed-index]); }
+        }
+    }
+}

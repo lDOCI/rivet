@@ -89,6 +89,22 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
     }
     {
         let tx = tx.clone();
+        ui.on_move_axis(move |axis, delta| {
+            let _ = tx.send(Command::Move {
+                axis: axis as usize,
+                delta,
+            });
+        });
+    }
+    ui.on_motors_off(send(Command::MotorsOff));
+    {
+        let tx = tx.clone();
+        ui.on_extrude(move |length, speed| {
+            let _ = tx.send(Command::Extrude { length, speed });
+        });
+    }
+    {
+        let tx = tx.clone();
         ui.on_set_nozzle(move |t| {
             let _ = tx.send(Command::SetNozzle(t));
         });

@@ -9,6 +9,7 @@ import { Dialog, Keypad } from "kit/dialogs.slint";
 import { Toast } from "kit/toast.slint";
 import { HomeScreen } from "screens/home.slint";
 import { HeatingScreen } from "screens/heating.slint";
+import { MotionScreen, ExtruderScreen } from "screens/motion.slint";
 import { FilesScreen, FileScreen, FileItem, FileInfo } from "screens/files.slint";
 export { FileItem, FileInfo }
 import { PrintingScreen, PrintDoneScreen } from "screens/print.slint";
@@ -71,6 +72,18 @@ export component AppWindow inherits Window {
     callback adjust-z(float);
     callback set-pressure-advance(float);
     callback set-light(bool);
+    callback move-axis(int, float);
+    callback motors-off();
+    callback extrude(float, float);
+    // Toolhead: position and which axes Klipper has a position for.
+    in property <float> position-x;
+    in property <float> position-y;
+    in property <float> position-z;
+    in property <bool> homed-x;
+    in property <bool> homed-y;
+    in property <bool> homed-z;
+    in property <bool> can-extrude;
+    in property <float> min-extrude-temp;
     callback set-fan(float);
     callback set-nozzle(float);
     callback set-bed(float);
@@ -132,7 +145,7 @@ export component AppWindow inherits Window {
 
     HorizontalLayout {
         Rail {
-            active: (root.screen == "fans" || root.screen == "heating") ? "control"
+            active: (root.screen == "fans" || root.screen == "heating" || root.screen == "motion" || root.screen == "extruder") ? "control"
                 : (root.screen == "control" || root.screen == "tools" || root.screen == "settings" || root.screen == "messages") ? root.screen
                 : "home";
             navigate(section) => { root.screen = section; }
@@ -151,8 +164,28 @@ export component AppWindow inherits Window {
             speed-percent: round(root.speed-percent);
             z-offset: root.z-offset;
             open(target) => {
-                if (target == "fans" || target == "heating") { root.screen = target; }
+                if (target == "fans" || target == "heating" || target == "motion" || target == "extruder") { root.screen = target; }
             }
+        }
+        if root.screen == "motion": MotionScreen {
+            pos-x: root.position-x;
+            pos-y: root.position-y;
+            pos-z: root.position-z;
+            homed-x: root.homed-x;
+            homed-y: root.homed-y;
+            homed-z: root.homed-z;
+            back => { root.screen = "control"; }
+            move-axis(axis, d) => { root.move-axis(axis, d); }
+            home-all => { root.home-all(); }
+            motors-off => { root.motors-off(); }
+        }
+        if root.screen == "extruder": ExtruderScreen {
+            nozzle: root.extruder-temp;
+            nozzle-target: root.extruder-target;
+            min-temp: root.min-extrude-temp;
+            can-extrude: root.can-extrude;
+            back => { root.screen = "control"; }
+            extrude(len, speed) => { root.extrude(len, speed); }
         }
         if root.screen == "heating": HeatingScreen {
             nozzle: root.extruder-temp;
