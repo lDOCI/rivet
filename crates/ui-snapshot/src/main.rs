@@ -60,13 +60,14 @@ fn main() -> anyhow::Result<()> {
         screens.iter().map(String::as_str).collect()
     };
     std::fs::create_dir_all(&out)?;
-
     let window = MinimalSoftwareWindow::new(RepaintBufferType::NewBuffer);
     window.set_size(PhysicalSize::new(WIDTH, HEIGHT));
     slint::platform::set_platform(Box::new(Headless(window.clone())))
         .map_err(|e| anyhow::anyhow!("set platform: {e}"))?;
 
     let ui = AppWindow::new()?;
+    // `RIVET_LANG=ru` renders the Russian interface to check string lengths.
+    rivet::apply_language(&std::env::var("RIVET_LANG").unwrap_or_default());
     ui.set_link_state("ready".into());
     ui.set_extruder_temp(187.0);
     ui.set_extruder_target(240.0);

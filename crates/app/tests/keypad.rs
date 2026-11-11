@@ -18,6 +18,8 @@ impl Pad {
     fn open(min: f32, max: f32, negative: bool) -> Pad {
         INIT.call_once(i_slint_backend_testing::init_no_event_loop);
         let ui = AppWindow::new().unwrap();
+        // The labels below are English whatever language the machine uses.
+        rivet::apply_language("en");
         ui.set_keypad_min(min);
         ui.set_keypad_max(max);
         ui.set_keypad_negative(negative);

@@ -234,7 +234,7 @@ export component FileScreen inherits Rectangle {
                 if root.loaded && (root.info.filament != "" || root.info.grams >= 0): Chip {
                     text: root.info.filament + (root.info.filament != "" && root.info.grams >= 0 ? " · " : "") + (root.info.grams >= 0 ? @tr("{} g", root.info.grams) : "");
                 }
-                if root.loaded && root.info.layers >= 0: Chip { text: @tr("{} layers", root.info.layers); }
+                if root.loaded && root.info.layers >= 0: Chip { text: @tr("{n} layer" | "{n} layers" % root.info.layers); }
             }
             if root.loaded && root.info.nozzle-check >= 0: Rectangle {
                 border-radius: Tokens.r-m;

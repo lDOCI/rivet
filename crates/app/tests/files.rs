@@ -17,6 +17,8 @@ fn tap(ui: &AppWindow, label: &str) {
 fn select_several_and_delete() {
     i_slint_backend_testing::init_no_event_loop();
     let ui = AppWindow::new().unwrap();
+    // The labels below are English whatever language the machine uses.
+    rivet::apply_language("en");
     let items = ["a", "b", "c"].map(|n| FileItem {
         path: format!("{n}.gcode").as_str().into(),
         name: n.into(),

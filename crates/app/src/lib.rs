@@ -5,3 +5,42 @@ slint::include_modules!();
 
 pub mod engine;
 pub mod thumbs;
+
+/// Interface language: `--lang ru`, else `RIVET_LANG`, else the `LANG` of the
+/// system (`ru_RU.UTF-8` -> `ru`), else English.
+pub fn language(arg: Option<&str>, rivet_lang: Option<&str>, system_lang: Option<&str>) -> String {
+    arg.or(rivet_lang)
+        .or(system_lang)
+        .map(|l| {
+            l.split(['_', '.', '-'])
+                .next()
+                .unwrap_or("")
+                .to_ascii_lowercase()
+        })
+        .filter(|l| !l.is_empty() && l != "c" && l != "posix")
+        .unwrap_or_else(|| "en".to_owned())
+}
+
+/// Switch the interface to `lang`. Call it after the first window exists.
+/// English is the source language; it is selected explicitly because the
+/// bundle may start in the system's language.
+pub fn apply_language(lang: &str) {
+    if let Err(err) = slint::select_bundled_translation(lang) {
+        eprintln!("no translation for {lang:?}: {err}");
+        let _ = slint::select_bundled_translation("en");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::language;
+
+    #[test]
+    fn language_choice_order() {
+        assert_eq!(language(Some("ru"), Some("en"), Some("de_DE.UTF-8")), "ru");
+        assert_eq!(language(None, Some("RU"), Some("de_DE.UTF-8")), "ru");
+        assert_eq!(language(None, None, Some("ru_RU.UTF-8")), "ru");
+        assert_eq!(language(None, None, Some("C")), "en");
+        assert_eq!(language(None, None, None), "en");
+    }
+}

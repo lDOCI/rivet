@@ -17,6 +17,8 @@ fn tap(ui: &AppWindow, label: &str) {
 fn motion_and_extruder() {
     i_slint_backend_testing::init_no_event_loop();
     let ui = AppWindow::new().unwrap();
+    // The labels below are English whatever language the machine uses.
+    rivet::apply_language("en");
     ui.set_link_state("ready".into());
     ui.show().unwrap();
 

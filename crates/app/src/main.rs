@@ -25,6 +25,12 @@ fn main() -> anyhow::Result<()> {
     fbdev_platform::init(fbdev_platform::Config::from_env())?;
 
     let ui = AppWindow::new()?;
+    let lang_arg = flag_value("--lang");
+    rivet::apply_language(&rivet::language(
+        lang_arg.as_deref(),
+        std::env::var("RIVET_LANG").ok().as_deref(),
+        std::env::var("LANG").ok().as_deref(),
+    ));
     let (cmd_tx, cmd_rx) = mpsc::unbounded_channel();
     wire_callbacks(&ui, &cmd_tx);
 
@@ -43,17 +49,22 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// `--moonraker <url>` or `RIVET_MOONRAKER`, else localhost.
-fn moonraker_url() -> String {
+/// Value after `--name` on the command line.
+fn flag_value(name: &str) -> Option<String> {
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
-        if arg == "--moonraker" {
-            if let Some(url) = args.next() {
-                return url;
-            }
+        if arg == name {
+            return args.next();
         }
     }
-    std::env::var("RIVET_MOONRAKER").unwrap_or_else(|_| DEFAULT_URL.to_owned())
+    None
+}
+
+/// `--moonraker <url>` or `RIVET_MOONRAKER`, else localhost.
+fn moonraker_url() -> String {
+    flag_value("--moonraker")
+        .or_else(|| std::env::var("RIVET_MOONRAKER").ok())
+        .unwrap_or_else(|| DEFAULT_URL.to_owned())
 }
 
 fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
