@@ -6,3 +6,7 @@ language = "ru"
 
 # Moonraker websocket. The default is the printer itself.
 # moonraker = "ws://127.0.0.1:7125/websocket"
+
+# Log to a file (rotated: 512 KB, 3 old copies) instead of the terminal.
+# log_file = "/data/printer_data/logs/rivet.log"
+# log_level = "info"   # error, warn, info, debug
