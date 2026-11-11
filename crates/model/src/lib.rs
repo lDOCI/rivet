@@ -128,6 +128,8 @@ pub struct Light {
     /// Klipper name without the `led ` prefix.
     pub name: String,
     pub on: bool,
+    /// Brightest channel, 0.0 ..= 1.0.
+    pub level: f64,
     /// Has a white channel (RGBW). Otherwise it is RGB.
     pub white: bool,
 }
@@ -388,9 +390,14 @@ impl PrinterState {
                 .and_then(Value::as_array)
                 .cloned()
                 .unwrap_or_default();
+            let level = channels
+                .iter()
+                .filter_map(Value::as_f64)
+                .fold(0.0, f64::max);
             Light {
                 name: object.trim_start_matches("led ").to_owned(),
-                on: channels.iter().any(|v| v.as_f64().unwrap_or(0.0) > 0.0),
+                on: level > 0.0,
+                level,
                 white: channels.len() == 4,
             }
         });
@@ -552,6 +559,7 @@ mod tests {
         let light = snap.light.unwrap();
         assert_eq!(light.name, "chamber_led");
         assert!(light.on && light.white);
+        assert_eq!(light.level, 0.8);
 
         state.apply_status(json!({ "led chamber_led": { "color_data": [[0.0, 0.0, 0.0, 0.0]] } }));
         assert!(!state.snapshot().light.unwrap().on);

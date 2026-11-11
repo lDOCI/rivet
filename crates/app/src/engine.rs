@@ -132,10 +132,10 @@ pub enum Command {
     /// Move the Z offset by this many mm, live (`SET_GCODE_OFFSET`).
     AdjustZ(f32),
     SetPressureAdvance(f32),
-    /// Light by Klipper name; `white` picks the channel set.
+    /// Light by Klipper name, brightness 0.0 ..= 1.0; `white` picks the channel set.
     SetLight {
         name: String,
-        on: bool,
+        level: f32,
         white: bool,
     },
     /// Reload the list of G-code files.
@@ -584,8 +584,8 @@ fn predict(state: &mut PrinterState, cmd: &Command) {
             state.apply_status(json!({ "extruder": { "pressure_advance": f64::from(*v) } }));
         }
         Command::AdjustZ(d) => state.adjust_z_offset(f64::from(*d)),
-        Command::SetLight { name, on, white } => {
-            let level = f64::from(u8::from(*on));
+        Command::SetLight { name, level, white } => {
+            let level = f64::from(*level);
             let channels = if *white {
                 json!([0.0, 0.0, 0.0, level])
             } else {
@@ -631,12 +631,12 @@ fn gcode_for(cmd: &Command) -> Option<String> {
         Command::SetBed(t) => format!("M140 S{t:.0}"),
         Command::AdjustZ(d) => format!("SET_GCODE_OFFSET Z_ADJUST={d:.3} MOVE=1"),
         Command::SetPressureAdvance(v) => format!("SET_PRESSURE_ADVANCE ADVANCE={v:.3}"),
-        Command::SetLight { name, on, white } => {
-            let v = u8::from(*on);
+        Command::SetLight { name, level, white } => {
+            let v = level.clamp(0.0, 1.0);
             if *white {
-                format!("SET_LED LED={name} WHITE={v} TRANSMIT=1")
+                format!("SET_LED LED={name} WHITE={v:.2} TRANSMIT=1")
             } else {
-                format!("SET_LED LED={name} RED={v} GREEN={v} BLUE={v} TRANSMIT=1")
+                format!("SET_LED LED={name} RED={v:.2} GREEN={v:.2} BLUE={v:.2} TRANSMIT=1")
             }
         }
         _ => return None,
@@ -755,6 +755,7 @@ fn push(ui: &slint::Weak<AppWindow>, s: Snapshot) {
         ui.set_has_light(s.light.is_some());
         if let Some(l) = &s.light {
             ui.set_light_on(l.on);
+            ui.set_light_level((l.level * 100.0).round() as f32);
             ui.set_light_name(l.name.as_str().into());
             ui.set_light_white(l.white);
         }
@@ -783,18 +784,22 @@ mod tests {
             gcode_for(&Command::SetPressureAdvance(0.035)).unwrap(),
             "SET_PRESSURE_ADVANCE ADVANCE=0.035"
         );
-        let led = |on, white| Command::SetLight {
+        let led = |level, white| Command::SetLight {
             name: "chamber_led".into(),
-            on,
+            level,
             white,
         };
         assert_eq!(
-            gcode_for(&led(true, true)).unwrap(),
-            "SET_LED LED=chamber_led WHITE=1 TRANSMIT=1"
+            gcode_for(&led(1.0, true)).unwrap(),
+            "SET_LED LED=chamber_led WHITE=1.00 TRANSMIT=1"
         );
         assert_eq!(
-            gcode_for(&led(false, false)).unwrap(),
-            "SET_LED LED=chamber_led RED=0 GREEN=0 BLUE=0 TRANSMIT=1"
+            gcode_for(&led(0.0, false)).unwrap(),
+            "SET_LED LED=chamber_led RED=0.00 GREEN=0.00 BLUE=0.00 TRANSMIT=1"
+        );
+        assert_eq!(
+            gcode_for(&led(0.55, true)).unwrap(),
+            "SET_LED LED=chamber_led WHITE=0.55 TRANSMIT=1"
         );
         assert!(gcode_for(&Command::Pause).is_none());
     }

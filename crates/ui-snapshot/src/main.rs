@@ -32,6 +32,9 @@ const ALL: &[&str] = &[
     "more",
     "heating",
     "motion",
+    "light",
+    "speed",
+    "zoffset",
     "extruder",
     "heating-bed",
     "files",
@@ -181,6 +184,16 @@ fn show(ui: &AppWindow, name: &str) {
             } else {
                 ui.set_screen("files".into());
             }
+        }
+        "light" => {
+            ui.set_screen("light".into());
+            ui.set_has_light(true);
+            ui.set_light_level(80.0);
+        }
+        "speed" | "zoffset" => {
+            ui.set_screen(name.into());
+            ui.set_speed_percent(110.0);
+            ui.set_z_offset(-0.07);
         }
         "motion" => {
             ui.set_screen("motion".into());
