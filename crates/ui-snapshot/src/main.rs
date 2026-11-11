@@ -25,6 +25,7 @@ const ALL: &[&str] = &[
     "settings",
     "fans",
     "tune",
+    "more",
     "dialog",
     "keypad",
     "toast",
@@ -105,6 +106,18 @@ fn show(ui: &AppWindow, name: &str) {
             print("printing", 0.42);
             ui.set_layer(76);
             ui.set_total_layers(180);
+        }
+        "tune" => {
+            ui.set_screen("tune".into());
+            ui.set_speed_percent(110.0);
+            ui.set_z_offset(-0.07);
+            ui.set_pressure_advance(0.035);
+            ui.set_fan_percent(60);
+        }
+        "more" => {
+            ui.set_screen("more".into());
+            ui.set_has_light(true);
+            ui.set_light_on(true);
         }
         "home-empty" => {}
         "paused" => print("paused", 0.42),

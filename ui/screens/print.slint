@@ -47,6 +47,9 @@ export component PrintingScreen inherits Rectangle {
     callback resume;
     callback tune;
     callback cancel;
+    callback more;
+    // «More» only when this printer has something to put there.
+    in property <bool> has-more;
 
     property <color> tone: root.paused ? Tokens.warn : Tokens.accent;
     property <float> p: max(0.0001, min(0.9999, root.progress));
@@ -171,6 +174,7 @@ export component PrintingScreen inherits Rectangle {
                 if !root.paused: ActionTile { icon: "M10 4.5v15 M16 4.5v15"; text: @tr("Pause"); clicked => { root.pause(); } }
                 if root.paused: ActionTile { icon: "M7.5 4.8v14.4a1 1 0 0 0 1.5.86l11.6-7.2a1 1 0 0 0 0-1.72L9 3.94a1 1 0 0 0-1.5.86z"; filled: true; text: @tr("Resume"); clicked => { root.resume(); } }
                 ActionTile { icon: Icons.control; text: @tr("Tune"); clicked => { root.tune(); } }
+                if root.has-more: ActionTile { icon: "M5 12h.01 M12 12h.01 M19 12h.01"; text: @tr("More"); clicked => { root.more(); } }
                 ActionTile { icon: "M5 5h14v14H5z"; filled: true; danger: true; text: @tr("Cancel"); clicked => { root.cancel(); } }
             }
         }

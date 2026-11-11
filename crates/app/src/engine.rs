@@ -27,6 +27,18 @@ pub enum Command {
     Pause,
     Resume,
     Cancel,
+    /// Speed / flow factor in percent (M220 / M221).
+    SetSpeed(f32),
+    SetFlow(f32),
+    /// Move the Z offset by this many mm, live (`SET_GCODE_OFFSET`).
+    AdjustZ(f32),
+    SetPressureAdvance(f32),
+    /// Light by Klipper name; `white` picks the channel set.
+    SetLight {
+        name: String,
+        on: bool,
+        white: bool,
+    },
     /// Start a file again, by its path in `gcodes`.
     StartPrint(String),
     EmergencyStop,
@@ -42,6 +54,9 @@ pub async fn run(
     let mut state = PrinterState::default();
     let mut last_pushed: Option<Snapshot> = None;
 
+    // A failed command leaves our optimistic value wrong: ask the printer.
+    let (resync_tx, mut resync_rx) = mpsc::unbounded_channel::<()>();
+
     let mut tick = tokio::time::interval(UI_TICK);
     tick.set_missed_tick_behavior(MissedTickBehavior::Skip);
 
@@ -53,11 +68,14 @@ pub async fn run(
             }
             cmd = cmds.recv() => {
                 let Some(cmd) = cmd else { break };
+                predict(&mut state, &cmd);
                 let client = client.clone();
                 let ui = ui.clone();
+                let resync = resync_tx.clone();
                 tokio::spawn(async move {
                     if let Err(err) = execute(&client, &cmd).await {
                         tracing::warn!(?cmd, %err, "command failed");
+                        let _ = resync.send(());
                         let (kind, detail) = toast_for(&err);
                         let _ = ui.upgrade_in_event_loop(move |ui| {
                             ui.set_toast_detail(detail.into());
@@ -65,6 +83,9 @@ pub async fn run(
                         });
                     }
                 });
+            }
+            Some(()) = resync_rx.recv() => {
+                resync_status(&client, &mut state).await;
             }
             _ = tick.tick() => {
                 let snap = state.snapshot();
@@ -191,10 +212,33 @@ async fn refresh_klippy(client: &Client, state: &mut PrinterState) {
 }
 
 async fn subscribe(client: &Client, state: &mut PrinterState) {
+    // What this printer has decides what we subscribe to (lights, for now).
+    let available: Vec<String> = match client
+        .call_timeout("printer.objects.list", Value::Null, SETUP_TIMEOUT)
+        .await
+    {
+        Ok(list) => list["objects"]
+            .as_array()
+            .map(|a| {
+                a.iter()
+                    .filter_map(|v| v.as_str().map(str::to_owned))
+                    .collect()
+            })
+            .unwrap_or_default(),
+        Err(err) => {
+            tracing::warn!(%err, "objects.list failed");
+            Vec::new()
+        }
+    };
+    state.leds = available
+        .iter()
+        .filter(|n| n.starts_with("led "))
+        .cloned()
+        .collect();
     match client
         .call_timeout(
             "printer.objects.subscribe",
-            model::subscription(),
+            model::subscription_for(&available),
             SETUP_TIMEOUT,
         )
         .await
@@ -204,7 +248,69 @@ async fn subscribe(client: &Client, state: &mut PrinterState) {
     }
 }
 
+/// Apply a tuning command to our copy of the state right away, so the screen
+/// answers the tap instead of waiting for Klipper's next status update.
+fn predict(state: &mut PrinterState, cmd: &Command) {
+    match cmd {
+        Command::SetSpeed(p) => {
+            state.apply_status(json!({ "gcode_move": { "speed_factor": f64::from(*p) / 100.0 } }));
+        }
+        Command::SetFlow(p) => {
+            state
+                .apply_status(json!({ "gcode_move": { "extrude_factor": f64::from(*p) / 100.0 } }));
+        }
+        Command::SetPressureAdvance(v) => {
+            state.apply_status(json!({ "extruder": { "pressure_advance": f64::from(*v) } }));
+        }
+        Command::AdjustZ(d) => state.adjust_z_offset(f64::from(*d)),
+        Command::SetLight { name, on, white } => {
+            let level = f64::from(u8::from(*on));
+            let channels = if *white {
+                json!([0.0, 0.0, 0.0, level])
+            } else {
+                json!([level, level, level])
+            };
+            state.apply_status(json!({ format!("led {name}"): { "color_data": [channels] } }));
+        }
+        _ => {}
+    }
+}
+
+/// Read the current values back after a command failed.
+async fn resync_status(client: &Client, state: &mut PrinterState) {
+    let objects: Vec<String> = state.leds.clone();
+    let query = model::subscription_for(&objects);
+    if let Ok(mut result) = client
+        .call_timeout("printer.objects.query", query, SETUP_TIMEOUT)
+        .await
+    {
+        state.apply_status(result["status"].take());
+    }
+}
+
+/// G-code for the commands that are plain G-code.
+fn gcode_for(cmd: &Command) -> Option<String> {
+    Some(match cmd {
+        Command::SetSpeed(p) => format!("M220 S{p:.0}"),
+        Command::SetFlow(p) => format!("M221 S{p:.0}"),
+        Command::AdjustZ(d) => format!("SET_GCODE_OFFSET Z_ADJUST={d:.3} MOVE=1"),
+        Command::SetPressureAdvance(v) => format!("SET_PRESSURE_ADVANCE ADVANCE={v:.3}"),
+        Command::SetLight { name, on, white } => {
+            let v = u8::from(*on);
+            if *white {
+                format!("SET_LED LED={name} WHITE={v} TRANSMIT=1")
+            } else {
+                format!("SET_LED LED={name} RED={v} GREEN={v} BLUE={v} TRANSMIT=1")
+            }
+        }
+        _ => return None,
+    })
+}
+
 async fn execute(client: &Client, cmd: &Command) -> Result<(), moonraker::Error> {
+    if let Some(code) = gcode_for(cmd) {
+        return client.gcode(&code).await;
+    }
     match cmd {
         Command::Preheat { extruder, bed } => {
             client
@@ -229,6 +335,11 @@ async fn execute(client: &Client, cmd: &Command) -> Result<(), moonraker::Error>
             .call("printer.print.start", json!({ "filename": file }))
             .await
             .map(drop),
+        Command::SetSpeed(_)
+        | Command::SetFlow(_)
+        | Command::AdjustZ(_)
+        | Command::SetPressureAdvance(_)
+        | Command::SetLight { .. } => unreachable!("sent as G-code above"),
         Command::EmergencyStop => client
             .call("printer.emergency_stop", Value::Null)
             .await
@@ -272,6 +383,17 @@ fn push(ui: &slint::Weak<AppWindow>, s: Snapshot) {
         ui.set_progress(s.progress as f32);
         ui.set_remaining_minutes(s.remaining_secs.map_or(-1, |t| t.div_ceil(60) as i32));
         ui.set_elapsed_minutes((s.print_duration / 60.0) as i32);
+        ui.set_speed_percent(s.speed_percent as f32);
+        ui.set_flow_percent(s.flow_percent as f32);
+        ui.set_z_offset(s.z_offset as f32);
+        ui.set_pressure_advance(s.pressure_advance as f32);
+        ui.set_fan_percent(s.fan_percent.round() as i32);
+        ui.set_has_light(s.light.is_some());
+        if let Some(l) = &s.light {
+            ui.set_light_on(l.on);
+            ui.set_light_name(l.name.as_str().into());
+            ui.set_light_white(l.white);
+        }
         ui.set_layer(s.layer.map_or(-1, |n| n as i32));
         ui.set_total_layers(s.total_layers.map_or(-1, |n| n as i32));
     });
@@ -280,6 +402,34 @@ fn push(ui: &slint::Weak<AppWindow>, s: Snapshot) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn tuning_commands_are_plain_gcode() {
+        assert_eq!(gcode_for(&Command::SetSpeed(110.0)).unwrap(), "M220 S110");
+        assert_eq!(gcode_for(&Command::SetFlow(95.0)).unwrap(), "M221 S95");
+        assert_eq!(
+            gcode_for(&Command::AdjustZ(-0.05)).unwrap(),
+            "SET_GCODE_OFFSET Z_ADJUST=-0.050 MOVE=1"
+        );
+        assert_eq!(
+            gcode_for(&Command::SetPressureAdvance(0.035)).unwrap(),
+            "SET_PRESSURE_ADVANCE ADVANCE=0.035"
+        );
+        let led = |on, white| Command::SetLight {
+            name: "chamber_led".into(),
+            on,
+            white,
+        };
+        assert_eq!(
+            gcode_for(&led(true, true)).unwrap(),
+            "SET_LED LED=chamber_led WHITE=1 TRANSMIT=1"
+        );
+        assert_eq!(
+            gcode_for(&led(false, false)).unwrap(),
+            "SET_LED LED=chamber_led RED=0 GREEN=0 BLUE=0 TRANSMIT=1"
+        );
+        assert!(gcode_for(&Command::Pause).is_none());
+    }
 
     #[test]
     fn failed_commands_map_to_toasts() {

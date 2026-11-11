@@ -1,8 +1,8 @@
 // Fans (range bars) and print tuning (fine steppers): the two value patterns.
 import { Tokens } from "../kit/tokens.slint";
 import { Header, SectionLabel } from "../kit/controls.slint";
-import { InfoRow, SegmentedRow, ActionRow, LinkRow } from "../kit/rows.slint";
-import { VBar, FineStepper } from "../kit/values.slint";
+import { InfoRow, SegmentedRow, ActionRow, LinkRow, ToggleRow } from "../kit/rows.slint";
+import { VBar, FineStepper, Stepper } from "../kit/values.slint";
 import { ScrollList } from "../kit/scroll.slint";
 
 export component FansScreen inherits VerticalLayout {
@@ -44,18 +44,27 @@ export component FansScreen inherits VerticalLayout {
 
 export component PrintTuneScreen inherits VerticalLayout {
     horizontal-stretch: 1;
-    in-out property <float> speed: 100;
-    in-out property <float> flow: 100;
-    in-out property <float> z-offset: -0.12;
-    in property <float> z-saved: -0.12;
+    // Live values from Klipper: a tap sends a command, the new value comes back.
+    in property <float> speed: 100;
+    in property <float> flow: 100;
+    in property <float> z-offset;
+    // The Z offset when this screen was opened, for the «was» chip.
+    in property <float> z-start;
+    in property <float> pressure-advance;
+    in property <int> fan-percent;
     callback back;
     callback edit(string);
+    callback set-speed(float);
+    callback set-flow(float);
+    callback adjust-z(float);
+    callback set-pressure-advance(float);
+    callback open-fans;
     padding: Tokens.pad;
     padding-bottom: 0;
     spacing: 10px;
 
     pure function signed(v: float, digits: int) -> string {
-        return (v < 0 ? "−" : "") + round(abs(v) * pow(10, digits)) / pow(10, digits);
+        return (round(abs(v) * pow(10, digits)) == 0 ? "" : v < 0 ? "−" : "") + round(abs(v) * pow(10, digits)) / pow(10, digits);
     }
 
     Header { title: @tr("Print tuning"); back-clicked => { root.back(); } }
@@ -65,35 +74,65 @@ export component PrintTuneScreen inherits VerticalLayout {
             title: @tr("Speed");
             sub: @tr("of the slicer speed");
             label: round(root.speed) + "%";
-            changed: root.speed != 100;
+            changed: round(root.speed) != 100;
             was: "100%";
             big: "10"; small: "1"; big-step: 10; small-step: 1;
-            step(d) => { root.speed = max(10, min(300, root.speed + d)); }
+            step(d) => { root.set-speed(max(10, min(300, round(root.speed) + d))); }
             edit => { root.edit("speed"); }
         }
         FineStepper {
             title: @tr("Flow");
             sub: @tr("how much plastic");
             label: round(root.flow) + "%";
-            changed: root.flow != 100;
+            changed: round(root.flow) != 100;
             was: "100%";
             big: "5"; small: "1"; big-step: 5; small-step: 1;
-            step(d) => { root.flow = max(50, min(150, root.flow + d)); }
+            step(d) => { root.set-flow(max(50, min(150, round(root.flow) + d))); }
             edit => { root.edit("flow"); }
         }
         FineStepper {
             title: @tr("Z-offset, mm");
             sub: @tr("applies at once");
             label: root.signed(root.z-offset, 2);
-            changed: root.z-offset != root.z-saved;
-            was: root.signed(root.z-saved, 2);
+            changed: round(root.z-offset * 100) != round(root.z-start * 100);
+            was: root.signed(root.z-start, 2);
             big: "0.05"; small: "0.01"; big-step: 0.05; small-step: 0.01;
-            step(d) => { root.z-offset = round((root.z-offset + d) * 1000) / 1000; }
+            step(d) => { root.adjust-z(d); }
             edit => { root.edit("z"); }
         }
-        ActionRow { title: @tr("Save Z-offset"); sub: @tr("written after the print"); }
-        LinkRow { title: @tr("Temperatures"); sub: "сопло 240° · стол 80°"; }
-        LinkRow { title: @tr("Fans"); sub: "обдув 60%"; }
-        ActionRow { title: @tr("Reset speed and flow"); sub: @tr("back to 100%"); clicked => { root.speed = 100; root.flow = 100; } }
+        Stepper {
+            title: @tr("Pressure advance");
+            sub: @tr("sharper corners, less bulging");
+            label: root.signed(root.pressure-advance, 3);
+            decrement => { root.set-pressure-advance(max(0, round((root.pressure-advance - 0.005) * 1000) / 1000)); }
+            increment => { root.set-pressure-advance(min(1, round((root.pressure-advance + 0.005) * 1000) / 1000)); }
+            edit => { root.edit("pa"); }
+        }
+        LinkRow { title: @tr("Fans"); sub: @tr("part fan {}%", root.fan-percent); clicked => { root.open-fans(); } }
+        ActionRow {
+            title: @tr("Reset speed and flow");
+            sub: @tr("back to 100%");
+            clicked => { root.set-speed(100); root.set-flow(100); }
+        }
+    }
+}
+
+export component PrintMoreScreen inherits VerticalLayout {
+    horizontal-stretch: 1;
+    in property <bool> has-light;
+    in-out property <bool> light-on;
+    callback back;
+    callback set-light(bool);
+    padding: Tokens.pad;
+    padding-bottom: 0;
+    spacing: 10px;
+    Header { title: @tr("During print"); back-clicked => { root.back(); } }
+    ScrollList {
+        vertical-stretch: 1;
+        if root.has-light: ToggleRow {
+            title: @tr("Light");
+            checked <=> root.light-on;
+            toggled(on) => { root.set-light(on); }
+        }
     }
 }
