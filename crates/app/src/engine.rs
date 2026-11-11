@@ -207,6 +207,11 @@ pub enum Command {
         from: String,
         to: String,
     },
+    /// Copy a file inside `gcodes` (from the USB stick to the printer).
+    CopyFile {
+        from: String,
+        to: String,
+    },
     /// Moonraker's print queue: read it, add files, start (true) or pause it, empty it.
     ListQueue,
     QueueAdd(Vec<String>),
@@ -962,6 +967,7 @@ async fn file_details(
             layers: meta.layers.map_or(-1, |l| l as i32),
             nozzle: meta.nozzle_diameter.map_or(-1.0, |n| n as f32),
             nozzle_check,
+            height: meta.height.map_or(-1.0, |h| h as f32),
             color: meta
                 .filament_color
                 .as_deref()
@@ -1549,6 +1555,16 @@ async fn execute(
             client
                 .call(
                     "server.files.move",
+                    json!({ "source": format!("gcodes/{from}"), "dest": format!("gcodes/{to}") }),
+                )
+                .await?;
+            let usb = from.to_ascii_lowercase().starts_with("usb/");
+            list_files(client, ui, thumbs, usb).await
+        }
+        Command::CopyFile { from, to } => {
+            client
+                .call(
+                    "server.files.copy",
                     json!({ "source": format!("gcodes/{from}"), "dest": format!("gcodes/{to}") }),
                 )
                 .await?;

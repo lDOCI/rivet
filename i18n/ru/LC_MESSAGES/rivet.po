@@ -1065,3 +1065,9 @@ msgstr "Файлы (верхний уровень)"
 
 msgid "here now"
 msgstr "файл здесь"
+
+msgid "{} mm tall: higher than Z travel ({} mm)"
+msgstr "Высота {} мм — больше хода Z ({} мм)"
+
+msgid "Copy to the printer"
+msgstr "Скопировать на принтер"

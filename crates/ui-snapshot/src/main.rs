@@ -264,6 +264,7 @@ fn show(ui: &AppWindow, name: &str) {
                     layers: 180,
                     nozzle: 0.4,
                     nozzle_check: 1,
+                    height: 64.0,
                     thumb: fake_preview(),
                     has_thumb: true,
                 });

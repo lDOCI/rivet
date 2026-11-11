@@ -231,6 +231,7 @@ export component AppWindow inherits Window {
     // Where files of this storage can go: "" (the top) and its folders.
     in property <[string]> move-folders;
     callback move-file(string, string);
+    callback copy-to-printer(string);
 
     // G-code files; the selection lives in the rows.
     in-out property <[FileItem]> files;
@@ -715,6 +716,7 @@ export component AppWindow inherits Window {
             path: root.open-path;
             name: root.open-name;
             info: root.file-info;
+            max-z: root.axis-max-z;
             back => { root.screen = "files"; }
             print-file => { root.start-print(root.open-path); root.screen = "home"; }
             loaded-material: root.has-active-spool && root.spool-material != "" ? root.spool-material : root.loaded-material;
@@ -724,12 +726,15 @@ export component AppWindow inherits Window {
             page-title: root.open-name;
             queue-shown: root.queue-count >= 0;
             move-shown: root.move-folders.length > 1;
+            // A file on the USB stick can be copied to the printer's storage.
+            copy-shown: root.files-on-usb;
             back => { root.screen = "file"; }
             activate(key) => {
                 if (key == "delete") { root.overlay = "delete-file"; }
                 if (key == "queue") { root.queue-files([root.open-path]); root.screen = "queue"; }
                 if (key == "rename") { root.rename-text = root.open-name; root.screen = "file-rename"; }
                 if (key == "move") { root.screen = "file-move"; }
+                if (key == "copy") { root.copy-to-printer(root.open-path); root.screen = "files"; }
             }
         }
         if root.ready && root.screen == "files-find": FindScreen {

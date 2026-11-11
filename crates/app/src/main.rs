@@ -416,6 +416,17 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
     }
     {
         let tx = tx.clone();
+        ui.on_copy_to_printer(move |path| {
+            if let Some(to) = model::moved(&path, "") {
+                let _ = tx.send(Command::CopyFile {
+                    from: path.to_string(),
+                    to,
+                });
+            }
+        });
+    }
+    {
+        let tx = tx.clone();
         ui.on_queue_files(move |paths| {
             use slint::Model;
             let paths: Vec<String> = paths.iter().map(|p| p.to_string()).collect();

@@ -339,6 +339,10 @@ export component FileActionsForm inherits FormScreen {
     in property <bool> move-shown: true;
     in property <string> move-sub: "";
     in property <bool> move-enabled: true;
+    // Скопировать на принтер
+    in property <bool> copy-shown: true;
+    in property <string> copy-sub: "";
+    in property <bool> copy-enabled: true;
     // Удалить
     in property <bool> delete-shown: true;
     in property <string> delete-sub: "";
@@ -358,6 +362,7 @@ export component FileActionsForm inherits FormScreen {
         { kind: "action", key: "queue", title: @tr("Add to queue"), sub: root.queue-sub, shown: root.queue-shown, on: root.queue-enabled },
         { kind: "action", key: "rename", title: @tr("Rename"), sub: root.rename-sub, shown: root.rename-shown, on: root.rename-enabled },
         { kind: "action", key: "move", title: @tr("Move to folder"), sub: root.move-sub, shown: root.move-shown, on: root.move-enabled },
+        { kind: "action", key: "copy", title: @tr("Copy to the printer"), sub: root.copy-sub, shown: root.copy-shown, on: root.copy-enabled },
         { kind: "action", key: "delete", title: @tr("Delete"), sub: root.delete-sub, shown: root.delete-shown, tone: "danger", on: root.delete-enabled }
     ];
 }

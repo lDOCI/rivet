@@ -445,6 +445,25 @@ fn handle(sim: &Shared, req: &Value) -> (Option<Value>, Option<Push>) {
                 Err((404, "File does not exist"))
             }
         }
+        "server.files.copy" => {
+            let strip = |k: &str| {
+                let v = params[k].as_str().unwrap_or_default();
+                v.strip_prefix("gcodes/").unwrap_or(v).to_owned()
+            };
+            let (from, to) = (strip("source"), strip("dest"));
+            if sim.files.iter().any(|f| f.path == to) {
+                Err((400, "Destination path already exists"))
+            } else if let Some(f) = sim.files.iter().find(|f| f.path == from).cloned() {
+                sim.files.push(MockFile {
+                    path: to.clone(),
+                    days: 0.0,
+                    ..f
+                });
+                Ok(json!({ "item": { "path": to, "root": "gcodes" }, "action": "create_file" }))
+            } else {
+                Err((404, "File does not exist"))
+            }
+        }
         "server.job_queue.status" => Ok(queue_status(&sim)),
         "server.job_queue.post_job" => {
             let names: Vec<String> = params["filenames"]

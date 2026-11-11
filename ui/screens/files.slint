@@ -35,6 +35,8 @@ export struct FileInfo {
     nozzle: float,
     // 1 same as the printer, 0 differs, -1 unknown.
     nozzle-check: int,
+    // Model height, mm; -1 when the slicer did not write it.
+    height: float,
     // The slicer's filament colour, when it wrote one.
     color: color,
     has-color: bool,
@@ -462,10 +464,14 @@ export component FileScreen inherits Rectangle {
     in property <FileInfo> info;
     // What is loaded now (Spoolman or the filament wizard); empty when unknown.
     in property <string> loaded-material;
+    // The printer's Z travel, mm; 0 until known.
+    in property <float> max-z;
     callback back;
     callback print-file;
     callback more;
     property <bool> loaded: root.info.path == root.path;
+    // Only a model that does not fit gets a row: a passing check is noise.
+    property <bool> too-tall: root.loaded && root.max-z > 0 && root.info.height > root.max-z;
     property <bool> material-known: root.loaded && root.info.filament != "" && root.loaded-material != "";
     HorizontalLayout {
         padding: Tokens.pad;
@@ -525,6 +531,13 @@ export component FileScreen inherits Rectangle {
                             text: root.info.filament == root.loaded-material
                                 ? @tr("{}: just what is loaded", root.info.filament)
                                 : @tr("Sliced for {}, {} is loaded", root.info.filament, root.loaded-material);
+                        }
+                        Rectangle { height: 1px; background: Tokens.surface-2; }
+                    }
+                    if root.too-tall: VerticalLayout {
+                        CheckRow {
+                            ok: false;
+                            text: @tr("{} mm tall: higher than Z travel ({} mm)", round(root.info.height), round(root.max-z));
                         }
                         Rectangle { height: 1px; background: Tokens.surface-2; }
                     }

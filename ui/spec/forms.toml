@@ -73,11 +73,13 @@ r8 = "system"
 
 [FileActions]
 component = "FileActionsForm"
+en = { "Скопировать на принтер" = "Copy to the printer" }
 title = "data"
 [FileActions.rows]
 r0 = "queue"
 r1 = "rename"
 r2 = "move"
+r4 = "copy"
 r3 = "delete"
 
 [JobQueue]

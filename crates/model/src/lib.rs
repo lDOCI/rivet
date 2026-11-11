@@ -626,6 +626,8 @@ pub struct FileMeta {
     pub filament_grams: Option<f64>,
     pub layers: Option<u32>,
     pub nozzle_diameter: Option<f64>,
+    /// Height of the model, mm (`object_height`).
+    pub height: Option<f64>,
     /// First filament colour the slicer wrote ("#4466CC"), if any.
     pub filament_color: Option<String>,
     pub thumbnails: Vec<ThumbRef>,
@@ -650,6 +652,7 @@ pub fn parse_file_meta(result: &Value) -> FileMeta {
         filament_grams: num("filament_weight_total"),
         layers: num("layer_count").map(|v| v as u32),
         nozzle_diameter: num("nozzle_diameter"),
+        height: num("object_height"),
         thumbnails: result
             .get("thumbnails")
             .and_then(Value::as_array)
