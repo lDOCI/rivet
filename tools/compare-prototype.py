@@ -28,6 +28,8 @@ PAIRS = {
     "tools": "Tools", "console": "Console", "macros": "Macros",
     "settings": "Settings", "offline": "Offline", "error": "KlipperError",
     "motion-more": "MotionAdvanced", "file-actions": "FileActions",
+    "layer-pause": "LayerPause", "retraction": "Retraction", "dryer": "Dryer",
+    "spools": "Spools", "devices": "Devices",
 }
 
 def main():

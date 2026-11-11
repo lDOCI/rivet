@@ -55,6 +55,68 @@ pub fn subscription() -> Value {
     })
 }
 
+const PAUSE_MACRO: &str = "gcode_macro SET_PRINT_STATS_INFO";
+
+/// An `output_pin` meant for the user (names starting with `_` are internal).
+fn is_user_pin(name: &str) -> bool {
+    name.strip_prefix("output_pin ")
+        .is_some_and(|pin| !pin.starts_with('_'))
+}
+
+/// What this printer can do, from its Klipper objects and Moonraker components.
+/// A screen row shows only when its source is here.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Caps {
+    /// `SET_PAUSE_AT_LAYER` / `SET_PAUSE_NEXT_LAYER` macros.
+    pub pause_at_layer: bool,
+    pub exclude_object: bool,
+    pub firmware_retraction: bool,
+    /// KlipperMod's `AUTO_SHUTDOWN`: powers off once the printer is idle and cool.
+    pub auto_shutdown: bool,
+    /// The command that keeps a live Z offset: `Z_OFFSET_APPLY_PROBE` when Z homes
+    /// on the probe, else `Z_OFFSET_APPLY_ENDSTOP`.
+    pub z_offset_apply: String,
+    pub timelapse: bool,
+    pub spoolman: bool,
+    pub power_devices: bool,
+    pub job_queue: bool,
+    pub load_filament: bool,
+}
+
+impl Caps {
+    pub fn new(objects: &[String], components: &[String], z_homes_on_probe: bool) -> Self {
+        let has = |name: &str| objects.iter().any(|n| n == name);
+        let macro_ = |name: &str| has(&format!("gcode_macro {name}"));
+        let component = |name: &str| components.iter().any(|c| c == name);
+        Self {
+            pause_at_layer: macro_("SET_PAUSE_AT_LAYER") && macro_("SET_PAUSE_NEXT_LAYER"),
+            exclude_object: has("exclude_object"),
+            firmware_retraction: has("firmware_retraction"),
+            auto_shutdown: macro_("AUTO_SHUTDOWN"),
+            z_offset_apply: if z_homes_on_probe {
+                "Z_OFFSET_APPLY_PROBE"
+            } else {
+                "Z_OFFSET_APPLY_ENDSTOP"
+            }
+            .to_owned(),
+            timelapse: component("timelapse"),
+            spoolman: component("spoolman"),
+            power_devices: component("power"),
+            job_queue: component("job_queue"),
+            load_filament: macro_("LOAD_FILAMENT") && macro_("UNLOAD_FILAMENT"),
+        }
+    }
+}
+
+/// Firmware retraction, as Klipper has it now.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct Retraction {
+    pub length: f64,
+    pub speed: f64,
+    pub extra: f64,
+    pub unretract_speed: f64,
+}
+
 /// The base subscription plus what this printer actually has, from
 /// `printer.objects.list`: every `led …` and fan object, so Rivet shows only
 /// the lights and fans that exist.
@@ -63,9 +125,21 @@ pub fn subscription_for(available: &[String]) -> Value {
     if let Some(objects) = sub["objects"].as_object_mut() {
         for name in available
             .iter()
-            .filter(|n| n.starts_with("led ") || is_fan_object(n))
+            .filter(|n| n.starts_with("led ") || is_fan_object(n) || is_user_pin(n))
         {
             objects.insert(name.clone(), Value::Null);
+        }
+        for name in ["firmware_retraction", "exclude_object"] {
+            if available.iter().any(|n| n == name) {
+                objects.insert(name.to_owned(), Value::Null);
+            }
+        }
+        // Pause at layer: KlipperMod / Mainsail keep it in this macro's variables.
+        if available.iter().any(|n| n == PAUSE_MACRO) {
+            objects.insert(
+                PAUSE_MACRO.to_owned(),
+                json!(["pause_next_layer", "pause_at_layer"]),
+            );
         }
     }
     sub
@@ -81,6 +155,10 @@ pub struct PrinterState {
     pub limits: Limits,
     /// Macros of this printer, from `printer.objects.list`.
     pub macros: Vec<String>,
+    /// What the printer can do; set after subscribing.
+    pub caps: Caps,
+    /// User output pins, set before subscribing.
+    pub pins: Vec<String>,
     /// Fan objects besides the part fan (`fan_generic …`, `heater_fan …`, …).
     pub fan_objects: Vec<String>,
     /// `heater_fan` object → the temperature it switches on at, from the config.
@@ -134,6 +212,13 @@ pub struct Snapshot {
     /// `AIR_CIRCULATION_*` macros; `None` otherwise.
     pub air_mode: Option<u8>,
     pub light: Option<Light>,
+    pub caps: Caps,
+    pub retraction: Retraction,
+    /// Pause armed for a layer (`SET_PAUSE_AT_LAYER`), and for the next one.
+    pub pause_at_layer: Option<u32>,
+    pub pause_next_layer: bool,
+    /// User output pins: name and value 0.0 ..= 1.0.
+    pub pins: Vec<(String, f64)>,
     pub limits: Limits,
     /// Toolhead X, Y, Z in mm.
     pub position: [f64; 3],
@@ -267,6 +352,44 @@ pub fn parse_gcode_store(result: &Value) -> Vec<(String, LineKind)> {
 }
 
 /// Macros a person would run: `gcode_macro NAME`, not the `_helpers`.
+/// Pins that the printer's own macros switch (`SET_PIN PIN=name` in any macro):
+/// from the raw config (`configfile.config`).
+pub fn macro_managed_pins(config: &Value) -> Vec<String> {
+    let mut pins = Vec::new();
+    for (section, body) in config.as_object().into_iter().flatten() {
+        if !section.starts_with("gcode_macro ") && !section.starts_with("delayed_gcode ") {
+            continue;
+        }
+        let Some(gcode) = body["gcode"].as_str() else {
+            continue;
+        };
+        for line in gcode.lines() {
+            let upper = line.to_ascii_uppercase();
+            if let Some(rest) = upper.trim_start().strip_prefix("SET_PIN") {
+                if let Some(pos) = rest.find("PIN=") {
+                    let name: String = rest[pos + 4..]
+                        .chars()
+                        .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
+                        .collect();
+                    if !name.is_empty() && !pins.contains(&name) {
+                        pins.push(name);
+                    }
+                }
+            }
+        }
+    }
+    pins
+}
+
+/// User output pins of this printer (`output_pin` not starting with `_`).
+pub fn user_pins(available: &[String]) -> Vec<String> {
+    available
+        .iter()
+        .filter(|n| is_user_pin(n))
+        .cloned()
+        .collect()
+}
+
 pub fn macro_names(available: &[String]) -> Vec<String> {
     let mut names: Vec<String> = available
         .iter()
@@ -645,6 +768,31 @@ impl PrinterState {
             fans: self.fans(),
             air_mode: self.air_mode(),
             light,
+            caps: self.caps.clone(),
+            retraction: Retraction {
+                length: self.f64("firmware_retraction", "retract_length"),
+                speed: self.f64("firmware_retraction", "retract_speed"),
+                extra: self.f64("firmware_retraction", "unretract_extra_length"),
+                unretract_speed: self.f64("firmware_retraction", "unretract_speed"),
+            },
+            pause_at_layer: self
+                .field(PAUSE_MACRO, "pause_at_layer")
+                .filter(|v| v["enable"].as_bool().unwrap_or(false))
+                .and_then(|v| v["layer"].as_u64())
+                .map(|n| n as u32),
+            pause_next_layer: self
+                .field(PAUSE_MACRO, "pause_next_layer")
+                .is_some_and(|v| v["enable"].as_bool().unwrap_or(false)),
+            pins: self
+                .pins
+                .iter()
+                .map(|p| {
+                    (
+                        p.trim_start_matches("output_pin ").to_owned(),
+                        self.f64(p, "value"),
+                    )
+                })
+                .collect(),
             limits: self.limits,
             position: self.axes("toolhead", "position"),
             homed_axes: self.str("toolhead", "homed_axes").to_owned(),
@@ -678,6 +826,19 @@ pub fn merge(dst: &mut Value, src: Value) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn pins_switched_by_macros() {
+        let config = json!({
+            "gcode_macro EXTRUDER_ON": { "gcode": "\nSET_PIN PIN=extruder_heater VALUE=1" },
+            "gcode_macro LIGHT": { "gcode": "SET_LED LED=x WHITE=1" },
+            "output_pin extruder_heater": { "pin": "PB7" }
+        });
+        assert_eq!(
+            macro_managed_pins(&config),
+            vec!["EXTRUDER_HEATER".to_owned()]
+        );
+    }
 
     #[test]
     fn merge_keeps_untouched_fields() {

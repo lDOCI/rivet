@@ -26,7 +26,7 @@ component = "TuneForm"
 r0 = "speed"
 r1 = "flow"
 r2 = "z"
-r3 = { name = "save-z", later = "saving needs SAVE_CONFIG, which restarts Klipper: the save-config flow (after the print) is not built" }
+r3 = "save-z"
 r4 = "pa"
 r5 = { name = "temps", data = ["sub"] }
 r6 = { name = "fans", data = ["sub"] }
@@ -35,12 +35,12 @@ r7 = "reset-speed"
 [PrintMore]
 component = "MoreForm"
 [PrintMore.rows]
-r0 = { name = "layer-pause", later = "M4: pause at layer" }
-r1 = { name = "exclude", data = ["sub"], later = "M4: exclude objects" }
-r2 = { name = "camera", later = "M4: camera" }
+r0 = { name = "layer-pause", data = ["sub"] }
+r1 = { name = "exclude", data = ["sub"], later = "wave 2: the exclude-objects screen (map of the plate)" }
+r2 = { name = "camera", later = "the camera view (MJPEG stream) is not built" }
 r3 = "light"
-r4 = { name = "timelapse", data = ["sub"], later = "M4: timelapse" }
-r5 = { name = "off-after", later = "M2: power off after print (System)" }
+r4 = { name = "timelapse", data = ["sub"] }
+r5 = "off-after"
 
 [Extruder]
 component = "ExtruderForm"
@@ -53,9 +53,9 @@ r4 = "retract"
 r5 = { name = "filament", later = "wave 2: filament wizard" }
 r6 = { name = "load", later = "wave 2: filament wizard" }
 r7 = { name = "unload", later = "wave 2: filament wizard" }
-r8 = { name = "spools", data = ["sub"], later = "M4: Spoolman" }
-r9 = { name = "retraction", data = ["sub"], later = "M4: firmware retraction" }
-r10 = { name = "dryer", later = "M4: filament dryer" }
+r8 = { name = "spools", data = ["sub"] }
+r9 = { name = "retraction", data = ["sub"] }
+r10 = { name = "dryer", data = ["sub"] }
 
 [Settings]
 component = "SettingsForm"
@@ -98,4 +98,44 @@ r11 = "jog-z"
 r12 = "invert-x"
 r13 = "invert-y"
 r14 = "invert-z"
-r15 = { name = "endstops", data = ["sub"] }
+
+[LayerPause]
+component = "LayerPauseForm"
+[LayerPause.rows]
+r0 = { name = "layer-now", data = ["value"] }
+r1 = { name = "pause-layer", data = ["range"] }
+r2 = { name = "pause-at", data = ["sub"] }
+r3 = { name = "pause-next", data = ["sub"] }
+
+[Retraction]
+component = "RetractionForm"
+[Retraction.rows]
+r0 = "retract-length"
+r1 = "retract-speed"
+r2 = "unretract-extra"
+r3 = "unretract-speed"
+r4 = "retract-note"
+
+[Dryer]
+component = "DryerForm"
+[Dryer.rows]
+r0 = "dry-material"
+r1 = "dry-hours"
+r2 = { name = "dry-start", data = ["title", "sub"] }
+
+[Spools]
+component = "SpoolsForm"
+[Spools.rows]
+r0 = { name = "spools", repeat = true }
+r1 = { name = "spools", example = true }
+r2 = { name = "spools", example = true }
+r3 = { name = "spools", example = true }
+r4 = "spool-clear"
+
+[Devices]
+component = "DevicesForm"
+[Devices.rows]
+r0 = "power-section"
+r1 = { name = "power", repeat = true }
+r2 = "pins-section"
+r3 = { name = "pins", repeat = true }

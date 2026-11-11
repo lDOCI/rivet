@@ -642,8 +642,6 @@ msgstr "Переместить в папку"
 msgid "Go"
 msgstr "Поехать"
 
-msgid "Check endstops"
-msgstr "Проверить концевики"
 
 msgid "Exclude objects"
 msgstr "Пропуск объектов"
@@ -723,14 +721,8 @@ msgstr "стол как сушилка"
 msgid "on this screen only"
 msgstr "только на экране"
 
-msgid "pressed"
-msgstr "нажат"
 
-msgid "open"
-msgstr "открыт"
 
-msgid "pressed or not"
-msgstr "нажаты или нет"
 
 msgid "More…"
 msgstr "Ещё…"
@@ -743,3 +735,120 @@ msgstr "для выдавливания нужно ≥ {}°"
 
 msgid "Above 150% quality and strength usually drop."
 msgstr "Выше 150% качество и прочность обычно падают."
+
+msgid "OUTPUTS"
+msgstr "ВЫХОДЫ"
+
+msgid "Time, h"
+msgstr "Время, ч"
+
+msgid "Lasts until a restart"
+msgstr "Действует до перезапуска"
+
+msgid "Retract length"
+msgstr "Длина ретракта"
+
+msgid "Retract length, mm"
+msgstr "Длина ретракта, мм"
+
+msgid "Extra prime"
+msgstr "Доп. подача"
+
+msgid "Extra prime, mm"
+msgstr "Доп. подача, мм"
+
+msgid "Spools"
+msgstr "Катушки"
+
+msgid "Material"
+msgstr "Материал"
+
+msgid "At the next layer"
+msgstr "На следующем слое"
+
+msgid "POWER"
+msgstr "ПИТАНИЕ"
+
+msgid "Set the pause"
+msgstr "Поставить паузу"
+
+msgid "Works only when the slicer uses firmware retraction."
+msgstr "Работает, только если в слайсере включён ретракт прошивкой."
+
+msgid "Prime speed"
+msgstr "Скорость подачи"
+
+msgid "Prime speed, mm/s"
+msgstr "Скорость подачи, мм/с"
+
+msgid "Retract speed"
+msgstr "Скорость ретракта"
+
+msgid "Retract speed, mm/s"
+msgstr "Скорость ретракта, мм/с"
+
+msgid "Clear the active spool"
+msgstr "Снять активную катушку"
+
+msgid "Filament drying"
+msgstr "Сушка филамента"
+
+msgid "insert a magnet, change colour"
+msgstr "вставить магнит, сменить цвет"
+
+msgid "direct drive 0.4–2 mm"
+msgstr "директ 0.4–2 мм"
+
+msgid "for good: only in the printer config"
+msgstr "насовсем — только в конфиге принтера"
+
+msgid "after unretracting"
+msgstr "после возврата"
+
+msgid "usage won't be deducted"
+msgstr "расход не будет списываться"
+
+msgid "bed temperature"
+msgstr "температура стола"
+
+msgid "h"
+msgstr "ч"
+
+msgid "active"
+msgstr "активна"
+
+msgid "Start drying"
+msgstr "Начать сушку"
+
+msgid "Stop drying"
+msgstr "Остановить сушку"
+
+msgid "drying · {} left"
+msgstr "идёт сушка · осталось {}"
+
+msgid "the bed switches off by itself on time"
+msgstr "стол выключится сам по таймеру"
+
+msgid "set for layer {}"
+msgstr "стоит на слое {}"
+
+msgid "set"
+msgstr "стоит"
+
+msgid "recording"
+msgstr "пишется"
+
+msgid "length {} mm"
+msgstr "длина {} мм"
+
+msgid "active: {}"
+msgstr "активная: {}"
+
+msgid "no active spool"
+msgstr "нет активной"
+
+msgid "pause at layer {}"
+msgstr "пауза на слое {}"
+
+msgid "drying: {} left"
+msgstr "сушится: осталось {}"

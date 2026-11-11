@@ -55,13 +55,95 @@ export struct FormBar {
     shown: bool,
 }
 
+// One row of a form, any kind. The gap below lives in the row, so a hidden row
+// leaves none.
+component FormItem inherits VerticalLayout {
+    in property <FormRow> r;
+    callback activate(string);
+    callback toggled(string, bool);
+    callback stepped(string, float);
+    callback edit(string);
+    callback picked(string, int);
+    padding-bottom: root.r.shown ? 8px : 0px;
+    if root.r.shown && root.r.kind == "section": HorizontalLayout {
+        padding-top: 8px;
+        padding-left: 4px;
+        SectionLabel { text: root.r.title; }
+    }
+    if root.r.shown && root.r.kind == "link": LinkRow {
+        title: root.r.title;
+        sub: root.r.sub;
+        value: root.r.value;
+        icon: root.r.icon;
+        clicked => { root.activate(root.r.key); }
+    }
+    if root.r.shown && root.r.kind == "info": InfoRow {
+        title: root.r.title;
+        sub: root.r.sub;
+        value: root.r.value;
+        value-color: root.r.tone == "danger" ? Tokens.danger : root.r.tone == "ok" ? Tokens.accent : Tokens.text;
+    }
+    if root.r.shown && root.r.kind == "toggle": ToggleRow {
+        title: root.r.title;
+        sub: root.r.sub;
+        checked: root.r.on;
+        toggled(v) => { root.toggled(root.r.key, v); }
+    }
+    if root.r.shown && root.r.kind == "stepper": Stepper {
+        title: root.r.title;
+        sub: root.r.sub;
+        label: root.r.value;
+        decrement => { root.stepped(root.r.key, -r.big); }
+        increment => { root.stepped(root.r.key, root.r.big); }
+        edit => { root.edit(root.r.key); }
+    }
+    if root.r.shown && root.r.kind == "fine": FineStepper {
+        title: root.r.title;
+        sub: root.r.sub;
+        label: root.r.value;
+        changed: root.r.changed;
+        was: root.r.was;
+        big: root.r.big-label;
+        small: root.r.small-label;
+        big-step: root.r.big;
+        small-step: root.r.small;
+        step(d) => { root.stepped(root.r.key, d); }
+        edit => { root.edit(root.r.key); }
+    }
+    if root.r.shown && root.r.kind == "seg": SegmentedRow {
+        title: root.r.title;
+        sub: root.r.sub;
+        options: root.r.opts;
+        selected: root.r.sel;
+        picked(i) => { root.picked(root.r.key, i); }
+    }
+    if root.r.shown && root.r.kind == "action" && root.r.tone == "accent": PrimaryButton {
+        text: root.r.title;
+        sub: root.r.sub;
+        enabled: root.r.on;
+        clicked => { root.activate(root.r.key); }
+    }
+    if root.r.shown && root.r.kind == "action" && root.r.tone != "accent": ActionRow {
+        title: root.r.title;
+        sub: root.r.sub;
+        danger: root.r.tone == "danger";
+        enabled: root.r.on;
+        clicked => { root.activate(root.r.key); }
+    }}
+
 export component FormScreen inherits VerticalLayout {
     in property <string> title;
     in property <bool> has-back: true;
     // One line under the header, as some prototype pages have.
     in property <string> intro;
     in property <[FormBar]> bars;
+    // The rows in order: fixed rows from the prototype and live lists (spools, power
+    // devices, ...) come in up to five segments, shown one after another.
     in property <[FormRow]> rows;
+    in property <[FormRow]> rows-1;
+    in property <[FormRow]> rows-2;
+    in property <[FormRow]> rows-3;
+    in property <[FormRow]> rows-4;
     callback back;
     // link and action rows
     callback activate(string);
@@ -105,74 +187,45 @@ export component FormScreen inherits VerticalLayout {
         ScrollList {
             horizontal-stretch: 1;
             spacing: 0px;
-            for r in root.rows: VerticalLayout {
-                // The gap lives in the row, so a hidden row leaves none.
-                padding-bottom: r.shown ? 8px : 0px;
-                if r.shown && r.kind == "section": HorizontalLayout {
-                    padding-top: 8px;
-                    padding-left: 4px;
-                    SectionLabel { text: r.title; }
-                }
-                if r.shown && r.kind == "link": LinkRow {
-                    title: r.title;
-                    sub: r.sub;
-                    value: r.value;
-                    icon: r.icon;
-                    clicked => { root.activate(r.key); }
-                }
-                if r.shown && r.kind == "info": InfoRow {
-                    title: r.title;
-                    sub: r.sub;
-                    value: r.value;
-                    value-color: r.tone == "danger" ? Tokens.danger : r.tone == "ok" ? Tokens.accent : Tokens.text;
-                }
-                if r.shown && r.kind == "toggle": ToggleRow {
-                    title: r.title;
-                    sub: r.sub;
-                    checked: r.on;
-                    toggled(v) => { root.toggled(r.key, v); }
-                }
-                if r.shown && r.kind == "stepper": Stepper {
-                    title: r.title;
-                    sub: r.sub;
-                    label: r.value;
-                    decrement => { root.stepped(r.key, -r.big); }
-                    increment => { root.stepped(r.key, r.big); }
-                    edit => { root.edit(r.key); }
-                }
-                if r.shown && r.kind == "fine": FineStepper {
-                    title: r.title;
-                    sub: r.sub;
-                    label: r.value;
-                    changed: r.changed;
-                    was: r.was;
-                    big: r.big-label;
-                    small: r.small-label;
-                    big-step: r.big;
-                    small-step: r.small;
-                    step(d) => { root.stepped(r.key, d); }
-                    edit => { root.edit(r.key); }
-                }
-                if r.shown && r.kind == "seg": SegmentedRow {
-                    title: r.title;
-                    sub: r.sub;
-                    options: r.opts;
-                    selected: r.sel;
-                    picked(i) => { root.picked(r.key, i); }
-                }
-                if r.shown && r.kind == "action" && r.tone == "accent": PrimaryButton {
-                    text: r.title;
-                    sub: r.sub;
-                    enabled: r.on;
-                    clicked => { root.activate(r.key); }
-                }
-                if r.shown && r.kind == "action" && r.tone != "accent": ActionRow {
-                    title: r.title;
-                    sub: r.sub;
-                    danger: r.tone == "danger";
-                    enabled: r.on;
-                    clicked => { root.activate(r.key); }
-                }
+            for r in root.rows: FormItem {
+                r: r;
+                activate(k) => { root.activate(k); }
+                toggled(k, v) => { root.toggled(k, v); }
+                stepped(k, d) => { root.stepped(k, d); }
+                edit(k) => { root.edit(k); }
+                picked(k, i) => { root.picked(k, i); }
+            }
+            for r in root.rows-1: FormItem {
+                r: r;
+                activate(k) => { root.activate(k); }
+                toggled(k, v) => { root.toggled(k, v); }
+                stepped(k, d) => { root.stepped(k, d); }
+                edit(k) => { root.edit(k); }
+                picked(k, i) => { root.picked(k, i); }
+            }
+            for r in root.rows-2: FormItem {
+                r: r;
+                activate(k) => { root.activate(k); }
+                toggled(k, v) => { root.toggled(k, v); }
+                stepped(k, d) => { root.stepped(k, d); }
+                edit(k) => { root.edit(k); }
+                picked(k, i) => { root.picked(k, i); }
+            }
+            for r in root.rows-3: FormItem {
+                r: r;
+                activate(k) => { root.activate(k); }
+                toggled(k, v) => { root.toggled(k, v); }
+                stepped(k, d) => { root.stepped(k, d); }
+                edit(k) => { root.edit(k); }
+                picked(k, i) => { root.picked(k, i); }
+            }
+            for r in root.rows-4: FormItem {
+                r: r;
+                activate(k) => { root.activate(k); }
+                toggled(k, v) => { root.toggled(k, v); }
+                stepped(k, d) => { root.stepped(k, d); }
+                edit(k) => { root.edit(k); }
+                picked(k, i) => { root.picked(k, i); }
             }
         }
     }

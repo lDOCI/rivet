@@ -2,7 +2,17 @@ import { Tokens } from "kit/tokens.slint";
 import { Rail } from "kit/rail.slint";
 import { ControlScreen } from "screens/control.slint";
 import { FansScreen, FanRow, ZOffsetScreen } from "screens/tune.slint";
-import { LightForm, SpeedForm, TuneForm, MoreForm, ExtruderForm, SettingsForm, FileActionsForm, MotionMoreForm } from "generated/forms.slint";
+import { LightForm, SpeedForm, TuneForm, MoreForm, ExtruderForm, SettingsForm, FileActionsForm, MotionMoreForm, LayerPauseForm, RetractionForm, DryerForm, SpoolsForm, DevicesForm } from "generated/forms.slint";
+import { FormRow } from "kit/form.slint";
+
+export { FormRow }
+
+// Words the engine puts into rows it builds (spools): translated here, read from Rust.
+export global Strings {
+    out property <string> active: @tr("active");
+    // "{}" stays in for the engine to fill.
+    out property <string> grams: @tr("{} g", "{}");
+}
 import { Format } from "kit/format.slint";
 import { Dialog, Keypad } from "kit/dialogs.slint";
 import { StatusScreen } from "screens/status.slint";
@@ -108,17 +118,47 @@ export component AppWindow inherits Window {
     in-out property <bool> invert-x;
     in-out property <bool> invert-y;
     in-out property <bool> invert-z;
-    // Last endstop check: 1 pressed, 0 open, -1 not asked yet.
-    in property <int> endstop-x: -1;
-    in property <int> endstop-y: -1;
-    in property <int> endstop-z: -1;
     callback go-to(float, float, float);
-    callback query-endstops();
     // Real toolhead speed, mm/s.
     in property <float> live-velocity;
     // Extruder: chosen length and speed (indexes into the prototype's options).
     in-out property <int> extrude-length: 2;
     in-out property <int> extrude-rate: 1;
+    // What this printer can do (its config, macros and Moonraker components), and the
+    // live values behind those rows.
+    in property <bool> has-pause-layer;
+    in property <int> pause-at-layer;
+    in property <bool> pause-next;
+    in-out property <float> pause-layer-pick;
+    callback pause-at(int);
+    callback pause-next-layer(bool);
+    in property <bool> has-retraction;
+    in property <float> retract-length;
+    in property <float> retract-speed;
+    in property <float> unretract-extra;
+    in property <float> unretract-speed;
+    callback set-retraction(string, float);
+    in property <bool> has-auto-shutdown;
+    in-out property <bool> off-after-print;
+    callback off-after(bool);
+    in property <bool> has-timelapse;
+    in-out property <bool> timelapse-on;
+    callback set-timelapse(bool);
+    callback save-z-offset();
+    in property <bool> has-spoolman;
+    in property <[FormRow]> spool-rows;
+    in property <string> active-spool;
+    in property <bool> has-active-spool;
+    callback list-spools();
+    callback pick-spool(string);
+    in property <[FormRow]> power-rows;
+    in property <[FormRow]> pin-rows;
+    callback device-toggled(string, bool);
+    // Bed dryer: minutes left, -1 when off; chosen material and hours.
+    in property <int> dryer-minutes-left: -1;
+    in-out property <int> dry-material: 1;
+    in-out property <float> dry-hours: 4;
+    callback dry(float, int);
     // Rivet's own settings, saved in Moonraker's database.
     callback save-flag(string, bool);
     callback save-number(string, float);
@@ -228,9 +268,9 @@ export component AppWindow inherits Window {
         else if (key == "goto-z") { root.goto-z = v; }
         else if (key == "jog-xy") { root.jog-xy-speed = v; root.save-number("jog_xy_speed", v); }
         else if (key == "jog-z") { root.jog-z-speed = v; root.save-number("jog_z_speed", v); }
-    }
-    pure function endstop(v: int) -> string {
-        return v == 1 ? @tr("pressed") : @tr("open");
+        else if (key == "pause-layer") { root.pause-layer-pick = v; }
+        else if (key == "dry-hours") { root.dry-hours = v; }
+        else if (key == "retract-length" || key == "retract-speed" || key == "unretract-extra" || key == "unretract-speed") { root.set-retraction(key, v); }
     }
 
     property <bool> ready: root.link-state == "ready";
@@ -238,7 +278,7 @@ export component AppWindow inherits Window {
 
     HorizontalLayout {
         Rail {
-            active: !root.ready ? "" : (root.screen == "fans" || root.screen == "heating" || root.screen == "motion" || root.screen == "extruder" || root.screen == "light" || root.screen == "speed" || root.screen == "zoffset" || root.screen == "motion-more") ? "control"
+            active: !root.ready ? "" : (root.screen == "fans" || root.screen == "heating" || root.screen == "motion" || root.screen == "extruder" || root.screen == "light" || root.screen == "speed" || root.screen == "zoffset" || root.screen == "motion-more" || root.screen == "retraction" || root.screen == "dryer" || root.screen == "spools" || root.screen == "devices") ? "control"
                 : (root.screen == "control" || root.screen == "tools" || root.screen == "settings" || root.screen == "messages") ? root.screen
                 : (root.screen == "console" || root.screen == "macros") ? "tools"
                 : "home";
@@ -257,9 +297,10 @@ export component AppWindow inherits Window {
             light-text: root.has-light ? (root.light-on ? round(root.light-level) + "%" : @tr("off")) : "";
             speed-percent: round(root.speed-percent);
             z-offset: root.z-offset;
+            has-devices: root.power-rows.length > 0 || root.pin-rows.length > 0;
             open(target) => {
                 if (target == "zoffset") { root.tune-z-start = root.z-offset; }
-                if (target == "fans" || target == "heating" || target == "motion" || target == "extruder" || target == "light" || target == "speed" || target == "zoffset") { root.screen = target; }
+                if (target == "fans" || target == "heating" || target == "motion" || target == "extruder" || target == "light" || target == "speed" || target == "zoffset" || target == "devices") { root.screen = target; }
             }
         }
         if root.ready && root.screen == "light": LightForm {
@@ -324,6 +365,11 @@ export component AppWindow inherits Window {
             rate-sel: root.extrude-rate;
             extrude-enabled: root.can-extrude;
             retract-enabled: root.can-extrude;
+            spools-shown: root.has-spoolman;
+            spools-sub: root.has-active-spool ? @tr("active: {}", root.active-spool) : @tr("no active spool");
+            retraction-shown: root.has-retraction;
+            retraction-sub: @tr("length {} mm", Format.fixed(root.retract-length, 1));
+            dryer-sub: root.dryer-minutes-left >= 0 ? @tr("drying: {} left", Format.duration(root.dryer-minutes-left)) : @tr("the bed as a dryer");
             back => { root.screen = "control"; }
             picked(key, i) => {
                 if (key == "length") { root.extrude-length = i; }
@@ -332,7 +378,49 @@ export component AppWindow inherits Window {
             activate(key) => {
                 if (key == "extrude") { root.extrude(self.length-values[root.extrude-length], self.rate-values[root.extrude-rate]); }
                 if (key == "retract") { root.extrude(-self.length-values[root.extrude-length], self.rate-values[root.extrude-rate]); }
+                if (key == "spools") { root.list-spools(); root.screen = "spools"; }
+                if (key == "retraction") { root.screen = "retraction"; }
+                if (key == "dryer") { root.screen = "dryer"; }
             }
+        }
+        if root.ready && root.screen == "retraction": RetractionForm {
+            retract-length-num: root.retract-length;
+            retract-speed-num: root.retract-speed;
+            unretract-extra-num: root.unretract-extra;
+            unretract-speed-num: root.unretract-speed;
+            back => { root.screen = "extruder"; }
+            set-value(key, v) => { root.form-set(key, v); }
+            edit-number(key, t, lo, hi, v, d) => { root.open-number(key, t, lo, hi, v, d); }
+        }
+        if root.ready && root.screen == "dryer": DryerForm {
+            dry-material-sel: root.dry-material;
+            dry-hours-num: root.dry-hours;
+            dry-start-title: root.dryer-minutes-left >= 0 ? @tr("Stop drying") : @tr("Start drying");
+            dry-start-sub: root.dryer-minutes-left >= 0 ? @tr("drying · {} left", Format.duration(root.dryer-minutes-left)) : @tr("the bed switches off by itself on time");
+            back => { root.screen = "extruder"; }
+            picked(key, i) => { if (key == "dry-material") { root.dry-material = i; } }
+            set-value(key, v) => { root.form-set(key, v); }
+            edit-number(key, t, lo, hi, v, d) => { root.open-number(key, t, lo, hi, v, d); }
+            activate(key) => {
+                if (key == "dry-start") {
+                    if (root.dryer-minutes-left >= 0) { root.dry(0, 0); }
+                    else { root.dry(self.dry-material-values[root.dry-material], round(root.dry-hours * 60)); }
+                }
+            }
+        }
+        if root.ready && root.screen == "spools": SpoolsForm {
+            spools-items: root.spool-rows;
+            spool-clear-enabled: root.has-active-spool;
+            back => { root.screen = "extruder"; }
+            activate(key) => { root.pick-spool(key); }
+        }
+        if root.ready && root.screen == "devices": DevicesForm {
+            power-section-shown: root.power-rows.length > 0;
+            power-items: root.power-rows;
+            pins-section-shown: root.pin-rows.length > 0;
+            pins-items: root.pin-rows;
+            back => { root.screen = "control"; }
+            toggled(key, on) => { root.device-toggled(key, on); }
         }
         if root.ready && root.screen == "motion-more": MotionMoreForm {
             goto-x-num: root.goto-x;
@@ -353,8 +441,6 @@ export component AppWindow inherits Window {
             invert-x-on: root.invert-x;
             invert-y-on: root.invert-y;
             invert-z-on: root.invert-z;
-            endstops-sub: root.endstop-x < 0 ? @tr("pressed or not")
-                : "X " + root.endstop(root.endstop-x) + " · Y " + root.endstop(root.endstop-y) + " · Z " + root.endstop(root.endstop-z);
             back => { root.screen = "motion"; }
             set-value(key, v) => { root.form-set(key, v); }
             edit-number(key, t, lo, hi, v, d) => { root.open-number(key, t, lo, hi, v, d); }
@@ -363,7 +449,6 @@ export component AppWindow inherits Window {
                 if (key == "home-xy") { root.run-gcode("G28 X Y"); }
                 if (key == "home-z") { root.run-gcode("G28 Z"); }
                 if (key == "go") { root.go-to(root.goto-x, root.goto-y, root.goto-z); }
-                if (key == "endstops") { root.query-endstops(); }
             }
             toggled(key, on) => {
                 if (key == "invert-x") { root.invert-x = on; root.save-flag("invert_x", on); }
@@ -425,10 +510,44 @@ export component AppWindow inherits Window {
             set-air(mode) => { root.set-air(mode); }
         }
         if root.ready && root.screen == "more": MoreForm {
+            layer-pause-shown: root.has-pause-layer;
+            layer-pause-sub: root.pause-next ? @tr("At the next layer")
+                : root.pause-at-layer > 0 ? @tr("pause at layer {}", root.pause-at-layer)
+                : @tr("next or chosen");
             light-shown: root.has-light;
             light-on: root.light-on;
+            timelapse-shown: root.has-timelapse;
+            timelapse-on: root.timelapse-on;
+            timelapse-sub: root.timelapse-on && root.busy ? @tr("recording") : "";
+            off-after-shown: root.has-auto-shutdown;
+            off-after-on: root.off-after-print;
             back => { root.screen = "home"; }
-            toggled(key, on) => { if (key == "light") { root.set-light-level(on ? 100 : 0); } }
+            activate(key) => {
+                if (key == "layer-pause") {
+                    root.pause-layer-pick = root.pause-at-layer > root.layer ? root.pause-at-layer : root.layer + 1;
+                    root.screen = "layer-pause";
+                }
+            }
+            toggled(key, on) => {
+                if (key == "light") { root.set-light-level(on ? 100 : 0); }
+                if (key == "timelapse") { root.timelapse-on = on; root.set-timelapse(on); }
+                if (key == "off-after") { root.off-after-print = on; root.off-after(on); }
+            }
+        }
+        if root.ready && root.screen == "layer-pause": LayerPauseForm {
+            layer-now-value: root.total-layers > 0 ? @tr("layer {} of {}", root.layer, root.total-layers) : "—";
+            pause-layer-num: root.pause-layer-pick;
+            pause-layer-min: root.layer + 1;
+            pause-layer-max: max(root.layer + 1, root.total-layers);
+            pause-at-sub: root.pause-at-layer > 0 ? @tr("set for layer {}", root.pause-at-layer) : "";
+            pause-next-sub: root.pause-next ? @tr("set") : "";
+            back => { root.screen = "more"; }
+            set-value(key, v) => { root.form-set(key, v); }
+            edit-number(key, t, lo, hi, v, d) => { root.open-number(key, t, lo, hi, v, d); }
+            activate(key) => {
+                if (key == "pause-at") { root.pause-at(round(root.pause-layer-pick)); }
+                if (key == "pause-next") { root.pause-next-layer(!root.pause-next); }
+            }
         }
         if root.ready && root.screen == "tune": TuneForm {
             speed-num: root.speed-percent;
@@ -442,6 +561,7 @@ export component AppWindow inherits Window {
             set-value(key, v) => { root.form-set(key, v); }
             edit-number(key, t, lo, hi, v, d) => { root.open-number(key, t, lo, hi, v, d); }
             activate(key) => {
+                if (key == "save-z") { root.save-z-offset(); }
                 if (key == "temps") { root.screen = "heating"; }
                 if (key == "fans") { root.screen = "fans"; }
                 if (key == "reset-speed") { root.set-speed(100); root.set-flow(100); }

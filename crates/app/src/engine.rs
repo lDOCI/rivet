@@ -1,7 +1,7 @@
 //! Network side: owns the Moonraker client and printer state, pushes
 //! throttled snapshots to the UI thread and executes UI commands.
 
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use model::{Connection, Klippy, PrinterState, Snapshot};
 use moonraker::{Client, Event};
@@ -136,8 +136,6 @@ pub enum Command {
         z: f32,
         speed: f32,
     },
-    /// Ask Klipper which endstops are pressed; the answer goes to the screen.
-    QueryEndstops,
     MotorsOff,
     /// Push (positive) or pull (negative) filament: mm and mm/s.
     Extrude {
@@ -158,6 +156,39 @@ pub enum Command {
         key: String,
         value: Value,
     },
+    /// Pause when this layer starts (0 cancels); the printer's SET_PAUSE_AT_LAYER.
+    PauseAtLayer(u32),
+    /// Pause when the next layer starts, or cancel that.
+    PauseNextLayer(bool),
+    /// Firmware retraction: one value by its row key, mm or mm/s.
+    SetRetraction {
+        key: String,
+        value: f32,
+    },
+    SetTimelapse(bool),
+    /// Power the printer off once the print is over (the printer's AUTO_SHUTDOWN).
+    OffAfterPrint(bool),
+    /// Keep the live Z offset: applied now, written by SAVE_CONFIG once no print runs.
+    SaveZOffset,
+    /// The bed as a filament dryer: °C for this many minutes; 0 minutes stops it.
+    Dry {
+        temp: f32,
+        minutes: u32,
+    },
+    /// A Moonraker power device on or off.
+    SetPower {
+        device: String,
+        on: bool,
+    },
+    /// A user output pin on or off.
+    SetPin {
+        name: String,
+        on: bool,
+    },
+    /// Read the Spoolman spools and the active one.
+    ListSpools,
+    /// Make this spool the active one; 0: none.
+    SetActiveSpool(i32),
     /// G-code typed in the console or a macro to run.
     Gcode(String),
     ClearConsole,
@@ -189,6 +220,12 @@ pub async fn run(
     let mut shown_macros: Vec<String> = Vec::new();
     // "Turn on at startup" is applied once per start of Rivet, when the light is known.
     let mut light_start_done = false;
+    // Things Rivet does itself when a print ends, and the bed dryer's timer.
+    let mut off_after_print = false;
+    let mut save_config_pending = false;
+    let mut dryer: Option<(SystemTime, f32)> = None;
+    let mut dryer_shown_minutes = -1;
+    let mut last_print_state = String::new();
     let mut nozzle_rate = HeatRate::default();
     let mut bed_rate = HeatRate::default();
 
@@ -211,6 +248,36 @@ pub async fn run(
                     }
                     Command::Gcode(script) => {
                         state.push_console(format!("> {script}"), model::LineKind::Command);
+                    }
+                    _ => {}
+                }
+                // Commands Rivet keeps state for itself.
+                let printing = matches!(state.snapshot().print_state.as_str(), "printing" | "paused");
+                match &cmd {
+                    Command::OffAfterPrint(on) => {
+                        off_after_print = *on;
+                        continue;
+                    }
+                    Command::SaveZOffset => {
+                        let apply = state.caps.z_offset_apply.clone();
+                        let code = if printing {
+                            save_config_pending = true;
+                            apply
+                        } else {
+                            format!("{apply}\nSAVE_CONFIG")
+                        };
+                        spawn_gcode(&client, code);
+                        continue;
+                    }
+                    Command::Dry { temp, minutes } => {
+                        dryer = (*minutes > 0).then(|| {
+                            (SystemTime::now() + Duration::from_secs(u64::from(*minutes) * 60), *temp)
+                        });
+                        dryer_shown_minutes = -2;
+                        let target = if *minutes > 0 { *temp } else { 0.0 };
+                        spawn_gcode(&client, format!("M140 S{target:.0}"));
+                        save_dryer(&client, dryer);
+                        continue;
                     }
                     _ => {}
                 }
@@ -245,6 +312,10 @@ pub async fn run(
             }
             Some(internal) = resync_rx.recv() => match internal {
                 Internal::Resync => resync_status(&client, &mut state).await,
+                Internal::ResumeDryer(end, temp) => {
+                    dryer = Some((end, temp));
+                    dryer_shown_minutes = -2;
+                }
                 Internal::ConsoleError(message) => {
                     state.push_console(format!("!! {message}"), model::LineKind::Error);
                 }
@@ -279,7 +350,45 @@ pub async fn run(
                 }
                 if !light_start_done && snap.klippy == Klippy::Ready {
                     light_start_done = true;
-                    tokio::spawn(load_settings(client.clone(), ui.clone(), snap.light.clone()));
+                    tokio::spawn(load_settings(
+                        client.clone(),
+                        ui.clone(),
+                        snap.light.clone(),
+                        snap.caps.clone(),
+                        resync_tx.clone(),
+                    ));
+                }
+                // A print just ended: what was waiting for it.
+                if snap.print_state != last_print_state {
+                    let running = |s: &str| matches!(s, "printing" | "paused");
+                    if running(&last_print_state) && !running(&snap.print_state) {
+                        if off_after_print && snap.print_state == "complete" {
+                            spawn_gcode(&client, "AUTO_SHUTDOWN".to_owned());
+                        }
+                        off_after_print = false;
+                        if save_config_pending {
+                            save_config_pending = false;
+                            spawn_gcode(&client, "SAVE_CONFIG".to_owned());
+                        }
+                        let _ = ui.upgrade_in_event_loop(|ui| ui.set_off_after_print(false));
+                    }
+                    last_print_state.clone_from(&snap.print_state);
+                }
+                // The dryer: switch the bed off on time; show the minutes left.
+                if let Some((end, _)) = dryer {
+                    if SystemTime::now() >= end {
+                        dryer = None;
+                        spawn_gcode(&client, "M140 S0".to_owned());
+                        save_dryer(&client, None);
+                    }
+                }
+                let minutes = dryer.map_or(-1, |(end, _)| {
+                    end.duration_since(SystemTime::now())
+                        .map_or(0, |d| d.as_secs().div_ceil(60) as i32)
+                });
+                if minutes != dryer_shown_minutes {
+                    dryer_shown_minutes = minutes;
+                    let _ = ui.upgrade_in_event_loop(move |ui| ui.set_dryer_minutes_left(minutes));
                 }
                 if last_pushed.as_ref() != Some(&snap) {
                     // A finished job lands in history; so does the first look
@@ -354,6 +463,8 @@ async fn handle_event(ev: Event, client: &Client, state: &mut PrinterState) {
 
 /// Things the engine tells itself from spawned tasks.
 enum Internal {
+    /// A drying session that was running when Rivet stopped: end time, °C.
+    ResumeDryer(SystemTime, f32),
     /// A command failed: read the real values back.
     Resync,
     /// Klipper's reason a command failed, for the console.
@@ -484,6 +595,45 @@ async fn subscribe(client: &Client, state: &mut PrinterState) {
         .cloned()
         .collect();
     state.fan_objects = model::fan_object_names(&available);
+    state.pins = model::user_pins(&available);
+    // Moonraker's components (timelapse, spoolman, power, ...) decide rows too.
+    let components: Vec<String> = match client
+        .call_timeout("server.info", Value::Null, SETUP_TIMEOUT)
+        .await
+    {
+        Ok(info) => info["components"]
+            .as_array()
+            .map(|a| {
+                a.iter()
+                    .filter_map(|v| v.as_str().map(str::to_owned))
+                    .collect()
+            })
+            .unwrap_or_default(),
+        Err(_) => Vec::new(),
+    };
+    let config = match client
+        .call_timeout(
+            "printer.objects.query",
+            json!({ "objects": { "configfile": ["settings", "config"] } }),
+            SETUP_TIMEOUT,
+        )
+        .await
+    {
+        Ok(mut r) => r["status"]["configfile"].take(),
+        Err(_) => Value::Null,
+    };
+    let z_on_probe = config["settings"]["stepper_z"]["endstop_pin"]
+        .as_str()
+        .is_some_and(|pin| pin.contains("probe:"));
+    // A pin the printer's own macros switch (AD5M: extruder_heater, by EXTRUDER_ON/OFF)
+    // is not the user's to toggle.
+    let managed = model::macro_managed_pins(&config["config"]);
+    state.pins.retain(|p| {
+        !managed
+            .iter()
+            .any(|m| p.trim_start_matches("output_pin ").eq_ignore_ascii_case(m))
+    });
+    state.caps = model::Caps::new(&available, &components, z_on_probe);
     match client
         .call_timeout(
             "printer.objects.subscribe",
@@ -776,7 +926,13 @@ const DB_NAMESPACE: &str = "rivet";
 
 /// Read Rivet's saved settings once Klipper is ready, show them, and act on
 /// "turn the light on at startup".
-async fn load_settings(client: Client, ui: slint::Weak<AppWindow>, light: Option<model::Light>) {
+async fn load_settings(
+    client: Client,
+    ui: slint::Weak<AppWindow>,
+    light: Option<model::Light>,
+    caps: model::Caps,
+    internal: mpsc::UnboundedSender<Internal>,
+) {
     let saved = match client
         .call_timeout(
             "server.database.get_item",
@@ -808,6 +964,31 @@ async fn load_settings(client: Client, ui: slint::Weak<AppWindow>, light: Option
         ui.set_jog_xy_speed(jog_xy);
         ui.set_jog_z_speed(jog_z);
     });
+    // A drying session survives a restart of Rivet; a finished one switches the bed off.
+    if let (Some(until), Some(temp)) = (saved["dryer_until"].as_f64(), saved["dryer_temp"].as_f64())
+    {
+        let end = UNIX_EPOCH + Duration::from_secs_f64(until.max(0.0));
+        if end > SystemTime::now() {
+            let _ = internal.send(Internal::ResumeDryer(end, temp as f32));
+        } else {
+            let _ = client.gcode("M140 S0").await;
+            save_dryer(&client, None);
+        }
+    }
+    if caps.timelapse {
+        if let Ok(t) = client
+            .call_timeout("machine.timelapse.get_settings", Value::Null, SETUP_TIMEOUT)
+            .await
+        {
+            let on = t["enabled"].as_bool().unwrap_or(false);
+            let _ = ui.upgrade_in_event_loop(move |ui| ui.set_timelapse_on(on));
+        }
+    }
+    if caps.power_devices {
+        if let Err(err) = list_power(&client, &ui).await {
+            tracing::warn!(%err, "power devices");
+        }
+    }
     if let Some(light) = light.filter(|l| light_on && !l.on) {
         let cmd = Command::SetLight {
             name: light.name.clone(),
@@ -822,24 +1003,152 @@ async fn load_settings(client: Client, ui: slint::Weak<AppWindow>, light: Option
     }
 }
 
-/// Ask Klipper which endstops are pressed and show it: 1 pressed, 0 open, -1 unknown.
-async fn query_endstops(
-    client: &Client,
-    ui: &slint::Weak<AppWindow>,
-) -> Result<(), moonraker::Error> {
-    let status = client
-        .call("printer.query_endstops.status", Value::Null)
+/// Send G-code without waiting; a failure only goes to the log.
+fn spawn_gcode(client: &Client, code: String) {
+    let client = client.clone();
+    tokio::spawn(async move {
+        if let Err(err) = client.gcode(&code).await {
+            tracing::warn!(%err, %code, "G-code failed");
+        }
+    });
+}
+
+/// Keep the dryer's end in Moonraker, so a restart of Rivet still ends it.
+fn save_dryer(client: &Client, dryer: Option<(SystemTime, f32)>) {
+    let client = client.clone();
+    tokio::spawn(async move {
+        let result = match dryer {
+            Some((end, temp)) => {
+                let until = end
+                    .duration_since(UNIX_EPOCH)
+                    .map_or(0.0, |d| d.as_secs_f64());
+                let item = |key: &str, value: Value| json!({ "namespace": DB_NAMESPACE, "key": key, "value": value });
+                let a = client
+                    .call(
+                        "server.database.post_item",
+                        item("dryer_until", json!(until)),
+                    )
+                    .await;
+                let b = client
+                    .call("server.database.post_item", item("dryer_temp", json!(temp)))
+                    .await;
+                a.and(b).map(drop)
+            }
+            None => client
+                .call(
+                    "server.database.delete_item",
+                    json!({ "namespace": DB_NAMESPACE, "key": "dryer_until" }),
+                )
+                .await
+                .map(drop),
+        };
+        if let Err(err) = result {
+            tracing::debug!(%err, "dryer state not saved");
+        }
+    });
+}
+
+/// Moonraker's power devices as toggle rows.
+async fn list_power(client: &Client, ui: &slint::Weak<AppWindow>) -> Result<(), moonraker::Error> {
+    let list = client
+        .call("machine.device_power.devices", Value::Null)
         .await?;
-    let state = |axis: &str| match status[axis].as_str() {
-        Some(s) if s.eq_ignore_ascii_case("triggered") => 1,
-        Some(_) => 0,
-        None => -1,
-    };
-    let (x, y, z) = (state("x"), state("y"), state("z"));
+    let devices: Vec<(String, bool)> = list["devices"]
+        .as_array()
+        .map(|a| {
+            a.iter()
+                .filter_map(|d| {
+                    Some((
+                        d["device"].as_str()?.to_owned(),
+                        d["status"].as_str() == Some("on"),
+                    ))
+                })
+                .collect()
+        })
+        .unwrap_or_default();
     let _ = ui.upgrade_in_event_loop(move |ui| {
-        ui.set_endstop_x(x);
-        ui.set_endstop_y(y);
-        ui.set_endstop_z(z);
+        let rows: Vec<crate::FormRow> = devices
+            .into_iter()
+            .map(|(name, on)| crate::FormRow {
+                kind: "toggle".into(),
+                key: format!("power:{name}").into(),
+                title: pretty_name(&name).into(),
+                on,
+                shown: true,
+                ..Default::default()
+            })
+            .collect();
+        ui.set_power_rows(slint::ModelRc::new(slint::VecModel::from(rows)));
+    });
+    Ok(())
+}
+
+/// Spoolman's spools as rows, the active one marked; its name for the Extruder row.
+async fn list_spools(client: &Client, ui: &slint::Weak<AppWindow>) -> Result<(), moonraker::Error> {
+    let active = client
+        .call("server.spoolman.get_spool_id", Value::Null)
+        .await?["spool_id"]
+        .as_i64()
+        .unwrap_or(0);
+    let spools = client
+        .call(
+            "server.spoolman.proxy",
+            json!({ "request_method": "GET", "path": "/v1/spool", "use_v2_response": true }),
+        )
+        .await?;
+    let items: Vec<(i64, String, String, f64)> = spools["response"]
+        .as_array()
+        .map(|a| {
+            a.iter()
+                .filter(|s| !s["archived"].as_bool().unwrap_or(false))
+                .map(|s| {
+                    let f = &s["filament"];
+                    let title = [f["material"].as_str(), f["name"].as_str()]
+                        .into_iter()
+                        .flatten()
+                        .collect::<Vec<_>>()
+                        .join(" · ");
+                    let vendor = f["vendor"]["name"].as_str().unwrap_or_default().to_owned();
+                    let grams = s["remaining_weight"].as_f64().unwrap_or(0.0);
+                    (s["id"].as_i64().unwrap_or(0), title, vendor, grams)
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    let _ = ui.upgrade_in_event_loop(move |ui| {
+        use slint::ComponentHandle;
+        let text = ui.global::<crate::Strings>();
+        let grams = |g: f64| text.get_grams().replace("{}", &format!("{g:.0}"));
+        let mut active_name = String::new();
+        let rows: Vec<crate::FormRow> = items
+            .into_iter()
+            .map(|(id, title, vendor, left)| {
+                let sub = [vendor, grams(left), format!("#{id}")]
+                    .into_iter()
+                    .filter(|p| !p.is_empty())
+                    .collect::<Vec<_>>()
+                    .join(" · ");
+                if id == active {
+                    active_name = format!("{title} · {}", grams(left));
+                }
+                crate::FormRow {
+                    kind: "link".into(),
+                    key: format!("spool:{id}").into(),
+                    title: title.into(),
+                    sub: sub.into(),
+                    value: if id == active {
+                        text.get_active()
+                    } else {
+                        "".into()
+                    },
+                    shown: true,
+                    ..Default::default()
+                }
+            })
+            .collect();
+        ui.set_spool_rows(slint::ModelRc::new(slint::VecModel::from(rows)));
+        ui.set_active_spool(active_name.into());
+        ui.set_has_active_spool(active > 0);
     });
     Ok(())
 }
@@ -876,6 +1185,20 @@ fn gcode_for(cmd: &Command) -> Option<String> {
             speed * 60.0
         ),
         Command::MotorsOff => "M84".to_owned(),
+        Command::PauseAtLayer(n) if *n > 0 => format!("SET_PAUSE_AT_LAYER LAYER={n}"),
+        Command::PauseAtLayer(_) => "SET_PAUSE_AT_LAYER ENABLE=0".to_owned(),
+        Command::PauseNextLayer(on) => format!("SET_PAUSE_NEXT_LAYER ENABLE={}", u8::from(*on)),
+        Command::SetRetraction { key, value } => {
+            let param = match key.as_str() {
+                "retract-length" => "RETRACT_LENGTH",
+                "retract-speed" => "RETRACT_SPEED",
+                "unretract-extra" => "UNRETRACT_EXTRA_LENGTH",
+                "unretract-speed" => "UNRETRACT_SPEED",
+                _ => return None,
+            };
+            format!("SET_RETRACTION {param}={value:.2}")
+        }
+        Command::SetPin { name, on } => format!("SET_PIN PIN={name} VALUE={}", u8::from(*on)),
         Command::Extrude { length, speed } => format!(
             "SAVE_GCODE_STATE NAME=RIVET\nM83\nG1 E{length:.1} F{:.0}\nRESTORE_GCODE_STATE NAME=RIVET",
             speed * 60.0
@@ -937,6 +1260,34 @@ async fn execute(
             .await
             .map(drop),
         Command::Gcode(script) => client.gcode(script).await,
+        Command::SetTimelapse(on) => {
+            client
+                .call("machine.timelapse.post_settings", json!({ "enabled": on }))
+                .await?;
+            let on = *on;
+            let _ = ui.upgrade_in_event_loop(move |ui| ui.set_timelapse_on(on));
+            Ok(())
+        }
+        Command::SetPower { device, on } => {
+            client
+                .call(
+                    "machine.device_power.post_device",
+                    json!({ "device": device, "action": if *on { "on" } else { "off" } }),
+                )
+                .await?;
+            list_power(client, ui).await
+        }
+        Command::ListSpools => list_spools(client, ui).await,
+        Command::SetActiveSpool(id) => {
+            let id = if *id > 0 { json!(id) } else { Value::Null };
+            client
+                .call("server.spoolman.post_spool_id", json!({ "spool_id": id }))
+                .await?;
+            list_spools(client, ui).await
+        }
+        Command::OffAfterPrint(_) | Command::SaveZOffset | Command::Dry { .. } => {
+            unreachable!("handled in the loop")
+        }
         Command::SaveSetting { key, value } => client
             .call(
                 "server.database.post_item",
@@ -944,7 +1295,6 @@ async fn execute(
             )
             .await
             .map(drop),
-        Command::QueryEndstops => query_endstops(client, ui).await,
         Command::ClearConsole => Ok(()),
         Command::ListFiles => list_files(client, ui, thumbs).await,
         Command::FileDetails(path) => file_details(client, ui, thumbs, path).await,
@@ -965,6 +1315,10 @@ async fn execute(
         | Command::SetAir(_)
         | Command::Move { .. }
         | Command::GoTo { .. }
+        | Command::PauseAtLayer(_)
+        | Command::PauseNextLayer(_)
+        | Command::SetRetraction { .. }
+        | Command::SetPin { .. }
         | Command::MotorsOff
         | Command::Extrude { .. }
         | Command::SetNozzle(_)
@@ -1040,6 +1394,24 @@ fn set_fans(ui: &AppWindow, fans: &[model::Fan], air_modes: bool) {
     update_rows(&ui.get_fan_bars(), bars, |m| ui.set_fan_bars(m));
     update_rows(&ui.get_fan_extras(), extras, |m| ui.set_fan_extras(m));
     update_rows(&ui.get_fan_autos(), autos, |m| ui.set_fan_autos(m));
+}
+
+/// Replace a list on the screen only when something in it changed.
+fn replace_if_changed<T: Clone + PartialEq + 'static>(
+    shown: &slint::ModelRc<T>,
+    rows: Vec<T>,
+    replace: impl FnOnce(slint::ModelRc<T>),
+) {
+    use slint::Model;
+    if shown.row_count() == rows.len()
+        && rows
+            .iter()
+            .enumerate()
+            .all(|(i, r)| shown.row_data(i).as_ref() == Some(r))
+    {
+        return;
+    }
+    replace(slint::ModelRc::new(slint::VecModel::from(rows)));
 }
 
 /// `stepper_driver_fan` → `Stepper driver fan`, for fans we have no name for.
@@ -1122,6 +1494,32 @@ fn push(ui: &slint::Weak<AppWindow>, s: Snapshot) {
         ui.set_z_offset(s.z_offset as f32);
         ui.set_pressure_advance(s.pressure_advance as f32);
         ui.set_live_velocity(s.live_velocity as f32);
+        let caps = &s.caps;
+        // Pause at layer needs the slicer's layer numbers, or it never fires.
+        ui.set_has_pause_layer(caps.pause_at_layer && s.total_layers.is_some());
+        ui.set_pause_at_layer(s.pause_at_layer.map_or(0, |n| n as i32));
+        ui.set_pause_next(s.pause_next_layer);
+        ui.set_has_retraction(caps.firmware_retraction);
+        ui.set_retract_length(s.retraction.length as f32);
+        ui.set_retract_speed(s.retraction.speed as f32);
+        ui.set_unretract_extra(s.retraction.extra as f32);
+        ui.set_unretract_speed(s.retraction.unretract_speed as f32);
+        ui.set_has_auto_shutdown(caps.auto_shutdown);
+        ui.set_has_timelapse(caps.timelapse);
+        ui.set_has_spoolman(caps.spoolman);
+        let pins: Vec<crate::FormRow> = s
+            .pins
+            .iter()
+            .map(|(name, value)| crate::FormRow {
+                kind: "toggle".into(),
+                key: format!("pin:{name}").into(),
+                title: pretty_name(name).into(),
+                on: *value > 0.0,
+                shown: true,
+                ..Default::default()
+            })
+            .collect();
+        replace_if_changed(&ui.get_pin_rows(), pins, |m| ui.set_pin_rows(m));
         ui.set_fan_percent(s.fan_percent.round() as i32);
         set_fans(&ui, &s.fans, s.air_mode.is_some());
         ui.set_air_mode(s.air_mode.map_or(-1, i32::from));

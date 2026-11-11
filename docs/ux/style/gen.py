@@ -757,7 +757,6 @@ def build():
         ST('Скорость XY', '', 100, 10, 600, 10, ' мм/с', src='max: toolhead.max_velocity'),
         ST('Скорость Z', '', 10, 1, 25, 1, ' мм/с', src='max: configfile.settings.printer.max_z_velocity'),
         T('Инвертировать X', 'только на экране', False), T('Инвертировать Y', '', False), T('Инвертировать Z', '', False),
-        A('Проверить концевики', 'нажаты или нет'),
     ])
     # ---------- printing extras ----------
 if __name__ == '__main__':

@@ -42,6 +42,11 @@ const ALL: &[&str] = &[
     "extruder",
     "motion-more",
     "file-actions",
+    "layer-pause",
+    "retraction",
+    "dryer",
+    "spools",
+    "devices",
     "heating-bed",
     "files",
     "files-empty",
@@ -146,9 +151,15 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_bed_temp(80.0);
         }
         "more" => {
+            // The prototype page's state: every row this printer can have.
+            print("printing", 0.42);
             ui.set_screen("more".into());
             ui.set_has_light(true);
             ui.set_light_on(true);
+            ui.set_has_pause_layer(true);
+            ui.set_has_timelapse(true);
+            ui.set_timelapse_on(true);
+            ui.set_has_auto_shutdown(true);
         }
         "files" | "files-empty" | "file" => {
             let names = [
@@ -226,6 +237,95 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_goto_y(0.0);
             ui.set_goto_z(10.0);
         }
+        "layer-pause" => {
+            print("printing", 0.42);
+            ui.set_screen("layer-pause".into());
+            ui.set_layer(76);
+            ui.set_total_layers(180);
+            ui.set_has_pause_layer(true);
+            ui.set_pause_layer_pick(120.0);
+        }
+        "retraction" => {
+            ui.set_screen("retraction".into());
+            ui.set_has_retraction(true);
+            ui.set_retract_length(0.8);
+            ui.set_retract_speed(40.0);
+            ui.set_unretract_extra(0.0);
+            ui.set_unretract_speed(30.0);
+        }
+        "dryer" => {
+            ui.set_screen("dryer".into());
+            ui.set_dryer_minutes_left(-1);
+        }
+        "spools" | "devices" => {
+            ui.set_screen(name.into());
+            let row = |kind: &str, key: &str, title: &str, sub: &str, value: &str, on: bool| {
+                rivet::FormRow {
+                    kind: kind.into(),
+                    key: key.into(),
+                    title: title.into(),
+                    sub: sub.into(),
+                    value: value.into(),
+                    on,
+                    shown: true,
+                    ..Default::default()
+                }
+            };
+            let spools = vec![
+                row(
+                    "link",
+                    "spool:12",
+                    "PETG · синий",
+                    "Polymaker · 640 г · #12",
+                    "активна",
+                    false,
+                ),
+                row(
+                    "link",
+                    "spool:9",
+                    "PLA · белый",
+                    "eSun · 910 г · #9",
+                    "",
+                    false,
+                ),
+                row(
+                    "link",
+                    "spool:4",
+                    "PLA · чёрный",
+                    "eSun · 210 г · #4",
+                    "",
+                    false,
+                ),
+                row(
+                    "link",
+                    "spool:15",
+                    "TPU · красный",
+                    "Overture · 450 г · #15",
+                    "",
+                    false,
+                ),
+            ];
+            ui.set_spool_rows(slint::ModelRc::new(slint::VecModel::from(spools)));
+            ui.set_has_active_spool(true);
+            let power = vec![row(
+                "toggle",
+                "power:camera",
+                "Розетка камеры",
+                "",
+                "",
+                false,
+            )];
+            ui.set_power_rows(slint::ModelRc::new(slint::VecModel::from(power)));
+            let pins = vec![row(
+                "toggle",
+                "pin:light_relay",
+                "Реле подсветки",
+                "",
+                "",
+                true,
+            )];
+            ui.set_pin_rows(slint::ModelRc::new(slint::VecModel::from(pins)));
+        }
         "file-actions" => {
             ui.set_screen("file-actions".into());
             ui.set_open_name("Корпус вентилятора №2".into());
@@ -277,6 +377,11 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_min_extrude_temp(170.0);
             ui.set_extruder_temp(240.0);
             ui.set_extruder_target(240.0);
+            ui.set_has_spoolman(true);
+            ui.set_has_active_spool(true);
+            ui.set_active_spool("PETG · синий · 640 г".into());
+            ui.set_has_retraction(true);
+            ui.set_retract_length(0.8);
         }
         "heating" | "heating-bed" => {
             ui.set_screen("heating".into());
@@ -375,6 +480,18 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_screen("control".into());
             ui.set_toast_detail("Must home axis first".into());
             ui.set_toast_kind("rpc".into());
+        }
+        "control" => {
+            ui.set_screen("control".into());
+            // The prototype shows the Devices tile: one output pin is enough.
+            let pin = rivet::FormRow {
+                kind: "toggle".into(),
+                key: "pin:light_relay".into(),
+                title: "Light relay".into(),
+                shown: true,
+                ..Default::default()
+            };
+            ui.set_pin_rows(slint::ModelRc::new(slint::VecModel::from(vec![pin])));
         }
         screen => {
             ui.set_print_state("standby".into());

@@ -221,6 +221,81 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
     }
     {
         let tx = tx.clone();
+        ui.on_pause_at(move |layer| {
+            let _ = tx.send(Command::PauseAtLayer(layer.max(0) as u32));
+        });
+    }
+    {
+        let tx = tx.clone();
+        ui.on_pause_next_layer(move |on| {
+            let _ = tx.send(Command::PauseNextLayer(on));
+        });
+    }
+    {
+        let tx = tx.clone();
+        ui.on_set_retraction(move |key, value| {
+            let _ = tx.send(Command::SetRetraction {
+                key: key.to_string(),
+                value,
+            });
+        });
+    }
+    {
+        let tx = tx.clone();
+        ui.on_off_after(move |on| {
+            let _ = tx.send(Command::OffAfterPrint(on));
+        });
+    }
+    {
+        let tx = tx.clone();
+        ui.on_set_timelapse(move |on| {
+            let _ = tx.send(Command::SetTimelapse(on));
+        });
+    }
+    ui.on_save_z_offset(send(Command::SaveZOffset));
+    ui.on_list_spools(send(Command::ListSpools));
+    {
+        let tx = tx.clone();
+        // "spool:12" picks that spool; "spool-clear" clears the active one.
+        ui.on_pick_spool(move |key| {
+            let id = key
+                .strip_prefix("spool:")
+                .and_then(|n| n.parse().ok())
+                .unwrap_or(0);
+            let _ = tx.send(Command::SetActiveSpool(id));
+        });
+    }
+    {
+        let tx = tx.clone();
+        // Row keys carry what they switch: "power:<device>" or "pin:<name>".
+        ui.on_device_toggled(move |key, on| {
+            let cmd = if let Some(device) = key.strip_prefix("power:") {
+                Command::SetPower {
+                    device: device.to_owned(),
+                    on,
+                }
+            } else if let Some(name) = key.strip_prefix("pin:") {
+                Command::SetPin {
+                    name: name.to_owned(),
+                    on,
+                }
+            } else {
+                return;
+            };
+            let _ = tx.send(cmd);
+        });
+    }
+    {
+        let tx = tx.clone();
+        ui.on_dry(move |temp, minutes| {
+            let _ = tx.send(Command::Dry {
+                temp,
+                minutes: minutes.max(0) as u32,
+            });
+        });
+    }
+    {
+        let tx = tx.clone();
         let weak = ui.as_weak();
         ui.on_go_to(move |x, y, z| {
             let Some(ui) = weak.upgrade() else { return };
@@ -230,12 +305,6 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
                 z,
                 speed: ui.get_jog_xy_speed(),
             });
-        });
-    }
-    {
-        let tx = tx.clone();
-        ui.on_query_endstops(move || {
-            let _ = tx.send(Command::QueryEndstops);
         });
     }
     {
