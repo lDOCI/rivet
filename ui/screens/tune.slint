@@ -4,6 +4,7 @@ import { Header, SectionLabel } from "../kit/controls.slint";
 import { InfoRow, SegmentedRow, ActionRow, LinkRow, ToggleRow } from "../kit/rows.slint";
 import { VBar, FineStepper, Stepper } from "../kit/values.slint";
 import { ScrollList } from "../kit/scroll.slint";
+import { Format } from "../kit/format.slint";
 
 export component FansScreen inherits VerticalLayout {
     horizontal-stretch: 1;
@@ -115,6 +116,98 @@ export component PrintMoreScreen inherits VerticalLayout {
             title: @tr("Light");
             checked <=> root.light-on;
             toggled(on) => { root.set-light(on); }
+        }
+    }
+}
+
+export component LightScreen inherits VerticalLayout {
+    horizontal-stretch: 1;
+    in property <bool> has-light;
+    in property <float> level;
+    callback back;
+    callback set-level(float);
+    padding: Tokens.pad;
+    padding-bottom: 0;
+    spacing: 10px;
+    Header { title: @tr("Light"); back-clicked => { root.back(); } }
+    HorizontalLayout {
+        vertical-stretch: 1;
+        padding-bottom: Tokens.pad;
+        alignment: start;
+        if root.has-light: VBar {
+            label: @tr("Light");
+            value: root.level;
+            off-at-zero: true;
+            step: 5;
+            committed(v) => { root.set-level(v); }
+        }
+    }
+}
+
+export component SpeedScreen inherits VerticalLayout {
+    horizontal-stretch: 1;
+    in property <float> speed: 100;
+    in property <float> flow: 100;
+    callback back;
+    callback set-speed(float);
+    callback set-flow(float);
+    callback edit(string);
+    padding: Tokens.pad;
+    padding-bottom: 0;
+    spacing: 10px;
+    Header { title: @tr("Speed and flow"); back-clicked => { root.back(); } }
+    ScrollList {
+        vertical-stretch: 1;
+        FineStepper {
+            title: @tr("Speed");
+            sub: @tr("of the slicer speed");
+            label: round(root.speed) + "%";
+            changed: round(root.speed) != 100;
+            was: "100%";
+            big: "10"; small: "1"; big-step: 10; small-step: 1;
+            step(d) => { root.set-speed(max(10, min(300, round(root.speed) + d))); }
+            edit => { root.edit("speed"); }
+        }
+        FineStepper {
+            title: @tr("Flow");
+            sub: @tr("how much plastic");
+            label: round(root.flow) + "%";
+            changed: round(root.flow) != 100;
+            was: "100%";
+            big: "5"; small: "1"; big-step: 5; small-step: 1;
+            step(d) => { root.set-flow(max(50, min(150, round(root.flow) + d))); }
+            edit => { root.edit("flow"); }
+        }
+        ActionRow {
+            title: @tr("Reset speed and flow");
+            sub: @tr("back to 100%");
+            clicked => { root.set-speed(100); root.set-flow(100); }
+        }
+    }
+}
+
+export component ZOffsetScreen inherits VerticalLayout {
+    horizontal-stretch: 1;
+    in property <float> z-offset;
+    in property <float> z-start;
+    callback back;
+    callback adjust-z(float);
+    callback edit(string);
+    padding: Tokens.pad;
+    padding-bottom: 0;
+    spacing: 10px;
+    Header { title: @tr("Z-offset"); back-clicked => { root.back(); } }
+    ScrollList {
+        vertical-stretch: 1;
+        FineStepper {
+            title: @tr("Z-offset, mm");
+            sub: @tr("applies at once");
+            label: Format.signed(root.z-offset, 2);
+            changed: round(root.z-offset * 100) != round(root.z-start * 100);
+            was: Format.signed(root.z-start, 2);
+            big: "0.05"; small: "0.01"; big-step: 0.05; small-step: 0.01;
+            step(d) => { root.adjust-z(d); }
+            edit => { root.edit("z"); }
         }
     }
 }

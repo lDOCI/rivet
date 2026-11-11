@@ -146,11 +146,12 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
     {
         let tx = tx.clone();
         let weak = ui.as_weak();
-        ui.on_set_light(move |on| {
+        // Percent from the screen; a switch sends 0 or 100.
+        ui.on_set_light_level(move |percent| {
             if let Some(ui) = weak.upgrade() {
                 let _ = tx.send(Command::SetLight {
                     name: ui.get_light_name().to_string(),
-                    on,
+                    level: percent / 100.0,
                     white: ui.get_light_white(),
                 });
             }

@@ -2,7 +2,7 @@ import { Tokens } from "kit/tokens.slint";
 import { Rail } from "kit/rail.slint";
 import { ControlScreen } from "screens/control.slint";
 import { SettingsScreen } from "screens/settings.slint";
-import { FansScreen, PrintTuneScreen, PrintMoreScreen } from "screens/tune.slint";
+import { FansScreen, PrintTuneScreen, PrintMoreScreen, LightScreen, SpeedScreen, ZOffsetScreen } from "screens/tune.slint";
 import { Dialog, Keypad } from "kit/dialogs.slint";
 import { StatusScreen } from "screens/status.slint";
 import { Toast } from "kit/toast.slint";
@@ -68,7 +68,7 @@ export component AppWindow inherits Window {
     callback set-flow(float);
     callback adjust-z(float);
     callback set-pressure-advance(float);
-    callback set-light(bool);
+    callback set-light-level(float);
     callback move-axis(int, float);
     callback motors-off();
     callback extrude(float, float);
@@ -112,6 +112,7 @@ export component AppWindow inherits Window {
     in property <int> fan-percent;
     in property <bool> has-light;
     in-out property <bool> light-on;
+    in property <float> light-level;
     in property <string> light-name;
     in property <bool> light-white;
     property <float> tune-z-start;
@@ -137,12 +138,24 @@ export component AppWindow inherits Window {
     // Current screen. Rail sections: home, control, tools, settings, messages.
     in-out property <string> screen: "home";
 
+    // Open the keypad for one of the tuning values: "speed" | "flow" | "z" | "pa".
+    function open-tune-keypad(what: string) {
+        root.keypad-target = what;
+        root.keypad-negative = what == "z";
+        root.keypad-title = what == "speed" ? @tr("Speed, %") : what == "flow" ? @tr("Flow, %") : what == "z" ? @tr("Z-offset, mm") : @tr("Pressure advance");
+        root.keypad-current = what == "speed" ? "" + round(root.speed-percent) : what == "flow" ? "" + round(root.flow-percent) : what == "z" ? "" + round(root.z-offset * 100) / 100 : "" + round(root.pressure-advance * 1000) / 1000;
+        root.keypad-min = what == "speed" ? 10 : what == "flow" ? 50 : what == "z" ? -2 : 0;
+        root.keypad-max = what == "speed" ? 300 : what == "flow" ? 150 : what == "z" ? 2 : 1;
+        root.keypad-hint = what == "speed" ? "10 … 300" : what == "flow" ? "50 … 150" : what == "z" ? "−2 … 2" : "0 … 1";
+        root.overlay = "keypad";
+    }
+
     property <bool> ready: root.link-state == "ready";
     property <bool> busy: root.ready && (root.print-state == "printing" || root.print-state == "paused");
 
     HorizontalLayout {
         Rail {
-            active: !root.ready ? "" : (root.screen == "fans" || root.screen == "heating" || root.screen == "motion" || root.screen == "extruder") ? "control"
+            active: !root.ready ? "" : (root.screen == "fans" || root.screen == "heating" || root.screen == "motion" || root.screen == "extruder" || root.screen == "light" || root.screen == "speed" || root.screen == "zoffset") ? "control"
                 : (root.screen == "control" || root.screen == "tools" || root.screen == "settings" || root.screen == "messages") ? root.screen
                 : "home";
             navigate(section) => { root.screen = section; }
@@ -157,12 +170,34 @@ export component AppWindow inherits Window {
             max-nozzle: root.nozzle-limit;
             max-bed: root.bed-limit;
             fan-percent: root.fan-percent;
-            light-text: root.has-light ? (root.light-on ? @tr("on") : @tr("off")) : "";
+            light-text: root.has-light ? (root.light-on ? round(root.light-level) + "%" : @tr("off")) : "";
             speed-percent: round(root.speed-percent);
             z-offset: root.z-offset;
             open(target) => {
-                if (target == "fans" || target == "heating" || target == "motion" || target == "extruder") { root.screen = target; }
+                if (target == "zoffset") { root.tune-z-start = root.z-offset; }
+                if (target == "fans" || target == "heating" || target == "motion" || target == "extruder" || target == "light" || target == "speed" || target == "zoffset") { root.screen = target; }
             }
+        }
+        if root.ready && root.screen == "light": LightScreen {
+            has-light: root.has-light;
+            level: root.light-level;
+            back => { root.screen = "control"; }
+            set-level(v) => { root.set-light-level(v); }
+        }
+        if root.ready && root.screen == "speed": SpeedScreen {
+            speed: root.speed-percent;
+            flow: root.flow-percent;
+            back => { root.screen = "control"; }
+            set-speed(p) => { root.set-speed(p); }
+            set-flow(p) => { root.set-flow(p); }
+            edit(what) => { root.open-tune-keypad(what); }
+        }
+        if root.ready && root.screen == "zoffset": ZOffsetScreen {
+            z-offset: root.z-offset;
+            z-start: root.tune-z-start;
+            back => { root.screen = "control"; }
+            adjust-z(d) => { root.adjust-z(d); }
+            edit(what) => { root.open-tune-keypad(what); }
         }
         if root.ready && root.screen == "motion": MotionScreen {
             pos-x: root.position-x;
@@ -215,7 +250,7 @@ export component AppWindow inherits Window {
             has-light: root.has-light;
             light-on <=> root.light-on;
             back => { root.screen = "home"; }
-            set-light(on) => { root.set-light(on); }
+            set-light(on) => { root.set-light-level(on ? 100 : 0); }
         }
         if root.ready && root.screen == "tune": PrintTuneScreen {
             speed: root.speed-percent;
@@ -230,16 +265,7 @@ export component AppWindow inherits Window {
             set-flow(p) => { root.set-flow(p); }
             adjust-z(d) => { root.adjust-z(d); }
             set-pressure-advance(v) => { root.set-pressure-advance(v); }
-            edit(what) => {
-                root.keypad-target = what;
-                root.keypad-negative = what == "z";
-                root.keypad-title = what == "speed" ? @tr("Speed, %") : what == "flow" ? @tr("Flow, %") : what == "z" ? @tr("Z-offset, mm") : @tr("Pressure advance");
-                root.keypad-current = what == "speed" ? "" + round(root.speed-percent) : what == "flow" ? "" + round(root.flow-percent) : what == "z" ? "" + round(root.z-offset * 100) / 100 : "" + round(root.pressure-advance * 1000) / 1000;
-                root.keypad-min = what == "speed" ? 10 : what == "flow" ? 50 : what == "z" ? -2 : 0;
-                root.keypad-max = what == "speed" ? 300 : what == "flow" ? 150 : what == "z" ? 2 : 1;
-                root.keypad-hint = what == "speed" ? "10 … 300" : what == "flow" ? "50 … 150" : what == "z" ? "−2 … 2" : "0 … 1";
-                root.overlay = "keypad";
-            }
+            edit(what) => { root.open-tune-keypad(what); }
         }
 
         if root.ready && root.screen == "home" && root.busy: PrintingScreen {
