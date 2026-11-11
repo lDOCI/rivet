@@ -1128,3 +1128,9 @@ msgstr "Продолжить печать"
 
 msgid "the sensor sees no filament yet"
 msgstr "датчик пока не видит пруток"
+
+msgid "FROM A MACRO"
+msgstr "ИЗ МАКРОСА"
+
+msgid "Close"
+msgstr "Закрыть"

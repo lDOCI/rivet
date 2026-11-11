@@ -126,6 +126,78 @@ export component StopDialog inherits Rectangle {
     }
 }
 
+export struct PromptButton { label: string, gcode: string, style: string }
+
+// A macro asks: its title, text and buttons (Klipper's action:prompt). The
+// prototype's Prompt page; the close mark ends the prompt without an answer.
+export component PromptDialog inherits Rectangle {
+    in property <string> title;
+    in property <string> text;
+    in property <[PromptButton]> buttons;
+    callback pressed(string);
+    callback closed;
+    Backdrop { }
+    Rectangle {
+        width: 608px;
+        height: body.preferred-height;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        border-radius: 28px;
+        background: Tokens.surface-1;
+        body := VerticalLayout {
+            padding: 24px;
+            spacing: 0;
+            HorizontalLayout {
+                Text { text: @tr("FROM A MACRO"); color: Tokens.text-faint; font-size: 13px; font-weight: 700; letter-spacing: 0.5px; vertical-alignment: center; horizontal-stretch: 1; }
+                Rectangle {
+                    width: 40px;
+                    height: 40px;
+                    border-radius: 14px;
+                    background: close-ta.pressed ? Tokens.surface-3 : Tokens.surface-2;
+                    accessible-role: button;
+                    accessible-label: @tr("Close");
+                    accessible-action-default => { root.closed(); }
+                    Icon { d: "M6 6l12 12M18 6 6 18"; size: 18px; weight: 2; }
+                    close-ta := TouchArea { clicked => { root.closed(); } }
+                }
+            }
+            Rectangle { height: 4px; }
+            Text { text: root.title; color: Tokens.text; font-size: 26px; font-weight: 800; wrap: word-wrap; }
+            if root.text != "": VerticalLayout {
+                padding-top: 12px;
+                Text { text: root.text; color: #c7cdd4; font-size: 17px; wrap: word-wrap; }
+            }
+            Rectangle { height: 18px; }
+            HorizontalLayout {
+                spacing: 10px;
+                height: 76px;
+                for b in root.buttons: Rectangle {
+                    horizontal-stretch: 1;
+                    preferred-width: 0px;
+                    min-width: 0px;
+                    border-radius: 20px;
+                    background: b.style == "primary" ? (ta.pressed ? Tokens.accent.darker(15%) : Tokens.accent)
+                        : b.style == "error" ? (ta.pressed ? #fb4b5e.darker(15%) : #fb4b5e)
+                        : ta.pressed ? Tokens.surface-3 : Tokens.surface-2;
+                    accessible-role: button;
+                    accessible-label: b.label;
+                    accessible-action-default => { root.pressed(b.gcode); }
+                    Text {
+                        text: b.label;
+                        color: b.style == "primary" ? Tokens.accent-ink : b.style == "error" ? #ffffff : b.style == "warning" ? Tokens.warn : Tokens.text;
+                        font-size: 17px;
+                        font-weight: b.style == "primary" ? 800 : 700;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                        overflow: elide;
+                    }
+                    ta := TouchArea { clicked => { root.pressed(b.gcode); } }
+                }
+            }
+        }
+    }
+}
+
 component Key inherits Rectangle {
     in property <string> text;
     in property <bool> enabled: true;

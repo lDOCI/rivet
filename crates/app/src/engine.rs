@@ -237,6 +237,7 @@ pub async fn run(
     // A failed command leaves our optimistic value wrong: ask the printer.
     let (resync_tx, mut resync_rx) = mpsc::unbounded_channel::<Internal>();
     let mut shown_console = u64::MAX;
+    let mut shown_prompt = 0u64;
     let mut shown_macros: Vec<String> = Vec::new();
     // "Turn on at startup" is applied once per start of Rivet, when the light is known.
     let mut light_start_done = false;
@@ -359,6 +360,10 @@ pub async fn run(
                 if shown_console != state.console_revision {
                     shown_console = state.console_revision;
                     push_console(&ui, &state.console);
+                }
+                if shown_prompt != state.prompt_revision {
+                    shown_prompt = state.prompt_revision;
+                    push_prompt(&ui, state.prompt.clone());
                 }
                 if shown_macros != state.macros {
                     shown_macros.clone_from(&state.macros);
@@ -500,6 +505,7 @@ async fn handle_event(ev: Event, client: &Client, state: &mut PrinterState) {
             }
             "notify_gcode_response" => {
                 if let Some(line) = params.get(0).and_then(Value::as_str) {
+                    state.prompt_line(line);
                     state.push_console(line.to_owned(), model::line_kind(line));
                 }
             }
@@ -528,6 +534,27 @@ enum Internal {
     Resync,
     /// Klipper's reason a command failed, for the console.
     ConsoleError(String),
+}
+
+/// A macro's prompt to the dialog, or close it.
+fn push_prompt(ui: &slint::Weak<AppWindow>, prompt: Option<model::Prompt>) {
+    let _ = ui.upgrade_in_event_loop(move |ui| {
+        let prompt = prompt.unwrap_or_default();
+        let shown = !prompt.title.is_empty() || !prompt.buttons.is_empty();
+        let buttons: Vec<crate::PromptButton> = prompt
+            .buttons
+            .into_iter()
+            .map(|b| crate::PromptButton {
+                label: b.label.into(),
+                gcode: b.gcode.into(),
+                style: b.style.into(),
+            })
+            .collect();
+        ui.set_prompt_title(prompt.title.into());
+        ui.set_prompt_text(prompt.text.join("\n").into());
+        ui.set_prompt_buttons(slint::ModelRc::new(slint::VecModel::from(buttons)));
+        ui.set_prompt_shown(shown);
+    });
 }
 
 fn push_console(ui: &slint::Weak<AppWindow>, lines: &[(String, model::LineKind)]) {

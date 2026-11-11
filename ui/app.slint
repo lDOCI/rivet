@@ -16,7 +16,8 @@ export global Strings {
 import { Format } from "kit/format.slint";
 // Rust formats durations for rows it builds (the queue) the same way.
 export { Format }
-import { Dialog, Keypad, StopDialog } from "kit/dialogs.slint";
+import { Dialog, Keypad, StopDialog, PromptDialog, PromptButton } from "kit/dialogs.slint";
+export { PromptButton }
 import { StatusScreen } from "screens/status.slint";
 import { Toast } from "kit/toast.slint";
 import { HomeScreen } from "screens/home.slint";
@@ -339,6 +340,12 @@ export component AppWindow inherits Window {
     // or ends, also once new filament is in.
     in-out property <bool> runout;
     changed filament-out => { if (root.filament-out && root.print-state == "paused") { root.runout = true; } }
+
+    // A macro's prompt (action:prompt), shown over everything.
+    in property <bool> prompt-shown;
+    in property <string> prompt-title;
+    in property <string> prompt-text;
+    in property <[PromptButton]> prompt-buttons;
 
     property <bool> ready: root.link-state == "ready";
     property <bool> busy: root.ready && (root.print-state == "printing" || root.print-state == "paused");
@@ -832,6 +839,14 @@ export component AppWindow inherits Window {
             : root.toast-kind == "timeout" ? @tr("The printer did not answer")
             : root.toast-detail;
         dismissed => { root.toast-kind = ""; }
+    }
+    if root.prompt-shown && root.ready: PromptDialog {
+        title: root.prompt-title;
+        text: root.prompt-text;
+        buttons: root.prompt-buttons;
+        pressed(gcode) => { root.run-gcode(gcode); }
+        // Closing without an answer ends the prompt for every screen, as Mainsail does.
+        closed => { root.run-gcode("RESPOND TYPE=command MSG=action:prompt_end"); }
     }
     if root.overlay == "cancel-print": StopDialog {
         title: @tr("Stop the print?");

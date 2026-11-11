@@ -170,7 +170,48 @@ pub struct PrinterState {
     /// Console log, oldest first; `console_revision` changes with it.
     pub console: Vec<(String, LineKind)>,
     pub console_revision: u64,
+    /// A macro's question to the user (`action:prompt_*`); `None` when closed.
+    pub prompt: Option<Prompt>,
+    /// The prompt being built between `prompt_begin` and `prompt_show`.
+    prompt_draft: Option<Prompt>,
+    pub prompt_revision: u64,
     status: Value,
+}
+
+/// A dialog a macro opens with `RESPOND TYPE=command MSG="action:prompt_…"`.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Prompt {
+    pub title: String,
+    pub text: Vec<String>,
+    /// Buttons in the body and in the footer, in order.
+    pub buttons: Vec<PromptButton>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct PromptButton {
+    pub label: String,
+    /// G-code to run; the label itself when the macro gave none.
+    pub gcode: String,
+    /// "primary", "secondary", "info", "warning", "error" or "".
+    pub style: String,
+}
+
+impl PromptButton {
+    fn parse(args: &str) -> Self {
+        let mut parts = args.split('|').map(str::trim);
+        let label = parts.next().unwrap_or_default().to_owned();
+        let gcode = parts
+            .next()
+            .filter(|g| !g.is_empty())
+            .unwrap_or(&label)
+            .to_owned();
+        let style = parts.next().unwrap_or_default().to_owned();
+        Self {
+            label,
+            gcode,
+            style,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
@@ -737,6 +778,45 @@ impl PrinterState {
         self.console_revision += 1;
     }
 
+    /// Follow a macro's `action:prompt_*` lines. Returns true when the shown
+    /// prompt changed.
+    pub fn prompt_line(&mut self, line: &str) -> bool {
+        let Some(rest) = line.trim().strip_prefix("// action:prompt_") else {
+            return false;
+        };
+        let (cmd, arg) = rest.split_once(' ').unwrap_or((rest, ""));
+        let arg = arg.trim();
+        match cmd {
+            "begin" => {
+                self.prompt_draft = Some(Prompt {
+                    title: arg.to_owned(),
+                    ..Prompt::default()
+                });
+                return false;
+            }
+            "text" => {
+                if let Some(d) = self.prompt_draft.as_mut() {
+                    d.text.push(arg.to_owned());
+                }
+                return false;
+            }
+            "button" | "footer_button" => {
+                if let Some(d) = self.prompt_draft.as_mut() {
+                    d.buttons.push(PromptButton::parse(arg));
+                }
+                return false;
+            }
+            "show" => self.prompt = self.prompt_draft.clone(),
+            "end" => {
+                self.prompt = None;
+                self.prompt_draft = None;
+            }
+            _ => return false,
+        }
+        self.prompt_revision += 1;
+        true
+    }
+
     pub fn clear_console(&mut self) {
         self.console.clear();
         self.console_revision += 1;
@@ -1056,6 +1136,35 @@ mod tests {
         assert_eq!(error_kind("Something else"), "");
         assert_eq!(error_kind("Shutdown due to webhooks request"), "estop");
         assert_eq!(error_kind("Shutdown due to M112 command"), "estop");
+    }
+
+    #[test]
+    fn macro_prompt() {
+        let mut st = PrinterState::default();
+        for line in [
+            "// action:prompt_begin Filament change",
+            "// action:prompt_text Insert the new strand.",
+            "// action:prompt_button Unload|UNLOAD_FILAMENT|secondary",
+            "// action:prompt_button_group_start",
+            "// action:prompt_footer_button Resume|RESUME|primary",
+            "// action:prompt_button Close",
+        ] {
+            assert!(!st.prompt_line(line));
+        }
+        assert!(st.prompt.is_none());
+        assert!(st.prompt_line("// action:prompt_show"));
+        let p = st.prompt.clone().unwrap();
+        assert_eq!(p.title, "Filament change");
+        assert_eq!(p.text, ["Insert the new strand."]);
+        assert_eq!(p.buttons.len(), 3);
+        assert_eq!(
+            (p.buttons[1].gcode.as_str(), p.buttons[1].style.as_str()),
+            ("RESUME", "primary")
+        );
+        assert_eq!(p.buttons[2].gcode, "Close");
+        assert!(st.prompt_line("// action:prompt_end"));
+        assert!(st.prompt.is_none());
+        assert!(!st.prompt_line("ok"));
     }
 
     #[test]

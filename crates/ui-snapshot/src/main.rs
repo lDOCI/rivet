@@ -61,6 +61,7 @@ const ALL: &[&str] = &[
     "dialog",
     "estop",
     "runout",
+    "prompt",
     "keypad",
     "toast",
 ];
@@ -123,6 +124,7 @@ fn show(ui: &AppWindow, name: &str) {
     ui.set_link_state("ready".into());
     ui.set_overlay("".into());
     ui.set_runout(false);
+    ui.set_prompt_shown(false);
     ui.set_filament_out(false);
     ui.set_ambient(false);
     ui.set_toast_kind("".into());
@@ -534,6 +536,22 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_filename("Корпус вентилятора №2.gcode".into());
             ui.set_progress(0.42);
             ui.set_overlay("cancel-print".into());
+        }
+        "prompt" => {
+            ui.set_prompt_title("Смена филамента".into());
+            ui.set_prompt_text("Вставьте новый пруток и нажмите «Загрузить». Когда пойдёт чистый цвет — «Продолжить».".into());
+            let b = |label: &str, style: &str| rivet::PromptButton {
+                label: label.into(),
+                gcode: label.into(),
+                style: style.into(),
+            };
+            let buttons = vec![
+                b("Выгрузить", ""),
+                b("Загрузить", ""),
+                b("Продолжить", "primary"),
+            ];
+            ui.set_prompt_buttons(slint::ModelRc::new(slint::VecModel::from(buttons)));
+            ui.set_prompt_shown(true);
         }
         "runout" => {
             print("paused", 0.42);
