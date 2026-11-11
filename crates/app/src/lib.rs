@@ -31,9 +31,37 @@ pub fn apply_language(lang: &str) {
     }
 }
 
+/// Longest text the on-screen keyboard builds.
+const MAX_TEXT: usize = 200;
+
+/// New text after pressing `key` on the on-screen keyboard: "⌫" erases the
+/// last character, anything else is added. Enter, shift and the symbol switch
+/// are handled by the keyboard itself.
+pub fn apply_key(text: &str, key: &str) -> String {
+    match key {
+        "⌫" => {
+            let mut chars = text.chars();
+            chars.next_back();
+            chars.as_str().to_owned()
+        }
+        _ if text.chars().count() + key.chars().count() > MAX_TEXT => text.to_owned(),
+        _ => format!("{text}{key}"),
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::language;
+    use super::{apply_key, language};
+
+    #[test]
+    fn keyboard_editing() {
+        assert_eq!(apply_key("G2", "8"), "G28");
+        assert_eq!(apply_key("G28", "⌫"), "G2");
+        assert_eq!(apply_key("", "⌫"), "");
+        // Backspace removes a whole character, not a byte.
+        assert_eq!(apply_key("Ёж", "⌫"), "Ё");
+        assert_eq!(apply_key(&"a".repeat(200), "b").len(), 200);
+    }
 
     #[test]
     fn language_choice_order() {

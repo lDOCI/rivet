@@ -1,0 +1,140 @@
+// Tools: the hub, the console and the macro list.
+import { Tokens } from "../kit/tokens.slint";
+import { Icons } from "../kit/icons.slint";
+import { Header, PrimaryButton, SecondaryButton } from "../kit/controls.slint";
+import { Tile, ActionRow } from "../kit/rows.slint";
+import { ScrollList } from "../kit/scroll.slint";
+import { Keyboard } from "../kit/keyboard.slint";
+
+// kind: 0 sent by the user, 1 answer, 2 notice (//), 3 error (!!)
+export struct ConsoleLine {
+    text: string,
+    kind: int,
+}
+
+export component ToolsScreen inherits VerticalLayout {
+    horizontal-stretch: 1;
+    in property <int> macro-count;
+    callback open(string);
+    padding: Tokens.pad;
+    spacing: Tokens.gap;
+    Header { title: @tr("Tools"); back: false; }
+    GridLayout {
+        spacing: Tokens.gap;
+        vertical-stretch: 1;
+        Row {
+            Tile { icon: Icons.console; label: @tr("Console"); sub: @tr("G-code by hand"); clicked => { root.open("console"); } }
+            Tile {
+                icon: Icons.macro;
+                label: @tr("Macros");
+                sub: @tr("{n} macro" | "{n} macros" % root.macro-count);
+                clicked => { root.open("macros"); }
+            }
+            Rectangle { horizontal-stretch: 1; }
+            Rectangle { horizontal-stretch: 1; }
+        }
+    }
+}
+
+export component ConsoleScreen inherits VerticalLayout {
+    horizontal-stretch: 1;
+    in property <[ConsoleLine]> lines;
+    in-out property <string> text;
+    in-out property <bool> keyboard-open;
+    callback back;
+    callback run(string);
+    callback clear;
+    callback apply-key(string, string) -> string;
+    padding: Tokens.pad;
+    padding-bottom: 8px;
+    spacing: 8px;
+
+    property <int> count: root.lines.length;
+    changed count => { log.scroll-to-end(); }
+
+    function send() {
+        root.run(root.text);
+        root.text = "";
+        root.keyboard-open = false;
+    }
+
+    if !root.keyboard-open: Header {
+        title: @tr("Console");
+        back-clicked => { root.back(); }
+        SecondaryButton { width: 120px; text: @tr("Clear"); font-size: 15px; clicked => { root.clear(); } }
+    }
+    log := ScrollList {
+        vertical-stretch: 1;
+        spacing: 4px;
+        for line in root.lines: Text {
+            text: line.text;
+            wrap: word-wrap;
+            font-size: 15px;
+            color: line.kind == 0 ? Tokens.accent-hi : line.kind == 2 ? Tokens.warn-text : line.kind == 3 ? Tokens.danger : Tokens.text-2;
+        }
+    }
+    if !root.keyboard-open: HorizontalLayout {
+        height: 56px;
+        spacing: 8px;
+        for cmd in ["G28", "M105", "QUERY_ENDSTOPS", "STATUS", "M114"]: SecondaryButton {
+            text: cmd;
+            font-size: 15px;
+            min-width: 0;
+            clicked => { root.run(cmd); }
+        }
+    }
+    HorizontalLayout {
+        height: 60px;
+        spacing: 8px;
+        Rectangle {
+            horizontal-stretch: 1;
+            border-radius: 18px;
+            background: Tokens.surface-1;
+            border-width: root.keyboard-open ? 2px : 0;
+            border-color: Tokens.accent;
+            accessible-role: button;
+            accessible-label: @tr("Command, tap to type");
+            accessible-action-default => { root.keyboard-open = true; }
+            Text {
+                x: 18px;
+                width: parent.width - 36px;
+                text: root.text != "" ? root.text + (root.keyboard-open ? "▏" : "") : (root.keyboard-open ? "▏" : @tr("G-code or macro"));
+                color: root.text != "" ? Tokens.text : Tokens.text-faint;
+                font-size: 17px;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+            TouchArea { clicked => { root.keyboard-open = true; } }
+        }
+        PrimaryButton {
+            width: 130px;
+            min-height: 60px;
+            text: @tr("Send");
+            enabled: root.text != "";
+            clicked => { root.send(); }
+        }
+    }
+    if root.keyboard-open: Keyboard {
+        key(k) => {
+            if (k == "⏎") { root.send(); } else { root.text = root.apply-key(root.text, k); }
+        }
+    }
+}
+
+export component MacrosScreen inherits VerticalLayout {
+    horizontal-stretch: 1;
+    in property <[string]> macros;
+    callback back;
+    callback pick(string);
+    padding: Tokens.pad;
+    padding-bottom: 0;
+    spacing: Tokens.gap-s;
+    Header { title: @tr("Macros"); back-clicked => { root.back(); } }
+    ScrollList {
+        vertical-stretch: 1;
+        for name in root.macros: ActionRow {
+            title: name;
+            clicked => { root.pick(name); }
+        }
+    }
+}

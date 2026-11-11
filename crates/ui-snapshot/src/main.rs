@@ -31,6 +31,10 @@ const ALL: &[&str] = &[
     "tune",
     "more",
     "heating",
+    "tools",
+    "console",
+    "console-keyboard",
+    "macros",
     "motion",
     "light",
     "speed",
@@ -194,6 +198,33 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_screen(name.into());
             ui.set_speed_percent(110.0);
             ui.set_z_offset(-0.07);
+        }
+        "tools" | "macros" | "console" | "console-keyboard" => {
+            ui.set_screen(name.trim_end_matches("-keyboard").into());
+            let macros: Vec<slint::SharedString> = ["BELTS_TEST", "PAUSE", "RESUME", "START_PRINT"]
+                .iter()
+                .map(|m| (*m).into())
+                .collect();
+            ui.set_macros(slint::ModelRc::new(slint::VecModel::from(macros)));
+            let lines = [
+                ("> G28", 0),
+                ("ok", 1),
+                ("> QUERY_ENDSTOPS", 0),
+                ("x:open y:open z:TRIGGERED", 1),
+                ("// Notice: z-offset should not be saved to endstop", 2),
+                ("!! Move out of range: 0.000 0.000 -12.000", 3),
+            ]
+            .map(|(text, kind)| rivet::ConsoleLine {
+                text: text.into(),
+                kind,
+            });
+            ui.set_console_lines(slint::ModelRc::new(slint::VecModel::from(lines.to_vec())));
+            ui.set_console_keyboard(name == "console-keyboard");
+            ui.set_console_text(if name == "console-keyboard" {
+                "G28 X0".into()
+            } else {
+                "".into()
+            });
         }
         "motion" => {
             ui.set_screen("motion".into());

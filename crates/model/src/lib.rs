@@ -73,6 +73,11 @@ pub struct PrinterState {
     pub leds: Vec<String>,
     /// From the printer's config, read once after subscribing.
     pub limits: Limits,
+    /// Macros of this printer, from `printer.objects.list`.
+    pub macros: Vec<String>,
+    /// Console log, oldest first; `console_revision` changes with it.
+    pub console: Vec<(String, LineKind)>,
+    pub console_revision: u64,
     status: Value,
 }
 
@@ -132,6 +137,58 @@ pub struct Light {
     pub level: f64,
     /// Has a white channel (RGBW). Otherwise it is RGB.
     pub white: bool,
+}
+
+/// How a console line is drawn.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LineKind {
+    /// What the user sent.
+    Command,
+    Response,
+    /// `// …` from Klipper.
+    Notice,
+    /// `!! …` from Klipper.
+    Error,
+}
+
+pub fn line_kind(text: &str) -> LineKind {
+    if text.starts_with("!!") {
+        LineKind::Error
+    } else if text.starts_with("//") {
+        LineKind::Notice
+    } else {
+        LineKind::Response
+    }
+}
+
+/// Lines from `server.gcode_store`, oldest first.
+pub fn parse_gcode_store(result: &Value) -> Vec<(String, LineKind)> {
+    result
+        .get("gcode_store")
+        .and_then(Value::as_array)
+        .map(Vec::as_slice)
+        .unwrap_or_default()
+        .iter()
+        .filter_map(|l| {
+            let text = l.get("message")?.as_str()?;
+            Some(match l.get("type").and_then(Value::as_str) {
+                Some("command") => (format!("> {text}"), LineKind::Command),
+                _ => (text.to_owned(), line_kind(text)),
+            })
+        })
+        .collect()
+}
+
+/// Macros a person would run: `gcode_macro NAME`, not the `_helpers`.
+pub fn macro_names(available: &[String]) -> Vec<String> {
+    let mut names: Vec<String> = available
+        .iter()
+        .filter_map(|n| n.strip_prefix("gcode_macro "))
+        .filter(|n| !n.starts_with('_'))
+        .map(str::to_owned)
+        .collect();
+    names.sort();
+    names
 }
 
 /// Heater limits from the printer's own config; 0 = not known.
@@ -306,6 +363,20 @@ impl PrinterState {
     /// Merge a `notify_status_update` delta.
     pub fn apply_status(&mut self, delta: Value) {
         merge(&mut self.status, delta);
+    }
+
+    /// Add a console line, keeping the last 200.
+    pub fn push_console(&mut self, text: String, kind: LineKind) {
+        self.console.push((text, kind));
+        if self.console.len() > 200 {
+            self.console.remove(0);
+        }
+        self.console_revision += 1;
+    }
+
+    pub fn clear_console(&mut self) {
+        self.console.clear();
+        self.console_revision += 1;
     }
 
     /// Lights found on the printer (`led …` object names).
@@ -673,6 +744,41 @@ mod tests {
         assert_eq!((s.axis_min[2], s.axis_max[2]), (-10.0, 230.0));
         assert!(s.can_extrude);
         assert_eq!(PrinterState::default().snapshot().homed_axes, "");
+    }
+
+    #[test]
+    fn console_lines_and_macros() {
+        assert_eq!(line_kind("!! Move out of range"), LineKind::Error);
+        assert_eq!(line_kind("// Notice"), LineKind::Notice);
+        assert_eq!(line_kind("ok T:24.1"), LineKind::Response);
+        let lines = parse_gcode_store(&json!({ "gcode_store": [
+            { "message": "G28", "time": 1.0, "type": "command" },
+            { "message": "!! Must home axis first", "time": 2.0, "type": "response" },
+        ]}));
+        assert_eq!(lines[0], ("> G28".to_owned(), LineKind::Command));
+        assert_eq!(lines[1].1, LineKind::Error);
+
+        let all = [
+            "extruder",
+            "gcode_macro PAUSE",
+            "gcode_macro _HELPER",
+            "gcode_macro BELTS",
+        ]
+        .map(String::from);
+        assert_eq!(macro_names(&all), ["BELTS", "PAUSE"]);
+    }
+
+    #[test]
+    fn console_keeps_the_last_200_lines() {
+        let mut state = PrinterState::default();
+        for i in 0..250 {
+            state.push_console(format!("line {i}"), LineKind::Response);
+        }
+        assert_eq!(state.console.len(), 200);
+        assert_eq!(state.console[0].0, "line 50");
+        let rev = state.console_revision;
+        state.clear_console();
+        assert!(state.console.is_empty() && state.console_revision > rev);
     }
 
     #[test]
