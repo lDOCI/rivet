@@ -7,10 +7,8 @@ import { ScrollList } from "../kit/scroll.slint";
 
 export component FansScreen inherits VerticalLayout {
     horizontal-stretch: 1;
-    in-out property <float> part-fan: 60;
-    in-out property <float> chamber-fan: 0;
-    in property <bool> has-air-modes: true;
-    in-out property <int> air-mode: 0;
+    // Part fan from Klipper; other fans appear when the printer reports them.
+    in-out property <float> part-fan;
     callback back;
     callback set-fan(string, float);
     padding: Tokens.pad;
@@ -19,26 +17,10 @@ export component FansScreen inherits VerticalLayout {
     Header { title: @tr("Fans"); back-clicked => { root.back(); } }
     Text { text: @tr("The slicer may change the part fan on the next layer."); color: Tokens.text-dim; font-size: 15px; }
     HorizontalLayout {
-        spacing: 16px;
         vertical-stretch: 1;
-        HorizontalLayout {
-            spacing: 10px;
-            padding-bottom: Tokens.pad;
-            VBar { label: @tr("Part fan"); value <=> root.part-fan; off-at-zero: true; committed(v) => { root.set-fan("fan", v); } }
-            VBar { label: @tr("Chamber"); value <=> root.chamber-fan; off-at-zero: true; committed(v) => { root.set-fan("chamber_fan", v); } }
-        }
-        ScrollList {
-            horizontal-stretch: 1;
-            if root.has-air-modes: SegmentedRow {
-                title: @tr("Chamber air");
-                sub: "AD5M Pro";
-                options: [@tr("Off"), @tr("Filter"), @tr("Exhaust")];
-                selected <=> root.air-mode;
-            }
-            SectionLabel { text: @tr("AUTOMATIC"); }
-            InfoRow { title: @tr("Hotend"); sub: @tr("turns on by itself from 50°"); value: "100%"; }
-            InfoRow { title: @tr("Drivers"); sub: @tr("runs while the motors are on"); value: "0%"; }
-        }
+        padding-bottom: Tokens.pad;
+        alignment: start;
+        VBar { label: @tr("Part fan"); value <=> root.part-fan; off-at-zero: true; committed(v) => { root.set-fan("fan", v); } }
     }
 }
 

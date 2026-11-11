@@ -26,6 +26,8 @@ const ALL: &[&str] = &[
     "fans",
     "tune",
     "more",
+    "heating",
+    "heating-bed",
     "files",
     "files-empty",
     "file",
@@ -171,6 +173,12 @@ fn show(ui: &AppWindow, name: &str) {
             } else {
                 ui.set_screen("files".into());
             }
+        }
+        "heating" | "heating-bed" => {
+            ui.set_screen("heating".into());
+            ui.set_heating_heater(i32::from(name == "heating-bed"));
+            ui.set_max_nozzle(350.0);
+            ui.set_max_bed(130.0);
         }
         "home-empty" => {}
         "paused" => print("paused", 0.42),

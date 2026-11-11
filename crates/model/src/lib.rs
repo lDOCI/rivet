@@ -71,6 +71,8 @@ pub struct PrinterState {
     pub klippy: Klippy,
     /// `led …` objects of this printer, set before subscribing.
     pub leds: Vec<String>,
+    /// From the printer's config, read once after subscribing.
+    pub limits: Limits,
     status: Value,
 }
 
@@ -109,6 +111,7 @@ pub struct Snapshot {
     /// Part fan, percent.
     pub fan_percent: f64,
     pub light: Option<Light>,
+    pub limits: Limits,
 }
 
 /// The first light of the printer.
@@ -119,6 +122,30 @@ pub struct Light {
     pub on: bool,
     /// Has a white channel (RGBW). Otherwise it is RGB.
     pub white: bool,
+}
+
+/// Heater limits from the printer's own config; 0 = not known.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct Limits {
+    pub extruder_max: f64,
+    pub bed_max: f64,
+    pub nozzle_diameter: f64,
+}
+
+/// Read limits from `configfile.settings`.
+pub fn parse_limits(settings: &Value) -> Limits {
+    let num = |section: &str, key: &str| {
+        settings
+            .get(section)
+            .and_then(|s| s.get(key))
+            .and_then(Value::as_f64)
+            .unwrap_or(0.0)
+    };
+    Limits {
+        extruder_max: num("extruder", "max_temp"),
+        bed_max: num("heater_bed", "max_temp"),
+        nozzle_diameter: num("extruder", "nozzle_diameter"),
+    }
 }
 
 /// One G-code file in the `gcodes` root.
@@ -369,6 +396,7 @@ impl PrinterState {
             pressure_advance: self.f64("extruder", "pressure_advance"),
             fan_percent: self.f64("fan", "speed") * 100.0,
             light,
+            limits: self.limits,
         }
     }
 }
@@ -577,6 +605,19 @@ mod tests {
             thumbnail_path("sub/dir/a.gcode", ".thumbs/a-300x300.png"),
             "sub/dir/.thumbs/a-300x300.png"
         );
+    }
+
+    #[test]
+    fn limits_come_from_config() {
+        let l = parse_limits(&json!({
+            "extruder": { "max_temp": 350.0, "nozzle_diameter": 0.4 },
+            "heater_bed": { "max_temp": 130.0 },
+        }));
+        assert_eq!(
+            (l.extruder_max, l.bed_max, l.nozzle_diameter),
+            (350.0, 130.0, 0.4)
+        );
+        assert_eq!(parse_limits(&Value::Null), Limits::default());
     }
 
     #[test]

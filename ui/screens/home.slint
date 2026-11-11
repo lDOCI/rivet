@@ -40,6 +40,8 @@ export component HomeScreen inherits VerticalLayout {
     in property <float> nozzle-target;
     in property <float> bed;
     in property <float> bed-target;
+    in property <float> max-nozzle: 350;
+    in property <float> max-bed: 130;
     // Empty `last-name`: nothing in history yet.
     in property <string> last-name;
     in property <int> last-minutes;
@@ -136,9 +138,9 @@ export component HomeScreen inherits VerticalLayout {
                 padding-right: 16px;
                 padding-top: 6px;
                 padding-bottom: 6px;
-                HeaterRow { name: @tr("Nozzle"); current: root.nozzle; target: root.nozzle-target; maximum: 350; }
+                HeaterRow { name: @tr("Nozzle"); current: root.nozzle; target: root.nozzle-target; maximum: root.max-nozzle; }
                 Rectangle { height: 1px; background: Tokens.surface-2; }
-                HeaterRow { name: @tr("Bed"); current: root.bed; target: root.bed-target; maximum: 130; }
+                HeaterRow { name: @tr("Bed"); current: root.bed; target: root.bed-target; maximum: root.max-bed; }
             }
         }
     }

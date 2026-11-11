@@ -1,0 +1,96 @@
+// Temperature dial: 270° arc, the current value filled, a knob at the target
+// that can be dragged. design-code §4: a dial is for temperatures only.
+import { Tokens } from "tokens.slint";
+
+export component HeatDial inherits Rectangle {
+    in property <float> current;
+    in property <float> target;
+    in property <float> maximum: 350;
+    in property <float> step: 5;
+    // Fired on release, once: the command goes out when the finger lifts.
+    callback committed(float);
+    width: 300px;
+    height: 300px;
+    accessible-role: slider;
+    accessible-label: @tr("Target temperature");
+    accessible-value: round(root.shown);
+    accessible-value-minimum: 0;
+    accessible-value-maximum: root.maximum;
+
+    property <bool> dragging;
+    property <float> drag-value;
+    property <float> shown: root.dragging ? root.drag-value : root.target;
+    property <float> current-fraction: max(0.001, min(1, root.current / root.maximum));
+    property <float> target-fraction: max(0, min(1, root.shown / root.maximum));
+    property <angle> current-end: 135deg + root.current-fraction * 270deg;
+    property <angle> target-angle: 135deg + root.target-fraction * 270deg;
+
+    // Value under the finger; the dead zone at the bottom is ignored.
+    function value-at(x: length, y: length) -> float {
+        // 0 at the start of the arc (bottom left), 270 at its end.
+        // (a + 225) mod 360 == (a - 135) mod 360
+        return root.clamp(mod(atan2((y - root.height / 2) / 1px, (x - root.width / 2) / 1px) / 1deg + 225, 360));
+    }
+    function clamp(a: float) -> float {
+        return a > 270 ? -1 : max(0, min(root.maximum, round(a / 270 * root.maximum / root.step) * root.step));
+    }
+
+    Path {
+        width: parent.width;
+        height: parent.height;
+        viewbox-width: 300;
+        viewbox-height: 300;
+        stroke: #171b21;
+        stroke-width: 20px;
+        stroke-line-cap: round;
+        commands: "M65.147 234.853 A120 120 0 1 1 234.853 234.853";
+    }
+    Path {
+        width: parent.width;
+        height: parent.height;
+        viewbox-width: 300;
+        viewbox-height: 300;
+        stroke: Tokens.heat-2;
+        stroke-width: 20px;
+        stroke-line-cap: round;
+        commands: "M65.147 234.853 A120 120 0 " + (root.current-fraction > 0.6667 ? "1" : "0") + " 1 " + (150 + 120 * cos(root.current-end)) + " " + (150 + 120 * sin(root.current-end));
+    }
+    // Target knob.
+    Rectangle {
+        x: 150px + 120px * cos(root.target-angle) - self.width / 2;
+        y: 150px + 120px * sin(root.target-angle) - self.height / 2;
+        width: root.dragging ? 44px : 30px;
+        height: self.width;
+        border-radius: self.width / 2;
+        background: #f4f6f8;
+        opacity: root.dragging ? 0.9 : 1;
+        Rectangle {
+            width: 14px;
+            height: 14px;
+            border-radius: 7px;
+            background: #0b0d10;
+        }
+    }
+    @children
+    TouchArea {
+        pointer-event(e) => {
+            if (e.button != PointerEventButton.left) { return; }
+            if (e.kind == PointerEventKind.down) {
+                if (root.value-at(self.mouse-x, self.mouse-y) >= 0) {
+                    root.drag-value = root.value-at(self.mouse-x, self.mouse-y);
+                    root.dragging = true;
+                }
+            } else if (e.kind == PointerEventKind.up || e.kind == PointerEventKind.cancel) {
+                if (root.dragging) {
+                    root.dragging = false;
+                    root.committed(root.drag-value);
+                }
+            }
+        }
+        moved => {
+            if (root.dragging && root.value-at(self.mouse-x, self.mouse-y) >= 0) {
+                root.drag-value = root.value-at(self.mouse-x, self.mouse-y);
+            }
+        }
+    }
+}

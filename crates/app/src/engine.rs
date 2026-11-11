@@ -118,6 +118,11 @@ pub enum Command {
     /// Speed / flow factor in percent (M220 / M221).
     SetSpeed(f32),
     SetFlow(f32),
+    /// Heater targets in °C (M104 / M140); 0 turns the heater off.
+    SetNozzle(f32),
+    SetBed(f32),
+    /// Part fan, percent.
+    SetFan(f32),
     /// Move the Z offset by this many mm, live (`SET_GCODE_OFFSET`).
     AdjustZ(f32),
     SetPressureAdvance(f32),
@@ -358,24 +363,34 @@ async fn subscribe(client: &Client, state: &mut PrinterState) {
         )
         .await
     {
-        Ok(mut result) => state.replace_status(result["status"].take()),
+        Ok(mut result) => {
+            state.replace_status(result["status"].take());
+            if let Some(limits) = printer_limits(client).await {
+                state.limits = limits;
+            }
+        }
         Err(err) => tracing::warn!(%err, "subscribe failed"),
     }
 }
 
-/// Printer's nozzle size from its config, read once.
-async fn printer_nozzle(client: &Client) -> Option<f64> {
-    static NOZZLE: tokio::sync::OnceCell<Option<f64>> = tokio::sync::OnceCell::const_new();
-    *NOZZLE
-        .get_or_init(|| async {
+/// Heater limits and nozzle size from the printer's config, read once (a
+/// failed read is not remembered, the next caller tries again).
+async fn printer_limits(client: &Client) -> Option<model::Limits> {
+    static LIMITS: tokio::sync::OnceCell<model::Limits> = tokio::sync::OnceCell::const_new();
+    LIMITS
+        .get_or_try_init(|| async {
             let query = json!({ "objects": { "configfile": ["settings"] } });
             let result = client
                 .call_timeout("printer.objects.query", query, SETUP_TIMEOUT)
                 .await
-                .ok()?;
-            result["status"]["configfile"]["settings"]["extruder"]["nozzle_diameter"].as_f64()
+                .map_err(drop)?;
+            Ok::<_, ()>(model::parse_limits(
+                &result["status"]["configfile"]["settings"],
+            ))
         })
         .await
+        .ok()
+        .copied()
 }
 
 async fn list_files(
@@ -465,7 +480,10 @@ async fn file_details(
         )
         .await?;
     let meta = model::parse_file_meta(&result);
-    let printer_nozzle = printer_nozzle(client).await;
+    let printer_nozzle = printer_limits(client)
+        .await
+        .map(|l| l.nozzle_diameter)
+        .filter(|d| *d > 0.0);
     // 1 = same as the printer, 0 = differs, -1 = one of them is unknown.
     let nozzle_check = match (meta.nozzle_diameter, printer_nozzle) {
         (Some(file), Some(printer)) => i32::from((file - printer).abs() < 0.001),
@@ -529,6 +547,15 @@ fn predict(state: &mut PrinterState, cmd: &Command) {
             state
                 .apply_status(json!({ "gcode_move": { "extrude_factor": f64::from(*p) / 100.0 } }));
         }
+        Command::SetFan(p) => {
+            state.apply_status(json!({ "fan": { "speed": f64::from(*p) / 100.0 } }));
+        }
+        Command::SetNozzle(t) => {
+            state.apply_status(json!({ "extruder": { "target": f64::from(*t) } }));
+        }
+        Command::SetBed(t) => {
+            state.apply_status(json!({ "heater_bed": { "target": f64::from(*t) } }));
+        }
         Command::SetPressureAdvance(v) => {
             state.apply_status(json!({ "extruder": { "pressure_advance": f64::from(*v) } }));
         }
@@ -563,6 +590,9 @@ fn gcode_for(cmd: &Command) -> Option<String> {
     Some(match cmd {
         Command::SetSpeed(p) => format!("M220 S{p:.0}"),
         Command::SetFlow(p) => format!("M221 S{p:.0}"),
+        Command::SetNozzle(t) => format!("M104 S{t:.0}"),
+        Command::SetFan(p) => format!("M106 S{:.0}", p * 2.55),
+        Command::SetBed(t) => format!("M140 S{t:.0}"),
         Command::AdjustZ(d) => format!("SET_GCODE_OFFSET Z_ADJUST={d:.3} MOVE=1"),
         Command::SetPressureAdvance(v) => format!("SET_PRESSURE_ADVANCE ADVANCE={v:.3}"),
         Command::SetLight { name, on, white } => {
@@ -625,6 +655,9 @@ async fn execute(
         }
         Command::SetSpeed(_)
         | Command::SetFlow(_)
+        | Command::SetFan(_)
+        | Command::SetNozzle(_)
+        | Command::SetBed(_)
         | Command::AdjustZ(_)
         | Command::SetPressureAdvance(_)
         | Command::SetLight { .. } => unreachable!("sent as G-code above"),
@@ -671,6 +704,8 @@ fn push(ui: &slint::Weak<AppWindow>, s: Snapshot) {
         ui.set_progress(s.progress as f32);
         ui.set_remaining_minutes(s.remaining_secs.map_or(-1, |t| t.div_ceil(60) as i32));
         ui.set_elapsed_minutes((s.print_duration / 60.0) as i32);
+        ui.set_max_nozzle(s.limits.extruder_max as f32);
+        ui.set_max_bed(s.limits.bed_max as f32);
         ui.set_speed_percent(s.speed_percent as f32);
         ui.set_flow_percent(s.flow_percent as f32);
         ui.set_z_offset(s.z_offset as f32);
@@ -695,6 +730,10 @@ mod tests {
     fn tuning_commands_are_plain_gcode() {
         assert_eq!(gcode_for(&Command::SetSpeed(110.0)).unwrap(), "M220 S110");
         assert_eq!(gcode_for(&Command::SetFlow(95.0)).unwrap(), "M221 S95");
+        assert_eq!(gcode_for(&Command::SetNozzle(240.0)).unwrap(), "M104 S240");
+        assert_eq!(gcode_for(&Command::SetBed(0.0)).unwrap(), "M140 S0");
+        assert_eq!(gcode_for(&Command::SetFan(60.0)).unwrap(), "M106 S153");
+        assert_eq!(gcode_for(&Command::SetFan(100.0)).unwrap(), "M106 S255");
         assert_eq!(
             gcode_for(&Command::AdjustZ(-0.05)).unwrap(),
             "SET_GCODE_OFFSET Z_ADJUST=-0.050 MOVE=1"
