@@ -18,17 +18,22 @@ fn main() -> anyhow::Result<()> {
         )
         .init();
 
-    let url = moonraker_url();
+    let config = rivet::config::Config::load(&rivet::config::config_path(
+        flag_value("--config").as_deref(),
+    ));
+    let url = moonraker_url(&config);
     tracing::info!(%url, "starting Rivet");
 
     #[cfg(feature = "fbdev")]
     fbdev_platform::init(fbdev_platform::Config::from_env())?;
 
     let ui = AppWindow::new()?;
+    // --lang, RIVET_LANG, rivet.toml, then the system's LANG.
     let lang_arg = flag_value("--lang");
+    let lang_env = std::env::var("RIVET_LANG").ok();
     rivet::apply_language(&rivet::language(
         lang_arg.as_deref(),
-        std::env::var("RIVET_LANG").ok().as_deref(),
+        lang_env.as_deref().or(config.language.as_deref()),
         std::env::var("LANG").ok().as_deref(),
     ));
     let (cmd_tx, cmd_rx) = mpsc::unbounded_channel();
@@ -60,10 +65,11 @@ fn flag_value(name: &str) -> Option<String> {
     None
 }
 
-/// `--moonraker <url>` or `RIVET_MOONRAKER`, else localhost.
-fn moonraker_url() -> String {
+/// `--moonraker <url>`, `RIVET_MOONRAKER`, rivet.toml, else localhost.
+fn moonraker_url(config: &rivet::config::Config) -> String {
     flag_value("--moonraker")
         .or_else(|| std::env::var("RIVET_MOONRAKER").ok())
+        .or_else(|| config.moonraker.clone())
         .unwrap_or_else(|| DEFAULT_URL.to_owned())
 }
 
