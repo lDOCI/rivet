@@ -44,6 +44,13 @@ impl Sim {
                 "toolhead": { "homed_axes": "", "position": [0.0, 0.0, 0.0, 0.0] },
                 "gcode_move": { "speed_factor": 1.0, "extrude_factor": 1.0 },
                 "fan": { "speed": 0.0 },
+                // The fans of an AD5M Pro, as KlipperMod names them.
+                "fan_generic chamber_fan": { "speed": 0.0 },
+                "fan_generic internal_fan": { "speed": 0.0 },
+                "fan_generic external_fan": { "speed": 0.0 },
+                "heater_fan hotend_fan": { "speed": 0.0 },
+                "controller_fan stepper_driver_fan": { "speed": 0.0 },
+                "configfile": { "settings": { "heater_fan hotend_fan": { "heater_temp": 50.0 } } },
             }),
         }
     }
@@ -97,7 +104,38 @@ impl Sim {
             let s = words
                 .find_map(|w| w.strip_prefix(['S', 's']))
                 .and_then(|v| v.parse::<f64>().ok());
+            if cmd == "SET_FAN_SPEED" {
+                let arg = |key: &str| {
+                    line.split_whitespace()
+                        .find_map(|w| w.strip_prefix(key))
+                        .map(str::to_owned)
+                };
+                if let (Some(name), Some(speed)) = (
+                    arg("FAN="),
+                    arg("SPEED=").and_then(|v| v.parse::<f64>().ok()),
+                ) {
+                    self.set(
+                        json!({ format!("fan_generic {name}"): { "speed": speed } }),
+                        delta,
+                    );
+                }
+                continue;
+            }
+            // The air circulation macros of KlipperMod: filter or exhaust.
+            let air = |internal: f64, external: f64| {
+                json!({
+                    "fan_generic internal_fan": { "speed": internal },
+                    "fan_generic external_fan": { "speed": external },
+                })
+            };
+            match cmd.as_str() {
+                "AIR_CIRCULATION_INTERNAL" => self.set(air(1.0, 0.0), delta),
+                "AIR_CIRCULATION_EXTERNAL" => self.set(air(0.0, 1.0), delta),
+                "AIR_CIRCULATION_STOP" => self.set(air(0.0, 0.0), delta),
+                _ => {}
+            }
             match (cmd.as_str(), s) {
+                ("M106", Some(v)) => self.set(json!({ "fan": { "speed": v / 255.0 } }), delta),
                 ("M104" | "M109", Some(t)) => {
                     self.set(json!({ "extruder": { "target": t } }), delta)
                 }
@@ -295,6 +333,18 @@ fn handle(sim: &Shared, req: &Value) -> (Option<Value>, Option<Push>) {
         "server.connection.identify" => Ok(json!({ "connection_id": 1 })),
         "server.info" => Ok(json!({ "klippy_connected": true, "klippy_state": sim.klippy })),
         "printer.info" => Ok(json!({ "state": sim.klippy, "state_message": sim.state_message })),
+        "printer.objects.list" => {
+            let mut objects: Vec<String> = sim
+                .status
+                .as_object()
+                .map(|o| o.keys().filter(|k| *k != "configfile").cloned().collect())
+                .unwrap_or_default();
+            objects.extend(
+                ["INTERNAL", "EXTERNAL", "STOP"]
+                    .map(|m| format!("gcode_macro AIR_CIRCULATION_{m}")),
+            );
+            Ok(json!({ "objects": objects }))
+        }
         "printer.objects.subscribe" | "printer.objects.query" => {
             if sim.klippy != "ready" {
                 Err(NOT_READY)

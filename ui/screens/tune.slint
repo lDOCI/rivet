@@ -2,26 +2,96 @@
 import { Tokens } from "../kit/tokens.slint";
 import { Header, SectionLabel } from "../kit/controls.slint";
 import { InfoRow, SegmentedRow, ActionRow, LinkRow, ToggleRow } from "../kit/rows.slint";
-import { VBar, FineStepper, Stepper } from "../kit/values.slint";
+import { VBar, SliderRow, FineStepper, Stepper } from "../kit/values.slint";
 import { ScrollList } from "../kit/scroll.slint";
 import { Format } from "../kit/format.slint";
 
+// One fan of the printer. `kind`: 0 part fan, 1 settable, 2 runs by itself.
+// `trigger`: 0 none, 1 above a temperature, 2 while the motors are on, 3 holds a temperature.
+export struct FanRow {
+    object: string,
+    key: string,
+    title: string,
+    kind: int,
+    percent: float,
+    trigger: int,
+    trigger-value: float,
+}
+
 export component FansScreen inherits VerticalLayout {
     horizontal-stretch: 1;
-    // Part fan from Klipper; other fans appear when the printer reports them.
-    in-out property <float> part-fan;
+    // The printer's fans, split by how they are shown: bars (the part fan and
+    // the first settable one), further settable fans as rows, automatic ones.
+    // Changes come back from Moonraker.
+    in property <[FanRow]> bars;
+    in property <[FanRow]> extras;
+    in property <[FanRow]> autos;
+    // Chamber air mode: 0 off, 1 filter, 2 exhaust; -1 when the printer has no such macros.
+    in-out property <int> air-mode: -1;
     callback back;
     callback set-fan(string, float);
+    callback set-air(int);
     padding: Tokens.pad;
     padding-bottom: 0;
     spacing: 10px;
+
+    pure function name-of(f: FanRow) -> string {
+        return f.kind == 0 ? @tr("Part fan")
+            : f.key == "chamber_fan" ? @tr("Chamber")
+            : f.key == "internal_fan" ? @tr("Inside air")
+            : f.key == "external_fan" ? @tr("Outside air")
+            : f.key == "hotend_fan" ? @tr("Hotend")
+            : f.key == "stepper_driver_fan" ? @tr("Drivers")
+            : f.title;
+    }
+    pure function why(f: FanRow) -> string {
+        return f.trigger == 1 ? (f.trigger-value > 0 ? @tr("turns on by itself from {}°", round(f.trigger-value)) : @tr("turns on by itself"))
+            : f.trigger == 2 ? @tr("runs while the motors are on")
+            : f.trigger == 3 ? @tr("holds {}°", round(f.trigger-value))
+            : "";
+    }
+
     Header { title: @tr("Fans"); back-clicked => { root.back(); } }
     Text { text: @tr("The slicer may change the part fan on the next layer."); color: Tokens.text-dim; font-size: 15px; }
     HorizontalLayout {
         vertical-stretch: 1;
-        padding-bottom: Tokens.pad;
-        alignment: start;
-        VBar { label: @tr("Part fan"); value <=> root.part-fan; off-at-zero: true; committed(v) => { root.set-fan("fan", v); } }
+        spacing: 16px;
+        HorizontalLayout {
+            spacing: 10px;
+            padding-bottom: Tokens.pad;
+            alignment: start;
+            for f in root.bars: VBar {
+                label: root.name-of(f);
+                source: f.percent;
+                off-at-zero: true;
+                committed(v) => { root.set-fan(f.object, v); }
+            }
+        }
+        ScrollList {
+            horizontal-stretch: 1;
+            spacing: 8px;
+            if root.air-mode >= 0: SegmentedRow {
+                title: @tr("Chamber air");
+                options: [@tr("Off"), @tr("Filter"), @tr("Exhaust")];
+                selected <=> root.air-mode;
+                picked(i) => { root.set-air(i); }
+            }
+            for f in root.extras: SliderRow {
+                title: root.name-of(f);
+                source: f.percent;
+                off-at-zero: true;
+                committed(v) => { root.set-fan(f.object, v); }
+            }
+            if root.autos.length > 0: Rectangle {
+                height: 28px;
+                SectionLabel { x: 4px; y: 8px; text: @tr("AUTOMATIC"); }
+            }
+            for f in root.autos: InfoRow {
+                title: root.name-of(f);
+                sub: root.why(f);
+                value: round(f.percent) + "%";
+            }
+        }
     }
 }
 

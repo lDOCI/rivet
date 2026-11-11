@@ -1,6 +1,8 @@
 //! Printer state built from Moonraker's `printer.objects.subscribe` result
 //! and the partial updates that follow in `notify_status_update`.
 
+use std::collections::HashMap;
+
 use serde_json::{json, Value};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -53,12 +55,15 @@ pub fn subscription() -> Value {
 }
 
 /// The base subscription plus what this printer actually has, from
-/// `printer.objects.list`: every `led …` object, so Rivet shows only the
-/// lights that exist.
+/// `printer.objects.list`: every `led …` and fan object, so Rivet shows only
+/// the lights and fans that exist.
 pub fn subscription_for(available: &[String]) -> Value {
     let mut sub = subscription();
     if let Some(objects) = sub["objects"].as_object_mut() {
-        for name in available.iter().filter(|n| n.starts_with("led ")) {
+        for name in available
+            .iter()
+            .filter(|n| n.starts_with("led ") || is_fan_object(n))
+        {
             objects.insert(name.clone(), Value::Null);
         }
     }
@@ -75,6 +80,10 @@ pub struct PrinterState {
     pub limits: Limits,
     /// Macros of this printer, from `printer.objects.list`.
     pub macros: Vec<String>,
+    /// Fan objects besides the part fan (`fan_generic …`, `heater_fan …`, …).
+    pub fan_objects: Vec<String>,
+    /// `heater_fan` object → the temperature it switches on at, from the config.
+    pub fan_heater_temps: HashMap<String, f64>,
     /// Console log, oldest first; `console_revision` changes with it.
     pub console: Vec<(String, LineKind)>,
     pub console_revision: u64,
@@ -115,6 +124,12 @@ pub struct Snapshot {
     pub pressure_advance: f64,
     /// Part fan, percent.
     pub fan_percent: f64,
+    /// Every fan of the printer: the part fan first, then the ones that can
+    /// be set, then the ones that run by themselves.
+    pub fans: Vec<Fan>,
+    /// Chamber air mode (0 off, 1 filter, 2 exhaust) when the printer has the
+    /// `AIR_CIRCULATION_*` macros; `None` otherwise.
+    pub air_mode: Option<u8>,
     pub light: Option<Light>,
     pub limits: Limits,
     /// Toolhead X, Y, Z in mm.
@@ -125,6 +140,75 @@ pub struct Snapshot {
     pub axis_max: [f64; 3],
     /// Klipper's own answer: nozzle hot enough to extrude.
     pub can_extrude: bool,
+}
+
+/// Whether a person can set the fan.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FanKind {
+    /// The part fan: `fan`, set with M106.
+    Part,
+    /// `fan_generic …`: set with SET_FAN_SPEED.
+    Generic,
+    /// `heater_fan`, `controller_fan`, `temperature_fan`: Klipper runs it.
+    Auto,
+}
+
+/// Why an automatic fan runs, said from what Klipper knows.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum FanTrigger {
+    None,
+    /// `heater_fan`: switches on above this temperature, °C (0 = not known).
+    HeaterAbove(f64),
+    /// `controller_fan`: runs while the motors are on.
+    Motors,
+    /// `temperature_fan`: holds this temperature, °C.
+    Holds(f64),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Fan {
+    /// Klipper object name: `fan`, `fan_generic chamber_fan`, …
+    pub object: String,
+    /// The part after the type, `chamber_fan`; `fan` for the part fan.
+    pub name: String,
+    pub kind: FanKind,
+    pub percent: f64,
+    pub trigger: FanTrigger,
+}
+
+const FAN_TYPES: [&str; 4] = [
+    "fan_generic ",
+    "heater_fan ",
+    "controller_fan ",
+    "temperature_fan ",
+];
+
+fn is_fan_object(name: &str) -> bool {
+    FAN_TYPES.iter().any(|t| name.starts_with(t))
+}
+
+/// Fan objects besides the part fan, settable ones first, each group sorted.
+pub fn fan_object_names(available: &[String]) -> Vec<String> {
+    let mut names: Vec<String> = available
+        .iter()
+        .filter(|n| is_fan_object(n))
+        .cloned()
+        .collect();
+    names.sort_by_key(|n| (!n.starts_with("fan_generic "), n.clone()));
+    names
+}
+
+/// `heater_fan` temperatures from `configfile.settings`.
+pub fn parse_fan_heater_temps(settings: &Value) -> HashMap<String, f64> {
+    settings
+        .as_object()
+        .map(|o| {
+            o.iter()
+                .filter(|(name, _)| name.starts_with("heater_fan "))
+                .filter_map(|(name, s)| Some((name.clone(), s.get("heater_temp")?.as_f64()?)))
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 /// The first light of the printer.
@@ -434,6 +518,65 @@ impl PrinterState {
         }
     }
 
+    fn fans(&self) -> Vec<Fan> {
+        let mut fans = Vec::new();
+        if self.status.get("fan").is_some() {
+            fans.push(Fan {
+                object: "fan".to_owned(),
+                name: "fan".to_owned(),
+                kind: FanKind::Part,
+                percent: self.f64("fan", "speed") * 100.0,
+                trigger: FanTrigger::None,
+            });
+        }
+        for object in &self.fan_objects {
+            let Some((kind, name)) = object.split_once(' ') else {
+                continue;
+            };
+            let (kind, trigger) = match kind {
+                "fan_generic" => (FanKind::Generic, FanTrigger::None),
+                "heater_fan" => (
+                    FanKind::Auto,
+                    FanTrigger::HeaterAbove(
+                        self.fan_heater_temps.get(object).copied().unwrap_or(0.0),
+                    ),
+                ),
+                "controller_fan" => (FanKind::Auto, FanTrigger::Motors),
+                _ => (FanKind::Auto, FanTrigger::Holds(self.f64(object, "target"))),
+            };
+            fans.push(Fan {
+                object: object.clone(),
+                name: name.to_owned(),
+                kind,
+                percent: self.f64(object, "speed") * 100.0,
+                trigger,
+            });
+        }
+        fans
+    }
+
+    /// Chamber air circulation, told from the two circulation fans.
+    fn air_mode(&self) -> Option<u8> {
+        // A KlipperMod convention: only offered when the macros and both fans exist.
+        let has = |m: &str| self.macros.iter().any(|n| n == m);
+        let has_fan = |o: &str| self.fan_objects.iter().any(|n| n == o);
+        if !(has("AIR_CIRCULATION_INTERNAL")
+            && has("AIR_CIRCULATION_EXTERNAL")
+            && has("AIR_CIRCULATION_STOP")
+            && has_fan("fan_generic internal_fan")
+            && has_fan("fan_generic external_fan"))
+        {
+            return None;
+        }
+        Some(if self.f64("fan_generic internal_fan", "speed") > 0.0 {
+            1
+        } else if self.f64("fan_generic external_fan", "speed") > 0.0 {
+            2
+        } else {
+            0
+        })
+    }
+
     pub fn snapshot(&self) -> Snapshot {
         // M73-driven progress wins over file-position progress when present.
         let display = self.f64("display_status", "progress");
@@ -495,6 +638,8 @@ impl PrinterState {
                 .unwrap_or(0.0),
             pressure_advance: self.f64("extruder", "pressure_advance"),
             fan_percent: self.f64("fan", "speed") * 100.0,
+            fans: self.fans(),
+            air_mode: self.air_mode(),
             light,
             limits: self.limits,
             position: self.axes("toolhead", "position"),
@@ -779,6 +924,75 @@ mod tests {
         let rev = state.console_revision;
         state.clear_console();
         assert!(state.console.is_empty() && state.console_revision > rev);
+    }
+
+    #[test]
+    fn fans_of_the_ad5m_pro() {
+        let available = [
+            "fan",
+            "heater_fan hotend_fan",
+            "controller_fan stepper_driver_fan",
+            "fan_generic internal_fan",
+            "fan_generic chamber_fan",
+            "fan_generic external_fan",
+            "gcode_macro AIR_CIRCULATION_INTERNAL",
+            "gcode_macro AIR_CIRCULATION_EXTERNAL",
+            "gcode_macro AIR_CIRCULATION_STOP",
+        ]
+        .map(String::from);
+        // Settable fans first, then the automatic ones, each group by name.
+        let names = fan_object_names(&available);
+        assert_eq!(
+            names,
+            [
+                "fan_generic chamber_fan",
+                "fan_generic external_fan",
+                "fan_generic internal_fan",
+                "controller_fan stepper_driver_fan",
+                "heater_fan hotend_fan",
+            ]
+        );
+        let sub = subscription_for(&available);
+        assert!(sub["objects"]["fan_generic chamber_fan"].is_null());
+        assert!(sub["objects"].get("heater_fan hotend_fan").is_some());
+
+        let mut state = PrinterState {
+            fan_objects: names,
+            macros: macro_names(&available),
+            ..Default::default()
+        };
+        state.fan_heater_temps = parse_fan_heater_temps(&json!({
+            "heater_fan hotend_fan": { "heater_temp": 50.0 },
+            "fan": { "pin": "x" },
+        }));
+        state.replace_status(json!({
+            "fan": { "speed": 0.6 },
+            "fan_generic chamber_fan": { "speed": 0.0 },
+            "fan_generic internal_fan": { "speed": 0.0 },
+            "fan_generic external_fan": { "speed": 1.0 },
+            "heater_fan hotend_fan": { "speed": 1.0 },
+            "controller_fan stepper_driver_fan": { "speed": 0.0 },
+        }));
+        let snap = state.snapshot();
+        let by = |o: &str| snap.fans.iter().find(|f| f.object == o).unwrap().clone();
+        assert_eq!(snap.fans[0].object, "fan");
+        assert_eq!(snap.fans[0].kind, FanKind::Part);
+        assert_eq!(snap.fans[0].percent.round(), 60.0);
+        assert_eq!(by("fan_generic external_fan").percent, 100.0);
+        assert_eq!(by("fan_generic chamber_fan").name, "chamber_fan");
+        assert_eq!(
+            by("heater_fan hotend_fan").trigger,
+            FanTrigger::HeaterAbove(50.0)
+        );
+        assert_eq!(
+            by("controller_fan stepper_driver_fan").trigger,
+            FanTrigger::Motors
+        );
+        assert_eq!(snap.fans.len(), 6);
+        // Exhaust runs → air mode 2; macros missing → no air mode at all.
+        assert_eq!(snap.air_mode, Some(2));
+        state.macros.clear();
+        assert_eq!(state.snapshot().air_mode, None);
     }
 
     #[test]

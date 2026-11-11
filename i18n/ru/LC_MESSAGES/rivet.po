@@ -497,3 +497,42 @@ msgid_plural "{n} macros"
 msgstr[0] "{n} макрос"
 msgstr[1] "{n} макроса"
 msgstr[2] "{n} макросов"
+
+msgid "Chamber"
+msgstr "Камера"
+
+msgid "Inside air"
+msgstr "Внутри"
+
+msgid "Outside air"
+msgstr "Наружу"
+
+msgid "Hotend"
+msgstr "Хотэнд"
+
+msgid "Drivers"
+msgstr "Драйверы"
+
+msgid "turns on by itself from {}°"
+msgstr "включается сам от {}°"
+
+msgid "turns on by itself"
+msgstr "включается сам"
+
+msgid "runs while the motors are on"
+msgstr "работает, пока включены моторы"
+
+msgid "holds {}°"
+msgstr "держит {}°"
+
+msgid "Chamber air"
+msgstr "Воздух в камере"
+
+msgid "Filter"
+msgstr "Фильтр"
+
+msgid "Exhaust"
+msgstr "Вытяжка"
+
+msgid "AUTOMATIC"
+msgstr "АВТОМАТИЧЕСКИЕ"

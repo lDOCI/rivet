@@ -2,7 +2,7 @@ import { Tokens } from "kit/tokens.slint";
 import { Rail } from "kit/rail.slint";
 import { ControlScreen } from "screens/control.slint";
 import { SettingsScreen } from "screens/settings.slint";
-import { FansScreen, PrintTuneScreen, PrintMoreScreen, LightScreen, SpeedScreen, ZOffsetScreen } from "screens/tune.slint";
+import { FansScreen, FanRow, PrintTuneScreen, PrintMoreScreen, LightScreen, SpeedScreen, ZOffsetScreen } from "screens/tune.slint";
 import { Dialog, Keypad } from "kit/dialogs.slint";
 import { StatusScreen } from "screens/status.slint";
 import { Toast } from "kit/toast.slint";
@@ -11,7 +11,7 @@ import { HeatingScreen } from "screens/heating.slint";
 import { MotionScreen, ExtruderScreen } from "screens/motion.slint";
 import { ToolsScreen, ConsoleScreen, MacrosScreen, ConsoleLine } from "screens/tools.slint";
 import { FilesScreen, FileScreen, FileItem, FileInfo } from "screens/files.slint";
-export { FileItem, FileInfo, ConsoleLine }
+export { FileItem, FileInfo, ConsoleLine, FanRow }
 import { PrintingScreen, PrintDoneScreen } from "screens/print.slint";
 
 // Embedded into the binary (see build.rs): the printer has no system fonts.
@@ -90,7 +90,8 @@ export component AppWindow inherits Window {
     in property <bool> homed-z;
     in property <bool> can-extrude;
     in property <float> min-extrude-temp;
-    callback set-fan(float);
+    callback set-fan(string, float);
+    callback set-air(int);
     callback set-nozzle(float);
     callback set-bed(float);
     // Heater limits from the printer config; 0 until known.
@@ -119,6 +120,10 @@ export component AppWindow inherits Window {
     in property <float> z-offset;
     in property <float> pressure-advance;
     in property <int> fan-percent;
+    in property <[FanRow]> fan-bars;
+    in property <[FanRow]> fan-extras;
+    in property <[FanRow]> fan-autos;
+    in-out property <int> air-mode: -1;
     in property <bool> has-light;
     in-out property <bool> light-on;
     in property <float> light-level;
@@ -270,9 +275,13 @@ export component AppWindow inherits Window {
         }
         if root.ready && root.screen == "settings": SettingsScreen { }
         if root.ready && root.screen == "fans": FansScreen {
-            part-fan: root.fan-percent;
+            bars: root.fan-bars;
+            extras: root.fan-extras;
+            autos: root.fan-autos;
+            air-mode <=> root.air-mode;
             back => { root.screen = "control"; }
-            set-fan(name, v) => { root.set-fan(v); }
+            set-fan(object, v) => { root.set-fan(object, v); }
+            set-air(mode) => { root.set-air(mode); }
         }
         if root.ready && root.screen == "more": PrintMoreScreen {
             has-light: root.has-light;

@@ -273,6 +273,75 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_keypad_max(350.0);
             ui.set_overlay("keypad".into());
         }
+        "fans" => {
+            let row = |object: &str, key: &str, title: &str, kind, percent, trigger, value| {
+                rivet::FanRow {
+                    object: object.into(),
+                    key: key.into(),
+                    title: title.into(),
+                    kind,
+                    percent,
+                    trigger,
+                    trigger_value: value,
+                }
+            };
+            let model = |rows: Vec<rivet::FanRow>| slint::ModelRc::new(slint::VecModel::from(rows));
+            ui.set_fan_bars(model(vec![
+                row("fan", "fan", "Fan", 0, 60.0, 0, 0.0),
+                row(
+                    "fan_generic chamber_fan",
+                    "chamber_fan",
+                    "Chamber fan",
+                    1,
+                    0.0,
+                    0,
+                    0.0,
+                ),
+            ]));
+            ui.set_fan_extras(model(vec![
+                row(
+                    "fan_generic internal_fan",
+                    "internal_fan",
+                    "Internal fan",
+                    1,
+                    100.0,
+                    0,
+                    0.0,
+                ),
+                row(
+                    "fan_generic external_fan",
+                    "external_fan",
+                    "External fan",
+                    1,
+                    0.0,
+                    0,
+                    0.0,
+                ),
+            ]));
+            ui.set_fan_autos(model(vec![
+                row(
+                    "controller_fan stepper_driver_fan",
+                    "stepper_driver_fan",
+                    "Stepper driver fan",
+                    2,
+                    0.0,
+                    2,
+                    0.0,
+                ),
+                row(
+                    "heater_fan hotend_fan",
+                    "hotend_fan",
+                    "Hotend fan",
+                    2,
+                    100.0,
+                    1,
+                    50.0,
+                ),
+            ]));
+            ui.set_air_mode(1);
+            ui.set_print_state("standby".into());
+            ui.set_screen("fans".into());
+        }
         "toast" => {
             ui.set_screen("control".into());
             ui.set_toast_detail("Must home axis first".into());

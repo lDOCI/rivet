@@ -108,8 +108,17 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
     }
     {
         let tx = tx.clone();
-        ui.on_set_fan(move |p| {
-            let _ = tx.send(Command::SetFan(p));
+        ui.on_set_fan(move |object, percent| {
+            let _ = tx.send(Command::SetFan {
+                object: object.to_string(),
+                percent,
+            });
+        });
+    }
+    {
+        let tx = tx.clone();
+        ui.on_set_air(move |mode| {
+            let _ = tx.send(Command::SetAir(mode.clamp(0, 2) as u8));
         });
     }
     {

@@ -15,13 +15,31 @@ export component VBar inherits VerticalLayout {
     in property <string> unit: "%";
     in property <bool> off-at-zero;
     in-out property <float> value;
+    // Live value from the printer (>= 0). The bar follows it, except while a
+    // finger is on the bar; then it follows the finger. Without it, `value`
+    // is the bar's own state.
+    in property <float> source: -1;
     // Fired on release: commands go out once, not on every drag tick.
     callback committed(float);
     width: 108px;
     spacing: 6px;
 
+    property <float> local;
+    property <float> shown: root.source >= 0 ? (drag.pressed ? root.local : root.source) : root.value;
+
     function clamp-step(v: float) -> float {
         return max(root.minimum, min(root.maximum, round(v / root.step) * root.step));
+    }
+    function from-y(y: length) -> float {
+        return root.clamp-step(root.minimum + (1 - y / track.height) * (root.maximum - root.minimum));
+    }
+    function set-value(v: float) {
+        if (root.source >= 0) { root.local = v; } else { root.value = v; }
+    }
+    // ± button: one new value, shown at once and sent once.
+    function nudge-to(v: float) {
+        root.set-value(v);
+        root.committed(v);
     }
 
     Text {
@@ -33,7 +51,7 @@ export component VBar inherits VerticalLayout {
         overflow: elide;
     }
     Text {
-        text: root.off-at-zero && root.value == 0 ? @tr("Off") : round(root.value) + root.unit;
+        text: root.off-at-zero && root.shown == 0 ? @tr("Off") : round(root.shown) + root.unit;
         color: Tokens.text;
         font-size: 24px;
         font-weight: 800;
@@ -47,27 +65,30 @@ export component VBar inherits VerticalLayout {
         clip: true;
         accessible-role: slider;
         accessible-label: root.label;
-        accessible-value: round(root.value);
+        accessible-value: round(root.shown);
         accessible-value-minimum: root.minimum;
         accessible-value-maximum: root.maximum;
         Rectangle {
             y: parent.height - self.height;
-            height: parent.height * (root.value - root.minimum) / (root.maximum - root.minimum);
+            height: parent.height * (root.shown - root.minimum) / (root.maximum - root.minimum);
             background: @linear-gradient(180deg, Tokens.accent-hi 0%, Tokens.accent 100%);
         }
         drag := TouchArea {
             pointer-event(e) => {
+                if (e.kind == PointerEventKind.down) {
+                    root.local = root.from-y(self.mouse-y);
+                }
                 if (e.kind == PointerEventKind.up) {
-                    root.committed(root.value);
+                    root.committed(root.shown);
                 }
             }
             moved => {
                 if (self.pressed) {
-                    root.value = root.clamp-step(root.minimum + (1 - self.mouse-y / track.height) * (root.maximum - root.minimum));
+                    root.set-value(root.from-y(self.mouse-y));
                 }
             }
             clicked => {
-                root.value = root.clamp-step(root.minimum + (1 - self.mouse-y / track.height) * (root.maximum - root.minimum));
+                root.set-value(root.from-y(self.mouse-y));
             }
         }
     }
@@ -76,20 +97,16 @@ export component VBar inherits VerticalLayout {
         SecondaryButton {
             text: "−";
             font-size: 26px;
+            min-width: 0px;
             min-height: 56px;
-            clicked => {
-                root.value = root.clamp-step(root.value - root.big-step);
-                root.committed(root.value);
-            }
+            clicked => { root.nudge-to(root.clamp-step(root.shown - root.big-step)); }
         }
         SecondaryButton {
             text: "+";
             font-size: 26px;
+            min-width: 0px;
             min-height: 56px;
-            clicked => {
-                root.value = root.clamp-step(root.value + root.big-step);
-                root.committed(root.value);
-            }
+            clicked => { root.nudge-to(root.clamp-step(root.shown + root.big-step)); }
         }
     }
 }
@@ -170,5 +187,76 @@ export component FineStepper inherits Rectangle {
         }
         SecondaryButton { width: 64px; height: 64px; y: (parent.height - 64px) / 2; text: "+" + root.small; font-size: 16px; clicked => { root.step(root.small-step); } }
         SecondaryButton { width: 64px; height: 64px; y: (parent.height - 64px) / 2; text: "+" + root.big; font-size: 16px; clicked => { root.step(root.big-step); } }
+    }
+}
+
+// Horizontal bar in a row: title and caption, a wide bar, the value. Same
+// rule as VBar: it follows the printer, except while a finger is on it.
+export component SliderRow inherits Rectangle {
+    in property <string> title;
+    in property <string> sub;
+    in property <float> minimum: 0;
+    in property <float> maximum: 100;
+    in property <float> step: 5;
+    in property <string> unit: "%";
+    in property <bool> off-at-zero;
+    in property <float> source;
+    callback committed(float);
+    min-height: 84px;
+    border-radius: Tokens.r-m;
+    background: Tokens.surface-1;
+
+    property <float> local;
+    property <float> shown: drag.pressed ? root.local : root.source;
+    function from-x(x: length) -> float {
+        return max(root.minimum, min(root.maximum, round((root.minimum + x / bar.width * (root.maximum - root.minimum)) / root.step) * root.step));
+    }
+
+    HorizontalLayout {
+        padding-left: 18px;
+        padding-right: 12px;
+        spacing: 16px;
+        VerticalLayout {
+            width: 170px;
+            alignment: center;
+            spacing: 2px;
+            Text { text: root.title; color: Tokens.text; font-size: Tokens.row-title; font-weight: 700; overflow: elide; }
+            if root.sub != "": Text { text: root.sub; color: Tokens.text-dim; font-size: Tokens.caption; overflow: elide; }
+        }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            alignment: center;
+            bar := Rectangle {
+                height: 60px;
+                border-radius: 18px;
+                background: Tokens.surface-2;
+                clip: true;
+                accessible-role: slider;
+                accessible-label: root.title;
+                accessible-value: round(root.shown);
+                accessible-value-minimum: root.minimum;
+                accessible-value-maximum: root.maximum;
+                Rectangle {
+                    width: parent.width * (root.shown - root.minimum) / (root.maximum - root.minimum);
+                    background: @linear-gradient(90deg, Tokens.accent 0%, Tokens.accent-hi 100%);
+                }
+                drag := TouchArea {
+                    pointer-event(e) => {
+                        if (e.kind == PointerEventKind.down) { root.local = root.from-x(self.mouse-x); }
+                        if (e.kind == PointerEventKind.up) { root.committed(root.shown); }
+                    }
+                    moved => { if (self.pressed) { root.local = root.from-x(self.mouse-x); } }
+                }
+            }
+        }
+        Text {
+            width: 86px;
+            text: root.off-at-zero && root.shown == 0 ? @tr("Off") : round(root.shown) + root.unit;
+            color: Tokens.text;
+            font-size: 20px;
+            font-weight: 800;
+            horizontal-alignment: right;
+            vertical-alignment: center;
+        }
     }
 }

@@ -116,8 +116,13 @@ pub enum Command {
     /// Heater targets in °C (M104 / M140); 0 turns the heater off.
     SetNozzle(f32),
     SetBed(f32),
-    /// Part fan, percent.
-    SetFan(f32),
+    /// A fan by Klipper object name (`fan` is the part fan), percent.
+    SetFan {
+        object: String,
+        percent: f32,
+    },
+    /// Chamber air: 0 off, 1 filter, 2 exhaust (the printer's own macros).
+    SetAir(u8),
     /// Move one axis (0 X, 1 Y, 2 Z) by `delta` mm from where it is.
     Move {
         axis: usize,
@@ -441,6 +446,7 @@ async fn subscribe(client: &Client, state: &mut PrinterState) {
         .filter(|n| n.starts_with("led "))
         .cloned()
         .collect();
+    state.fan_objects = model::fan_object_names(&available);
     match client
         .call_timeout(
             "printer.objects.subscribe",
@@ -454,8 +460,21 @@ async fn subscribe(client: &Client, state: &mut PrinterState) {
             if let Some(limits) = printer_limits(client).await {
                 state.limits = limits;
             }
+            state.fan_heater_temps = fan_heater_temps(client).await;
         }
         Err(err) => tracing::warn!(%err, "subscribe failed"),
+    }
+}
+
+/// The temperatures `heater_fan`s switch on at, from the printer's config.
+async fn fan_heater_temps(client: &Client) -> std::collections::HashMap<String, f64> {
+    let query = json!({ "objects": { "configfile": ["settings"] } });
+    match client
+        .call_timeout("printer.objects.query", query, SETUP_TIMEOUT)
+        .await
+    {
+        Ok(result) => model::parse_fan_heater_temps(&result["status"]["configfile"]["settings"]),
+        Err(_) => Default::default(),
     }
 }
 
@@ -642,8 +661,9 @@ fn predict(state: &mut PrinterState, cmd: &Command) {
             state
                 .apply_status(json!({ "gcode_move": { "extrude_factor": f64::from(*p) / 100.0 } }));
         }
-        Command::SetFan(p) => {
-            state.apply_status(json!({ "fan": { "speed": f64::from(*p) / 100.0 } }));
+        Command::SetFan { object, percent } => {
+            state
+                .apply_status(json!({ object.as_str(): { "speed": f64::from(*percent) / 100.0 } }));
         }
         Command::SetNozzle(t) => {
             state.apply_status(json!({ "extruder": { "target": f64::from(*t) } }));
@@ -670,7 +690,8 @@ fn predict(state: &mut PrinterState, cmd: &Command) {
 
 /// Read the current values back after a command failed.
 async fn resync_status(client: &Client, state: &mut PrinterState) {
-    let objects: Vec<String> = state.leds.clone();
+    let mut objects: Vec<String> = state.leds.clone();
+    objects.extend(state.fan_objects.iter().cloned());
     let query = model::subscription_for(&objects);
     if let Ok(mut result) = client
         .call_timeout("printer.objects.query", query, SETUP_TIMEOUT)
@@ -698,7 +719,20 @@ fn gcode_for(cmd: &Command) -> Option<String> {
             "SAVE_GCODE_STATE NAME=RIVET\nM83\nG1 E{length:.1} F{:.0}\nRESTORE_GCODE_STATE NAME=RIVET",
             speed * 60.0
         ),
-        Command::SetFan(p) => format!("M106 S{:.0}", p * 2.55),
+        Command::SetFan { object, percent } => match object.split_once(' ') {
+            // `fan_generic NAME` is set by name; the part fan takes M106.
+            Some((_, name)) => format!(
+                "SET_FAN_SPEED FAN={name} SPEED={:.2}",
+                (percent / 100.0).clamp(0.0, 1.0)
+            ),
+            None => format!("M106 S{:.0}", percent * 2.55),
+        },
+        Command::SetAir(mode) => match mode {
+            1 => "AIR_CIRCULATION_INTERNAL",
+            2 => "AIR_CIRCULATION_EXTERNAL",
+            _ => "AIR_CIRCULATION_STOP",
+        }
+        .to_owned(),
         Command::SetBed(t) => format!("M140 S{t:.0}"),
         Command::AdjustZ(d) => format!("SET_GCODE_OFFSET Z_ADJUST={d:.3} MOVE=1"),
         Command::SetPressureAdvance(v) => format!("SET_PRESSURE_ADVANCE ADVANCE={v:.3}"),
@@ -758,7 +792,8 @@ async fn execute(
         }
         Command::SetSpeed(_)
         | Command::SetFlow(_)
-        | Command::SetFan(_)
+        | Command::SetFan { .. }
+        | Command::SetAir(_)
         | Command::Move { .. }
         | Command::MotorsOff
         | Command::Extrude { .. }
@@ -788,6 +823,86 @@ fn toast_for(err: &moonraker::Error) -> (&'static str, String) {
         moonraker::Error::Timeout => ("timeout", String::new()),
         moonraker::Error::Rpc { message, .. } => ("rpc", message.clone()),
     }
+}
+
+/// Put the fans on the screen: the part fan and the first settable one get a
+/// bar of their own, further settable fans are rows (how the prototype lays
+/// the screen out), automatic ones are listed read-only.
+fn set_fans(ui: &AppWindow, fans: &[model::Fan]) {
+    let first_generic = fans.iter().position(|f| f.kind == model::FanKind::Generic);
+    let row = |f: &model::Fan| {
+        let (trigger, value) = match f.trigger {
+            model::FanTrigger::None => (0, 0.0),
+            model::FanTrigger::HeaterAbove(t) => (1, t),
+            model::FanTrigger::Motors => (2, 0.0),
+            model::FanTrigger::Holds(t) => (3, t),
+        };
+        crate::FanRow {
+            object: f.object.as_str().into(),
+            key: f.name.as_str().into(),
+            title: pretty_name(&f.name).into(),
+            kind: match f.kind {
+                model::FanKind::Part => 0,
+                model::FanKind::Generic => 1,
+                model::FanKind::Auto => 2,
+            },
+            percent: f.percent.round() as f32,
+            trigger,
+            trigger_value: value as f32,
+        }
+    };
+    let pick = |keep: &dyn Fn(usize, &model::Fan) -> bool| -> Vec<crate::FanRow> {
+        fans.iter()
+            .enumerate()
+            .filter(|(i, f)| keep(*i, f))
+            .map(|(_, f)| row(f))
+            .collect()
+    };
+    let bars = pick(&|i, f| f.kind == model::FanKind::Part || first_generic == Some(i));
+    let extras = pick(&|i, f| f.kind == model::FanKind::Generic && first_generic != Some(i));
+    let autos = pick(&|_, f| f.kind == model::FanKind::Auto);
+    update_rows(&ui.get_fan_bars(), bars, |m| ui.set_fan_bars(m));
+    update_rows(&ui.get_fan_extras(), extras, |m| ui.set_fan_extras(m));
+    update_rows(&ui.get_fan_autos(), autos, |m| ui.set_fan_autos(m));
+}
+
+/// `stepper_driver_fan` → `Stepper driver fan`, for fans we have no name for.
+fn pretty_name(name: &str) -> String {
+    let spaced = name.replace('_', " ");
+    let mut chars = spaced.chars();
+    chars
+        .next()
+        .map(|c| c.to_uppercase().chain(chars).collect())
+        .unwrap_or_default()
+}
+
+/// Change the rows in place when the fans are the same ones, so a bar being
+/// dragged is not rebuilt under the finger; replace the model otherwise.
+fn update_rows(
+    shown: &slint::ModelRc<crate::FanRow>,
+    rows: Vec<crate::FanRow>,
+    replace: impl FnOnce(slint::ModelRc<crate::FanRow>),
+) {
+    use slint::Model;
+    if let Some(vec) = shown
+        .as_any()
+        .downcast_ref::<slint::VecModel<crate::FanRow>>()
+    {
+        let same = vec.row_count() == rows.len()
+            && rows
+                .iter()
+                .enumerate()
+                .all(|(i, r)| vec.row_data(i).is_some_and(|o| o.object == r.object));
+        if same {
+            for (i, r) in rows.into_iter().enumerate() {
+                if vec.row_data(i).as_ref() != Some(&r) {
+                    vec.set_row_data(i, r);
+                }
+            }
+            return;
+        }
+    }
+    replace(slint::ModelRc::new(slint::VecModel::from(rows)));
 }
 
 fn push(ui: &slint::Weak<AppWindow>, s: Snapshot) {
@@ -825,6 +940,8 @@ fn push(ui: &slint::Weak<AppWindow>, s: Snapshot) {
         ui.set_z_offset(s.z_offset as f32);
         ui.set_pressure_advance(s.pressure_advance as f32);
         ui.set_fan_percent(s.fan_percent.round() as i32);
+        set_fans(&ui, &s.fans);
+        ui.set_air_mode(s.air_mode.map_or(-1, i32::from));
         ui.set_has_light(s.light.is_some());
         if let Some(l) = &s.light {
             ui.set_light_on(l.on);
@@ -847,8 +964,24 @@ mod tests {
         assert_eq!(gcode_for(&Command::SetFlow(95.0)).unwrap(), "M221 S95");
         assert_eq!(gcode_for(&Command::SetNozzle(240.0)).unwrap(), "M104 S240");
         assert_eq!(gcode_for(&Command::SetBed(0.0)).unwrap(), "M140 S0");
-        assert_eq!(gcode_for(&Command::SetFan(60.0)).unwrap(), "M106 S153");
-        assert_eq!(gcode_for(&Command::SetFan(100.0)).unwrap(), "M106 S255");
+        let fan = |object: &str, percent| Command::SetFan {
+            object: object.into(),
+            percent,
+        };
+        assert_eq!(gcode_for(&fan("fan", 60.0)).unwrap(), "M106 S153");
+        assert_eq!(gcode_for(&fan("fan", 100.0)).unwrap(), "M106 S255");
+        assert_eq!(
+            gcode_for(&fan("fan_generic chamber_fan", 45.0)).unwrap(),
+            "SET_FAN_SPEED FAN=chamber_fan SPEED=0.45"
+        );
+        assert_eq!(
+            gcode_for(&Command::SetAir(2)).unwrap(),
+            "AIR_CIRCULATION_EXTERNAL"
+        );
+        assert_eq!(
+            gcode_for(&Command::SetAir(0)).unwrap(),
+            "AIR_CIRCULATION_STOP"
+        );
         assert_eq!(
             gcode_for(&Command::AdjustZ(-0.05)).unwrap(),
             "SET_GCODE_OFFSET Z_ADJUST=-0.050 MOVE=1"
