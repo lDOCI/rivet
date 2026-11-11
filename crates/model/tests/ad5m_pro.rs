@@ -93,3 +93,18 @@ fn heater_limits_of_the_real_printer() {
     assert_eq!(limits.bed_max, 130.0);
     assert_eq!(limits.nozzle_diameter, 0.4);
 }
+
+#[test]
+fn toolhead_ranges_of_the_real_printer() {
+    let mut status = load("status.json");
+    let mut state = PrinterState::default();
+    state.replace_status(status["result"]["status"].take());
+    let snap = state.snapshot();
+    assert_eq!(snap.axis_min, [-112.0, -112.0, -10.0]);
+    assert_eq!(snap.axis_max, [112.0, 112.0, 230.0]);
+    // After boot nothing is homed: the UI must say so.
+    assert_eq!(snap.homed_axes, "");
+    let cfg = load("configfile.json");
+    let limits = model::parse_limits(&cfg["result"]["status"]["configfile"]["settings"]);
+    assert_eq!(limits.min_extrude_temp, 170.0);
+}

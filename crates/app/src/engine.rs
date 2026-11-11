@@ -123,6 +123,17 @@ pub enum Command {
     SetBed(f32),
     /// Part fan, percent.
     SetFan(f32),
+    /// Move one axis (0 X, 1 Y, 2 Z) by `delta` mm from where it is.
+    Move {
+        axis: usize,
+        delta: f32,
+    },
+    MotorsOff,
+    /// Push (positive) or pull (negative) filament: mm and mm/s.
+    Extrude {
+        length: f32,
+        speed: f32,
+    },
     /// Move the Z offset by this many mm, live (`SET_GCODE_OFFSET`).
     AdjustZ(f32),
     SetPressureAdvance(f32),
@@ -168,6 +179,15 @@ pub async fn run(
             }
             cmd = cmds.recv() => {
                 let Some(cmd) = cmd else { break };
+                let cmd = match cmd {
+                    Command::Move { axis, delta } => {
+                        match clamp_move(&state.snapshot(), axis, delta) {
+                            Some(delta) => Command::Move { axis, delta },
+                            None => continue,
+                        }
+                    }
+                    other => other,
+                };
                 predict(&mut state, &cmd);
                 let client = client.clone();
                 let ui = ui.clone();
@@ -536,6 +556,15 @@ fn unix_now() -> f64 {
         .map_or(0.0, |d| d.as_secs_f64())
 }
 
+/// A move that stays inside the axis range; `None` when it would not move.
+fn clamp_move(snap: &Snapshot, axis: usize, delta: f32) -> Option<f32> {
+    let axis = axis.min(2);
+    let at = snap.position[axis];
+    let target = (at + f64::from(delta)).clamp(snap.axis_min[axis], snap.axis_max[axis]);
+    let delta = (target - at) as f32;
+    (delta.abs() >= 0.001).then_some(delta)
+}
+
 /// Apply a tuning command to our copy of the state right away, so the screen
 /// answers the tap instead of waiting for Klipper's next status update.
 fn predict(state: &mut PrinterState, cmd: &Command) {
@@ -591,6 +620,18 @@ fn gcode_for(cmd: &Command) -> Option<String> {
         Command::SetSpeed(p) => format!("M220 S{p:.0}"),
         Command::SetFlow(p) => format!("M221 S{p:.0}"),
         Command::SetNozzle(t) => format!("M104 S{t:.0}"),
+        Command::Move { axis, delta } => {
+            let (letter, feed) = [("X", 6000), ("Y", 6000), ("Z", 600)][(*axis).min(2)];
+            // Relative for this move only; the printer's modes come back after.
+            format!(
+                "SAVE_GCODE_STATE NAME=RIVET\nG91\nG1 {letter}{delta:.3} F{feed}\nRESTORE_GCODE_STATE NAME=RIVET"
+            )
+        }
+        Command::MotorsOff => "M84".to_owned(),
+        Command::Extrude { length, speed } => format!(
+            "SAVE_GCODE_STATE NAME=RIVET\nM83\nG1 E{length:.1} F{:.0}\nRESTORE_GCODE_STATE NAME=RIVET",
+            speed * 60.0
+        ),
         Command::SetFan(p) => format!("M106 S{:.0}", p * 2.55),
         Command::SetBed(t) => format!("M140 S{t:.0}"),
         Command::AdjustZ(d) => format!("SET_GCODE_OFFSET Z_ADJUST={d:.3} MOVE=1"),
@@ -656,6 +697,9 @@ async fn execute(
         Command::SetSpeed(_)
         | Command::SetFlow(_)
         | Command::SetFan(_)
+        | Command::Move { .. }
+        | Command::MotorsOff
+        | Command::Extrude { .. }
         | Command::SetNozzle(_)
         | Command::SetBed(_)
         | Command::AdjustZ(_)
@@ -704,6 +748,14 @@ fn push(ui: &slint::Weak<AppWindow>, s: Snapshot) {
         ui.set_progress(s.progress as f32);
         ui.set_remaining_minutes(s.remaining_secs.map_or(-1, |t| t.div_ceil(60) as i32));
         ui.set_elapsed_minutes((s.print_duration / 60.0) as i32);
+        ui.set_position_x(s.position[0] as f32);
+        ui.set_position_y(s.position[1] as f32);
+        ui.set_position_z(s.position[2] as f32);
+        ui.set_homed_x(s.homed_axes.contains('x'));
+        ui.set_homed_y(s.homed_axes.contains('y'));
+        ui.set_homed_z(s.homed_axes.contains('z'));
+        ui.set_can_extrude(s.can_extrude);
+        ui.set_min_extrude_temp(s.limits.min_extrude_temp as f32);
         ui.set_max_nozzle(s.limits.extruder_max as f32);
         ui.set_max_bed(s.limits.bed_max as f32);
         ui.set_speed_percent(s.speed_percent as f32);
@@ -756,6 +808,52 @@ mod tests {
             "SET_LED LED=chamber_led RED=0 GREEN=0 BLUE=0 TRANSMIT=1"
         );
         assert!(gcode_for(&Command::Pause).is_none());
+    }
+
+    #[test]
+    fn moves_are_clamped_to_the_axis_range() {
+        let snap = Snapshot {
+            position: [100.0, 0.0, 5.0],
+            axis_min: [-112.0, -112.0, -10.0],
+            axis_max: [112.0, 112.0, 230.0],
+            ..Default::default()
+        };
+        assert_eq!(clamp_move(&snap, 0, 10.0), Some(10.0));
+        // Only 12 mm of travel left on X.
+        assert_eq!(clamp_move(&snap, 0, 50.0), Some(12.0));
+        assert_eq!(clamp_move(&snap, 2, -50.0), Some(-15.0));
+        // Already at the end: no move at all.
+        let at_end = Snapshot {
+            position: [112.0, 0.0, 5.0],
+            ..snap
+        };
+        assert_eq!(clamp_move(&at_end, 0, 10.0), None);
+    }
+
+    #[test]
+    fn motion_and_extrusion_gcode_restore_the_modes() {
+        let code = gcode_for(&Command::Move {
+            axis: 1,
+            delta: -10.0,
+        })
+        .unwrap();
+        assert_eq!(
+            code,
+            "SAVE_GCODE_STATE NAME=RIVET\nG91\nG1 Y-10.000 F6000\nRESTORE_GCODE_STATE NAME=RIVET"
+        );
+        assert!(gcode_for(&Command::Move {
+            axis: 2,
+            delta: 1.0
+        })
+        .unwrap()
+        .contains("Z1.000 F600"));
+        let code = gcode_for(&Command::Extrude {
+            length: -25.0,
+            speed: 5.0,
+        })
+        .unwrap();
+        assert!(code.contains("M83") && code.contains("G1 E-25.0 F300"));
+        assert_eq!(gcode_for(&Command::MotorsOff).unwrap(), "M84");
     }
 
     #[test]
