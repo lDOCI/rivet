@@ -7,6 +7,7 @@ export component Gauge inherits Rectangle {
     in property <float> maximum: 350;
     in property <length> size: 44px;
     in property <length> value-size: 12px;
+    in property <int> value-weight: 800;
     width: root.size;
     height: root.size;
     property <float> fraction: max(0.001, min(1, root.current / root.maximum));
@@ -19,8 +20,10 @@ export component Gauge inherits Rectangle {
         stroke: #232831;
         stroke-width: root.size * 0.1;
         stroke-line-cap: round;
-        // 270° arc from the bottom left, clockwise.
-        commands: "M26.06 93.94 A48 48 0 1 1 93.94 93.94";
+        // 270° arc from the bottom left, clockwise. The prototype's band runs from
+        // radius 45 to 55 (r 50, width 10, centred); this renderer strokes inside
+        // the line, so the line is the band's outer edge, 55.
+        commands: "M21.11 98.89 A55 55 0 1 1 98.89 98.89";
     }
     Path {
         width: parent.width;
@@ -32,12 +35,12 @@ export component Gauge inherits Rectangle {
         stroke-line-cap: round;
         // Path elements, not a command string: a string would format the
         // numbers with the language's decimal comma and break the arc.
-        MoveTo { x: 26.06; y: 93.94; }
+        MoveTo { x: 21.11; y: 98.89; }
         ArcTo {
-            radius-x: 48;
-            radius-y: 48;
-            x: 60 + 48 * cos(root.end);
-            y: 60 + 48 * sin(root.end);
+            radius-x: 55;
+            radius-y: 55;
+            x: 60 + 55 * cos(root.end);
+            y: 60 + 55 * sin(root.end);
             large-arc: root.fraction > 0.6667;
             sweep: true;
         }
@@ -46,7 +49,7 @@ export component Gauge inherits Rectangle {
         text: round(root.current) + "°";
         color: Tokens.text;
         font-size: root.value-size;
-        font-weight: 800;
+        font-weight: root.value-weight;
         horizontal-alignment: center;
         vertical-alignment: center;
     }

@@ -52,6 +52,7 @@ async fn main() -> anyhow::Result<()> {
                 }
                 Some(Event::Notification { method, .. }) => println!("notification: {method}"),
                 Some(Event::Disconnected) => println!("disconnected"),
+                Some(Event::Retrying { attempt, next_in }) => println!("attempt {attempt} failed, next in {next_in:?}"),
                 None => break,
             },
         }

@@ -19,19 +19,28 @@ export component ToolsScreen inherits VerticalLayout {
     padding: Tokens.pad;
     spacing: Tokens.gap;
     Header { title: @tr("Tools"); back: false; }
-    GridLayout {
-        spacing: Tokens.gap;
+    // The prototype's 4 × 2 grid, centred. Tiles whose screens are not built yet
+    // (calibrations, history, limits, sensors, service, camera) leave their cell
+    // empty, so the others stay where the prototype has them.
+    VerticalLayout {
         vertical-stretch: 1;
-        Row {
-            Tile { icon: Icons.console; label: @tr("Console"); sub: @tr("G-code by hand"); clicked => { root.open("console"); } }
-            Tile {
-                icon: Icons.macro;
-                label: @tr("Macros");
-                sub: @tr("{n} macro" | "{n} macros" % root.macro-count);
-                clicked => { root.open("macros"); }
+        alignment: center;
+        GridLayout {
+            spacing: Tokens.gap;
+            Row {
+                Rectangle { preferred-width: 0px; min-width: 0px; horizontal-stretch: 1; }
+                Tile {
+                    icon: Icons.macro;
+                    label: @tr("Macros");
+                    sub: @tr("{n} macro" | "{n} macros" % root.macro-count);
+                    clicked => { root.open("macros"); }
+                }
+                Tile { icon: Icons.console; label: @tr("Console"); sub: @tr("G-code by hand"); clicked => { root.open("console"); } }
+                Rectangle { preferred-width: 0px; min-width: 0px; horizontal-stretch: 1; }
             }
-            Rectangle { horizontal-stretch: 1; }
-            Rectangle { horizontal-stretch: 1; }
+            Row {
+                Rectangle { height: 161px; }
+            }
         }
     }
 }

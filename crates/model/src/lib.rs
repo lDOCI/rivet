@@ -381,6 +381,25 @@ pub fn macro_managed_pins(config: &Value) -> Vec<String> {
     pins
 }
 
+/// What a Klipper shutdown message is about, for a plain-words explanation on the
+/// screen; "" when Rivet does not know it (the message is still shown as is).
+pub fn error_kind(message: &str) -> &'static str {
+    let m = message.to_ascii_lowercase();
+    if m.contains("timer too close") || m.contains("rescheduled timer in the past") {
+        "timer"
+    } else if m.contains("lost communication with mcu") || m.contains("unable to connect") {
+        "lost"
+    } else if m.contains("adc out of range") {
+        "adc"
+    } else if m.contains("not heating at expected rate") {
+        "heating"
+    } else if m.contains("move out of range") {
+        "range"
+    } else {
+        ""
+    }
+}
+
 /// User output pins of this printer (`output_pin` not starting with `_`).
 pub fn user_pins(available: &[String]) -> Vec<String> {
     available
@@ -507,6 +526,8 @@ pub struct FileMeta {
     pub filament_grams: Option<f64>,
     pub layers: Option<u32>,
     pub nozzle_diameter: Option<f64>,
+    /// First filament colour the slicer wrote ("#4466CC"), if any.
+    pub filament_color: Option<String>,
     pub thumbnails: Vec<ThumbRef>,
 }
 
@@ -514,6 +535,13 @@ pub fn parse_file_meta(result: &Value) -> FileMeta {
     let num = |k: &str| result.get(k).and_then(Value::as_f64).filter(|v| *v > 0.0);
     FileMeta {
         estimated_secs: num("estimated_time").map(|v| v as u64),
+        filament_color: result
+            .get("filament_colors")
+            .and_then(Value::as_array)
+            .and_then(|a| a.first())
+            .and_then(Value::as_str)
+            .filter(|c| !c.is_empty())
+            .map(str::to_owned),
         filament_type: result
             .get("filament_type")
             .and_then(Value::as_str)
@@ -547,6 +575,10 @@ pub struct LastPrint {
     pub ended: f64,
     pub duration_secs: u64,
     pub completed: bool,
+    /// Filament type from the slicer (`metadata.filament_type`), empty when not sent.
+    pub material: String,
+    /// Grams of filament the slicer planned (`metadata.filament_weight_total`), 0 if not sent.
+    pub grams: f64,
 }
 
 /// Newest job out of a `server.history.list` result (newest first).
@@ -561,6 +593,15 @@ pub fn parse_last_print(result: &Value) -> Option<LastPrint> {
             .unwrap_or(0.0)
             .max(0.0) as u64,
         completed: job.get("status").and_then(Value::as_str) == Some("completed"),
+        material: job
+            .pointer("/metadata/filament_type")
+            .and_then(Value::as_str)
+            .map(|t| t.split(';').next().unwrap_or(t).trim().to_owned())
+            .unwrap_or_default(),
+        grams: job
+            .pointer("/metadata/filament_weight_total")
+            .and_then(Value::as_f64)
+            .unwrap_or(0.0),
     })
 }
 
@@ -826,6 +867,13 @@ pub fn merge(dst: &mut Value, src: Value) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn known_shutdowns() {
+        assert_eq!(error_kind("MCU 'mcu' shutdown: Timer too close"), "timer");
+        assert_eq!(error_kind("Lost communication with MCU 'mcu'"), "lost");
+        assert_eq!(error_kind("Something else"), "");
+    }
 
     #[test]
     fn pins_switched_by_macros() {

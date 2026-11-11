@@ -125,9 +125,19 @@ fn show(ui: &AppWindow, name: &str) {
     };
     match name {
         "home" => {
+            // The prototype page's values.
+            ui.set_extruder_temp(24.0);
+            ui.set_extruder_target(0.0);
+            ui.set_bed_temp(23.0);
+            ui.set_bed_target(0.0);
+            ui.set_last_material("PETG".into());
+            ui.set_files_local(24);
+            ui.set_files_usb(3);
+            ui.set_loaded_material("PETG".into());
+            ui.set_loaded_color(slint::Color::from_rgb_u8(0x44, 0x66, 0xcc));
             ui.set_last_thumb(fake_preview());
             ui.set_has_last_thumb(true);
-            ui.set_last_name("fan_duct_2.gcode".into());
+            ui.set_last_name("Корпус вентилятора №2".into());
             ui.set_last_minutes(83);
             ui.set_last_days_ago(1);
         }
@@ -137,6 +147,11 @@ fn show(ui: &AppWindow, name: &str) {
             print("printing", 0.42);
             ui.set_layer(76);
             ui.set_total_layers(180);
+            // The prototype page's values.
+            ui.set_filename("Корпус вентилятора №2".into());
+            ui.set_extruder_temp(240.0);
+            ui.set_eta_clock("15:20".into());
+            ui.set_has_light(true);
         }
         "tune" => {
             // The prototype page's values.
@@ -162,38 +177,45 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_has_auto_shutdown(true);
         }
         "files" | "files-empty" | "file" => {
+            // The prototype page's files: names, print time and filament from metadata.
             let names = [
-                ("fan_duct_2", 1, 4410),
-                ("benchy", 3, 2250),
-                ("spool_holder_v3", 8, 12800),
-                ("electronics_cover", 12, 980),
-                ("calibration_cube", 30, 310),
-                ("screwdriver_organizer", 31, 8800),
-                ("vase_spiral", 40, 1500),
+                ("Корпус вентилятора №2", 83, "PETG"),
+                ("Benchy", 52, "PLA"),
+                ("Держатель катушки v3", 185, "PETG"),
+                ("Крышка электроники", 41, "PLA"),
+                ("Калибровочный куб", 18, "PLA"),
+                ("Органайзер для отвёрток", 130, "PLA"),
+                ("Ваза", 95, "PETG"),
             ];
             let items: Vec<rivet::FileItem> = if name == "files-empty" {
                 Vec::new()
             } else {
                 names
                     .iter()
-                    .map(|(n, d, kb)| rivet::FileItem {
+                    .map(|(n, minutes, material)| rivet::FileItem {
                         path: format!("{n}.gcode").as_str().into(),
                         name: (*n).into(),
-                        days_ago: *d,
-                        size_kb: *kb,
+                        has_meta: true,
+                        minutes: *minutes,
+                        material: (*material).into(),
                         thumb: fake_preview(),
                         has_thumb: true,
                         ..Default::default()
                     })
                     .collect()
             };
+            ui.set_files_local(24);
+            ui.set_files_usb(3);
+            ui.set_loaded_material("PETG".into());
             ui.set_files(slint::ModelRc::new(slint::VecModel::from(items)));
             if name == "file" {
                 ui.set_screen("file".into());
-                ui.set_open_path("fan_duct_2.gcode".into());
-                ui.set_open_name("fan_duct_2.gcode".into());
+                ui.set_open_path("Корпус вентилятора №2.gcode".into());
+                ui.set_open_name("Корпус вентилятора №2".into());
                 ui.set_file_info(rivet::FileInfo {
-                    path: "fan_duct_2.gcode".into(),
+                    path: "Корпус вентилятора №2.gcode".into(),
+                    color: slint::Color::from_rgb_u8(0x44, 0x66, 0xcc),
+                    has_color: true,
                     minutes: 83,
                     filament: "PETG".into(),
                     grams: 18,
@@ -331,9 +353,10 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_open_name("Корпус вентилятора №2".into());
         }
         "zoffset" => {
-            ui.set_screen(name.into());
-            ui.set_speed_percent(110.0);
-            ui.set_z_offset(-0.07);
+            // The prototype page's values: −0.12, unchanged since the screen opened.
+            ui.set_screen("zoffset".into());
+            ui.set_z_offset(-0.12);
+            ui.set_tune_z_start(-0.12);
         }
         "tools" | "macros" | "console" | "console-keyboard" => {
             ui.set_screen(name.trim_end_matches("-keyboard").into());
@@ -400,6 +423,12 @@ fn show(ui: &AppWindow, name: &str) {
         "offline" | "startup" | "klippy-offline" | "error" => {
             ui.set_link_state(name.into());
             ui.set_klippy_message("MCU 'mcu' shutdown: Timer too close".into());
+            // The prototype pages' state: a print cut at 42 %, attempt 7 in 3 s.
+            ui.set_error_kind("timer".into());
+            ui.set_print_state("error".into());
+            ui.set_progress(0.42);
+            ui.set_retry_attempt(7);
+            ui.set_retry_in(3);
         }
         "home-empty" => {}
         "paused" => print("paused", 0.42),
@@ -408,6 +437,12 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_elapsed_minutes(83);
             ui.set_bed_temp(61.0);
             ui.set_bed_target(0.0);
+            // The prototype page's values, as the history entry gives them.
+            ui.set_filename("Корпус вентилятора №2".into());
+            ui.set_last_name("Корпус вентилятора №2".into());
+            ui.set_last_clock("14:02".into());
+            ui.set_last_material("PETG".into());
+            ui.set_last_grams(18);
         }
         "dialog" => {
             ui.set_screen("home".into());
@@ -483,6 +518,14 @@ fn show(ui: &AppWindow, name: &str) {
         }
         "control" => {
             ui.set_screen("control".into());
+            // The prototype page's values.
+            ui.set_extruder_temp(187.0);
+            ui.set_extruder_target(240.0);
+            ui.set_fan_percent(60);
+            ui.set_has_light(true);
+            ui.set_light_on(true);
+            ui.set_light_level(80.0);
+            ui.set_z_offset(-0.12);
             // The prototype shows the Devices tile: one output pin is enough.
             let pin = rivet::FormRow {
                 kind: "toggle".into(),

@@ -53,6 +53,8 @@ export component PrintingScreen inherits Rectangle {
     callback more;
     // «More» only when this printer has something to put there.
     in property <bool> has-more;
+    // "15:20" when the print should end; empty without a timezone or an estimate.
+    in property <string> eta-clock;
 
     property <color> tone: root.paused ? Tokens.warn : Tokens.accent;
     property <float> p: max(0.0001, min(0.9999, root.progress));
@@ -165,7 +167,6 @@ export component PrintingScreen inherits Rectangle {
             HorizontalLayout {
                 alignment: start;
                 spacing: 2px;
-                padding-top: 10px;
                 Text { text: round(root.progress * 100); color: Tokens.text; font-size: 92px; font-weight: 800; vertical-alignment: bottom; }
                 Text { text: "%"; color: Tokens.text-dim; font-size: 44px; font-weight: 700; vertical-alignment: bottom; }
             }
@@ -176,9 +177,11 @@ export component PrintingScreen inherits Rectangle {
                 font-size: 22px;
                 font-weight: 700;
             }
-            // Layers only when the slicer reports them.
-            if root.layer >= 0 && root.total-layers > 0: Text {
-                text: @tr("layer {} of {}", root.layer, root.total-layers);
+            // When it ends (wall clock) and the layer, each only when known.
+            if root.eta-clock != "" || (root.layer >= 0 && root.total-layers > 0): Text {
+                text: (root.eta-clock != "" ? @tr("done at {}", root.eta-clock) : "")
+                    + (root.eta-clock != "" && root.layer >= 0 && root.total-layers > 0 ? " · " : "")
+                    + (root.layer >= 0 && root.total-layers > 0 ? @tr("layer {} of {}", root.layer, root.total-layers) : "");
                 color: Tokens.text-dim;
                 font-size: 15px;
             }
@@ -189,13 +192,15 @@ export component PrintingScreen inherits Rectangle {
                 HeaterChip { name: @tr("Bed"); current: root.bed; target: root.bed-target; }
             }
             Rectangle { vertical-stretch: 1; }
+            // Four equal tiles, 84 px high, at the bottom (the prototype's grid).
             HorizontalLayout {
                 spacing: 10px;
-                if !root.paused: ActionTile { icon: "M10 4.5v15 M16 4.5v15"; text: @tr("Pause"); clicked => { root.pause(); } }
-                if root.paused: ActionTile { icon: "M7.5 4.8v14.4a1 1 0 0 0 1.5.86l11.6-7.2a1 1 0 0 0 0-1.72L9 3.94a1 1 0 0 0-1.5.86z"; filled: true; text: @tr("Resume"); clicked => { root.resume(); } }
-                ActionTile { icon: Icons.control; text: @tr("Tune"); clicked => { root.tune(); } }
-                if root.has-more: ActionTile { icon: "M5 12h.01 M12 12h.01 M19 12h.01"; text: @tr("More"); clicked => { root.more(); } }
-                ActionTile { icon: "M5 5h14v14H5z"; filled: true; danger: true; text: @tr("Cancel"); clicked => { root.cancel(); } }
+                height: 84px;
+                if !root.paused: ActionTile { preferred-width: 0px; min-width: 0px; horizontal-stretch: 1; icon: "M10 4.5v15 M16 4.5v15"; text: @tr("Pause"); clicked => { root.pause(); } }
+                if root.paused: ActionTile { preferred-width: 0px; min-width: 0px; horizontal-stretch: 1; icon: "M7.5 4.8v14.4a1 1 0 0 0 1.5.86l11.6-7.2a1 1 0 0 0 0-1.72L9 3.94a1 1 0 0 0-1.5.86z"; filled: true; text: @tr("Resume"); clicked => { root.resume(); } }
+                ActionTile { preferred-width: 0px; min-width: 0px; horizontal-stretch: 1; icon: Icons.control; text: @tr("Tune"); clicked => { root.tune(); } }
+                if root.has-more: ActionTile { preferred-width: 0px; min-width: 0px; horizontal-stretch: 1; icon: "M5 12h.01 M12 12h.01 M19 12h.01"; text: @tr("More"); clicked => { root.more(); } }
+                ActionTile { preferred-width: 0px; min-width: 0px; horizontal-stretch: 1; icon: "M5 5h14v14H5z"; filled: true; danger: true; text: @tr("Stop print"); clicked => { root.cancel(); } }
             }
         }
     }
@@ -208,6 +213,11 @@ export component PrintDoneScreen inherits Rectangle {
     in property <bool> has-thumb;
     in property <int> elapsed-minutes;
     in property <float> bed;
+    // From the history entry of this print: wall-clock end (needs a timezone),
+    // filament type and planned grams from the slicer. Empty / 0 when not known.
+    in property <string> clock;
+    in property <string> material;
+    in property <int> grams;
     callback dismiss;
     callback again;
     HorizontalLayout {
@@ -241,23 +251,51 @@ export component PrintDoneScreen inherits Rectangle {
         }
         VerticalLayout {
             horizontal-stretch: 1;
-            spacing: 10px;
-            Text { text: @tr("Done"); color: Tokens.accent-hi; font-size: 15px; font-weight: 700; }
-            Text { text: root.filename; color: Tokens.text; font-size: 32px; font-weight: 800; wrap: word-wrap; overflow: elide; }
-            Rectangle {
-                height: 66px;
-                border-radius: 18px;
-                background: Tokens.surface-1;
-                VerticalLayout {
-                    padding-left: 14px;
-                    alignment: center;
-                    spacing: 2px;
-                    Text { text: @tr("Time"); color: Tokens.text-dim; font-size: 13px; }
-                    Text { text: Format.duration(root.elapsed-minutes); color: Tokens.text; font-size: 22px; font-weight: 800; }
+            Text {
+                text: root.clock != "" ? @tr("Done") + " · " + root.clock : @tr("Done");
+                color: Tokens.accent-hi;
+                font-size: 15px;
+                font-weight: 700;
+            }
+            Rectangle { height: 10px; }
+            Text { text: root.filename; color: Tokens.text; font-size: 32px; font-weight: 800; letter-spacing: -0.64px; overflow: elide; }
+            Rectangle { height: 16px; }
+            HorizontalLayout {
+                spacing: 10px;
+                height: 68px;
+                Rectangle {
+                    preferred-width: 0px;
+                    min-width: 0px;
+                    horizontal-stretch: 1;
+                    border-radius: 18px;
+                    background: Tokens.surface-1;
+                    VerticalLayout {
+                        padding-left: 14px;
+                        alignment: center;
+                        spacing: 2px;
+                        Text { text: @tr("Time"); color: Tokens.text-dim; font-size: 13px; }
+                        Text { text: Format.duration(root.elapsed-minutes); color: Tokens.text; font-size: 22px; font-weight: 800; }
+                    }
+                }
+                // Filament: only when the slicer said how much and what.
+                Rectangle {
+                    preferred-width: 0px;
+                    min-width: 0px;
+                    horizontal-stretch: 1;
+                    border-radius: 18px;
+                    background: root.grams > 0 ? Tokens.surface-1 : transparent;
+                    if root.grams > 0: VerticalLayout {
+                        padding-left: 14px;
+                        alignment: center;
+                        spacing: 2px;
+                        Text { text: @tr("Filament"); color: Tokens.text-dim; font-size: 13px; }
+                        Text { text: @tr("{} g", root.grams) + (root.material != "" ? " " + root.material : ""); color: Tokens.text; font-size: 22px; font-weight: 800; }
+                    }
                 }
             }
+            Rectangle { height: 14px; }
             if root.bed > 45: Text {
-                text: @tr("Bed is still {}°: let it cool before taking the part off.", round(root.bed));
+                text: @tr("Bed {}° — {} comes off easier once it cools.", round(root.bed), root.material != "" ? root.material : @tr("the part"));
                 color: Tokens.text-dim;
                 font-size: 15px;
                 wrap: word-wrap;
@@ -265,8 +303,9 @@ export component PrintDoneScreen inherits Rectangle {
             Rectangle { vertical-stretch: 1; }
             HorizontalLayout {
                 spacing: 10px;
-                SecondaryButton { horizontal-stretch: 10; text: @tr("Done"); font-size: 18px; min-height: 80px; clicked => { root.dismiss(); } }
-                PrimaryButton { horizontal-stretch: 14; text: @tr("Print again"); min-height: 80px; clicked => { root.again(); } }
+                height: 80px;
+                SecondaryButton { preferred-width: 0px; min-width: 0px; horizontal-stretch: 10; text: @tr("Done"); font-size: 18px; radius: 22px; clicked => { root.dismiss(); } }
+                PrimaryButton { preferred-width: 0px; min-width: 0px; horizontal-stretch: 14; text: @tr("Print it again"); clicked => { root.again(); } }
             }
         }
     }

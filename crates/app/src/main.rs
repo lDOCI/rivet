@@ -253,6 +253,7 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
         });
     }
     ui.on_save_z_offset(send(Command::SaveZOffset));
+    ui.on_retry_now(send(Command::RetryNow));
     ui.on_list_spools(send(Command::ListSpools));
     {
         let tx = tx.clone();
@@ -319,7 +320,14 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
     ui.on_clear_console(send(Command::ClearConsole));
     // Typing is plain string editing, done here: Slint has no string slicing.
     ui.on_apply_key(|text, key| rivet::apply_key(&text, &key).into());
-    ui.on_refresh_files(send(Command::ListFiles));
+    {
+        let tx = tx.clone();
+        let weak = ui.as_weak();
+        ui.on_refresh_files(move || {
+            let usb = weak.upgrade().is_some_and(|ui| ui.get_files_on_usb());
+            let _ = tx.send(Command::ListFiles { usb });
+        });
+    }
     {
         let tx = tx.clone();
         ui.on_open_file(move |path| {

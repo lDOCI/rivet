@@ -1,19 +1,50 @@
 // Shown in place of every screen while the printer cannot be used: no link
 // to Moonraker, Klipper starting or not running, Klipper stopped with an error.
+// Laid out as the prototype's Offline and KlipperError pages.
 import { Tokens } from "../kit/tokens.slint";
 import { Icon, PrimaryButton } from "../kit/controls.slint";
+
+component BigButton inherits Rectangle {
+    in property <string> text;
+    in property <bool> primary;
+    callback clicked;
+    height: 80px;
+    border-radius: 22px;
+    background: root.primary ? (ta.pressed ? Tokens.accent.darker(15%) : Tokens.accent) : (ta.pressed ? Tokens.surface-2 : Tokens.surface-1);
+    accessible-role: button;
+    accessible-label: root.text;
+    accessible-action-default => { root.clicked(); }
+    Text {
+        text: root.text;
+        color: root.primary ? Tokens.accent-ink : Tokens.text;
+        font-size: root.primary ? 18px : 17px;
+        font-weight: root.primary ? 800 : 700;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    ta := TouchArea { clicked => { root.clicked(); } }
+}
 
 export component StatusScreen inherits Rectangle {
     horizontal-stretch: 1;
     // "offline" | "startup" | "klippy-offline" | "error"
     in property <string> state: "offline";
-    // What Klipper itself said (error state).
+    // What Klipper itself said (error state), and what it is about ("timer", ...).
     in property <string> message;
+    in property <string> kind;
+    // Progress of the print the stop cut short; 0 when nothing was printing.
+    in property <float> progress;
+    // No link: the attempt that failed last, seconds to the next (-1 none).
+    in property <int> attempt;
+    in property <int> retry-in: -1;
     callback restart-firmware;
+    callback retry;
+    callback log;
 
     property <bool> is-error: root.state == "error";
 
-    VerticalLayout {
+    // Offline / starting / Klipper off: centred.
+    if !root.is-error: VerticalLayout {
         padding: 24px;
         padding-left: 40px;
         padding-right: 40px;
@@ -25,39 +56,106 @@ export component StatusScreen inherits Rectangle {
                 width: 96px;
                 height: 96px;
                 border-radius: 32px;
-                background: root.is-error ? Tokens.danger-soft : Tokens.surface-1;
+                background: Tokens.surface-1;
                 Icon {
-                    d: root.is-error ? "M8 2.5h8l5.5 5.5v8L16 21.5H8L2.5 16V8z M12 7.5v5.5 M12 16.5v.5"
-                        : root.state == "offline" ? "M2.5 2.5l19 19 M8.5 16a5 5 0 0 1 7 0 M5 12.5a10 10 0 0 1 5.3-2.8 M14.4 9.9A10 10 0 0 1 19 12.5 M2 9a15 15 0 0 1 4.4-2.8 M10.7 5.1A15 15 0 0 1 22 9"
+                    d: root.state == "offline" ? "M2.5 2.5l19 19 M8.5 16a5 5 0 0 1 7 0 M5 12.5a10 10 0 0 1 5.3-2.8 M14.4 9.9A10 10 0 0 1 19 12.5 M2 9a15 15 0 0 1 4.4-2.8 M10.7 5.1A15 15 0 0 1 22 9"
                         : "M12 3v4 M12 17v4 M3 12h4 M17 12h4 M5.6 5.6l2.8 2.8 M15.6 15.6l2.8 2.8 M5.6 18.4l2.8-2.8 M15.6 8.4l2.8-2.8";
                     size: 48px;
                     weight: 1.8;
-                    color: root.is-error ? Tokens.danger : Tokens.text-dim;
+                    color: Tokens.text-dim;
                 }
             }
         }
         Text {
             text: root.state == "offline" ? @tr("No connection to the printer")
                 : root.state == "startup" ? @tr("Klipper is starting")
-                : root.state == "klippy-offline" ? @tr("Klipper is not running")
-                : @tr("The printer has stopped");
+                : @tr("Klipper is not running");
             color: Tokens.text;
             font-size: 30px;
             font-weight: 800;
+            letter-spacing: -0.6px;
             horizontal-alignment: center;
-            wrap: word-wrap;
+        }
+        HorizontalLayout {
+            alignment: center;
+            Text {
+                max-width: 500px;
+                text: root.state == "offline" ? @tr("Moonraker does not answer. Trying again every 5 seconds: the screen updates by itself once the link is back.")
+                    : root.state == "startup" ? @tr("This takes a few seconds. The screen updates by itself.")
+                    : @tr("Moonraker is reachable, but Klipper is off or restarting. The screen updates by itself.");
+                color: Tokens.text-2;
+                font-size: 17px;
+                horizontal-alignment: center;
+                wrap: word-wrap;
+            }
+        }
+        if root.state == "offline" && root.attempt > 0: HorizontalLayout {
+            alignment: center;
+            Rectangle {
+                height: 34px;
+                border-radius: 17px;
+                background: Tokens.surface-1;
+                HorizontalLayout {
+                    padding-left: 14px;
+                    padding-right: 14px;
+                    spacing: 8px;
+                    VerticalLayout { alignment: center; Rectangle { width: 8px; height: 8px; border-radius: 4px; background: Tokens.warn; } }
+                    Text {
+                        text: root.retry-in > 0 ? @tr("attempt {} · next in {} s", root.attempt, root.retry-in) : @tr("attempt {} · trying now", root.attempt);
+                        color: Tokens.text-dim;
+                        font-size: 14px;
+                        font-weight: 600;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+        }
+        if root.state == "offline": HorizontalLayout {
+            alignment: center;
+            padding-top: 10px;
+            BigButton { width: 220px; primary: true; text: @tr("Retry now"); clicked => { root.retry(); } }
+        }
+    }
+
+    // Stopped with an error: left-aligned, what happened and what to do.
+    if root.is-error: VerticalLayout {
+        padding-top: 24px;
+        padding-left: 24px;
+        padding-right: 28px;
+        padding-bottom: Tokens.pad;
+        spacing: 12px;
+        HorizontalLayout {
+            spacing: 16px;
+            Rectangle {
+                width: 64px;
+                height: 64px;
+                border-radius: 20px;
+                background: Tokens.danger-soft;
+                Icon { d: "M8 2.5h8l5.5 5.5v8L16 21.5H8L2.5 16V8z M12 7.5v5.5 M12 16.5v.5"; size: 32px; weight: 2; color: Tokens.danger; }
+            }
+            VerticalLayout {
+                alignment: center;
+                spacing: 2px;
+                Text { text: @tr("The printer has stopped"); color: Tokens.text; font-size: 28px; font-weight: 800; letter-spacing: -0.56px; }
+                Text {
+                    text: @tr("Heaters and motors are off") + (root.progress > 0 ? " · " + @tr("print stopped at {}%", round(root.progress * 100)) : "");
+                    color: Tokens.text-dim;
+                    font-size: 15px;
+                }
+            }
         }
         Text {
-            text: root.state == "offline" ? @tr("Moonraker does not answer. Rivet keeps trying, and the screen updates by itself once the link is back.")
-                : root.state == "startup" ? @tr("This takes a few seconds. The screen updates by itself.")
-                : root.state == "klippy-offline" ? @tr("Moonraker is reachable, but Klipper is off or restarting. The screen updates by itself.")
-                : @tr("Heaters and motors are off. A firmware restart usually brings the printer back.");
-            color: Tokens.text-2;
-            font-size: 17px;
-            horizontal-alignment: center;
+            text: root.kind == "timer" ? @tr("The control board did not run a command in time. A firmware restart usually helps: it takes about 10 seconds.")
+                : root.kind == "lost" ? @tr("The printer lost the link to its control board. Check the cable, then restart the firmware.")
+                : root.kind == "adc" ? @tr("A temperature reading is out of range: a sensor or its wire may be loose. Check it before restarting.")
+                : root.kind == "heating" ? @tr("A heater does not warm up as expected: check the heater and its sensor before restarting.")
+                : root.kind == "range" ? @tr("A move went past the printer's limits. Home the axes after the restart.")
+                : @tr("A firmware restart usually brings the printer back.");
+            color: #e2e6ea;
+            font-size: 18px;
             wrap: word-wrap;
         }
-        if root.is-error && root.message != "": Rectangle {
+        if root.message != "": Rectangle {
             border-radius: 18px;
             background: Tokens.surface-1;
             VerticalLayout {
@@ -68,13 +166,17 @@ export component StatusScreen inherits Rectangle {
                 Text { text: root.message; color: #fda4af; font-size: 15px; wrap: word-wrap; font-family: "monospace"; }
             }
         }
-        if root.is-error: HorizontalLayout {
-            alignment: center;
-            PrimaryButton {
-                width: 340px;
-                text: @tr("Restart firmware");
-                clicked => { root.restart-firmware(); }
-            }
+        if root.kind == "timer": Text {
+            text: @tr("If it happens during prints, check the board's USB cable and don't run heavy calibrations while printing.");
+            color: Tokens.text-dim;
+            font-size: 15px;
+            wrap: word-wrap;
+        }
+        Rectangle { vertical-stretch: 1; }
+        HorizontalLayout {
+            spacing: 10px;
+            BigButton { preferred-width: 0px; min-width: 0px; horizontal-stretch: 1.6; primary: true; text: @tr("Restart firmware"); clicked => { root.restart-firmware(); } }
+            BigButton { preferred-width: 0px; min-width: 0px; horizontal-stretch: 1; text: @tr("Log"); clicked => { root.log(); } }
         }
     }
 }

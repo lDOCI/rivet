@@ -852,3 +852,114 @@ msgstr "пауза на слое {}"
 
 msgid "drying: {} left"
 msgstr "сушится: осталось {}"
+
+msgid "{} on the printer · {} on USB"
+msgstr "{} на принтере · {} на USB"
+
+msgid "{} on the printer"
+msgstr "{} на принтере"
+
+msgid "{} loaded. Tap to change the filament"
+msgstr "Заправлен {}. Нажмите, чтобы сменить пруток"
+
+msgid "loaded · change"
+msgstr "заправлен · сменить"
+
+msgid "done at {}"
+msgstr "готово в {}"
+
+msgid "Stop print"
+msgstr "Отменить"
+
+msgid "Filament"
+msgstr "Пластик"
+
+msgid "Bed {}° — {} comes off easier once it cools."
+msgstr "Стол {}° — {} легче снять, когда остынет."
+
+msgid "the part"
+msgstr "деталь"
+
+msgid "Print it again"
+msgstr "Печатать снова"
+
+msgid "Not sticking: lower the nozzle.\nScraping or the layer is see-through: raise it."
+msgstr "Не липнет — опустите сопло.\nЦарапает или слой прозрачный — поднимите."
+
+msgid "Raise nozzle"
+msgstr "Поднять сопло"
+
+msgid "Lower nozzle"
+msgstr "Опустить сопло"
+
+msgid "Back to {}"
+msgstr "Вернуть {}"
+
+msgid "Fine tune"
+msgstr "Подстройка"
+
+msgid "Save"
+msgstr "Сохранить"
+
+msgid "{}: just what is loaded"
+msgstr "{} — как раз заправлен"
+
+msgid "Sliced for {}, {} is loaded"
+msgstr "Файл под {}, а заправлен {}"
+
+msgid "Is the bed empty and clean?"
+msgstr "Стол пустой и чистый?"
+
+msgid "File actions"
+msgstr "Действия с файлом"
+
+msgid "Where the files are"
+msgstr "Где лежат файлы"
+
+msgid "On the printer · {}"
+msgstr "На принтере · {}"
+
+msgid "USB · {}"
+msgstr "USB · {}"
+
+msgid "Moonraker does not answer. Trying again every 5 seconds: the screen updates by itself once the link is back."
+msgstr "Moonraker не отвечает. Пробуем снова каждые 5 секунд — экран обновится сам, как только связь появится."
+
+msgid "attempt {} · next in {} s"
+msgstr "попытка {} · следующая через {} с"
+
+msgid "attempt {} · trying now"
+msgstr "попытка {} · пробуем сейчас"
+
+msgid "Retry now"
+msgstr "Повторить сейчас"
+
+msgid "Heaters and motors are off"
+msgstr "Нагрев и моторы выключены"
+
+msgid "print stopped at {}%"
+msgstr "печать прервана на {}%"
+
+msgid "The control board did not run a command in time. A firmware restart usually helps: it takes about 10 seconds."
+msgstr "Плата управления не успела выполнить команду вовремя. Обычно помогает перезапуск прошивки — это займёт около 10 секунд."
+
+msgid "The printer lost the link to its control board. Check the cable, then restart the firmware."
+msgstr "Принтер потерял связь с платой управления. Проверьте кабель и перезапустите прошивку."
+
+msgid "A temperature reading is out of range: a sensor or its wire may be loose. Check it before restarting."
+msgstr "Температура вне допустимых пределов: возможно, отошёл датчик или его провод. Проверьте перед перезапуском."
+
+msgid "A heater does not warm up as expected: check the heater and its sensor before restarting."
+msgstr "Нагреватель греется не так, как ожидалось: проверьте нагреватель и датчик перед перезапуском."
+
+msgid "A move went past the printer's limits. Home the axes after the restart."
+msgstr "Движение вышло за пределы принтера. После перезапуска запаркуйте оси."
+
+msgid "A firmware restart usually brings the printer back."
+msgstr "Обычно помогает перезапуск прошивки."
+
+msgid "If it happens during prints, check the board's USB cable and don't run heavy calibrations while printing."
+msgstr "Если повторяется во время печати — проверьте USB-кабель платы и не запускайте тяжёлые калибровки вместе с печатью."
+
+msgid "Log"
+msgstr "Журнал"

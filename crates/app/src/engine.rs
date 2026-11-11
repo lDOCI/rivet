@@ -151,6 +151,8 @@ pub enum Command {
         level: f32,
         white: bool,
     },
+    /// Try to reach Moonraker now instead of waiting for the next attempt.
+    RetryNow,
     /// One of Rivet's own settings, kept in Moonraker's database (namespace `rivet`).
     SaveSetting {
         key: String,
@@ -193,7 +195,10 @@ pub enum Command {
     Gcode(String),
     ClearConsole,
     /// Reload the list of G-code files.
-    ListFiles,
+    /// The files of one storage: the printer's, or the USB stick (`usb/`).
+    ListFiles {
+        usb: bool,
+    },
     /// Slicer data and checks for one file, by its path in `gcodes`.
     FileDetails(String),
     DeleteFiles(Vec<String>),
@@ -226,6 +231,9 @@ pub async fn run(
     let mut dryer: Option<(SystemTime, f32)> = None;
     let mut dryer_shown_minutes = -1;
     let mut last_print_state = String::new();
+    // Reconnecting: which attempt failed last and when the next one comes.
+    let mut retry_at: Option<(u32, Instant)> = None;
+    let mut retry_shown = (0u32, -1i32);
     let mut nozzle_rate = HeatRate::default();
     let mut bed_rate = HeatRate::default();
 
@@ -236,6 +244,14 @@ pub async fn run(
         tokio::select! {
             ev = events.recv() => {
                 let Some(ev) = ev else { break };
+                match &ev {
+                    Event::Retrying { attempt, next_in } => {
+                        retry_at = Some((*attempt, Instant::now() + *next_in));
+                        continue;
+                    }
+                    Event::Connected => retry_at = None,
+                    _ => {}
+                }
                 handle_event(ev, &client, &mut state).await;
             }
             cmd = cmds.recv() => {
@@ -254,6 +270,10 @@ pub async fn run(
                 // Commands Rivet keeps state for itself.
                 let printing = matches!(state.snapshot().print_state.as_str(), "printing" | "paused");
                 match &cmd {
+                    Command::RetryNow => {
+                        client.retry_now();
+                        continue;
+                    }
                     Command::OffAfterPrint(on) => {
                         off_after_print = *on;
                         continue;
@@ -332,6 +352,17 @@ pub async fn run(
                         let rows: Vec<slint::SharedString> =
                             names.into_iter().map(Into::into).collect();
                         ui.set_macros(slint::ModelRc::new(slint::VecModel::from(rows)));
+                    });
+                }
+                // "attempt 7 · next in 3 s" while there is no link.
+                let shown = retry_at.map_or((0, -1), |(n, at)| {
+                    (n, at.saturating_duration_since(Instant::now()).as_secs_f32().ceil() as i32)
+                });
+                if shown != retry_shown {
+                    retry_shown = shown;
+                    let _ = ui.upgrade_in_event_loop(move |ui| {
+                        ui.set_retry_attempt(shown.0 as i32);
+                        ui.set_retry_in(shown.1);
                     });
                 }
                 let snap = state.snapshot();
@@ -425,6 +456,7 @@ async fn handle_event(ev: Event, client: &Client, state: &mut PrinterState) {
             }
             refresh_klippy(client, state).await;
         }
+        Event::Retrying { .. } => {}
         Event::Disconnected => {
             state.connection = Connection::Disconnected;
             state.klippy = Klippy::Unknown;
@@ -526,6 +558,9 @@ async fn refresh_history(client: &Client, ui: &slint::Weak<AppWindow>, thumbs: &
                 -1
             });
             ui.set_last_completed(l.completed);
+            ui.set_last_material(l.material.as_str().into());
+            ui.set_last_grams(l.grams.round() as i32);
+            ui.set_last_clock(local_clock(l.ended).unwrap_or_default().into());
         }
         None => ui.set_last_name("".into()),
     });
@@ -685,10 +720,39 @@ async fn printer_limits(client: &Client) -> Option<model::Limits> {
         .copied()
 }
 
+/// "24 on the printer · 3 on USB" for the Files card: USB sticks show up as a
+/// folder named usb (KlipperMod, Moonraker's usual mount).
+fn set_file_counts(ui: &slint::Weak<AppWindow>, files: &[model::FileEntry]) {
+    let usb = files
+        .iter()
+        .filter(|f| f.path.to_ascii_lowercase().starts_with("usb/"))
+        .count() as i32;
+    let local = files.len() as i32 - usb;
+    let _ = ui.upgrade_in_event_loop(move |ui| {
+        ui.set_files_local(local);
+        ui.set_files_usb(usb);
+    });
+}
+
+/// Count the files once Klipper is ready, for the Home screen.
+async fn count_files(client: &Client, ui: &slint::Weak<AppWindow>) {
+    if let Ok(result) = client
+        .call_timeout(
+            "server.files.list",
+            json!({ "root": "gcodes" }),
+            Duration::from_secs(20),
+        )
+        .await
+    {
+        set_file_counts(ui, &model::parse_file_list(&result));
+    }
+}
+
 async fn list_files(
     client: &Client,
     ui: &slint::Weak<AppWindow>,
     thumbs: &Arc<Thumbs>,
+    usb: bool,
 ) -> Result<(), moonraker::Error> {
     let result = client
         .call_timeout(
@@ -699,6 +763,11 @@ async fn list_files(
         .await?;
     let now = unix_now();
     let files = model::parse_file_list(&result);
+    set_file_counts(ui, &files);
+    let files: Vec<model::FileEntry> = files
+        .into_iter()
+        .filter(|f| f.path.to_ascii_lowercase().starts_with("usb/") == usb)
+        .collect();
     // Plain data here; the UI thread builds the rows (images are not Send).
     let rows: Vec<(String, String, i32, i32)> = files
         .iter()
@@ -739,17 +808,33 @@ async fn list_files(
             if thumbs.generation.load(Ordering::SeqCst) != generation {
                 return;
             }
-            let Some(buf) = preview(&client, &thumbs, &path, None).await else {
-                continue;
-            };
+            // Metadata first: print time and filament for the card, and where the
+            // preview is.
+            let meta = client
+                .call_timeout(
+                    "server.files.metadata",
+                    json!({ "filename": path }),
+                    SETUP_TIMEOUT,
+                )
+                .await
+                .ok()
+                .map(|m| model::parse_file_meta(&m));
+            let buf = preview(&client, &thumbs, &path, meta.clone()).await;
             let _ = ui.upgrade_in_event_loop(move |ui| {
                 use slint::Model;
                 let files = ui.get_files();
                 let row = (0..files.row_count())
                     .find(|&i| files.row_data(i).is_some_and(|f| f.path == path.as_str()));
                 if let Some((i, mut item)) = row.and_then(|i| Some((i, files.row_data(i)?))) {
-                    item.thumb = slint::Image::from_rgba8(buf);
-                    item.has_thumb = true;
+                    if let Some(buf) = buf {
+                        item.thumb = slint::Image::from_rgba8(buf);
+                        item.has_thumb = true;
+                    }
+                    if let Some(meta) = meta {
+                        item.has_meta = true;
+                        item.minutes = meta.estimated_secs.map_or(0, |s| s.div_ceil(60) as i32);
+                        item.material = meta.filament_type.unwrap_or_default().into();
+                    }
                     files.set_row_data(i, item);
                 }
             });
@@ -793,6 +878,12 @@ async fn file_details(
             layers: meta.layers.map_or(-1, |l| l as i32),
             nozzle: meta.nozzle_diameter.map_or(-1.0, |n| n as f32),
             nozzle_check,
+            color: meta
+                .filament_color
+                .as_deref()
+                .map(hex_color)
+                .unwrap_or_default(),
+            has_color: meta.filament_color.is_some(),
             thumb,
             has_thumb,
         });
@@ -820,6 +911,20 @@ fn spawn_print_thumb(
             ui.set_has_print_thumb(has);
         });
     });
+}
+
+/// "15:20" in the printer's timezone, or nothing when no timezone is set: a clock
+/// that silently shows UTC would be wrong (KlipperMod points /etc/localtime at
+/// printer_data/config/timezone, which exists once a timezone is chosen).
+fn local_clock(unix: f64) -> Option<String> {
+    if std::fs::metadata("/etc/localtime").is_err() {
+        return None;
+    }
+    let t = unix as libc::time_t;
+    // SAFETY: localtime_r only writes into the struct we pass.
+    let mut tm: libc::tm = unsafe { std::mem::zeroed() };
+    let ok = unsafe { !libc::localtime_r(&t, &mut tm).is_null() };
+    ok.then(|| format!("{:02}:{:02}", tm.tm_hour, tm.tm_min))
 }
 
 fn unix_now() -> f64 {
@@ -975,6 +1080,25 @@ async fn load_settings(
             save_dryer(&client, None);
         }
     }
+    count_files(&client, &ui).await;
+    if caps.spoolman {
+        if let Err(err) = list_spools(&client, &ui).await {
+            tracing::warn!(%err, "spoolman");
+        }
+    }
+    // What the filament wizard last loaded (when there is no Spoolman).
+    let loaded = saved["loaded_material"]
+        .as_str()
+        .unwrap_or_default()
+        .to_owned();
+    let loaded_color = saved["loaded_color"]
+        .as_str()
+        .unwrap_or_default()
+        .to_owned();
+    let _ = ui.upgrade_in_event_loop(move |ui| {
+        ui.set_loaded_material(loaded.into());
+        ui.set_loaded_color(hex_color(&loaded_color));
+    });
     if caps.timelapse {
         if let Ok(t) = client
             .call_timeout("machine.timelapse.get_settings", Value::Null, SETUP_TIMEOUT)
@@ -1000,6 +1124,15 @@ async fn load_settings(
                 tracing::warn!(%err, "light on at startup failed");
             }
         }
+    }
+}
+
+/// "4466cc" or "#4466CC" as a colour; grey when there is none.
+fn hex_color(hex: &str) -> slint::Color {
+    let hex = hex.trim_start_matches('#');
+    match u32::from_str_radix(hex.get(..6).unwrap_or(""), 16) {
+        Ok(v) => slint::Color::from_rgb_u8((v >> 16) as u8, (v >> 8) as u8, v as u8),
+        Err(_) => slint::Color::from_rgb_u8(0x4a, 0x52, 0x5c),
     }
 }
 
@@ -1096,6 +1229,18 @@ async fn list_spools(client: &Client, ui: &slint::Weak<AppWindow>) -> Result<(),
             json!({ "request_method": "GET", "path": "/v1/spool", "use_v2_response": true }),
         )
         .await?;
+    let active_color = spools["response"]
+        .as_array()
+        .and_then(|a| a.iter().find(|s| s["id"].as_i64() == Some(active)))
+        .and_then(|s| s["filament"]["color_hex"].as_str())
+        .unwrap_or_default()
+        .to_owned();
+    let active_material = spools["response"]
+        .as_array()
+        .and_then(|a| a.iter().find(|s| s["id"].as_i64() == Some(active)))
+        .and_then(|s| s["filament"]["material"].as_str())
+        .unwrap_or_default()
+        .to_owned();
     let items: Vec<(i64, String, String, f64)> = spools["response"]
         .as_array()
         .map(|a| {
@@ -1149,6 +1294,8 @@ async fn list_spools(client: &Client, ui: &slint::Weak<AppWindow>) -> Result<(),
         ui.set_spool_rows(slint::ModelRc::new(slint::VecModel::from(rows)));
         ui.set_active_spool(active_name.into());
         ui.set_has_active_spool(active > 0);
+        ui.set_spool_material(active_material.into());
+        ui.set_spool_color(hex_color(&active_color));
     });
     Ok(())
 }
@@ -1285,7 +1432,10 @@ async fn execute(
                 .await?;
             list_spools(client, ui).await
         }
-        Command::OffAfterPrint(_) | Command::SaveZOffset | Command::Dry { .. } => {
+        Command::OffAfterPrint(_)
+        | Command::SaveZOffset
+        | Command::Dry { .. }
+        | Command::RetryNow => {
             unreachable!("handled in the loop")
         }
         Command::SaveSetting { key, value } => client
@@ -1296,7 +1446,7 @@ async fn execute(
             .await
             .map(drop),
         Command::ClearConsole => Ok(()),
-        Command::ListFiles => list_files(client, ui, thumbs).await,
+        Command::ListFiles { usb } => list_files(client, ui, thumbs, *usb).await,
         Command::FileDetails(path) => file_details(client, ui, thumbs, path).await,
         Command::DeleteFiles(paths) => {
             for path in paths {
@@ -1307,7 +1457,11 @@ async fn execute(
                     )
                     .await?;
             }
-            list_files(client, ui, thumbs).await
+            // Back to the storage the files were deleted from.
+            let usb = paths
+                .first()
+                .is_some_and(|p| p.to_ascii_lowercase().starts_with("usb/"));
+            list_files(client, ui, thumbs, usb).await
         }
         Command::SetSpeed(_)
         | Command::SetFlow(_)
@@ -1464,6 +1618,7 @@ fn push(ui: &slint::Weak<AppWindow>, s: Snapshot) {
         };
         ui.set_link_state(link.into());
         ui.set_klippy_message(s.klippy_message.as_str().into());
+        ui.set_error_kind(model::error_kind(&s.klippy_message).into());
         ui.set_extruder_temp(s.extruder.temperature as f32);
         ui.set_extruder_target(s.extruder.target as f32);
         ui.set_bed_temp(s.bed.temperature as f32);
@@ -1472,6 +1627,11 @@ fn push(ui: &slint::Weak<AppWindow>, s: Snapshot) {
         ui.set_filename(s.filename.as_str().into());
         ui.set_progress(s.progress as f32);
         ui.set_remaining_minutes(s.remaining_secs.map_or(-1, |t| t.div_ceil(60) as i32));
+        let eta = s
+            .remaining_secs
+            .and_then(|r| local_clock(unix_now() + r as f64))
+            .unwrap_or_default();
+        ui.set_eta_clock(eta.into());
         ui.set_elapsed_minutes((s.print_duration / 60.0) as i32);
         ui.set_position_x(s.position[0] as f32);
         ui.set_position_y(s.position[1] as f32);

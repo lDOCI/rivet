@@ -14,6 +14,8 @@ desktop = ["slint/backend-winit", "slint/renderer-winit-software", "slint/softwa
 fbdev = ["dep:fbdev-platform"]
 
 [dependencies]
+# localtime_r: wall-clock times in the printer's timezone.
+libc = "0.2"
 anyhow.workspace = true
 model.workspace = true
 moonraker.workspace = true

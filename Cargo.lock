@@ -3574,6 +3574,7 @@ dependencies = [
  "anyhow",
  "fbdev-platform",
  "i-slint-backend-testing",
+ "libc",
  "model",
  "moonraker",
  "png 0.17.16",

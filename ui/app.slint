@@ -145,6 +145,12 @@ export component AppWindow inherits Window {
     in-out property <bool> timelapse-on;
     callback set-timelapse(bool);
     callback save-z-offset();
+    // No link: the attempt that failed last and seconds to the next (-1: none).
+    in property <int> retry-attempt;
+    in property <int> retry-in: -1;
+    callback retry-now();
+    // What the Klipper shutdown is about ("timer", "lost", ...), for plain words.
+    in property <string> error-kind;
     in property <bool> has-spoolman;
     in property <[FormRow]> spool-rows;
     in property <string> active-spool;
@@ -154,6 +160,21 @@ export component AppWindow inherits Window {
     in property <[FormRow]> power-rows;
     in property <[FormRow]> pin-rows;
     callback device-toggled(string, bool);
+    // Home: last print's material, file counts (-1 not known yet), loaded filament
+    // (Spoolman's active spool, else what the filament wizard loaded).
+    in property <string> last-material;
+    in property <int> last-grams;
+    // Wall-clock times, empty when the printer has no timezone set.
+    in property <string> last-clock;
+    in property <string> eta-clock;
+    in property <int> files-local: -1;
+    in property <int> files-usb;
+    // The Files screen shows the USB stick instead of the printer's storage.
+    in-out property <bool> files-on-usb;
+    in property <string> spool-material;
+    in property <color> spool-color;
+    in property <string> loaded-material;
+    in property <color> loaded-color;
     // Bed dryer: minutes left, -1 when off; chosen material and hours.
     in property <int> dryer-minutes-left: -1;
     in-out property <int> dry-material: 1;
@@ -335,6 +356,7 @@ export component AppWindow inherits Window {
             back => { root.screen = "control"; }
             adjust-z(d) => { root.adjust-z(d); }
             edit(what) => { root.open-tune-keypad(what); }
+            save => { root.save-z-offset(); }
         }
         if root.ready && root.screen == "motion": MotionScreen {
             pos-x: root.position-x;
@@ -484,11 +506,12 @@ export component AppWindow inherits Window {
             macro-count: root.macros.length;
             open(target) => { root.screen = target; }
         }
-        if root.ready && root.screen == "console": ConsoleScreen {
+        // The log is also open while Klipper is stopped («Log» on the error screen).
+        if (root.ready || root.link-state == "error") && root.screen == "console": ConsoleScreen {
             lines: root.console-lines;
             text <=> root.console-text;
             keyboard-open <=> root.console-keyboard;
-            back => { root.screen = "tools"; }
+            back => { root.screen = root.ready ? "tools" : "home"; }
             run(script) => { root.run-gcode(script); }
             clear => { root.clear-console(); }
             apply-key(t, k) => { return root.apply-key(t, k); }
@@ -585,7 +608,8 @@ export component AppWindow inherits Window {
             pause => { root.pause-print(); }
             resume => { root.resume-print(); }
             tune => { root.tune-z-start = root.z-offset; root.screen = "tune"; }
-            has-more: root.has-light;
+            has-more: root.has-light || root.has-pause-layer || root.has-timelapse || root.has-auto-shutdown;
+            eta-clock: root.eta-clock;
             more => { root.screen = "more"; }
             cancel => { root.overlay = "cancel-print"; }
         }
@@ -595,6 +619,9 @@ export component AppWindow inherits Window {
             has-thumb: root.has-print-thumb;
             elapsed-minutes: root.elapsed-minutes;
             bed: root.bed-temp;
+            clock: root.last-name == root.filename ? root.last-clock : "";
+            material: root.last-name == root.filename ? root.last-material : "";
+            grams: root.last-name == root.filename ? root.last-grams : 0;
             dismiss => { root.done-dismissed = true; }
             again => { root.start-print(root.filename); root.done-dismissed = true; }
         }
@@ -611,11 +638,25 @@ export component AppWindow inherits Window {
             max-bed: root.bed-limit;
             last-thumb: root.last-thumb;
             has-last-thumb: root.has-last-thumb;
+            last-material: root.last-material;
+            files-local: root.files-local;
+            files-usb: root.files-usb;
+            material: root.has-active-spool && root.spool-material != "" ? root.spool-material : root.loaded-material;
+            material-color: root.has-active-spool && root.spool-material != "" ? root.spool-color : root.loaded-color;
             print-again => { root.start-print(root.last-name); }
-            open(target) => { root.refresh-files(); root.screen = target; }
+            open(target) => {
+                if (target == "files") { root.refresh-files(); root.screen = "files"; }
+                if (target == "heating" || target == "heating-bed") { root.heating-heater = target == "heating-bed" ? 1 : 0; root.screen = "heating"; }
+                // The filament wizard comes later in this wave; until then, the Extruder.
+                if (target == "filament") { root.screen = "extruder"; }
+            }
         }
         if root.ready && root.screen == "files": FilesScreen {
             files <=> root.files;
+            local-count: root.files-local;
+            usb-count: root.files-usb;
+            on-usb <=> root.files-on-usb;
+            storage-changed(usb) => { root.refresh-files(); }
             select-mode <=> root.select-mode;
             selected-count <=> root.selected-count;
             back => { root.screen = "home"; }
@@ -634,17 +675,24 @@ export component AppWindow inherits Window {
             info: root.file-info;
             back => { root.screen = "files"; }
             print-file => { root.start-print(root.open-path); root.screen = "home"; }
-            delete => { root.screen = "file-actions"; }
+            loaded-material: root.has-active-spool && root.spool-material != "" ? root.spool-material : root.loaded-material;
+            more => { root.screen = "file-actions"; }
         }
         if root.ready && root.screen == "file-actions": FileActionsForm {
             page-title: root.open-name;
             back => { root.screen = "file"; }
             activate(key) => { if (key == "delete") { root.overlay = "delete-file"; } }
         }
-        if !root.ready: StatusScreen {
+        if !root.ready && root.screen != "console": StatusScreen {
             state: root.link-state;
             message: root.klippy-message;
+            kind: root.error-kind;
+            progress: root.print-state == "error" || root.print-state == "printing" ? root.progress : 0;
+            attempt: root.retry-attempt;
+            retry-in: root.retry-in;
             restart-firmware => { root.firmware-restart(); }
+            retry => { root.retry-now(); }
+            log => { root.screen = "console"; }
         }
     }
 

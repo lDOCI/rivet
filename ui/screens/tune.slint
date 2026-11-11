@@ -95,28 +95,138 @@ export component FansScreen inherits VerticalLayout {
     }
 }
 
-export component ZOffsetScreen inherits VerticalLayout {
+// Live Z offset, laid out as the prototype: value and advice on the left, a grid
+// of raise/lower buttons on the right (columns 1fr / 1.15fr, gap 20).
+component ZButton inherits Rectangle {
+    in property <string> text;
+    in property <bool> big;
+    callback clicked;
+    preferred-width: 0px;
+    min-width: 0px;
+    horizontal-stretch: 1;
+    border-radius: 22px;
+    background: ta.pressed ? Tokens.surface-3.brighter(10%) : root.big ? Tokens.surface-3 : #181c21;
+    accessible-role: button;
+    accessible-label: root.text;
+    accessible-action-default => { root.clicked(); }
+    Text {
+        text: root.text;
+        color: root.big ? Tokens.text : Tokens.text-2;
+        font-size: root.big ? 26px : 24px;
+        font-weight: root.big ? 800 : 700;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    ta := TouchArea { clicked => { root.clicked(); } }
+}
+
+export component ZOffsetScreen inherits HorizontalLayout {
     horizontal-stretch: 1;
     in property <float> z-offset;
     in property <float> z-start;
+    // The paper-test wizard exists (Calibrations); until then no «Fine tune» button.
+    in property <bool> has-wizard;
     callback back;
     callback adjust-z(float);
     callback edit(string);
+    callback save;
+    callback wizard;
     padding: Tokens.pad;
-    padding-bottom: 0;
-    spacing: 10px;
-    Header { title: @tr("Z-offset"); back-clicked => { root.back(); } }
-    ScrollList {
-        vertical-stretch: 1;
-        FineStepper {
-            title: @tr("Z-offset, mm");
-            sub: @tr("applies at once");
-            label: Format.signed(root.z-offset, 2);
-            changed: round(root.z-offset * 100) != round(root.z-start * 100);
-            was: Format.signed(root.z-start, 2);
-            big: "0.05"; small: "0.01"; big-step: 0.05; small-step: 0.01;
-            step(d) => { root.adjust-z(d); }
-            edit => { root.edit("z"); }
+    padding-right: 20px;
+    spacing: 20px;
+
+    VerticalLayout {
+        preferred-width: 0px;
+        min-width: 0px;
+        horizontal-stretch: 1;
+        spacing: 14px;
+        alignment: start;
+        Header { title: @tr("Z-offset"); back-clicked => { root.back(); } }
+        HorizontalLayout {
+            padding-top: 14px;
+            alignment: start;
+            spacing: 6px;
+            Text {
+                text: Format.fixed(root.z-offset, 2);
+                color: Tokens.text;
+                font-size: 72px;
+                font-weight: 800;
+                letter-spacing: -2.88px; // -0.04em
+                height: 72px;
+                vertical-alignment: center;
+                TouchArea { clicked => { root.edit("z"); } }
+            }
+            Text { text: @tr("mm"); color: Tokens.text-dim; font-size: 26px; font-weight: 800; vertical-alignment: bottom; height: 66px; }
+        }
+        Text {
+            text: @tr("Not sticking: lower the nozzle.\nScraping or the layer is see-through: raise it.");
+            color: Tokens.text-2;
+            font-size: 16px;
+            wrap: word-wrap;
+        }
+    }
+    VerticalLayout {
+        preferred-width: 0px;
+        min-width: 0px;
+        horizontal-stretch: 1.15;
+        spacing: 10px;
+        HorizontalLayout {
+            spacing: 10px;
+            Text { horizontal-stretch: 1; preferred-width: 0px; text: @tr("Raise nozzle"); color: Tokens.text-dim; font-size: 15px; font-weight: 600; horizontal-alignment: center; }
+            Text { horizontal-stretch: 1; preferred-width: 0px; text: @tr("Lower nozzle"); color: Tokens.text-dim; font-size: 15px; font-weight: 600; horizontal-alignment: center; }
+        }
+        HorizontalLayout {
+            vertical-stretch: 1;
+            spacing: 10px;
+            ZButton { big: true; text: "+0.05"; clicked => { root.adjust-z(0.05); } }
+            ZButton { big: true; text: "−0.05"; clicked => { root.adjust-z(-0.05); } }
+        }
+        HorizontalLayout {
+            vertical-stretch: 1;
+            spacing: 10px;
+            ZButton { text: "+0.01"; clicked => { root.adjust-z(0.01); } }
+            ZButton { text: "−0.01"; clicked => { root.adjust-z(-0.01); } }
+        }
+        HorizontalLayout {
+            height: 64px;
+            spacing: 10px;
+            Rectangle {
+                preferred-width: 0px;
+                min-width: 0px;
+                horizontal-stretch: 1;
+                border-radius: Tokens.r-m;
+                border-width: 1px;
+                border-color: Tokens.surface-3;
+                background: reset.pressed ? Tokens.surface-1 : transparent;
+                accessible-role: button;
+                Text {
+                    text: @tr("Back to {}", Format.fixed(root.z-start, 2));
+                    color: Tokens.text-2;
+                    font-size: 16px;
+                    font-weight: 600;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+                reset := TouchArea { clicked => { root.adjust-z(root.z-start - root.z-offset); } }
+            }
+            if root.has-wizard: Rectangle {
+                preferred-width: 0px;
+                min-width: 0px;
+                horizontal-stretch: 1;
+                border-radius: Tokens.r-m;
+                background: fine.pressed ? Tokens.surface-2 : Tokens.surface-1;
+                Text { text: @tr("Fine tune"); color: Tokens.text-2; font-size: 15px; font-weight: 600; horizontal-alignment: center; vertical-alignment: center; }
+                fine := TouchArea { clicked => { root.wizard(); } }
+            }
+        }
+        Rectangle {
+            height: 64px;
+            border-radius: Tokens.r-m;
+            background: save.pressed ? Tokens.accent.darker(15%) : Tokens.accent;
+            accessible-role: button;
+            accessible-label: @tr("Save");
+            Text { text: @tr("Save"); color: Tokens.accent-ink; font-size: 17px; font-weight: 800; horizontal-alignment: center; vertical-alignment: center; }
+            save := TouchArea { clicked => { root.save(); } }
         }
     }
 }
