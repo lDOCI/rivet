@@ -1,0 +1,244 @@
+// While printing, and when a print has just finished.
+import { Tokens } from "../kit/tokens.slint";
+import { Icons } from "../kit/icons.slint";
+import { Icon, ActionTile, PrimaryButton, SecondaryButton } from "../kit/controls.slint";
+import { Format } from "../kit/format.slint";
+
+component HeaterChip inherits Rectangle {
+    in property <string> name;
+    in property <float> current;
+    in property <float> target;
+    horizontal-stretch: 1;
+    height: 56px;
+    border-radius: Tokens.r-s;
+    background: Tokens.surface-1;
+    HorizontalLayout {
+        padding-left: 14px;
+        padding-right: 14px;
+        spacing: 10px;
+        VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: 10px;
+                height: 10px;
+                border-radius: 5px;
+                background: root.target > 0 ? Tokens.heat-2 : Tokens.text-faint;
+            }
+        }
+        Text { text: root.name; color: Tokens.text-dim; font-size: Tokens.caption; vertical-alignment: center; horizontal-stretch: 1; }
+        Text { text: round(root.current) + "°"; color: Tokens.text; font-size: 19px; font-weight: 700; vertical-alignment: center; }
+    }
+}
+
+export component PrintingScreen inherits Rectangle {
+    horizontal-stretch: 1;
+    in property <string> filename;
+    in property <float> progress;
+    in property <bool> paused;
+    in property <int> remaining-minutes: -1;
+    in property <int> elapsed-minutes;
+    in property <int> layer: -1;
+    in property <int> total-layers: -1;
+    in property <float> nozzle;
+    in property <float> nozzle-target;
+    in property <float> bed;
+    in property <float> bed-target;
+    callback pause;
+    callback resume;
+    callback tune;
+    callback cancel;
+
+    property <color> tone: root.paused ? Tokens.warn : Tokens.accent;
+    property <float> p: max(0.0001, min(0.9999, root.progress));
+    property <angle> sweep: -90deg + root.p * 360deg;
+
+    HorizontalLayout {
+        padding-top: Tokens.pad;
+        padding-bottom: Tokens.pad;
+        padding-left: Tokens.pad;
+        padding-right: 20px;
+        spacing: 22px;
+
+        VerticalLayout {
+            width: 300px;
+            alignment: center;
+            spacing: 12px;
+            Rectangle {
+                width: 300px;
+                height: 300px;
+                accessible-role: progress-indicator;
+                accessible-label: @tr("Print progress");
+                accessible-value: round(root.progress * 100);
+                Path {
+                    width: 300px;
+                    height: 300px;
+                    viewbox-width: 300;
+                    viewbox-height: 300;
+                    stroke: #171b21;
+                    stroke-width: 12px;
+                    commands: "M150 12 A138 138 0 1 1 149.99 12";
+                }
+                Path {
+                    width: 300px;
+                    height: 300px;
+                    viewbox-width: 300;
+                    viewbox-height: 300;
+                    stroke: root.tone;
+                    stroke-width: 12px;
+                    stroke-line-cap: round;
+                    commands: "M150 12 A138 138 0 " + (root.p > 0.5 ? "1" : "0") + " 1 " + (150 + 138 * cos(root.sweep)) + " " + (150 + 138 * sin(root.sweep));
+                }
+                Rectangle {
+                    x: 26px;
+                    y: 26px;
+                    width: parent.width - 52px;
+                    height: parent.height - 52px;
+                    border-radius: self.width / 2;
+                    background: #161a20;
+                    // The model thumbnail replaces this with the Files screen.
+                    Icon { d: Icons.printer; size: 96px; weight: 1.2; color: Tokens.text-faint; }
+                }
+            }
+            Text {
+                text: root.filename;
+                color: Tokens.text-2;
+                font-size: 15px;
+                font-weight: 600;
+                horizontal-alignment: center;
+                overflow: elide;
+            }
+        }
+
+        VerticalLayout {
+            horizontal-stretch: 1;
+            padding-top: 6px;
+            Rectangle {
+                height: 34px;
+                HorizontalLayout {
+                    alignment: start;
+                    Rectangle {
+                        height: 34px;
+                        border-radius: 17px;
+                        background: Tokens.surface-1;
+                        HorizontalLayout {
+                            padding-left: 12px;
+                            padding-right: 14px;
+                            spacing: 8px;
+                            VerticalLayout {
+                                alignment: center;
+                                Rectangle { width: 8px; height: 8px; border-radius: 4px; background: root.tone; }
+                            }
+                            Text {
+                                text: root.paused ? @tr("Paused") : @tr("Printing");
+                                color: root.tone;
+                                font-size: 15px;
+                                font-weight: 600;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+                }
+            }
+            HorizontalLayout {
+                alignment: start;
+                spacing: 2px;
+                padding-top: 10px;
+                Text { text: round(root.progress * 100); color: Tokens.text; font-size: 92px; font-weight: 800; vertical-alignment: bottom; }
+                Text { text: "%"; color: Tokens.text-dim; font-size: 44px; font-weight: 700; vertical-alignment: bottom; }
+            }
+            // Time left from the pace so far; before that, how long it has run.
+            Text {
+                text: root.remaining-minutes >= 0 ? @tr("{} left", Format.duration(root.remaining-minutes)) : @tr("{} in", Format.duration(root.elapsed-minutes));
+                color: Tokens.text;
+                font-size: 22px;
+                font-weight: 700;
+            }
+            // Layers only when the slicer reports them.
+            if root.layer >= 0 && root.total-layers > 0: Text {
+                text: @tr("layer {} of {}", root.layer, root.total-layers);
+                color: Tokens.text-dim;
+                font-size: 15px;
+            }
+            Rectangle { height: 16px; }
+            HorizontalLayout {
+                spacing: 8px;
+                HeaterChip { name: @tr("Nozzle"); current: root.nozzle; target: root.nozzle-target; }
+                HeaterChip { name: @tr("Bed"); current: root.bed; target: root.bed-target; }
+            }
+            Rectangle { vertical-stretch: 1; }
+            HorizontalLayout {
+                spacing: 10px;
+                if !root.paused: ActionTile { icon: "M10 4.5v15 M16 4.5v15"; text: @tr("Pause"); clicked => { root.pause(); } }
+                if root.paused: ActionTile { icon: "M7.5 4.8v14.4a1 1 0 0 0 1.5.86l11.6-7.2a1 1 0 0 0 0-1.72L9 3.94a1 1 0 0 0-1.5.86z"; filled: true; text: @tr("Resume"); clicked => { root.resume(); } }
+                ActionTile { icon: Icons.control; text: @tr("Tune"); clicked => { root.tune(); } }
+                ActionTile { icon: "M5 5h14v14H5z"; filled: true; danger: true; text: @tr("Cancel"); clicked => { root.cancel(); } }
+            }
+        }
+    }
+}
+
+export component PrintDoneScreen inherits Rectangle {
+    horizontal-stretch: 1;
+    in property <string> filename;
+    in property <int> elapsed-minutes;
+    in property <float> bed;
+    callback dismiss;
+    callback again;
+    HorizontalLayout {
+        padding-left: 24px;
+        padding-right: 24px;
+        padding-top: 24px;
+        padding-bottom: Tokens.pad;
+        spacing: 28px;
+        VerticalLayout {
+            width: 250px;
+            alignment: start;
+            Rectangle {
+                width: 250px;
+                height: 250px;
+                border-radius: Tokens.r-xl;
+                background: #1a1f27;
+                Icon { d: Icons.printer; size: 120px; weight: 1.2; color: Tokens.text-faint; }
+                Rectangle {
+                    x: parent.width - self.width - 14px;
+                    y: 14px;
+                    width: 48px;
+                    height: 48px;
+                    border-radius: 24px;
+                    background: Tokens.accent;
+                    Icon { d: "M5 12.5l4.5 4.5L19 7"; size: 28px; weight: 2.6; color: Tokens.accent-ink; }
+                }
+            }
+        }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            spacing: 10px;
+            Text { text: @tr("Done"); color: Tokens.accent-hi; font-size: 15px; font-weight: 700; }
+            Text { text: root.filename; color: Tokens.text; font-size: 32px; font-weight: 800; wrap: word-wrap; overflow: elide; }
+            Rectangle {
+                height: 66px;
+                border-radius: 18px;
+                background: Tokens.surface-1;
+                VerticalLayout {
+                    padding-left: 14px;
+                    alignment: center;
+                    spacing: 2px;
+                    Text { text: @tr("Time"); color: Tokens.text-dim; font-size: 13px; }
+                    Text { text: Format.duration(root.elapsed-minutes); color: Tokens.text; font-size: 22px; font-weight: 800; }
+                }
+            }
+            if root.bed > 45: Text {
+                text: @tr("Bed is still {}°: let it cool before taking the part off.", round(root.bed));
+                color: Tokens.text-dim;
+                font-size: 15px;
+                wrap: word-wrap;
+            }
+            Rectangle { vertical-stretch: 1; }
+            HorizontalLayout {
+                spacing: 10px;
+                SecondaryButton { horizontal-stretch: 10; text: @tr("Done"); font-size: 18px; min-height: 80px; clicked => { root.dismiss(); } }
+                PrimaryButton { horizontal-stretch: 14; text: @tr("Print again"); min-height: 80px; clicked => { root.again(); } }
+            }
+        }
+    }
+}

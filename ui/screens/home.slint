@@ -1,0 +1,176 @@
+// Home while idle: last print, heaters, files. Only real values: no last print
+// in history means the "ready" card, never a made-up one.
+import { Tokens } from "../kit/tokens.slint";
+import { Icons } from "../kit/icons.slint";
+import { Icon } from "../kit/controls.slint";
+import { Gauge } from "../kit/gauge.slint";
+import { Format } from "../kit/format.slint";
+
+component HeaterRow inherits Rectangle {
+    in property <string> name;
+    in property <float> current;
+    in property <float> target;
+    in property <float> maximum;
+    horizontal-stretch: 1;
+    vertical-stretch: 1;
+    HorizontalLayout {
+        spacing: 14px;
+        alignment: start;
+        VerticalLayout {
+            alignment: center;
+            Gauge { current: root.current; target: root.target; maximum: root.maximum; size: 92px; value-size: 24px; }
+        }
+        VerticalLayout {
+            alignment: center;
+            spacing: 2px;
+            Text { text: root.name; color: Tokens.text; font-size: Tokens.row-title; font-weight: 700; }
+            Text {
+                text: root.target > 0 ? @tr("target {}°", round(root.target)) : @tr("not heating");
+                color: Tokens.text-dim;
+                font-size: Tokens.caption;
+            }
+        }
+    }
+}
+
+export component HomeScreen inherits VerticalLayout {
+    horizontal-stretch: 1;
+    in property <float> nozzle;
+    in property <float> nozzle-target;
+    in property <float> bed;
+    in property <float> bed-target;
+    // Empty `last-name`: nothing in history yet.
+    in property <string> last-name;
+    in property <int> last-minutes;
+    in property <int> last-days-ago: -1;
+    in property <bool> last-completed: true;
+    callback open(string);
+    callback print-again;
+    padding: Tokens.pad;
+    spacing: Tokens.gap;
+
+    HorizontalLayout {
+        spacing: Tokens.gap;
+        vertical-stretch: 1;
+
+        if root.last-name != "": Rectangle {
+            horizontal-stretch: 145;
+            border-radius: Tokens.r-l;
+            background: Tokens.surface-1;
+            accessible-role: groupbox;
+            accessible-label: @tr("Last print");
+            VerticalLayout {
+                padding: 14px;
+                spacing: 12px;
+                HorizontalLayout {
+                    alignment: center;
+                    vertical-stretch: 1;
+                    Rectangle {
+                        max-width: 232px;
+                        max-height: 232px;
+                        preferred-width: 232px;
+                        preferred-height: 232px;
+                        border-radius: Tokens.r-m;
+                        background: #1a1f27;
+                        // Thumbnails come with the Files screen.
+                        Icon { d: Icons.printer; size: 88px; weight: 1.2; color: Tokens.text-faint; }
+                    }
+                }
+                HorizontalLayout {
+                    spacing: 12px;
+                    VerticalLayout {
+                        horizontal-stretch: 1;
+                        alignment: center;
+                        spacing: 4px;
+                        Text { text: root.last-name; color: Tokens.text; font-size: 19px; font-weight: 700; overflow: elide; }
+                        Text {
+                            text: (root.last-days-ago < 0 ? "" : root.last-days-ago == 0 ? @tr("today") + " · " : root.last-days-ago == 1 ? @tr("yesterday") + " · " : @tr("{} days ago", root.last-days-ago) + " · ")
+                                + (root.last-completed ? "" : @tr("stopped") + " · ")
+                                + Format.duration(root.last-minutes);
+                            color: Tokens.text-dim;
+                            font-size: Tokens.caption;
+                            overflow: elide;
+                        }
+                    }
+                    Rectangle {
+                        width: 76px;
+                        height: 76px;
+                        border-radius: Tokens.r-m;
+                        background: again.pressed ? Tokens.accent.darker(15%) : Tokens.accent;
+                        accessible-role: button;
+                        accessible-label: @tr("Print again");
+                        accessible-action-default => { root.print-again(); }
+                        Icon { d: "M7.5 4.8v14.4a1 1 0 0 0 1.5.86l11.6-7.2a1 1 0 0 0 0-1.72L9 3.94a1 1 0 0 0-1.5.86z"; size: 30px; filled: true; weight: 0; color: Tokens.accent-ink; }
+                        again := TouchArea { clicked => { root.print-again(); } }
+                    }
+                }
+            }
+        }
+        if root.last-name == "": Rectangle {
+            horizontal-stretch: 145;
+            border-radius: Tokens.r-l;
+            background: Tokens.surface-1;
+            VerticalLayout {
+                padding: 26px;
+                spacing: 12px;
+                alignment: center;
+                Text { text: @tr("Printer is ready"); color: Tokens.text; font-size: Tokens.title; font-weight: 800; }
+                Text {
+                    text: @tr("Send a model from your slicer or pick a file below. Your last print will show up here.");
+                    color: Tokens.text-dim;
+                    font-size: 17px;
+                    wrap: word-wrap;
+                }
+            }
+        }
+
+        Rectangle {
+            horizontal-stretch: 100;
+            border-radius: Tokens.r-l;
+            background: Tokens.surface-1;
+            VerticalLayout {
+                padding-left: 16px;
+                padding-right: 16px;
+                padding-top: 6px;
+                padding-bottom: 6px;
+                HeaterRow { name: @tr("Nozzle"); current: root.nozzle; target: root.nozzle-target; maximum: 350; }
+                Rectangle { height: 1px; background: Tokens.surface-2; }
+                HeaterRow { name: @tr("Bed"); current: root.bed; target: root.bed-target; maximum: 130; }
+            }
+        }
+    }
+
+    Rectangle {
+        height: 100px;
+        border-radius: Tokens.r-l;
+        background: files.pressed ? Tokens.surface-2 : Tokens.surface-1;
+        accessible-role: button;
+        accessible-label: @tr("Files");
+        accessible-action-default => { root.open("files"); }
+        HorizontalLayout {
+            padding-left: 20px;
+            padding-right: 20px;
+            spacing: 16px;
+            VerticalLayout {
+                alignment: center;
+                Rectangle {
+                    width: 56px;
+                    height: 56px;
+                    border-radius: Tokens.r-s;
+                    background: Tokens.surface-2;
+                    Icon { d: Icons.folder; size: 28px; color: Tokens.accent; }
+                }
+            }
+            VerticalLayout {
+                horizontal-stretch: 1;
+                alignment: center;
+                Text { text: @tr("Files"); color: Tokens.text; font-size: 19px; font-weight: 700; }
+            }
+            VerticalLayout {
+                alignment: center;
+                Icon { d: "m9 6 6 6-6 6"; size: 22px; weight: 2.2; color: Tokens.text-faint; }
+            }
+        }
+        files := TouchArea { clicked => { root.open("files"); } }
+    }
+}

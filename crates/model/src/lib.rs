@@ -78,6 +78,38 @@ pub struct Snapshot {
     pub filename: String,
     /// 0.0 ..= 1.0
     pub progress: f64,
+    /// Seconds spent printing (pauses excluded), as Klipper counts it.
+    pub print_duration: f64,
+    /// Estimated seconds left; `None` until there is enough progress to say.
+    pub remaining_secs: Option<u64>,
+    /// Only when the slicer sends them (`SET_PRINT_STATS_INFO`); else `None`.
+    pub layer: Option<u32>,
+    pub total_layers: Option<u32>,
+}
+
+/// Last finished job from `server.history.list`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct LastPrint {
+    pub filename: String,
+    /// Unix time the job ended.
+    pub ended: f64,
+    pub duration_secs: u64,
+    pub completed: bool,
+}
+
+/// Newest job out of a `server.history.list` result (newest first).
+pub fn parse_last_print(result: &Value) -> Option<LastPrint> {
+    let job = result.get("jobs")?.as_array()?.first()?;
+    Some(LastPrint {
+        filename: job.get("filename")?.as_str()?.to_owned(),
+        ended: job.get("end_time").and_then(Value::as_f64).unwrap_or(0.0),
+        duration_secs: job
+            .get("total_duration")
+            .and_then(Value::as_f64)
+            .unwrap_or(0.0)
+            .max(0.0) as u64,
+        completed: job.get("status").and_then(Value::as_str) == Some("completed"),
+    })
 }
 
 impl PrinterState {
@@ -127,6 +159,17 @@ impl PrinterState {
             self.f64("virtual_sdcard", "progress")
         };
 
+        let duration = self.f64("print_stats", "print_duration");
+        // Time left from the pace so far; too early in a print it is noise.
+        let remaining_secs = (progress >= 0.02 && duration > 0.0)
+            .then(|| (duration * (1.0 - progress) / progress) as u64);
+        let layer = |field: &str| {
+            self.field("print_stats", "info")
+                .and_then(|i| i.get(field))
+                .and_then(Value::as_u64)
+                .map(|n| n as u32)
+        };
+
         Snapshot {
             connection: self.connection,
             klippy: self.klippy,
@@ -136,6 +179,10 @@ impl PrinterState {
             print_state: self.str("print_stats", "state").to_owned(),
             filename: self.str("print_stats", "filename").to_owned(),
             progress: progress.clamp(0.0, 1.0),
+            print_duration: duration,
+            remaining_secs,
+            layer: layer("current_layer"),
+            total_layers: layer("total_layer"),
         }
     }
 }
@@ -199,6 +246,44 @@ mod tests {
 
         state.apply_status(json!({ "display_status": { "progress": 0.42 } }));
         assert_eq!(state.snapshot().progress, 0.42);
+    }
+
+    #[test]
+    fn remaining_time_and_layers() {
+        let mut state = PrinterState::default();
+        state.replace_status(json!({
+            "virtual_sdcard": { "progress": 0.25 },
+            "print_stats": { "print_duration": 600.0,
+                             "info": { "current_layer": null, "total_layer": null } },
+        }));
+        let snap = state.snapshot();
+        assert_eq!(snap.remaining_secs, Some(1800));
+        // The slicer did not send layers: nothing to show.
+        assert_eq!((snap.layer, snap.total_layers), (None, None));
+
+        state.apply_status(json!({
+            "print_stats": { "info": { "current_layer": 76, "total_layer": 180 } },
+        }));
+        let snap = state.snapshot();
+        assert_eq!((snap.layer, snap.total_layers), (Some(76), Some(180)));
+
+        // Too early to estimate.
+        state.apply_status(json!({ "virtual_sdcard": { "progress": 0.005 } }));
+        assert_eq!(state.snapshot().remaining_secs, None);
+    }
+
+    #[test]
+    fn last_print_from_history() {
+        let result = json!({ "count": 2, "jobs": [
+            { "job_id": "000102", "filename": "fan_duct.gcode", "status": "completed",
+              "end_time": 1762600000.5, "total_duration": 4980.2, "print_duration": 4900.0 },
+            { "job_id": "000101", "filename": "old.gcode", "status": "cancelled" },
+        ]});
+        let last = parse_last_print(&result).unwrap();
+        assert_eq!(last.filename, "fan_duct.gcode");
+        assert_eq!(last.duration_secs, 4980);
+        assert!(last.completed);
+        assert_eq!(parse_last_print(&json!({ "jobs": [] })), None);
     }
 
     #[test]
