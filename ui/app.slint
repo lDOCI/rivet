@@ -1,11 +1,10 @@
-import { Palette, Metrics } from "theme.slint";
-import { TapButton, HeaterCard } from "components.slint";
 import { Tokens } from "kit/tokens.slint";
 import { Rail } from "kit/rail.slint";
 import { ControlScreen } from "screens/control.slint";
 import { SettingsScreen } from "screens/settings.slint";
 import { FansScreen, PrintTuneScreen, PrintMoreScreen } from "screens/tune.slint";
 import { Dialog, Keypad } from "kit/dialogs.slint";
+import { StatusScreen } from "screens/status.slint";
 import { Toast } from "kit/toast.slint";
 import { HomeScreen } from "screens/home.slint";
 import { HeatingScreen } from "screens/heating.slint";
@@ -59,8 +58,6 @@ export component AppWindow inherits Window {
         if (self.print-state != "complete") { self.done-dismissed = false; }
     }
 
-    callback preheat(float, float);
-    callback cooldown();
     callback home-all();
     callback pause-print();
     callback resume-print();
@@ -145,14 +142,14 @@ export component AppWindow inherits Window {
 
     HorizontalLayout {
         Rail {
-            active: (root.screen == "fans" || root.screen == "heating" || root.screen == "motion" || root.screen == "extruder") ? "control"
+            active: !root.ready ? "" : (root.screen == "fans" || root.screen == "heating" || root.screen == "motion" || root.screen == "extruder") ? "control"
                 : (root.screen == "control" || root.screen == "tools" || root.screen == "settings" || root.screen == "messages") ? root.screen
                 : "home";
             navigate(section) => { root.screen = section; }
             emergency-stop => { root.emergency-stop(); }
         }
 
-        if root.screen == "control": ControlScreen {
+        if root.ready && root.screen == "control": ControlScreen {
             nozzle: root.extruder-temp;
             nozzle-target: root.extruder-target;
             bed: root.bed-temp;
@@ -167,7 +164,7 @@ export component AppWindow inherits Window {
                 if (target == "fans" || target == "heating" || target == "motion" || target == "extruder") { root.screen = target; }
             }
         }
-        if root.screen == "motion": MotionScreen {
+        if root.ready && root.screen == "motion": MotionScreen {
             pos-x: root.position-x;
             pos-y: root.position-y;
             pos-z: root.position-z;
@@ -179,7 +176,7 @@ export component AppWindow inherits Window {
             home-all => { root.home-all(); }
             motors-off => { root.motors-off(); }
         }
-        if root.screen == "extruder": ExtruderScreen {
+        if root.ready && root.screen == "extruder": ExtruderScreen {
             nozzle: root.extruder-temp;
             nozzle-target: root.extruder-target;
             min-temp: root.min-extrude-temp;
@@ -187,7 +184,7 @@ export component AppWindow inherits Window {
             back => { root.screen = "control"; }
             extrude(len, speed) => { root.extrude(len, speed); }
         }
-        if root.screen == "heating": HeatingScreen {
+        if root.ready && root.screen == "heating": HeatingScreen {
             nozzle: root.extruder-temp;
             nozzle-target: root.extruder-target;
             bed: root.bed-temp;
@@ -208,19 +205,19 @@ export component AppWindow inherits Window {
                 root.overlay = "keypad";
             }
         }
-        if root.screen == "settings": SettingsScreen { }
-        if root.screen == "fans": FansScreen {
+        if root.ready && root.screen == "settings": SettingsScreen { }
+        if root.ready && root.screen == "fans": FansScreen {
             part-fan: root.fan-percent;
             back => { root.screen = "control"; }
             set-fan(name, v) => { root.set-fan(v); }
         }
-        if root.screen == "more": PrintMoreScreen {
+        if root.ready && root.screen == "more": PrintMoreScreen {
             has-light: root.has-light;
             light-on <=> root.light-on;
             back => { root.screen = "home"; }
             set-light(on) => { root.set-light(on); }
         }
-        if root.screen == "tune": PrintTuneScreen {
+        if root.ready && root.screen == "tune": PrintTuneScreen {
             speed: root.speed-percent;
             flow: root.flow-percent;
             z-offset: root.z-offset;
@@ -245,7 +242,7 @@ export component AppWindow inherits Window {
             }
         }
 
-        if root.screen == "home" && root.ready && root.busy: PrintingScreen {
+        if root.ready && root.screen == "home" && root.busy: PrintingScreen {
             filename: root.filename;
             thumb: root.print-thumb;
             has-thumb: root.has-print-thumb;
@@ -266,7 +263,7 @@ export component AppWindow inherits Window {
             more => { root.screen = "more"; }
             cancel => { root.overlay = "cancel-print"; }
         }
-        if root.screen == "home" && root.ready && !root.busy && root.print-state == "complete" && !root.done-dismissed: PrintDoneScreen {
+        if root.ready && root.screen == "home" && !root.busy && root.print-state == "complete" && !root.done-dismissed: PrintDoneScreen {
             filename: root.filename;
             thumb: root.print-thumb;
             has-thumb: root.has-print-thumb;
@@ -275,7 +272,7 @@ export component AppWindow inherits Window {
             dismiss => { root.done-dismissed = true; }
             again => { root.start-print(root.filename); root.done-dismissed = true; }
         }
-        if root.screen == "home" && root.ready && !root.busy && !(root.print-state == "complete" && !root.done-dismissed): HomeScreen {
+        if root.ready && root.screen == "home" && !root.busy && !(root.print-state == "complete" && !root.done-dismissed): HomeScreen {
             nozzle: root.extruder-temp;
             nozzle-target: root.extruder-target;
             bed: root.bed-temp;
@@ -291,7 +288,7 @@ export component AppWindow inherits Window {
             print-again => { root.start-print(root.last-name); }
             open(target) => { root.refresh-files(); root.screen = target; }
         }
-        if root.screen == "files": FilesScreen {
+        if root.ready && root.screen == "files": FilesScreen {
             files <=> root.files;
             select-mode <=> root.select-mode;
             selected-count <=> root.selected-count;
@@ -305,7 +302,7 @@ export component AppWindow inherits Window {
             select-all(on) => { root.select-all(on); }
             ask-delete => { root.overlay = "delete-files"; }
         }
-        if root.screen == "file": FileScreen {
+        if root.ready && root.screen == "file": FileScreen {
             path: root.open-path;
             name: root.open-name;
             info: root.file-info;
@@ -313,154 +310,13 @@ export component AppWindow inherits Window {
             print-file => { root.start-print(root.open-path); root.screen = "home"; }
             delete => { root.overlay = "delete-file"; }
         }
-        // Not ready (no link, Klipper starting or stopped): status and the way out.
-        if root.screen == "home" && !root.ready: VerticalLayout {
-            padding: 16px;
-            spacing: Metrics.gap;
-
-            // Status bar
-            HorizontalLayout {
-                height: Metrics.touch;
-                spacing: 10px;
-
-                Rectangle {
-                    width: 12px;
-                    VerticalLayout {
-                        alignment: center;
-                        Rectangle {
-                            width: 12px;
-                            height: 12px;
-                            border-radius: 6px;
-                            background: root.ready ? Palette.accent
-                                : root.link-state == "startup" ? Palette.warn
-                                : Palette.danger;
-                        }
-                    }
-                }
-                Text {
-                    vertical-alignment: center;
-                    color: Palette.text-dim;
-                    overflow: elide;
-                    text: root.link-state == "ready" ? @tr("Ready")
-                        : root.link-state == "startup" ? @tr("Klipper is starting…")
-                        : root.link-state == "error" ? @tr("Klipper error")
-                        : root.link-state == "klippy-offline" ? @tr("Klipper is not running")
-                        : @tr("No connection to Moonraker");
-                }
-                Rectangle { horizontal-stretch: 1; }
-                TapButton {
-                    width: 120px;
-                    text: @tr("E-STOP");
-                    base: Palette.danger;
-                    enabled: root.link-state != "offline";
-                    clicked => { root.emergency-stop(); }
-                }
-            }
-
-            // Heaters
-            HorizontalLayout {
-                spacing: Metrics.gap;
-                vertical-stretch: 0;
-                HeaterCard { label: @tr("Nozzle"); known: root.ready; current: root.extruder-temp; target: root.extruder-target; }
-                HeaterCard { label: @tr("Bed"); known: root.ready; current: root.bed-temp; target: root.bed-target; }
-            }
-
-            // Print card
-            Rectangle {
-                border-radius: Metrics.radius;
-                background: Palette.surface;
-                vertical-stretch: 1;
-
-                VerticalLayout {
-                    padding: 16px;
-                    spacing: 10px;
-
-                    Text {
-                        text: root.busy ? root.filename : @tr("No active print");
-                        color: Palette.text;
-                        font-size: 18px;
-                        font-weight: 600;
-                        overflow: elide;
-                    }
-
-                    Rectangle {
-                        height: 10px;
-                        border-radius: 5px;
-                        background: Palette.surface-hi;
-
-                        Rectangle {
-                            x: 0px;
-                            height: parent.height;
-                            width: root.busy ? parent.width * root.progress : 0px;
-                            border-radius: 5px;
-                            background: root.print-state == "paused" ? Palette.warn : Palette.accent;
-                        }
-                    }
-
-                    HorizontalLayout {
-                        spacing: Metrics.gap;
-
-                        Text {
-                            vertical-alignment: center;
-                            color: Palette.text-dim;
-                            text: root.busy ? round(root.progress * 100) + "%" : "";
-                            font-size: 22px;
-                            font-weight: 700;
-                        }
-                        Rectangle { horizontal-stretch: 1; }
-
-                        if root.print-state == "printing": TapButton {
-                            width: 140px;
-                            text: @tr("Pause");
-                            clicked => { root.pause-print(); }
-                        }
-                        if root.print-state == "paused": TapButton {
-                            width: 140px;
-                            text: @tr("Resume");
-                            base: Palette.accent;
-                            clicked => { root.resume-print(); }
-                        }
-                        if root.busy: TapButton {
-                            width: 140px;
-                            text: @tr("Stop");
-                            fg: Palette.danger;
-                            clicked => { root.overlay = "cancel-print"; }
-                        }
-                    }
-                }
-            }
-
-            // Quick actions
-            if !root.busy && root.link-state != "error": HorizontalLayout {
-                spacing: Metrics.gap;
-                vertical-stretch: 0;
-                TapButton { text: "PLA"; enabled: root.ready; clicked => { root.preheat(210, 60); } }
-                TapButton { text: "PETG"; enabled: root.ready; clicked => { root.preheat(240, 80); } }
-                TapButton { text: @tr("Cool down"); enabled: root.ready; clicked => { root.cooldown(); } }
-                TapButton { text: @tr("Home"); enabled: root.ready; clicked => { root.home-all(); } }
-            }
-
-            // Klipper shut down: show reason and the way out.
-            if root.link-state == "error": HorizontalLayout {
-                spacing: Metrics.gap;
-                vertical-stretch: 0;
-                Text {
-                    horizontal-stretch: 1;
-                    vertical-alignment: center;
-                    color: Palette.danger;
-                    text: root.klippy-message;
-                    wrap: word-wrap;
-                    overflow: elide;
-                }
-                TapButton {
-                    width: 200px;
-                    text: @tr("Firmware restart");
-                    base: Palette.accent;
-                    clicked => { root.firmware-restart(); }
-                }
-            }
+        if !root.ready: StatusScreen {
+            state: root.link-state;
+            message: root.klippy-message;
+            restart-firmware => { root.firmware-restart(); }
         }
     }
+
     if root.toast-kind != "": Toast {
         x: Tokens.rail-width + Tokens.pad;
         y: root.height - self.height - Tokens.pad;
