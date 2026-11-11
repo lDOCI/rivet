@@ -121,6 +121,70 @@ pub struct Light {
     pub white: bool,
 }
 
+/// One G-code file in the `gcodes` root.
+#[derive(Debug, Clone, PartialEq)]
+pub struct FileEntry {
+    /// Path relative to `gcodes`, as Moonraker takes it back.
+    pub path: String,
+    /// Unix time of the last change.
+    pub modified: f64,
+    pub size: u64,
+}
+
+fn is_gcode(path: &str) -> bool {
+    let lower = path.to_ascii_lowercase();
+    [".gcode", ".gco", ".g"].iter().any(|e| lower.ends_with(e))
+}
+
+/// G-code files from `server.files.list`, newest first. Thumbnails and other
+/// helper folders (`.thumbs`) are not files to print.
+pub fn parse_file_list(result: &Value) -> Vec<FileEntry> {
+    let mut files: Vec<FileEntry> = result
+        .as_array()
+        .map(Vec::as_slice)
+        .unwrap_or_default()
+        .iter()
+        .filter_map(|f| {
+            let path = f.get("path")?.as_str()?;
+            (is_gcode(path) && !path.split('/').any(|part| part.starts_with('.'))).then(|| {
+                FileEntry {
+                    path: path.to_owned(),
+                    modified: f.get("modified").and_then(Value::as_f64).unwrap_or(0.0),
+                    size: f.get("size").and_then(Value::as_u64).unwrap_or(0),
+                }
+            })
+        })
+        .collect();
+    files.sort_by(|a, b| b.modified.total_cmp(&a.modified));
+    files
+}
+
+/// What the slicer wrote into a file, from `server.files.metadata`. Every
+/// field is optional: slicers differ and some files carry none of it.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct FileMeta {
+    pub estimated_secs: Option<u64>,
+    pub filament_type: Option<String>,
+    pub filament_grams: Option<f64>,
+    pub layers: Option<u32>,
+    pub nozzle_diameter: Option<f64>,
+}
+
+pub fn parse_file_meta(result: &Value) -> FileMeta {
+    let num = |k: &str| result.get(k).and_then(Value::as_f64).filter(|v| *v > 0.0);
+    FileMeta {
+        estimated_secs: num("estimated_time").map(|v| v as u64),
+        filament_type: result
+            .get("filament_type")
+            .and_then(Value::as_str)
+            .filter(|s| !s.is_empty())
+            .map(str::to_owned),
+        filament_grams: num("filament_weight_total"),
+        layers: num("layer_count").map(|v| v as u32),
+        nozzle_diameter: num("nozzle_diameter"),
+    }
+}
+
 /// Last finished job from `server.history.list`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LastPrint {
@@ -405,6 +469,39 @@ mod tests {
         state.replace_status(json!({ "gcode_move": { "homing_origin": [0.0, 0.0, -0.12, 0.0] } }));
         state.adjust_z_offset(0.05);
         assert!((state.snapshot().z_offset + 0.07).abs() < 1e-9);
+    }
+
+    #[test]
+    fn file_list_is_gcode_only_newest_first() {
+        let result = json!([
+            { "path": "old.gcode", "modified": 100.0, "size": 10 },
+            { "path": "sub/new.GCODE", "modified": 300.5, "size": 20 },
+            { "path": ".thumbs/new-300x300.png", "modified": 400.0, "size": 5 },
+            { "path": ".hidden/x.gcode", "modified": 500.0, "size": 5 },
+            { "path": "readme.txt", "modified": 600.0, "size": 5 },
+        ]);
+        let files = parse_file_list(&result);
+        let paths: Vec<_> = files.iter().map(|f| f.path.as_str()).collect();
+        assert_eq!(paths, ["sub/new.GCODE", "old.gcode"]);
+        assert_eq!(files[0].size, 20);
+        assert!(parse_file_list(&Value::Null).is_empty());
+    }
+
+    #[test]
+    fn file_metadata_fields_are_optional() {
+        let meta = parse_file_meta(&json!({
+            "estimated_time": 4980.4, "filament_type": "PETG",
+            "filament_weight_total": 18.3, "layer_count": 180, "nozzle_diameter": 0.4,
+        }));
+        assert_eq!(meta.estimated_secs, Some(4980));
+        assert_eq!(meta.filament_type.as_deref(), Some("PETG"));
+        assert_eq!(meta.layers, Some(180));
+        assert_eq!(meta.nozzle_diameter, Some(0.4));
+        // A file without slicer data: nothing to show, nothing made up.
+        assert_eq!(
+            parse_file_meta(&json!({ "filament_type": "", "estimated_time": 0 })),
+            FileMeta::default()
+        );
     }
 
     #[test]

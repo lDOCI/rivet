@@ -8,6 +8,8 @@ import { FansScreen, PrintTuneScreen, PrintMoreScreen } from "screens/tune.slint
 import { Dialog, Keypad } from "kit/dialogs.slint";
 import { Toast } from "kit/toast.slint";
 import { HomeScreen } from "screens/home.slint";
+import { FilesScreen, FileScreen, FileItem, FileInfo } from "screens/files.slint";
+export { FileItem, FileInfo }
 import { PrintingScreen, PrintDoneScreen } from "screens/print.slint";
 
 // Embedded into the binary (see build.rs): the printer has no system fonts.
@@ -63,6 +65,19 @@ export component AppWindow inherits Window {
     callback adjust-z(float);
     callback set-pressure-advance(float);
     callback set-light(bool);
+    callback refresh-files();
+    callback open-file(string);
+    callback delete-selected();
+    callback delete-file(string);
+    callback select-all(bool);
+
+    // G-code files; the selection lives in the rows.
+    in-out property <[FileItem]> files;
+    in property <FileInfo> file-info;
+    in-out property <int> selected-count;
+    property <bool> select-mode;
+    in-out property <string> open-path;
+    in-out property <string> open-name;
 
     // Live values for tuning and the light, straight from Klipper.
     in property <float> speed-percent: 100;
@@ -102,7 +117,9 @@ export component AppWindow inherits Window {
 
     HorizontalLayout {
         Rail {
-            active: root.screen == "fans" ? "control" : root.screen == "tune" ? "home" : root.screen;
+            active: root.screen == "fans" ? "control"
+                : (root.screen == "control" || root.screen == "tools" || root.screen == "settings" || root.screen == "messages") ? root.screen
+                : "home";
             navigate(section) => { root.screen = section; }
             emergency-stop => { root.emergency-stop(); }
         }
@@ -179,6 +196,29 @@ export component AppWindow inherits Window {
             last-days-ago: root.last-days-ago;
             last-completed: root.last-completed;
             print-again => { root.start-print(root.last-name); }
+            open(target) => { root.refresh-files(); root.screen = target; }
+        }
+        if root.screen == "files": FilesScreen {
+            files <=> root.files;
+            select-mode <=> root.select-mode;
+            selected-count <=> root.selected-count;
+            back => { root.screen = "home"; }
+            open(path) => {
+                root.open-path = path;
+                root.open-name = path;
+                root.open-file(path);
+                root.screen = "file";
+            }
+            select-all(on) => { root.select-all(on); }
+            ask-delete => { root.overlay = "delete-files"; }
+        }
+        if root.screen == "file": FileScreen {
+            path: root.open-path;
+            name: root.open-name;
+            info: root.file-info;
+            back => { root.screen = "files"; }
+            print-file => { root.start-print(root.open-path); root.screen = "home"; }
+            delete => { root.overlay = "delete-file"; }
         }
         // Not ready (no link, Klipper starting or stopped): status and the way out.
         if root.screen == "home" && !root.ready: VerticalLayout {
@@ -344,6 +384,27 @@ export component AppWindow inherits Window {
         cancel-text: @tr("Keep printing");
         danger: true;
         confirmed => { root.overlay = ""; root.cancel-print(); }
+        cancelled => { root.overlay = ""; }
+    }
+    if root.overlay == "delete-files": Dialog {
+        title: root.selected-count == 1 ? @tr("Delete 1 file?") : @tr("Delete {} files?", root.selected-count);
+        message: @tr("They are removed from the printer. This cannot be undone.");
+        confirm-text: @tr("Delete");
+        danger: true;
+        confirmed => {
+            root.overlay = "";
+            root.delete-selected();
+            root.select-mode = false;
+            root.selected-count = 0;
+        }
+        cancelled => { root.overlay = ""; }
+    }
+    if root.overlay == "delete-file": Dialog {
+        title: @tr("Delete this file?");
+        message: root.open-name + "\n" + @tr("It is removed from the printer. This cannot be undone.");
+        confirm-text: @tr("Delete");
+        danger: true;
+        confirmed => { root.overlay = ""; root.delete-file(root.open-path); root.screen = "files"; }
         cancelled => { root.overlay = ""; }
     }
     if root.overlay == "keypad": Keypad {

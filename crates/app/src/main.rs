@@ -118,6 +118,51 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
             }
         });
     }
+    ui.on_refresh_files(send(Command::ListFiles));
+    {
+        let tx = tx.clone();
+        ui.on_open_file(move |path| {
+            let _ = tx.send(Command::FileDetails(path.to_string()));
+        });
+    }
+    {
+        let tx = tx.clone();
+        ui.on_delete_file(move |path| {
+            let _ = tx.send(Command::DeleteFiles(vec![path.to_string()]));
+        });
+    }
+    {
+        let tx = tx.clone();
+        let weak = ui.as_weak();
+        ui.on_delete_selected(move || {
+            use slint::Model;
+            let Some(ui) = weak.upgrade() else { return };
+            let paths: Vec<String> = ui
+                .get_files()
+                .iter()
+                .filter(|f| f.selected)
+                .map(|f| f.path.to_string())
+                .collect();
+            if !paths.is_empty() {
+                let _ = tx.send(Command::DeleteFiles(paths));
+            }
+        });
+    }
+    {
+        let weak = ui.as_weak();
+        ui.on_select_all(move |on| {
+            use slint::Model;
+            let Some(ui) = weak.upgrade() else { return };
+            let files = ui.get_files();
+            for i in 0..files.row_count() {
+                if let Some(mut f) = files.row_data(i) {
+                    f.selected = on;
+                    files.set_row_data(i, f);
+                }
+            }
+            ui.set_selected_count(if on { files.row_count() as i32 } else { 0 });
+        });
+    }
     ui.on_emergency_stop(send(Command::EmergencyStop));
     ui.on_firmware_restart(send(Command::FirmwareRestart));
 }

@@ -39,6 +39,11 @@ pub enum Command {
         on: bool,
         white: bool,
     },
+    /// Reload the list of G-code files.
+    ListFiles,
+    /// Slicer data and checks for one file, by its path in `gcodes`.
+    FileDetails(String),
+    DeleteFiles(Vec<String>),
     /// Start a file again, by its path in `gcodes`.
     StartPrint(String),
     EmergencyStop,
@@ -73,7 +78,7 @@ pub async fn run(
                 let ui = ui.clone();
                 let resync = resync_tx.clone();
                 tokio::spawn(async move {
-                    if let Err(err) = execute(&client, &cmd).await {
+                    if let Err(err) = execute(&client, &cmd, &ui).await {
                         tracing::warn!(?cmd, %err, "command failed");
                         let _ = resync.send(());
                         let (kind, detail) = toast_for(&err);
@@ -166,9 +171,7 @@ async fn refresh_history(client: &Client, ui: &slint::Weak<AppWindow>) {
     };
     let _ = ui.upgrade_in_event_loop(move |ui| match last {
         Some(l) => {
-            let now = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map_or(0.0, |d| d.as_secs_f64());
+            let now = unix_now();
             ui.set_last_name(l.filename.as_str().into());
             ui.set_last_minutes((l.duration_secs / 60) as i32);
             ui.set_last_days_ago(if l.ended > 0.0 {
@@ -248,6 +251,91 @@ async fn subscribe(client: &Client, state: &mut PrinterState) {
     }
 }
 
+/// Printer's nozzle size from its config, read once.
+async fn printer_nozzle(client: &Client) -> Option<f64> {
+    static NOZZLE: tokio::sync::OnceCell<Option<f64>> = tokio::sync::OnceCell::const_new();
+    *NOZZLE
+        .get_or_init(|| async {
+            let query = json!({ "objects": { "configfile": ["settings"] } });
+            let result = client
+                .call_timeout("printer.objects.query", query, SETUP_TIMEOUT)
+                .await
+                .ok()?;
+            result["status"]["configfile"]["settings"]["extruder"]["nozzle_diameter"].as_f64()
+        })
+        .await
+}
+
+async fn list_files(client: &Client, ui: &slint::Weak<AppWindow>) -> Result<(), moonraker::Error> {
+    let result = client
+        .call_timeout(
+            "server.files.list",
+            json!({ "root": "gcodes" }),
+            Duration::from_secs(20),
+        )
+        .await?;
+    let now = unix_now();
+    let items: Vec<crate::FileItem> = model::parse_file_list(&result)
+        .into_iter()
+        .map(|f| crate::FileItem {
+            name: f
+                .path
+                .rsplit('/')
+                .next()
+                .unwrap_or(&f.path)
+                .trim_end_matches(".gcode")
+                .trim_end_matches(".GCODE")
+                .into(),
+            path: f.path.as_str().into(),
+            days_ago: ((now - f.modified).max(0.0) / 86_400.0) as i32,
+            size_kb: (f.size / 1024) as i32,
+            selected: false,
+        })
+        .collect();
+    let _ = ui.upgrade_in_event_loop(move |ui| {
+        ui.set_files(slint::ModelRc::new(slint::VecModel::from(items)));
+    });
+    Ok(())
+}
+
+async fn file_details(
+    client: &Client,
+    ui: &slint::Weak<AppWindow>,
+    path: &str,
+) -> Result<(), moonraker::Error> {
+    let result = client
+        .call_timeout(
+            "server.files.metadata",
+            json!({ "filename": path }),
+            SETUP_TIMEOUT,
+        )
+        .await?;
+    let meta = model::parse_file_meta(&result);
+    let printer_nozzle = printer_nozzle(client).await;
+    // 1 = same as the printer, 0 = differs, -1 = one of them is unknown.
+    let nozzle_check = match (meta.nozzle_diameter, printer_nozzle) {
+        (Some(file), Some(printer)) => i32::from((file - printer).abs() < 0.001),
+        _ => -1,
+    };
+    let info = crate::FileInfo {
+        path: path.into(),
+        minutes: meta.estimated_secs.map_or(-1, |s| s.div_ceil(60) as i32),
+        filament: meta.filament_type.unwrap_or_default().into(),
+        grams: meta.filament_grams.map_or(-1, |g| g.round() as i32),
+        layers: meta.layers.map_or(-1, |l| l as i32),
+        nozzle: meta.nozzle_diameter.map_or(-1.0, |n| n as f32),
+        nozzle_check,
+    };
+    let _ = ui.upgrade_in_event_loop(move |ui| ui.set_file_info(info));
+    Ok(())
+}
+
+fn unix_now() -> f64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0.0, |d| d.as_secs_f64())
+}
+
 /// Apply a tuning command to our copy of the state right away, so the screen
 /// answers the tap instead of waiting for Klipper's next status update.
 fn predict(state: &mut PrinterState, cmd: &Command) {
@@ -307,7 +395,11 @@ fn gcode_for(cmd: &Command) -> Option<String> {
     })
 }
 
-async fn execute(client: &Client, cmd: &Command) -> Result<(), moonraker::Error> {
+async fn execute(
+    client: &Client,
+    cmd: &Command,
+    ui: &slint::Weak<AppWindow>,
+) -> Result<(), moonraker::Error> {
     if let Some(code) = gcode_for(cmd) {
         return client.gcode(&code).await;
     }
@@ -335,6 +427,19 @@ async fn execute(client: &Client, cmd: &Command) -> Result<(), moonraker::Error>
             .call("printer.print.start", json!({ "filename": file }))
             .await
             .map(drop),
+        Command::ListFiles => list_files(client, ui).await,
+        Command::FileDetails(path) => file_details(client, ui, path).await,
+        Command::DeleteFiles(paths) => {
+            for path in paths {
+                client
+                    .call(
+                        "server.files.delete_file",
+                        json!({ "path": format!("gcodes/{path}") }),
+                    )
+                    .await?;
+            }
+            list_files(client, ui).await
+        }
         Command::SetSpeed(_)
         | Command::SetFlow(_)
         | Command::AdjustZ(_)

@@ -4,4 +4,15 @@ export global Format {
     duration(minutes) => {
         return minutes >= 60 ? @tr("{} h {} min", floor(minutes / 60), mod(minutes, 60)) : @tr("{} min", minutes);
     }
+
+    pure callback age(int) -> string;
+    age(days) => {
+        return days <= 0 ? @tr("today") : days == 1 ? @tr("yesterday") : @tr("{n} day ago" | "{n} days ago" % days);
+    }
+
+    // File size from kilobytes: KB below 1 MB, MB with one decimal above.
+    pure callback size(int) -> string;
+    size(kb) => {
+        return kb < 1024 ? @tr("{} KB", max(1, kb)) : @tr("{} MB", round(kb / 102.4) / 10);
+    }
 }
