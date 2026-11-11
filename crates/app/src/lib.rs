@@ -5,6 +5,7 @@ slint::include_modules!();
 
 pub mod config;
 pub mod engine;
+pub mod logfile;
 pub mod thumbs;
 
 /// Interface language: `--lang ru`, else `RIVET_LANG`, else the `LANG` of the

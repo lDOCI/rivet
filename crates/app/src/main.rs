@@ -11,16 +11,10 @@ use tokio::sync::mpsc;
 const DEFAULT_URL: &str = "ws://127.0.0.1:7125/websocket";
 
 fn main() -> anyhow::Result<()> {
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
-        )
-        .init();
-
     let config = rivet::config::Config::load(&rivet::config::config_path(
         flag_value("--config").as_deref(),
     ));
+    init_logging(&config);
     let url = moonraker_url(&config);
     tracing::info!(%url, "starting Rivet");
 
@@ -52,6 +46,27 @@ fn main() -> anyhow::Result<()> {
 
     ui.run()?;
     Ok(())
+}
+
+/// Log to `--log-file`/`log_file` (rotated, 512 KB x 3) or the terminal.
+/// `RUST_LOG` wins over `log_level`; the default is `info`.
+fn init_logging(config: &rivet::config::Config) {
+    let filter = tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+        tracing_subscriber::EnvFilter::new(config.log_level.as_deref().unwrap_or("info"))
+    });
+    let builder = tracing_subscriber::fmt().with_env_filter(filter);
+    let path = flag_value("--log-file").or_else(|| config.log_file.clone());
+    match path
+        .as_deref()
+        .map(|p| rivet::logfile::RotatingFile::open(std::path::Path::new(p), 512 * 1024, 3))
+    {
+        Some(Ok(file)) => builder.with_ansi(false).with_writer(file).init(),
+        Some(Err(err)) => {
+            builder.init();
+            tracing::warn!(%err, "cannot open the log file, logging to the terminal");
+        }
+        None => builder.init(),
+    }
 }
 
 /// Value after `--name` on the command line.

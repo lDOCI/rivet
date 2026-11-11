@@ -16,6 +16,10 @@ pub struct Config {
     pub language: Option<String>,
     /// Moonraker websocket, e.g. `ws://127.0.0.1:7125/websocket`.
     pub moonraker: Option<String>,
+    /// Write the log to this file (rotated) instead of the terminal.
+    pub log_file: Option<String>,
+    /// `error`, `warn`, `info`, `debug`; default `info`.
+    pub log_level: Option<String>,
 }
 
 impl Config {
