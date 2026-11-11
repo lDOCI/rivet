@@ -9,14 +9,17 @@ export component HeatDial inherits Rectangle {
     in property <float> step: 5;
     // Fired on release, once: the command goes out when the finger lifts.
     callback committed(float);
-    width: 300px;
-    height: 300px;
+    // The prototype draws a 300-unit circle at 320 px; every length here
+    // follows the real size, so the target dot always sits on the arc.
+    width: 320px;
+    height: 320px;
     accessible-role: slider;
     accessible-label: @tr("Target temperature");
     accessible-value: round(root.shown);
     accessible-value-minimum: 0;
     accessible-value-maximum: root.maximum;
 
+    property <float> s: root.width / 300px;
     property <bool> dragging;
     property <float> drag-value;
     property <float> shown: root.dragging ? root.drag-value : root.target;
@@ -35,41 +38,68 @@ export component HeatDial inherits Rectangle {
         return a > 270 ? -1 : max(0, min(root.maximum, round(a / 270 * root.maximum / root.step) * root.step));
     }
 
+    // Track: the whole 270° arc.
     Path {
         width: parent.width;
         height: parent.height;
         viewbox-width: 300;
         viewbox-height: 300;
         stroke: #171b21;
-        stroke-width: 20px;
+        stroke-width: 20px * root.s;
         stroke-line-cap: round;
         commands: "M65.147 234.853 A120 120 0 1 1 234.853 234.853";
     }
-    Path {
+    // Current temperature: yellow to orange, bottom left to top right. The
+    // renderer has no gradient on strokes, so the arc is drawn as short
+    // pieces whose colour follows the prototype's gradient direction.
+    for i in 30: Path {
+        property <angle> from: 135deg + i * 9deg;
+        property <angle> to: min(root.current-end, self.from + 9.6deg);
+        property <float> t: (2 + cos(self.from + 4.5deg) - sin(self.from + 4.5deg)) / 4;
         width: parent.width;
         height: parent.height;
         viewbox-width: 300;
         viewbox-height: 300;
-        stroke: Tokens.heat-2;
-        stroke-width: 20px;
+        visible: root.current-end > self.from;
+        stroke: Tokens.heat-1.mix(Tokens.heat-2, self.t);
+        stroke-width: 20px * root.s;
         stroke-line-cap: round;
-        commands: "M65.147 234.853 A120 120 0 " + (root.current-fraction > 0.6667 ? "1" : "0") + " 1 " + (150 + 120 * cos(root.current-end)) + " " + (150 + 120 * sin(root.current-end));
+        MoveTo { x: 150 + 120 * cos(parent.from); y: 150 + 120 * sin(parent.from); }
+        ArcTo {
+            radius-x: 120;
+            radius-y: 120;
+            x: 150 + 120 * cos(parent.to);
+            y: 150 + 120 * sin(parent.to);
+            sweep: true;
+        }
     }
-    // Target knob.
+    // Target dot, on the arc: faint halo while dragging, dark ring, white core.
+    property <length> kx: (150 + 120 * cos(root.target-angle)) * root.s * 1px;
+    property <length> ky: (150 + 120 * sin(root.target-angle)) * root.s * 1px;
     Rectangle {
-        x: 150px + 120px * cos(root.target-angle) - self.width / 2;
-        y: 150px + 120px * sin(root.target-angle) - self.height / 2;
-        width: root.dragging ? 44px : 30px;
+        x: root.kx - self.width / 2;
+        y: root.ky - self.height / 2;
+        width: 44px * root.s;
         height: self.width;
         border-radius: self.width / 2;
         background: #f4f6f8;
-        opacity: root.dragging ? 0.9 : 1;
-        Rectangle {
-            width: 14px;
-            height: 14px;
-            border-radius: 7px;
-            background: #0b0d10;
-        }
+        opacity: root.dragging ? 0.18 : 0;
+    }
+    Rectangle {
+        x: root.kx - self.width / 2;
+        y: root.ky - self.height / 2;
+        width: 30px * root.s;
+        height: self.width;
+        border-radius: self.width / 2;
+        background: #0b0d10;
+    }
+    Rectangle {
+        x: root.kx - self.width / 2;
+        y: root.ky - self.height / 2;
+        width: 20px * root.s;
+        height: self.width;
+        border-radius: self.width / 2;
+        background: #f4f6f8;
     }
     @children
     TouchArea {

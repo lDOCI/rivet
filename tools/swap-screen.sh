@@ -15,6 +15,7 @@
 #   GUPPY_INIT     init.d script of the screen to restore; autodetected when empty
 #   RIVET_BIN      binary to upload, default target/armv7-unknown-linux-musleabihf/release/rivet
 #   RIVET_ARGS     extra arguments for rivet
+#   RIVET_ENV      environment for rivet, e.g. "RUST_LOG=debug RIVET_LANG=ru"
 
 set -euo pipefail
 
@@ -66,7 +67,7 @@ case "$cmd" in
       || { echo "could not stop Guppy, not starting Rivet" >&2; exit 1; }
     echo "starting Rivet"
     # shellcheck disable=SC2029
-    run "nohup $remote_bin ${RIVET_ARGS:-} >$logfile 2>&1 </dev/null & echo \$! >$pidfile"
+    run "nohup env ${RIVET_ENV:-} $remote_bin ${RIVET_ARGS:-} >$logfile 2>&1 </dev/null & echo \$! >$pidfile"
     sleep 2
     run "kill -0 \$(cat $pidfile) 2>/dev/null" \
       && echo "Rivet is running. Back to Guppy: $0 guppy $host" \

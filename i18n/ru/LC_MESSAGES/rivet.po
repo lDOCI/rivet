@@ -536,3 +536,9 @@ msgstr "Вытяжка"
 
 msgid "AUTOMATIC"
 msgstr "АВТОМАТИЧЕСКИЕ"
+
+msgid "switched off"
+msgstr "выключен"
+
+msgid "holding temperature"
+msgstr "держит температуру"

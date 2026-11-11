@@ -100,13 +100,14 @@ export component PrimaryButton inherits Rectangle {
 // Plain secondary button (surface fill), e.g. ± or a choice in a pair.
 export component SecondaryButton inherits Rectangle {
     in property <string> text;
+    in property <length> radius: Tokens.r-s;
     in property <length> font-size: 17px;
     in property <color> fg: Tokens.text;
     in property <bool> enabled: true;
     callback clicked;
     min-height: Tokens.touch;
     min-width: Tokens.touch;
-    border-radius: Tokens.r-s;
+    border-radius: root.radius;
     background: ta.pressed ? Tokens.surface-3 : Tokens.surface-2;
     opacity: root.enabled ? 1 : 0.4;
     accessible-role: button;

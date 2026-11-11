@@ -4,6 +4,7 @@
 //   exact number         → Stepper (tap the value for the keypad)
 import { Tokens } from "tokens.slint";
 import { SecondaryButton } from "controls.slint";
+import { BarFill, HBarFill } from "fills.slint";
 
 // Vertical bar: label, value above, drag up/down, − / + below.
 export component VBar inherits VerticalLayout {
@@ -62,16 +63,16 @@ export component VBar inherits VerticalLayout {
         min-height: 120px;
         border-radius: Tokens.r-l;
         background: Tokens.surface-1;
-        clip: true;
         accessible-role: slider;
         accessible-label: root.label;
         accessible-value: round(root.shown);
         accessible-value-minimum: root.minimum;
         accessible-value-maximum: root.maximum;
-        Rectangle {
-            y: parent.height - self.height;
-            height: parent.height * (root.shown - root.minimum) / (root.maximum - root.minimum);
-            background: @linear-gradient(180deg, Tokens.accent-hi 0%, Tokens.accent 100%);
+        BarFill {
+            width: parent.width;
+            height: parent.height;
+            radius: Tokens.r-l;
+            fraction: (root.shown - root.minimum) / (root.maximum - root.minimum);
         }
         drag := TouchArea {
             pointer-event(e) => {
@@ -230,15 +231,16 @@ export component SliderRow inherits Rectangle {
                 height: 60px;
                 border-radius: 18px;
                 background: Tokens.surface-2;
-                clip: true;
                 accessible-role: slider;
                 accessible-label: root.title;
                 accessible-value: round(root.shown);
                 accessible-value-minimum: root.minimum;
                 accessible-value-maximum: root.maximum;
-                Rectangle {
-                    width: parent.width * (root.shown - root.minimum) / (root.maximum - root.minimum);
-                    background: @linear-gradient(90deg, Tokens.accent 0%, Tokens.accent-hi 100%);
+                HBarFill {
+                    width: parent.width;
+                    height: parent.height;
+                    radius: 18px;
+                    fraction: (root.shown - root.minimum) / (root.maximum - root.minimum);
                 }
                 drag := TouchArea {
                     pointer-event(e) => {

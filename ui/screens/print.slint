@@ -92,7 +92,16 @@ export component PrintingScreen inherits Rectangle {
                     stroke: root.tone;
                     stroke-width: 12px;
                     stroke-line-cap: round;
-                    commands: "M150 12 A138 138 0 " + (root.p > 0.5 ? "1" : "0") + " 1 " + (150 + 138 * cos(root.sweep)) + " " + (150 + 138 * sin(root.sweep));
+                    // Path elements, not a command string: no locale in the numbers.
+                    MoveTo { x: 150; y: 12; }
+                    ArcTo {
+                        radius-x: 138;
+                        radius-y: 138;
+                        x: 150 + 138 * cos(root.sweep);
+                        y: 150 + 138 * sin(root.sweep);
+                        large-arc: root.p > 0.5;
+                        sweep: true;
+                    }
                 }
                 Rectangle {
                     x: 26px;

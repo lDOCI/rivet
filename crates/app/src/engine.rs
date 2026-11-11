@@ -184,6 +184,7 @@ pub async fn run(
             }
             cmd = cmds.recv() => {
                 let Some(cmd) = cmd else { break };
+                tracing::debug!(?cmd, "command from the UI");
                 match &cmd {
                     Command::ClearConsole => {
                         state.clear_console();

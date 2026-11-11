@@ -3,7 +3,6 @@
 import { Tokens } from "../kit/tokens.slint";
 import { Icons } from "../kit/icons.slint";
 import { Icon, BackButton, SecondaryButton } from "../kit/controls.slint";
-import { Segmented } from "../kit/rows.slint";
 import { HeatDial } from "../kit/dial.slint";
 
 component Preset inherits Rectangle {
@@ -26,6 +25,63 @@ component Preset inherits Rectangle {
     ta := TouchArea { clicked => { root.picked(root.temp); } }
 }
 
+// Nozzle / Bed switch: one plate, the chosen side filled (the prototype's tabs).
+component HeaterTabs inherits Rectangle {
+    in property <[string]> options;
+    in-out property <int> selected;
+    height: Tokens.header;
+    border-radius: Tokens.r-m;
+    background: Tokens.surface-1;
+    HorizontalLayout {
+        padding: 5px;
+        spacing: 4px;
+        for option[i] in root.options: Rectangle {
+            preferred-width: 0px;
+            min-width: 0px;
+            horizontal-stretch: 1;
+            border-radius: 15px;
+            background: i == root.selected ? Tokens.accent : transparent;
+            accessible-role: tab;
+            accessible-label: option;
+            accessible-checked: i == root.selected;
+            accessible-action-default => { root.selected = i; }
+            Text {
+                text: option;
+                color: i == root.selected ? Tokens.accent-ink : Tokens.text-2;
+                font-size: 17px;
+                font-weight: 700;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+            TouchArea { clicked => { root.selected = i; } }
+        }
+    }
+}
+
+// Status chip: flame and a few words, as wide as its text.
+component HeatChip inherits Rectangle {
+    in property <string> text;
+    in property <bool> active;
+    height: 36px;
+    // As wide as the words: flame 16 + gap 8 + padding 2 x 14.
+    width: label.preferred-width + 52px;
+    border-radius: 18px;
+    background: root.active ? #f9731621 : Tokens.surface-1;
+    HorizontalLayout {
+        padding-left: 14px;
+        padding-right: 14px;
+        spacing: 8px;
+        Icon { d: Icons.flame; size: 16px; weight: 2.2; color: root.active ? #fdba74 : Tokens.text-dim; y: (parent.height - self.height) / 2; }
+        label := Text {
+            text: root.text;
+            color: root.active ? #fdba74 : Tokens.text-dim;
+            font-size: 15px;
+            font-weight: 600;
+            vertical-alignment: center;
+        }
+    }
+}
+
 export component HeatingScreen inherits VerticalLayout {
     horizontal-stretch: 1;
     in property <float> nozzle;
@@ -46,38 +102,26 @@ export component HeatingScreen inherits VerticalLayout {
     property <float> maximum: root.is-bed ? root.max-bed : root.max-nozzle;
 
     padding: Tokens.pad;
-    padding-right: 20px;
-    spacing: 4px;
+    padding-bottom: 0;
+    spacing: 10px;
 
     HorizontalLayout {
         height: Tokens.header;
         spacing: 14px;
         BackButton { clicked => { root.back(); } }
-        Segmented {
+        HeaterTabs {
             horizontal-stretch: 1;
             options: [@tr("Nozzle") + " · " + round(root.nozzle) + "°", @tr("Bed") + " · " + round(root.bed) + "°"];
             selected <=> root.heater;
         }
-        Rectangle {
-            width: 150px;
-            VerticalLayout {
-                alignment: center;
-                Rectangle {
-                    height: 36px;
-                    border-radius: 18px;
-                    background: root.target > 0 ? #f973161f : Tokens.surface-1;
-                    Text {
-                        text: root.target <= 0 ? @tr("off")
-                            : root.current < root.target - 2 ? @tr("heating")
-                            : root.current > root.target + 2 ? @tr("cooling to {}°", round(root.target))
-                            : @tr("holding");
-                        color: root.target > 0 ? #fdba74 : Tokens.text-dim;
-                        font-size: 15px;
-                        font-weight: 600;
-                        horizontal-alignment: center;
-                        vertical-alignment: center;
-                    }
-                }
+        VerticalLayout {
+            alignment: center;
+            HeatChip {
+                active: root.target > 0;
+                text: root.target <= 0 ? @tr("switched off")
+                    : root.current < root.target - 2 ? @tr("heating")
+                    : root.current > root.target + 2 ? @tr("cooling to {}°", round(root.target))
+                    : @tr("holding temperature");
             }
         }
     }
@@ -86,7 +130,7 @@ export component HeatingScreen inherits VerticalLayout {
         vertical-stretch: 1;
         spacing: 16px;
         VerticalLayout {
-            width: 320px;
+            width: 330px;
             alignment: center;
             HorizontalLayout {
                 alignment: center;
@@ -114,6 +158,7 @@ export component HeatingScreen inherits VerticalLayout {
                     width: 84px;
                     height: 84px;
                     text: "−";
+                    radius: 22px;
                     font-size: 36px;
                     clicked => { root.set-target(root.heater, max(0, root.target - 5)); }
                 }
@@ -130,14 +175,25 @@ export component HeatingScreen inherits VerticalLayout {
                     width: 84px;
                     height: 84px;
                     text: "+";
+                    radius: 22px;
                     font-size: 36px;
                     clicked => { root.set-target(root.heater, min(root.maximum, root.target + 5)); }
                 }
             }
-            SecondaryButton {
-                text: @tr("Enter a number");
-                min-height: 60px;
-                clicked => { root.edit(root.heater); }
+            Rectangle {
+                height: 60px;
+                border-radius: Tokens.r-m;
+                background: pad.pressed ? Tokens.surface-2 : Tokens.surface-1;
+                accessible-role: button;
+                accessible-label: @tr("Enter a number");
+                accessible-action-default => { root.edit(root.heater); }
+                HorizontalLayout {
+                    alignment: center;
+                    spacing: 10px;
+                    Icon { d: Icons.keypad; size: 22px; weight: 1.9; color: Tokens.text; y: (parent.height - self.height) / 2; }
+                    Text { text: @tr("Enter a number"); color: Tokens.text; font-size: 17px; font-weight: 600; vertical-alignment: center; }
+                }
+                pad := TouchArea { clicked => { root.edit(root.heater); } }
             }
             HorizontalLayout {
                 spacing: 6px;

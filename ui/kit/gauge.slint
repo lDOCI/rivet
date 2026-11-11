@@ -30,7 +30,17 @@ export component Gauge inherits Rectangle {
         stroke: root.target > 0 ? Tokens.heat-2 : #4a525c;
         stroke-width: root.size * 0.1;
         stroke-line-cap: round;
-        commands: "M26.06 93.94 A48 48 0 " + (root.fraction > 0.6667 ? "1" : "0") + " 1 " + (60 + 48 * cos(root.end)) + " " + (60 + 48 * sin(root.end));
+        // Path elements, not a command string: a string would format the
+        // numbers with the language's decimal comma and break the arc.
+        MoveTo { x: 26.06; y: 93.94; }
+        ArcTo {
+            radius-x: 48;
+            radius-y: 48;
+            x: 60 + 48 * cos(root.end);
+            y: 60 + 48 * sin(root.end);
+            large-arc: root.fraction > 0.6667;
+            sweep: true;
+        }
     }
     Text {
         text: round(root.current) + "°";
