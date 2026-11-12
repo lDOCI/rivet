@@ -21,7 +21,9 @@ What it does on the printer:
 | `/root/printer_data/logs/rivet.log` | Rivet's log, rotated (512 KB × 3) |
 | `/root/printer_data/logs/rivet-console.log` | crashes (panics) and restarts, one old copy kept |
 
-Running it again replaces the binary and the init script and keeps `rivet.toml`.
+Running it again replaces the binary and the init script; an existing `rivet.toml` is never
+overwritten. Nothing else on the printer is changed, and the script prints each change.
+It refuses while a print is running or paused (it asks Moonraker); `--force` installs anyway.
 
 Files are copied with `ssh … 'cat > file'`: Klipper Mod has no `sftp-server`, so `scp` does not work.
 
@@ -46,8 +48,24 @@ Both logs are also visible in Fluidd/Mainsail next to `klipper.log`.
 tools/uninstall.sh PRINTER_IP
 ```
 
-Stops Rivet, deletes `/etc/init.d/S80rivet` and `/opt/rivet`, renames `_S80guppyscreen` back
-and starts GuppyScreen. `rivet.toml` and the logs stay; delete them by hand if not wanted.
+Leaves no trace of Rivet. It stops Rivet and deletes, printing each item:
+
+- `/etc/init.d/S80rivet`, `/opt/rivet`;
+- `rivet.toml` and `rivet-touch.json` (touch calibration) in `/root/printer_data/config`;
+- `rivet.log*` and `rivet-console.log*` in `/root/printer_data/logs`;
+- `/run/rivet*.pid`; in `/tmp` what `tools/swap-screen.sh` and Rivet left (`rivet`, `rivet.log`,
+  `rivet.pid`, `rivet-wpa-*` sockets);
+- every key of the `rivet` namespace in Moonraker's database (Rivet's settings).
+  Moonraker drops a namespace once its last key is gone (checked on Moonraker v0.9.3), so
+  `rivet` disappears from `/server/database/list`.
+
+Then it renames `_S80guppyscreen` back and starts GuppyScreen.
+
+`--keep-config` keeps `rivet.toml`, `rivet-touch.json` and the database settings, for installing
+again later.
+
+Nothing that is not Rivet's is touched: Wi-Fi networks joined from Rivet, Klipper's config and
+`SAVE_CONFIG` results, Moonraker's config and other database namespaces, GuppyScreen's files.
 
 ## Try without installing
 
