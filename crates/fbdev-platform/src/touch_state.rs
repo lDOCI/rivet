@@ -232,7 +232,7 @@ const MIN_FLING: f32 = 80.0;
 /// reach ~1 slop; a short flick 2.5 within two samples).
 const FAR: f32 = 2.5;
 /// How long after a press the touch point still follows the finger (two samples).
-const LANDING: std::time::Duration = std::time::Duration::from_millis(20);
+pub const LANDING: std::time::Duration = std::time::Duration::from_millis(20);
 /// Further than this between two samples (10 ms) is a glitch, not a finger.
 const MAX_STEP: f32 = 90.0;
 
@@ -329,6 +329,11 @@ impl TapSlop {
         let (x, y) = self.origin.unwrap_or((x, y));
         tracing::debug!(x, y, stopper = self.stopper, "tap");
         (x, y, !self.stopper)
+    }
+
+    /// Where the finger landed (the touch point a tap clicks at).
+    pub fn origin(&self) -> Option<(f32, f32)> {
+        self.origin
     }
 
     /// Whether this touch became a drag.

@@ -114,6 +114,11 @@ struct FbPlatform {
     pending_release: Cell<Option<(Instant, f32, f32, bool)>>,
     /// Tap or drag: finger jitter within the slop is not a scroll.
     slop: Cell<crate::touch_state::TapSlop>,
+    /// A press not passed on yet, and when it came: it goes out once the
+    /// finger has landed (or lifts, or starts a drag), at the landed, targeted
+    /// point, and a tap's lift goes to that same point — press and lift never
+    /// fall on two neighbouring buttons.
+    press_due: Cell<Option<Instant>>,
 }
 
 /// How long a lifted finger may be gone and still count as the same touch.
@@ -197,6 +202,7 @@ pub fn init(config: Config) -> anyhow::Result<()> {
         brightness_seen: Cell::new(0),
         pending_release: Cell::new(None),
         slop: Cell::new(crate::touch_state::TapSlop::new(TAP_SLOP)),
+        press_due: Cell::new(None),
     };
     slint::platform::set_platform(Box::new(platform))
         .map_err(|e| anyhow::anyhow!("set Slint platform: {e}"))?;
@@ -278,40 +284,35 @@ impl FbPlatform {
                             })
                     } else {
                         release(window.window(), lx, ly, click);
-                        let (x, y, _) = slop.press(x, y, Instant::now());
-                        let (x, y) = target(window.window(), &mut slop, x, y);
-                        Some(WindowEvent::PointerPressed {
-                            position: LogicalPosition::new(x, y),
-                            button: PointerEventButton::Left,
-                        })
+                        slop.press(x, y, Instant::now());
+                        self.press_due.set(Some(Instant::now()));
+                        None
                     }
                 }
                 TouchAction::Pressed { x, y } => {
-                    let (x, y, _) = slop.press(x, y, Instant::now());
-                    let (x, y) = target(window.window(), &mut slop, x, y);
-                    Some(WindowEvent::PointerPressed {
-                        position: LogicalPosition::new(x, y),
-                        button: PointerEventButton::Left,
-                    })
+                    slop.press(x, y, Instant::now());
+                    self.press_due.set(Some(Instant::now()));
+                    None
                 }
                 TouchAction::Moved { x, y } => {
-                    slop.moved(x, y, Instant::now())
-                        .map(|(x, y)| WindowEvent::PointerMoved {
-                            position: LogicalPosition::new(x, y),
-                        })
+                    let moved = slop.moved(x, y, Instant::now());
+                    let landed = self
+                        .press_due
+                        .get()
+                        .is_some_and(|t| t.elapsed() >= crate::touch_state::LANDING);
+                    if landed || moved.is_some() {
+                        self.send_press(window.window(), &mut slop);
+                    }
+                    moved.map(|(x, y)| WindowEvent::PointerMoved {
+                        position: LogicalPosition::new(x, y),
+                    })
                 }
                 // Held back; `flush_release` passes it on once the finger stays up.
                 // A tap lands where the finger touched.
                 TouchAction::Released { x, y } => {
-                    let (mut x, mut y, click) = slop.release(x, y, Instant::now());
-                    // The landed point of a tap may have drifted off: target it again.
-                    if !slop.dragging() {
-                        if let Some((sx, sy)) =
-                            crate::snap::snap(window.window(), x, y, TARGET_REACH)
-                        {
-                            (x, y) = (sx, sy);
-                        }
-                    }
+                    // A tap shorter than the landing: its press goes out now.
+                    self.send_press(window.window(), &mut slop);
+                    let (x, y, click) = slop.release(x, y, Instant::now());
                     self.pending_release
                         .set(Some((Instant::now(), x, y, click)));
                     None
@@ -330,6 +331,19 @@ impl FbPlatform {
             // button stuck pressed.
             window.window().dispatch_event(WindowEvent::PointerExited);
         }
+    }
+
+    /// The held-back press, at the landed point moved onto the nearest touch area.
+    fn send_press(&self, window: &slint::Window, slop: &mut crate::touch_state::TapSlop) {
+        if self.press_due.take().is_none() {
+            return;
+        }
+        let Some((x, y)) = slop.origin() else { return };
+        let (x, y) = target(window, slop, x, y);
+        window.dispatch_event(WindowEvent::PointerPressed {
+            position: LogicalPosition::new(x, y),
+            button: PointerEventButton::Left,
+        });
     }
 
     /// Pass on a finger lift once it has lasted the debounce time.
