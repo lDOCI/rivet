@@ -1203,3 +1203,27 @@ msgstr "Для сохранения Klipper перезапустится, это
 
 msgid "OK"
 msgstr "Понятно"
+
+msgid "Heat presets"
+msgstr "Пресеты нагрева"
+
+msgid "NOZZLE"
+msgstr "СОПЛО"
+
+msgid "BED"
+msgstr "СТОЛ"
+
+msgid "nozzle"
+msgstr "сопло"
+
+msgid "bed"
+msgstr "стол"
+
+msgid "Temperature graph"
+msgstr "График температур"
+
+msgid "last {} min"
+msgstr "последние {} мин"
+
+msgid "No readings yet"
+msgstr "Пока нет данных"

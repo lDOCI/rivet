@@ -64,6 +64,8 @@ const ALL: &[&str] = &[
     "prompt",
     "exclude",
     "messages",
+    "heat-presets",
+    "temp-graph",
     "keypad",
     "toast",
 ];
@@ -538,6 +540,42 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_filename("Корпус вентилятора №2.gcode".into());
             ui.set_progress(0.42);
             ui.set_overlay("cancel-print".into());
+        }
+        "heat-presets" => ui.set_screen("heat-presets".into()),
+        "temp-graph" => {
+            ui.set_screen("temp-graph".into());
+            // The prototype's curves: the nozzle to 220°, the bed to 80°, from 25°.
+            let top = 250.0_f32;
+            let aspect = 2.17_f32;
+            let line = |target: f32, rise: f32| {
+                let mut d = String::new();
+                for k in 0..=100 {
+                    let t = k as f32 / 100.0;
+                    let v = 25.0 + (target - 25.0) * (t / rise).min(1.0);
+                    // The plot is about 2.2 times wider than high here.
+                    let (x, y) = (t * 1000.0 * aspect, (1.0 - v / top) * 1000.0);
+                    d.push_str(&format!("{}{x:.1} {y:.1} ", if k == 0 { "M" } else { "L" }));
+                }
+                d
+            };
+            let lines = vec![
+                rivet::GraphLine {
+                    path: line(220.0, 0.45).into(),
+                    color: slint::Color::from_rgb_u8(0xf9, 0x73, 0x16),
+                    legend: "Сопло 220° / 220°".into(),
+                },
+                rivet::GraphLine {
+                    path: line(80.0, 0.42).into(),
+                    color: slint::Color::from_rgb_u8(0x60, 0xa5, 0xfa),
+                    legend: "Стол 80° / 80°".into(),
+                },
+            ];
+            let grid: Vec<(slint::SharedString, f32)> = [60.0_f32, 120.0, 180.0, 240.0]
+                .iter()
+                .map(|v| (format!("{v:.0}°").into(), 1.0 - v / top))
+                .collect();
+            ui.set_graph_lines(slint::ModelRc::new(slint::VecModel::from(lines)));
+            ui.set_graph_grid(slint::ModelRc::new(slint::VecModel::from(grid)));
         }
         "messages" => {
             ui.set_screen("messages".into());

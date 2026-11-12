@@ -12,6 +12,9 @@ export global Strings {
     out property <string> active: @tr("active");
     // "{}" stays in for the engine to fill.
     out property <string> grams: @tr("{} g", "{}");
+    // Graph legend: "{} {}° / {}°" filled by the engine.
+    out property <string> nozzle: @tr("Nozzle");
+    out property <string> bed: @tr("Bed");
 }
 import { Format } from "kit/format.slint";
 // Rust formats durations for rows it builds (the queue) the same way.
@@ -27,6 +30,8 @@ import { ToolsScreen, ConsoleScreen, MacrosScreen, ConsoleLine } from "screens/t
 import { FilesScreen, FileScreen, FileItem, FileInfo, FindScreen, RenameScreen, MoveScreen } from "screens/files.slint";
 export { FileItem, FileInfo, ConsoleLine, FanRow }
 import { MessagesScreen, MessageRow } from "screens/messages.slint";
+import { HeatPresetsScreen, HeatPreset, TempGraphScreen, GraphLine } from "screens/heat-extra.slint";
+export { HeatPreset, GraphLine }
 export { MessageRow }
 import { PrintingScreen, PrintDoneScreen, AmbientScreen, RunoutScreen, ExcludeScreen, PlateObject } from "screens/print.slint";
 export { PlateObject }
@@ -269,8 +274,18 @@ export component AppWindow inherits Window {
     // Seconds until each heater reaches its target; -1 when not known.
     in property <int> nozzle-eta: -1;
     in property <int> bed-eta: -1;
-    // Heat presets, temperature graph and PID screens exist (not yet).
-    in property <bool> has-heat-links;
+    // Heat presets and the temperature graph.
+    in property <bool> has-heat-links: true;
+    in property <[HeatPreset]> heat-presets: [
+        { name: "PLA", nozzle: 210, bed: 60 },
+        { name: "PETG", nozzle: 240, bed: 80 },
+        { name: "ABS", nozzle: 250, bed: 100 },
+        { name: "TPU", nozzle: 225, bed: 50 },
+    ];
+    callback preset-changed(int, int, int);
+    in property <[GraphLine]> graph-lines;
+    in property <[{ y: float, label: string }]> graph-grid;
+    callback refresh-graph(float);
     // Rivet's own setting, read from Moonraker's database.
     in-out property <bool> light-on-start;
     // Z offset when the tuning screen opened: the «was» of its stepper.
@@ -367,7 +382,7 @@ export component AppWindow inherits Window {
 
     HorizontalLayout {
         Rail {
-            active: !root.ready ? "" : (root.screen == "fans" || root.screen == "heating" || root.screen == "motion" || root.screen == "extruder" || root.screen == "light" || root.screen == "speed" || root.screen == "zoffset" || root.screen == "motion-more" || root.screen == "retraction" || root.screen == "dryer" || root.screen == "spools" || root.screen == "devices") ? "control"
+            active: !root.ready ? "" : (root.screen == "fans" || root.screen == "heating" || root.screen == "heat-presets" || root.screen == "temp-graph" || root.screen == "motion" || root.screen == "extruder" || root.screen == "light" || root.screen == "speed" || root.screen == "zoffset" || root.screen == "motion-more" || root.screen == "retraction" || root.screen == "dryer" || root.screen == "spools" || root.screen == "devices") ? "control"
                 : (root.screen == "control" || root.screen == "tools" || root.screen == "settings" || root.screen == "messages") ? root.screen
                 : (root.screen == "console" || root.screen == "macros") ? "tools"
                 : "home";
@@ -561,6 +576,11 @@ export component AppWindow inherits Window {
             nozzle-eta: root.nozzle-eta;
             bed-eta: root.bed-eta;
             has-heat-links: root.has-heat-links;
+            presets: root.heat-presets;
+            open(key) => {
+                if (key == "heat-presets") { root.screen = "heat-presets"; }
+                if (key == "temp-graph") { root.screen = "temp-graph"; }
+            }
             back => { root.screen = "control"; }
             set-target(which, t) => { if (which == 0) { root.set-nozzle(t); } else { root.set-bed(t); } }
             edit(which) => {
@@ -573,6 +593,19 @@ export component AppWindow inherits Window {
                 root.keypad-hint = "0 … " + round(which == 0 ? root.nozzle-limit : root.bed-limit);
                 root.overlay = "keypad";
             }
+        }
+        if root.ready && root.screen == "heat-presets": HeatPresetsScreen {
+            presets: root.heat-presets;
+            max-nozzle: root.nozzle-limit;
+            max-bed: root.bed-limit;
+            changed(i, n, b) => { root.preset-changed(i, n, b); }
+            back => { root.screen = "heating"; }
+        }
+        if root.ready && root.screen == "temp-graph": TempGraphScreen {
+            lines: root.graph-lines;
+            grid: root.graph-grid;
+            back => { root.screen = "heating"; }
+            refresh(aspect) => { root.refresh-graph(aspect); }
         }
         if root.ready && root.screen == "tools": ToolsScreen {
             macro-count: root.macros.length;

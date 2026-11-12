@@ -212,6 +212,9 @@ pub enum Command {
         from: String,
         to: String,
     },
+    /// Temperatures of the last minutes for the graph, drawn for the plot's
+    /// width / height.
+    TempGraph(f32),
     /// Read the messages again; mark all of them read.
     ListMessages,
     ReadMessages,
@@ -645,6 +648,126 @@ async fn list_messages(client: &Client, ui: &slint::Weak<AppWindow>) {
             .collect();
         ui.set_messages(slint::ModelRc::new(slint::VecModel::from(items)));
         ui.set_unread(unread);
+    });
+}
+
+/// Samples the graph shows: Moonraker keeps one a second.
+const GRAPH_SECONDS: usize = 600;
+const GRAPH_POINTS: usize = 200;
+
+/// Nozzle, bed (and a chamber, MCU or host sensor when there is one) as lines
+/// over the last ten minutes, with a scale that fits them.
+// Plain tuples between the reading and the UI thread (images and colours are built there).
+#[allow(clippy::type_complexity)]
+fn show_graph(ui: &slint::Weak<AppWindow>, store: &Value, aspect: f64) {
+    // The Path's viewbox is 1000 high and as wide as the plot's proportions.
+    let width = 1000.0 * aspect.clamp(0.5, 5.0);
+    let series = |key: &str, field: &str| -> Vec<f64> {
+        let all: Vec<f64> = store[key][field]
+            .as_array()
+            .map(|a| a.iter().filter_map(Value::as_f64).collect())
+            .unwrap_or_default();
+        all[all.len().saturating_sub(GRAPH_SECONDS)..].to_vec()
+    };
+    let mut picked: Vec<(String, &'static str, [u8; 3])> = vec![
+        ("extruder".into(), "nozzle", [0xf9, 0x73, 0x16]),
+        ("heater_bed".into(), "bed", [0x60, 0xa5, 0xfa]),
+    ];
+    if let Some(obj) = store.as_object() {
+        if let Some(extra) = obj.keys().find(|k| {
+            let k = k.to_ascii_lowercase();
+            k.starts_with("temperature_sensor ")
+                && ["chamber", "mcu", "host"].iter().any(|w| k.contains(w))
+        }) {
+            picked.push((extra.clone(), "", [0x98, 0xa1, 0xac]));
+        }
+    }
+    let lines: Vec<(Vec<f64>, f64, String, &'static str, [u8; 3])> = picked
+        .into_iter()
+        .filter_map(|(key, label, rgb)| {
+            let temps = series(&key, "temperatures");
+            let target = series(&key, "targets").last().copied().unwrap_or(0.0);
+            (!temps.is_empty()).then(|| {
+                let name = key
+                    .strip_prefix("temperature_sensor ")
+                    .unwrap_or(&key)
+                    .replace('_', " ");
+                (temps, target, name, label, rgb)
+            })
+        })
+        .collect();
+    let top = lines
+        .iter()
+        .flat_map(|l| l.0.iter().copied().chain(std::iter::once(l.1)))
+        .fold(50.0_f64, f64::max);
+    // Round the top up to a step that gives three or four gridlines.
+    let step = if top > 200.0 {
+        60.0
+    } else if top > 100.0 {
+        40.0
+    } else {
+        20.0
+    };
+    let top = (top / step).ceil() * step + step / 2.0;
+    let paths: Vec<(String, [u8; 3], f64, f64, String, &'static str)> = lines
+        .into_iter()
+        .map(|(temps, target, name, label, rgb)| {
+            let n = temps.len();
+            let stride = (n / GRAPH_POINTS).max(1);
+            let mut d = String::new();
+            for (k, i) in (0..n)
+                .step_by(stride)
+                .chain(std::iter::once(n - 1))
+                .enumerate()
+            {
+                let x = if n > 1 {
+                    i as f64 / (n - 1) as f64 * width
+                } else {
+                    0.0
+                };
+                let y = (1.0 - temps[i] / top) * 1000.0;
+                d.push_str(&format!("{}{x:.1} {y:.1} ", if k == 0 { "M" } else { "L" }));
+            }
+            (d, rgb, temps[n - 1], target, name, label)
+        })
+        .collect();
+    let grid: Vec<f64> = (1..)
+        .map(|k| k as f64 * step)
+        .take_while(|v| *v < top)
+        .collect();
+    let _ = ui.upgrade_in_event_loop(move |ui| {
+        let words = slint::ComponentHandle::global::<crate::Strings>(&ui);
+        let rows: Vec<crate::GraphLine> = paths
+            .into_iter()
+            .map(|(path, rgb, now, target, name, label)| {
+                let label = match label {
+                    "nozzle" => words.get_nozzle().to_string(),
+                    "bed" => words.get_bed().to_string(),
+                    _ => name,
+                };
+                let legend = if target > 0.0 {
+                    format!("{label} {now:.0}° / {target:.0}°")
+                } else {
+                    format!("{label} {now:.0}°")
+                };
+                crate::GraphLine {
+                    path: path.into(),
+                    color: slint::Color::from_rgb_u8(rgb[0], rgb[1], rgb[2]),
+                    legend: legend.into(),
+                }
+            })
+            .collect();
+        let grid: Vec<_> = grid
+            .into_iter()
+            .map(|v| {
+                (
+                    slint::SharedString::from(format!("{v:.0}°")),
+                    (1.0 - v / top) as f32,
+                )
+            })
+            .collect();
+        ui.set_graph_lines(slint::ModelRc::new(slint::VecModel::from(rows)));
+        ui.set_graph_grid(slint::ModelRc::new(slint::VecModel::from(grid)));
     });
 }
 
@@ -1284,7 +1407,32 @@ async fn load_settings(
         number("jog_xy_speed", 100.0),
         number("jog_z_speed", 10.0),
     );
+    // Heat presets the user changed; the built-in ones otherwise.
+    let presets: Vec<(String, i32, i32)> = saved["heat_presets"]
+        .as_array()
+        .map(Vec::as_slice)
+        .unwrap_or_default()
+        .iter()
+        .filter_map(|p| {
+            Some((
+                p["name"].as_str()?.to_owned(),
+                p["nozzle"].as_i64()? as i32,
+                p["bed"].as_i64()? as i32,
+            ))
+        })
+        .collect();
     let _ = ui.upgrade_in_event_loop(move |ui| {
+        if !presets.is_empty() {
+            let rows: Vec<crate::HeatPreset> = presets
+                .into_iter()
+                .map(|(name, nozzle, bed)| crate::HeatPreset {
+                    name: name.into(),
+                    nozzle,
+                    bed,
+                })
+                .collect();
+            ui.set_heat_presets(slint::ModelRc::new(slint::VecModel::from(rows)));
+        }
         ui.set_light_on_start(light_on);
         ui.set_invert_x(invert[0]);
         ui.set_invert_y(invert[1]);
@@ -1692,6 +1840,17 @@ async fn execute(
                 .await?;
             let usb = from.to_ascii_lowercase().starts_with("usb/");
             list_files(client, ui, thumbs, usb).await
+        }
+        Command::TempGraph(aspect) => {
+            let store = client
+                .call_timeout(
+                    "server.temperature_store",
+                    json!({ "include_monitors": false }),
+                    SETUP_TIMEOUT,
+                )
+                .await?;
+            show_graph(ui, &store, f64::from(*aspect));
+            Ok(())
         }
         Command::ListMessages => {
             list_messages(client, ui).await;

@@ -460,6 +460,33 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
     ui.on_queue_clear(send(Command::QueueClear));
     ui.on_refresh_queue(send(Command::ListQueue));
     ui.on_refresh_messages(send(Command::ListMessages));
+    {
+        let tx = tx.clone();
+        ui.on_refresh_graph(move |aspect| {
+            let _ = tx.send(Command::TempGraph(aspect));
+        });
+    }
+    {
+        let tx = tx.clone();
+        let weak = ui.as_weak();
+        ui.on_preset_changed(move |i, nozzle, bed| {
+            use slint::Model;
+            let Some(ui) = weak.upgrade() else { return };
+            let mut presets: Vec<rivet::HeatPreset> = ui.get_heat_presets().iter().collect();
+            if let Some(p) = presets.get_mut(i as usize) {
+                p.nozzle = nozzle;
+                p.bed = bed;
+            }
+            let value = serde_json::Value::Array(
+                presets
+                    .iter()
+                    .map(|p| serde_json::json!({ "name": p.name.as_str(), "nozzle": p.nozzle, "bed": p.bed }))
+                    .collect(),
+            );
+            ui.set_heat_presets(slint::ModelRc::new(slint::VecModel::from(presets)));
+            let _ = tx.send(Command::SaveSetting { key: "heat_presets".into(), value });
+        });
+    }
     ui.on_read_messages(send(Command::ReadMessages));
     {
         let weak = ui.as_weak();

@@ -4,6 +4,7 @@ import { Tokens } from "../kit/tokens.slint";
 import { Icons } from "../kit/icons.slint";
 import { Icon, BackButton, SecondaryButton } from "../kit/controls.slint";
 import { HeatDial } from "../kit/dial.slint";
+import { HeatPreset } from "heat-extra.slint";
 
 component Preset inherits Rectangle {
     in property <string> name;
@@ -98,6 +99,8 @@ export component HeatingScreen inherits VerticalLayout {
     in property <int> bed-eta: -1;
     // Presets, graph and PID open screens of their own; the row shows once they exist.
     in property <bool> has-heat-links;
+    // The user's presets (Heat presets screen); the first four show here.
+    in property <[HeatPreset]> presets;
     callback open(string);
     // 0 nozzle, 1 bed
     in-out property <int> heater;
@@ -212,17 +215,19 @@ export component HeatingScreen inherits VerticalLayout {
             }
             HorizontalLayout {
                 spacing: 6px;
-                Preset { name: "PLA"; temp: root.is-bed ? 60 : 210; picked(t) => { root.set-target(root.heater, t); } }
-                Preset { name: "PETG"; temp: root.is-bed ? 80 : 240; picked(t) => { root.set-target(root.heater, t); } }
-                Preset { name: "ABS"; temp: root.is-bed ? 100 : 250; picked(t) => { root.set-target(root.heater, t); } }
-                Preset { name: "TPU"; temp: root.is-bed ? 50 : 225; picked(t) => { root.set-target(root.heater, t); } }
+                for p[i] in root.presets: Preset {
+                    visible: i < 4;
+                    name: p.name;
+                    temp: root.is-bed ? p.bed : p.nozzle;
+                    picked(t) => { root.set-target(root.heater, t); }
+                }
             }
             if root.has-heat-links: HorizontalLayout {
                 spacing: 6px;
+                // PID joins once its calibration screen exists.
                 for link in [
                     { key: "heat-presets", label: @tr("Presets") },
                     { key: "temp-graph", label: @tr("Graph") },
-                    { key: "pid", label: "PID" },
                 ]: Rectangle {
                     // Equal thirds, whatever the words.
                     preferred-width: 0px;
