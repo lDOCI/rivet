@@ -280,6 +280,8 @@ pub enum Command {
     TempGraph(f32),
     /// Vibration and belt curves, drawn for the plot's width / height.
     DrawResonance(f32),
+    /// A macro was picked: its parameters, or straight on to confirm or run it.
+    MacroParams(String),
     /// Look for Wi-Fi networks around (wpa_supplicant on this machine).
     WifiScan,
     /// Join a network: name, "open"/"psk"/"sae", password ("" for a saved one).
@@ -2555,6 +2557,46 @@ async fn execute(
             });
             calib_info(client, ui).await;
             result
+        }
+        Command::MacroParams(name) => {
+            let gcode = client
+                .call_timeout(
+                    "printer.objects.query",
+                    json!({ "objects": { "configfile": ["settings"] } }),
+                    SETUP_TIMEOUT,
+                )
+                .await
+                .ok()
+                .and_then(|r| {
+                    r["status"]["configfile"]["settings"]
+                        [format!("gcode_macro {}", name.to_lowercase())]["gcode"]
+                        .as_str()
+                        .map(str::to_owned)
+                })
+                .unwrap_or_default();
+            let params = model::macro_params(&gcode);
+            let name = name.clone();
+            let _ = ui.upgrade_in_event_loop(move |ui| {
+                if params.is_empty() {
+                    if ui.get_set_confirm_macros() {
+                        ui.set_overlay("run-macro".into());
+                    } else {
+                        ui.invoke_run_gcode(name.into());
+                    }
+                    return;
+                }
+                let rows: Vec<crate::MacroParam> = params
+                    .into_iter()
+                    .map(|(n, d)| crate::MacroParam {
+                        name: n.into(),
+                        value: "".into(),
+                        default: d.into(),
+                    })
+                    .collect();
+                ui.set_macro_params(slint::ModelRc::new(slint::VecModel::from(rows)));
+                ui.set_screen("macro-params".into());
+            });
+            Ok(())
         }
         Command::WifiScan => {
             wifi_scan(ui).await;

@@ -84,6 +84,7 @@ const ALL: &[&str] = &[
     "set-system",
     "set-network",
     "set-theme",
+    "macro-params",
     "wifi-join",
     "set-printers",
     "set-updates",
@@ -580,6 +581,21 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_filename("Корпус вентилятора №2.gcode".into());
             ui.set_progress(0.42);
             ui.set_overlay("cancel-print".into());
+        }
+        "macro-params" => {
+            // KlipperMod's LOAD_MATERIAL-like template: two with defaults, one typed.
+            let p = |n: &str, v: &str, d: &str| rivet::MacroParam {
+                name: n.into(),
+                value: v.into(),
+                default: d.into(),
+            };
+            ui.set_macro_pending("LOAD_MATERIAL".into());
+            ui.set_macro_params(slint::ModelRc::new(slint::VecModel::from(vec![
+                p("TEMP", "250", "220"),
+                p("LENGTH", "", "100"),
+                p("MATERIAL", "", ""),
+            ])));
+            ui.set_screen("macro-params".into());
         }
         "heat-presets" => ui.set_screen("heat-presets".into()),
         "calibrate" | "bed-mesh" | "screws" | "probe" | "shaper" | "pid" | "pa" | "tmc"

@@ -1536,6 +1536,50 @@ pub fn layer_plan(meta: &Value) -> Option<(f64, f64, u32)> {
     Some((first, height, count as u32))
 }
 
+/// The parameters a `gcode_macro` reads (`params.NAME`, or `params["NAME"]`),
+/// with the default its template gives (`|default(…)`), in order of first use.
+pub fn macro_params(gcode: &str) -> Vec<(String, String)> {
+    let mut out: Vec<(String, String)> = Vec::new();
+    let mut rest = gcode;
+    while let Some(i) = rest.find("params") {
+        rest = &rest[i + "params".len()..];
+        let name: String = if let Some(r) = rest.strip_prefix('.') {
+            r.chars()
+                .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
+                .collect()
+        } else if let Some(r) = rest.strip_prefix("[\"").or_else(|| rest.strip_prefix("['")) {
+            r.chars()
+                .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
+                .collect()
+        } else {
+            continue;
+        };
+        // `params` itself, `params.get(...)`, lower case helpers: not a parameter.
+        if name.is_empty() || name.chars().any(|c| c.is_ascii_lowercase()) {
+            continue;
+        }
+        let after = &rest[rest.find(&name).map_or(0, |k| k + name.len())..];
+        let after = after.trim_start_matches(['"', '\'', ']']);
+        // Only a literal default means something to the user: a number or a
+        // quoted text (`default(pause_at_layer.layer)` is the template's own state).
+        let default = after
+            .trim_start()
+            .strip_prefix("|default(")
+            .or_else(|| after.trim_start().strip_prefix("| default("))
+            .and_then(|d| d.split(')').next())
+            .map(|d| d.split(',').next().unwrap_or(d).trim())
+            .filter(|d| d.parse::<f64>().is_ok() || d.starts_with(['"', '\'']))
+            .map(|d| d.trim_matches(['"', '\'']).to_owned())
+            .unwrap_or_default();
+        match out.iter_mut().find(|(n, _)| *n == name) {
+            Some((_, d)) if d.is_empty() => *d = default,
+            Some(_) => {}
+            None => out.push((name, default)),
+        }
+    }
+    out
+}
+
 /// How alike two belts' responses are, 0..100 %: the cosine of the two curves
 /// between lo and hi Hz (1 when they have the same shape).
 pub fn belt_similarity(a: &Psd, b: &Psd, lo: f64, hi: f64) -> Option<f64> {
@@ -2911,5 +2955,25 @@ mod tests {
         // Never back down; the head going up at the end counts no layers.
         assert!(feed(&mut t, 5.0, 0.4).is_empty());
         assert!(feed(&mut t, 5.0, 50.0).is_empty());
+    }
+
+    #[test]
+    fn macro_parameters() {
+        let gcode = "{% set ENABLE = params.ENABLE|int != 0 if params.ENABLE is defined\n\
+            else params.LAYER is defined %}\n\
+            {% set LAYER = params.LAYER|default(pause_at_layer.layer)|int %}\n\
+            {% set TEMP = params.TEMP|default(220)|float %}\n\
+            {% set MAT = params[\"MATERIAL\"]|default(\"PLA\") %}\n\
+            {% if params.get('X') %}{% endif %}";
+        assert_eq!(
+            macro_params(gcode),
+            [
+                ("ENABLE".into(), "".into()),
+                ("LAYER".into(), "".into()),
+                ("TEMP".into(), "220".into()),
+                ("MATERIAL".into(), "PLA".into()),
+            ]
+        );
+        assert!(macro_params("G28\nM104 S0").is_empty());
     }
 }

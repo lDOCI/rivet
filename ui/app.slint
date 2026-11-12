@@ -56,6 +56,8 @@ import { FilesScreen, FileScreen, FileItem, FileInfo, FindScreen, RenameScreen, 
 import { WifiJoinScreen } from "screens/wifi.slint";
 import { TouchCalScreen } from "screens/touchcal.slint";
 import { ThemeScreen, Swatch } from "screens/theme.slint";
+import { MacroParamsScreen, MacroParam } from "screens/macro.slint";
+export { MacroParam }
 export { Swatch }
 export { FileItem, FileInfo, ConsoleLine, FanRow }
 import { MessagesScreen, MessageRow } from "screens/messages.slint";
@@ -142,6 +144,12 @@ export component AppWindow inherits Window {
     in-out property <string> console-text;
     in-out property <bool> console-keyboard;
     in-out property <string> macro-pending;
+    // The picked macro's parameters (from its template) and what was typed.
+    in property <[MacroParam]> macro-params;
+    callback macro-open(string);
+    callback macro-param-set(int, string);
+    // "NAME P=v ..." from the typed values.
+    pure callback macro-script() -> string;
     callback move-axis(int, float);
     callback motors-off();
     // Length (mm, negative pulls back), speed (mm/s), and the temperature to
@@ -625,7 +633,7 @@ export component AppWindow inherits Window {
             active: !root.ready ? "" : (root.screen == "fans" || root.screen == "filament" || root.screen == "heating" || root.screen == "heat-presets" || root.screen == "temp-graph" || root.screen == "motion" || root.screen == "extruder" || root.screen == "light" || root.screen == "speed" || root.screen == "zoffset" || root.screen == "motion-more" || root.screen == "retraction" || root.screen == "dryer" || root.screen == "spools" || root.screen == "devices") ? "control"
                 : (root.screen == "control" || root.screen == "tools" || root.screen == "settings" || root.screen == "messages") ? root.screen
                 : (root.screen == "set-screen" || root.screen == "set-theme" || root.screen == "set-lock" || root.screen == "set-sound" || root.screen == "set-language" || root.screen == "set-safety" || root.screen == "set-system" || root.screen == "set-network" || root.screen == "wifi-join" || root.screen == "set-printers" || root.screen == "set-updates") ? "settings"
-                : (root.screen == "console" || root.screen == "macros" || root.screen == "calibrate" || root.screen == "bed-mesh" || root.screen == "mesh-profiles" || root.screen == "screws" || root.screen == "probe" || root.screen == "shaper" || root.screen == "shaper-result" || root.screen == "belts" || root.screen == "pid" || root.screen == "pa" || root.screen == "tmc" || root.screen == "limits" || root.screen == "sensors" || root.screen == "history" || root.screen == "service" || root.screen == "camera") ? "tools"
+                : (root.screen == "console" || root.screen == "macros" || root.screen == "macro-params" || root.screen == "calibrate" || root.screen == "bed-mesh" || root.screen == "mesh-profiles" || root.screen == "screws" || root.screen == "probe" || root.screen == "shaper" || root.screen == "shaper-result" || root.screen == "belts" || root.screen == "pid" || root.screen == "pa" || root.screen == "tmc" || root.screen == "limits" || root.screen == "sensors" || root.screen == "history" || root.screen == "service" || root.screen == "camera") ? "tools"
                 : "home";
             unread: root.unread;
             hold-stop: root.set-hold-stop;
@@ -1108,9 +1116,16 @@ export component AppWindow inherits Window {
         if root.ready && root.screen == "macros": MacrosScreen {
             macros: root.macros;
             back => { root.screen = "tools"; }
-            pick(name) => {
-                if (root.set-confirm-macros) { root.macro-pending = name; root.overlay = "run-macro"; } else { root.run-gcode(name); }
-            }
+            // Rust looks for parameters first: with some, their screen; else as before.
+            pick(name) => { root.macro-pending = name; root.macro-open(name); }
+        }
+        if root.ready && root.screen == "macro-params": MacroParamsScreen {
+            macro-name: root.macro-pending;
+            params: root.macro-params;
+            set(i, v) => { root.macro-param-set(i, v); }
+            run => { root.run-gcode(root.macro-script()); root.screen = "macros"; }
+            back => { root.screen = "macros"; }
+            apply-key(t, k) => { return root.apply-key(t, k); }
         }
         // The rows open M2 screens; until those exist they do nothing.
         if root.ready && root.screen == "settings": SettingsForm {

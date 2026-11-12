@@ -1,0 +1,70 @@
+// A macro's parameters before it runs: each with the template's default,
+// typed on the keyboard; empty ones are left out.
+import { Tokens } from "../kit/tokens.slint";
+import { Header, PrimaryButton } from "../kit/controls.slint";
+import { Keyboard } from "../kit/keyboard.slint";
+import { TextLine } from "files.slint";
+
+export struct MacroParam { name: string, value: string, default: string }
+
+export component MacroParamsScreen inherits VerticalLayout {
+    horizontal-stretch: 1;
+    in property <string> macro-name;
+    in property <[MacroParam]> params;
+    callback set(int, string);
+    callback run;
+    callback back;
+    callback apply-key(string, string) -> string;
+    property <int> sel: 0;
+    property <string> editing: root.params[0].value;
+    padding: Tokens.pad;
+    padding-right: 20px;
+    spacing: 8px;
+    // The parameters as chips beside the name: tap one to type its value.
+    Header {
+        title: root.macro-name;
+        back-clicked => { root.back(); }
+        for p[i] in root.params: Rectangle {
+            height: 64px;
+            min-width: 96px;
+            border-radius: Tokens.r-s;
+            background: i == root.sel ? Tokens.accent-soft : Tokens.surface-1;
+            border-width: i == root.sel ? 2px : 0px;
+            border-color: Tokens.accent;
+            accessible-role: button;
+            accessible-label: p.name;
+            accessible-action-default => { root.sel = i; root.editing = p.value; }
+            VerticalLayout {
+                padding-left: 12px;
+                padding-right: 12px;
+                alignment: center;
+                Text { text: p.name; color: Tokens.text-dim; font-size: Tokens.caption; }
+                Text { text: p.value != "" ? p.value : @tr("default"); color: p.value != "" ? Tokens.text : Tokens.text-faint; font-size: Tokens.body; font-weight: 600; overflow: elide; }
+            }
+            TouchArea { clicked => { root.sel = i; root.editing = p.value; } }
+        }
+    }
+    HorizontalLayout {
+        spacing: 10px;
+        TextLine { horizontal-stretch: 1; text: root.editing; placeholder: root.params[root.sel].default != "" ? root.params[root.sel].default : root.params[root.sel].name; }
+        PrimaryButton {
+            width: 160px;
+            min-height: 64px;
+            text: @tr("Run");
+            clicked => { root.run(); }
+        }
+    }
+    Rectangle { vertical-stretch: 1; }
+    Keyboard {
+        cyrillic: false;
+        upper: true;
+        key(k) => {
+            if (k == "⏎") {
+                root.run();
+            } else {
+                root.editing = root.apply-key(root.editing, k);
+                root.set(root.sel, root.editing);
+            }
+        }
+    }
+}

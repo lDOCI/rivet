@@ -656,6 +656,46 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
     ui.set_wifi_available(rivet::wifi::available());
     #[cfg(feature = "fbdev")]
     ui.set_backlight_available(fbdev_platform::screen::backlight_available());
+    // Macro parameters.
+    {
+        let tx = tx.clone();
+        ui.on_macro_open(move |name| {
+            let _ = tx.send(Command::MacroParams(name.into()));
+        });
+    }
+    {
+        let weak = ui.as_weak();
+        ui.on_macro_param_set(move |i, value| {
+            let Some(ui) = weak.upgrade() else { return };
+            let rows = ui.get_macro_params();
+            if let Some(mut row) = slint::Model::row_data(&rows, i.max(0) as usize) {
+                row.value = value;
+                slint::Model::set_row_data(&rows, i.max(0) as usize, row);
+            }
+        });
+    }
+    {
+        let weak = ui.as_weak();
+        ui.on_macro_script(move || {
+            let Some(ui) = weak.upgrade() else {
+                return "".into();
+            };
+            let mut script = ui.get_macro_pending().to_string();
+            for p in slint::Model::iter(&ui.get_macro_params()) {
+                let v = p.value.trim();
+                if v.is_empty() {
+                    continue;
+                }
+                // Klipper takes a value with spaces in quotes.
+                if v.contains(' ') {
+                    script.push_str(&format!(" {}=\"{}\"", p.name, v.replace('"', "")));
+                } else {
+                    script.push_str(&format!(" {}={v}", p.name));
+                }
+            }
+            script.into()
+        });
+    }
     // Appearance: the swatches, and a pick applied and saved.
     {
         let weak = ui.as_weak();
