@@ -109,10 +109,17 @@ struct FbPlatform {
     /// few milliseconds mid-swipe, which would turn a scroll into taps. A press
     /// within RELEASE_DEBOUNCE continues the same touch instead.
     pending_release: Cell<Option<(Instant, f32, f32)>>,
+    /// Tap or drag: finger jitter within the slop is not a scroll.
+    slop: Cell<crate::touch_state::TapSlop>,
 }
 
 /// How long a lifted finger may be gone and still count as the same touch.
 const RELEASE_DEBOUNCE: Duration = Duration::from_millis(60);
+/// How far a finger may wander and still tap, logical px (~2.7 mm on the
+/// AD5M's 7" 800×480 panel). Slint's own scroll threshold is 8 px.
+const TAP_SLOP: f32 = 14.0;
+/// A new press this close to the lost one is the same finger coming back.
+const SAME_FINGER: f32 = 40.0;
 
 /// Open the framebuffer and touch device and install the platform.
 /// Call before creating any Slint component.
@@ -178,6 +185,7 @@ pub fn init(config: Config) -> anyhow::Result<()> {
         swallow: Cell::new(false),
         wakes_seen: Cell::new(crate::screen::wake_requests()),
         pending_release: Cell::new(None),
+        slop: Cell::new(crate::touch_state::TapSlop::new(TAP_SLOP)),
     };
     slint::platform::set_platform(Box::new(platform))
         .map_err(|e| anyhow::anyhow!("set Slint platform: {e}"))?;
@@ -228,27 +236,57 @@ impl FbPlatform {
                 }
                 return;
             }
+            let mut slop = self.slop.get();
             let event = match action {
-                // Back within the debounce time: the same touch goes on.
-                TouchAction::Pressed { x, y } if self.pending_release.take().is_some() => {
-                    WindowEvent::PointerMoved {
-                        position: LogicalPosition::new(x, y),
+                // Back within the debounce time and near where it was: the same
+                // touch goes on. Elsewhere it is a new touch: end the old one.
+                TouchAction::Pressed { x, y } if self.pending_release.get().is_some() => {
+                    let (lx, ly) = self
+                        .pending_release
+                        .take()
+                        .map_or((x, y), |(_, lx, ly)| (lx, ly));
+                    if (x - lx).hypot(y - ly) <= SAME_FINGER {
+                        slop.moved(x, y).map(|(x, y)| WindowEvent::PointerMoved {
+                            position: LogicalPosition::new(x, y),
+                        })
+                    } else {
+                        let w = window.window();
+                        w.dispatch_event(WindowEvent::PointerReleased {
+                            position: LogicalPosition::new(lx, ly),
+                            button: PointerEventButton::Left,
+                        });
+                        w.dispatch_event(WindowEvent::PointerExited);
+                        let (x, y) = slop.press(x, y);
+                        Some(WindowEvent::PointerPressed {
+                            position: LogicalPosition::new(x, y),
+                            button: PointerEventButton::Left,
+                        })
                     }
                 }
-                TouchAction::Pressed { x, y } => WindowEvent::PointerPressed {
-                    position: LogicalPosition::new(x, y),
-                    button: PointerEventButton::Left,
-                },
-                TouchAction::Moved { x, y } => WindowEvent::PointerMoved {
-                    position: LogicalPosition::new(x, y),
-                },
+                TouchAction::Pressed { x, y } => {
+                    let (x, y) = slop.press(x, y);
+                    Some(WindowEvent::PointerPressed {
+                        position: LogicalPosition::new(x, y),
+                        button: PointerEventButton::Left,
+                    })
+                }
+                TouchAction::Moved { x, y } => {
+                    slop.moved(x, y).map(|(x, y)| WindowEvent::PointerMoved {
+                        position: LogicalPosition::new(x, y),
+                    })
+                }
                 // Held back; `flush_release` passes it on once the finger stays up.
+                // A tap lands where the finger touched.
                 TouchAction::Released { x, y } => {
+                    let (x, y) = slop.release(x, y);
                     self.pending_release.set(Some((Instant::now(), x, y)));
-                    return;
+                    None
                 }
             };
-            window.window().dispatch_event(event);
+            self.slop.set(slop);
+            if let Some(event) = event {
+                window.window().dispatch_event(event);
+            }
         });
         if let Err(err) = result {
             tracing::error!(%err, "touch device lost, will keep retrying");

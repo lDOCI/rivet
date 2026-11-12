@@ -145,6 +145,65 @@ impl TouchState {
     }
 }
 
+/// Tells a tap from a drag the way phones do: until the finger has gone
+/// further than `slop` from where it touched, its jitter is not passed on, and
+/// a lift there counts as a tap at the touch point. Only a finger that clearly
+/// travels starts a drag (a list scroll).
+///
+/// Without it every wobble of a fingertip (more for a broad finger, which rolls
+/// as it presses) reaches Slint's Flickable, which takes 8 px of movement for a
+/// scroll and cancels the button under the finger.
+#[derive(Debug, Clone, Copy)]
+pub struct TapSlop {
+    slop: f32,
+    origin: Option<(f32, f32)>,
+    dragging: bool,
+}
+
+impl TapSlop {
+    pub fn new(slop: f32) -> Self {
+        Self {
+            slop,
+            origin: None,
+            dragging: false,
+        }
+    }
+
+    pub fn press(&mut self, x: f32, y: f32) -> (f32, f32) {
+        self.origin = Some((x, y));
+        self.dragging = false;
+        (x, y)
+    }
+
+    /// The position to pass on, or None while the finger is still within the slop.
+    pub fn moved(&mut self, x: f32, y: f32) -> Option<(f32, f32)> {
+        let Some((ox, oy)) = self.origin else {
+            return Some((x, y));
+        };
+        if !self.dragging && (x - ox).hypot(y - oy) <= self.slop {
+            return None;
+        }
+        self.dragging = true;
+        Some((x, y))
+    }
+
+    /// Where the lift lands: the touch point for a tap, the finger for a drag.
+    /// The state stays until the next press: a finger that loses contact for a
+    /// moment and comes back goes on with the same touch.
+    pub fn release(&mut self, x: f32, y: f32) -> (f32, f32) {
+        match (self.origin, self.dragging) {
+            (Some(origin), false) => origin,
+            _ => (x, y),
+        }
+    }
+
+    /// Whether a point is close enough to the touch to be the same finger.
+    pub fn near(&self, x: f32, y: f32, distance: f32) -> bool {
+        self.origin
+            .is_some_and(|(ox, oy)| (x - ox).hypot(y - oy) <= distance)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -265,5 +324,27 @@ mod tests {
             s.process(EV_SYN, SYN_REPORT, 0),
             Some(TouchAction::Released { .. })
         ));
+    }
+
+    #[test]
+    fn tap_slop_keeps_taps_and_lets_drags_through() {
+        let mut t = TapSlop::new(14.0);
+        // A wobbling finger: nothing passes, the lift lands where it touched.
+        assert_eq!(t.press(100.0, 200.0), (100.0, 200.0));
+        assert_eq!(t.moved(106.0, 195.0), None);
+        assert_eq!(t.moved(92.0, 204.0), None);
+        assert_eq!(t.release(109.0, 208.0), (100.0, 200.0));
+        // A finger that travels: moves pass once it leaves the slop, and from
+        // then on even small ones do.
+        t.press(100.0, 300.0);
+        assert_eq!(t.moved(100.0, 290.0), None);
+        assert_eq!(t.moved(100.0, 280.0), Some((100.0, 280.0)));
+        assert_eq!(t.moved(100.0, 278.0), Some((100.0, 278.0)));
+        assert_eq!(t.release(100.0, 260.0), (100.0, 260.0));
+        // The next touch starts fresh.
+        t.press(50.0, 50.0);
+        assert!(t.near(60.0, 50.0, 40.0));
+        assert!(!t.near(150.0, 50.0, 40.0));
+        assert_eq!(t.release(55.0, 52.0), (50.0, 50.0));
     }
 }
