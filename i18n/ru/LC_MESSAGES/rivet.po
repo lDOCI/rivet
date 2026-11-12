@@ -1701,3 +1701,333 @@ msgstr "датчик коснётся у каждого винта"
 
 msgid "bed, probe, vibrations"
 msgstr "стол, щуп, вибрации"
+
+msgid "up to date"
+msgstr "актуально"
+
+msgid "update to {}"
+msgstr "есть {}"
+
+msgid "no network address"
+msgstr "нет адреса в сети"
+
+msgid "sleep: {}"
+msgstr "сон: {}"
+
+msgid "never"
+msgstr "никогда"
+
+msgid "PIN on"
+msgstr "PIN включён"
+
+msgid "while printing"
+msgstr "во время печати"
+
+msgid "24 h"
+msgstr "24 ч"
+
+msgid "12 h"
+msgstr "12 ч"
+
+msgid "1 connected"
+msgstr "1 подключён"
+
+msgid "{} digits"
+msgstr "{} цифр"
+
+msgid "4–6 digits"
+msgstr "4–6 цифр"
+
+msgid "New PIN, 4–6 digits"
+msgstr "Новый PIN, 4–6 цифр"
+
+msgid "not set"
+msgstr "не задан"
+
+msgid "for “done at 15:20”"
+msgstr "для «готово в 15:20»"
+
+msgid "set it in KlipperMod: the clock stays hidden until then"
+msgstr "задайте его в KlipperMod — до этого часы не показываются"
+
+msgid "Flashforge's firmware until the next reboot"
+msgstr "прошивка Flashforge до перезагрузки"
+
+msgid "Connected"
+msgstr "Подключено"
+
+msgid "not connected"
+msgstr "не подключён"
+
+msgid "This printer"
+msgstr "Этот принтер"
+
+msgid "this printer · connected"
+msgstr "этот принтер · подключён"
+
+msgid "Restart Klipper?"
+msgstr "Перезапустить Klipper?"
+
+msgid "Restart the firmware?"
+msgstr "Перезапустить прошивку?"
+
+msgid "Restart Moonraker?"
+msgstr "Перезапустить Moonraker?"
+
+msgid "Reboot the printer?"
+msgstr "Перезагрузить принтер?"
+
+msgid "Power off the printer?"
+msgstr "Выключить принтер?"
+
+msgid "Boot the stock firmware?"
+msgstr "Загрузить стоковую прошивку?"
+
+msgid "Reset Rivet's settings?"
+msgstr "Сбросить настройки Rivet?"
+
+msgid "Presets, lock, sounds and the rest go back to how they came. Klipper's config is not touched."
+msgstr "Пресеты, блокировка, звук и остальное вернутся к исходным. Конфиг Klipper не тронется."
+
+msgid "The printer restarts into Flashforge's firmware; the next reboot brings KlipperMod back."
+msgstr "Принтер перезапустится в прошивку Flashforge; следующая перезагрузка вернёт KlipperMod."
+
+msgid "Turn it on again with its power switch."
+msgstr "Включить снова — кнопкой питания."
+
+msgid "The screen loses the printer for a few seconds."
+msgstr "Экран потеряет связь с принтером на несколько секунд."
+
+msgid "Reset"
+msgstr "Сбросить"
+
+msgid "Power off"
+msgstr "Выключить"
+
+msgid "Restart"
+msgstr "Перезапустить"
+
+msgid "without a touch"
+msgstr "без касаний"
+
+msgid "show the progress screensaver"
+msgstr "показывать заставку с прогрессом"
+
+msgid "touch 4 points"
+msgstr "коснуться 4 точек"
+
+msgid "Sleep after, min"
+msgstr "Гасить через, мин"
+
+msgid "Stay on while printing"
+msgstr "Не гасить во время печати"
+
+msgid "Rotation"
+msgstr "Поворот"
+
+msgid "Touch calibration"
+msgstr "Калибровка тача"
+
+msgid "unlock with the PIN or a long press"
+msgstr "разблокировать — PIN или долгое нажатие"
+
+msgid "Lock while printing"
+msgstr "Блокировка во время печати"
+
+msgid "PIN code"
+msgstr "PIN-код"
+
+msgid "Lock by itself"
+msgstr "Автоблокировка"
+
+msgid "Never"
+msgstr "Нет"
+
+msgid "5 min"
+msgstr "5 мин"
+
+msgid "15 min"
+msgstr "15 мин"
+
+msgid "30 min"
+msgstr "30 мин"
+
+msgid "the printer's beeper"
+msgstr "пищалка принтера"
+
+msgid "Volume"
+msgstr "Громкость"
+
+msgid "Sounds"
+msgstr "Звуки"
+
+msgid "Tune when a print ends"
+msgstr "Мелодия в конце печати"
+
+msgid "Touch sounds"
+msgstr "Звук касаний"
+
+msgid "Test the sound"
+msgstr "Проверить звук"
+
+msgid "Language"
+msgstr "Язык"
+
+msgid "Русский"
+msgstr "Русский"
+
+msgid "Time format"
+msgstr "Формат времени"
+
+msgid "Time zone"
+msgstr "Часовой пояс"
+
+msgid "against a stray touch; otherwise it stops at once"
+msgstr "защита от случайного касания; иначе — сразу по нажатию"
+
+msgid "what pops up over the screen"
+msgstr "что показывать поверх экрана"
+
+msgid "Wait before E-stop, s"
+msgstr "Ждать перед E-stop, с"
+
+msgid "Hold Stop for 1 second"
+msgstr "Удерживать «Стоп» 1 секунду"
+
+msgid "If a cancel hangs: emergency stop"
+msgstr "Если отмена зависла — аварийная остановка"
+
+msgid "Wait before E-stop"
+msgstr "Ждать перед E-stop"
+
+msgid "Confirm before running macros"
+msgstr "Подтверждать запуск макросов"
+
+msgid "Notifications"
+msgstr "Уведомления"
+
+msgid "All"
+msgstr "Все"
+
+msgid "Important"
+msgstr "Важные"
+
+msgid "Errors"
+msgstr "Ошибки"
+
+msgid "reads the config again"
+msgstr "перечитает конфиг"
+
+msgid "after a board error"
+msgstr "после ошибки платы"
+
+msgid "once it cools below 50°"
+msgstr "когда остынет ниже 50°"
+
+msgid "old logs, timelapses, preview cache"
+msgstr "старые логи, таймлапсы, кэш миниатюр"
+
+msgid "Klipper is not touched"
+msgstr "Klipper не трогает"
+
+msgid "RESTART"
+msgstr "ПЕРЕЗАПУСК"
+
+msgid "Restart Klipper"
+msgstr "Перезапустить Klipper"
+
+msgid "Restart the firmware"
+msgstr "Перезапустить прошивку"
+
+msgid "Restart Moonraker"
+msgstr "Перезапустить Moonraker"
+
+msgid "Restart the screen"
+msgstr "Перезапустить экран"
+
+msgid "Power off after the print"
+msgstr "Выключить после печати"
+
+msgid "Reboot the printer"
+msgstr "Перезагрузить принтер"
+
+msgid "Power off the printer"
+msgstr "Выключить принтер"
+
+msgid "Boot the stock firmware"
+msgstr "Загрузить стоковую прошивку"
+
+msgid "ABOUT"
+msgstr "О СИСТЕМЕ"
+
+msgid "Processor"
+msgstr "Процессор"
+
+msgid "Memory"
+msgstr "Память"
+
+msgid "Disk"
+msgstr "Диск"
+
+msgid "Logs"
+msgstr "Логи"
+
+msgid "Info"
+msgstr "Инфо"
+
+msgid "Debug"
+msgstr "Отладка"
+
+msgid "Free up space"
+msgstr "Очистить место"
+
+msgid "Reset Rivet's settings"
+msgstr "Сбросить настройки Rivet"
+
+msgid "5 GHz · WPA2"
+msgstr "5 ГГц · WPA2"
+
+msgid "type its name"
+msgstr "ввести имя вручную"
+
+msgid "NETWORKS AROUND"
+msgstr "ДОСТУПНЫЕ СЕТИ"
+
+msgid "Hidden network"
+msgstr "Скрытая сеть"
+
+msgid "OTHER"
+msgstr "ПРОЧЕЕ"
+
+msgid "Host name"
+msgstr "Имя хоста"
+
+msgid "Moonraker's address and port"
+msgstr "адрес Moonraker и порт"
+
+msgid "Add a printer"
+msgstr "Добавить принтер"
+
+msgid "updated with a KlipperMod image from USB"
+msgstr "обновляется образом KlipperMod с USB"
+
+msgid "VERSIONS"
+msgstr "ВЕРСИИ"
+
+msgid "WEB INTERFACES"
+msgstr "ВЕБ-ИНТЕРФЕЙСЫ"
+
+msgid "Check for updates"
+msgstr "Проверить обновления"
+
+msgid "Screen locked"
+msgstr "Экран заблокирован"
+
+msgid "Printing: {}%"
+msgstr "Печать идёт: {}%"
+
+msgid "Hold the lock to open."
+msgstr "Удерживайте замок, чтобы открыть."
+
+msgid "Hold to unlock"
+msgstr "Удерживайте, чтобы открыть"

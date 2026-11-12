@@ -57,6 +57,8 @@ export component Rail inherits Rectangle {
     // "home" | "control" | "tools" | "settings" | "messages"
     in property <string> active: "home";
     in property <bool> unread;
+    // Stop needs a 1-second hold (Settings › Safety).
+    in property <bool> hold-stop;
     callback navigate(string);
     // One tap, no confirm (D-012).
     callback emergency-stop;
@@ -86,7 +88,9 @@ export component Rail inherits Rectangle {
                 }
                 Text { text: @tr("Stop"); color: Tokens.danger; font-size: 11px; font-weight: 700; horizontal-alignment: center; }
             }
-            stop := TouchArea { clicked => { root.emergency-stop(); } }
+            stop := TouchArea { clicked => { if (!root.hold-stop) { root.emergency-stop(); } } }
+            // Held for a second: stop, even before the finger lifts.
+            Timer { interval: 1s; running: root.hold-stop && stop.pressed; triggered => { root.emergency-stop(); } }
         }
     }
 }

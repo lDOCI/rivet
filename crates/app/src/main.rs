@@ -53,6 +53,15 @@ fn main() -> anyhow::Result<()> {
                 let printing = matches!(ui.get_print_state().as_str(), "printing" | "paused");
                 let idle = fbdev_platform::screen::sleep_after()
                     .is_some_and(|after| fbdev_platform::screen::idle() >= after);
+                // Lock by itself after the chosen idle minutes.
+                let lock_after = [0u64, 5, 15, 30][ui.get_set_autolock().clamp(0, 3) as usize];
+                if lock_after > 0
+                    && !ui.get_locked()
+                    && fbdev_platform::screen::idle()
+                        >= std::time::Duration::from_secs(lock_after * 60)
+                {
+                    ui.set_locked(true);
+                }
                 if printing && idle && !ui.get_ambient() {
                     ui.set_ambient(true);
                 } else if !printing && ui.get_ambient() {
@@ -461,6 +470,61 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
     ui.on_refresh_queue(send(Command::ListQueue));
     ui.on_refresh_messages(send(Command::ListMessages));
     ui.on_refresh_history(send(Command::ListHistory));
+    ui.on_refresh_system(send(Command::SystemInfo));
+    {
+        let tx = tx.clone();
+        ui.on_system_action(move |what| {
+            let _ = tx.send(Command::SystemAction(what.to_string()));
+        });
+    }
+    {
+        let tx = tx.clone();
+        ui.on_setting_changed(move |key, value| {
+            use rivet::engine::prefs;
+            let on = value == "1";
+            match key.as_str() {
+                "awake_print" => prefs::set(&prefs::AWAKE_PRINT, on),
+                "clock_12h" => prefs::set(&prefs::CLOCK_12, on),
+                "end_tune" => prefs::set(&prefs::END_TUNE, on),
+                "sounds" if !on => prefs::set(&prefs::END_TUNE, false),
+                #[cfg(feature = "fbdev")]
+                "screen_sleep_min" => {
+                    let minutes: f64 = value.parse().unwrap_or(10.0);
+                    fbdev_platform::screen::set_sleep_after(
+                        (minutes > 0.0).then(|| std::time::Duration::from_secs_f64(minutes * 60.0)),
+                    );
+                }
+                _ => {}
+            }
+            // Flags as booleans, minutes as numbers, the PIN as text.
+            let value = match key.as_str() {
+                "pin" => serde_json::Value::String(value.to_string()),
+                "screen_sleep_min" | "autolock_min" => value
+                    .parse::<f64>()
+                    .map_or(serde_json::Value::Null, Into::into),
+                _ => serde_json::Value::Bool(on),
+            };
+            let _ = tx.send(Command::SaveSetting {
+                key: key.to_string(),
+                value,
+            });
+        });
+    }
+    {
+        let tx = tx.clone();
+        let weak = ui.as_weak();
+        ui.on_set_language(move |i| {
+            let lang = if i == 0 { "ru" } else { "en" };
+            rivet::apply_language(lang);
+            if let Some(ui) = weak.upgrade() {
+                ui.set_russian(lang == "ru");
+            }
+            let _ = tx.send(Command::SaveSetting {
+                key: "language".into(),
+                value: lang.into(),
+            });
+        });
+    }
     ui.on_refresh_calib(send(Command::CalibInfo));
     {
         let tx = tx.clone();

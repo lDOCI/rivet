@@ -240,3 +240,105 @@ r1 = { name = "drivers", example = true }
 r2 = { name = "drivers", example = true }
 r3 = { name = "drivers", example = true }
 
+[Screen]
+component = "ScreenForm"
+en = { "Экран" = "Screen", "Яркость" = "Brightness", "подсветка экрана" = "the screen's backlight", "Гасить через, мин" = "Sleep after, min", "без касаний" = "without a touch", "Не гасить во время печати" = "Stay on while printing", "показывать заставку с прогрессом" = "show the progress screensaver", "Поворот" = "Rotation", "Калибровка тача" = "Touch calibration", "коснуться 4 точек" = "touch 4 points" }
+[Screen.rows]
+r0 = { name = "brightness", later = "no backlight control found on the AD5M (only LCD_ON / LCD_OFF)" }
+r1 = "sleep"
+r2 = "awake"
+r3 = { name = "rotate", later = "the framebuffer layer does not rotate yet" }
+r4 = { name = "touch-cal", later = "tslib calibrates the touch on KlipperMod" }
+
+[LockSettings]
+component = "LockForm"
+en = { "Блокировка и PIN" = "Lock and PIN", "Блокировка во время печати" = "Lock while printing", "разблокировать — провести пальцем" = "unlock with the PIN or a long press", "PIN-код" = "PIN code", "4–6 цифр" = "4–6 digits", "Автоблокировка" = "Lock by itself", "Нет" = "Never", "5 мин" = "5 min", "15 мин" = "15 min", "30 мин" = "30 min", "без касаний" = "without a touch" }
+[LockSettings.rows]
+r0 = "lock-print"
+r1 = { name = "pin", data = ["sub"] }
+r2 = "autolock"
+
+[Sound]
+component = "SoundForm"
+en = { "Звук" = "Sound", "Звуки" = "Sounds", "пищалка принтера" = "the printer's beeper", "Громкость" = "Volume", "Мелодия в конце печати" = "Tune when a print ends", "Звук касаний" = "Touch sounds", "Проверить звук" = "Test the sound" }
+[Sound.rows]
+r0 = "sounds"
+r1 = { name = "volume", later = "M300 has no volume" }
+r2 = "tune"
+r3 = { name = "touch", later = "a beep per touch through G-code lags the finger" }
+r4 = "test"
+
+[LangTime]
+component = "LangTimeForm"
+en = { "Язык и время" = "Language and time", "Язык" = "Language", "Русский" = "Русский", "English" = "English", "Формат времени" = "Time format", "24 ч" = "24 h", "12 ч" = "12 h", "Часовой пояс" = "Time zone", "для «готово в 15:20»" = "for “done at 15:20”" }
+[LangTime.rows]
+r0 = "lang"
+r1 = "clock"
+r2 = { name = "zone", data = ["value", "sub"] }
+
+[Safety]
+component = "SafetyForm"
+en = { "Безопасность" = "Safety", "Удерживать «Стоп» 1 секунду" = "Hold Stop for 1 second", "защита от случайного касания; иначе — сразу по нажатию" = "against a stray touch; otherwise it stops at once", "Если отмена зависла — аварийная остановка" = "If a cancel hangs: emergency stop", "Ждать перед E-stop" = "Wait before E-stop", "Подтверждать запуск макросов" = "Confirm before running macros", "Уведомления" = "Notifications", "что показывать поверх экрана" = "what pops up over the screen", "Все" = "All", "Важные" = "Important", "Ошибки" = "Errors", "Ждать перед E-stop, с" = "Wait before E-stop, s" }
+[Safety.rows]
+r0 = "hold-stop"
+r1 = { name = "cancel-estop", later = "needs a watchdog on CANCEL_PRINT, not built" }
+r2 = { name = "estop-wait", later = "goes with the cancel watchdog" }
+r3 = "confirm-macros"
+r4 = { name = "notify", later = "only errors pop up today" }
+
+[System]
+component = "SystemForm"
+en = { "Система" = "System", "ПЕРЕЗАПУСК" = "RESTART", "Перезапустить Klipper" = "Restart Klipper", "перечитает конфиг" = "reads the config again", "Перезапустить прошивку" = "Restart the firmware", "после ошибки платы" = "after a board error", "Перезапустить Moonraker" = "Restart Moonraker", "Перезапустить экран" = "Restart the screen", "ПИТАНИЕ" = "POWER", "Выключить после печати" = "Power off after the print", "когда остынет ниже 50°" = "once it cools below 50°", "Перезагрузить принтер" = "Reboot the printer", "Выключить принтер" = "Power off the printer", "Загрузить стоковую прошивку" = "Boot the stock firmware", "вернуться в прошивку Flashforge до перезагрузки" = "Flashforge's firmware until the next reboot", "О СИСТЕМЕ" = "ABOUT", "Процессор" = "Processor", "Память" = "Memory", "Диск" = "Disk", "Логи" = "Logs", "уровень" = "level", "Инфо" = "Info", "Отладка" = "Debug", "Очистить место" = "Free up space", "старые логи, таймлапсы, кэш миниатюр" = "old logs, timelapses, preview cache", "Сбросить настройки Rivet" = "Reset Rivet's settings", "Klipper не трогает" = "Klipper is not touched", "Ошибки" = "Errors" }
+[System.rows]
+r0 = "restart"
+r1 = "klipper"
+r2 = "firmware"
+r3 = "moonraker"
+r4 = { name = "screen", later = "needs the init script (M2) to bring the screen back" }
+r5 = "power"
+r6 = "off-after"
+r7 = "reboot"
+r8 = "shutdown"
+r9 = { name = "stock", data = ["sub"] }
+r10 = "about"
+r11 = { name = "cpu", data = ["value"] }
+r12 = { name = "memory", data = ["value"] }
+r13 = { name = "disk", data = ["value"] }
+r14 = { name = "logs", later = "log level is a start option (--log-level) for now" }
+r15 = { name = "clean", later = "which files are safe to remove is not settled" }
+r16 = "reset"
+
+[Network]
+component = "NetworkForm"
+en = { "Сеть" = "Network", "Подключено" = "Connected", "ДОСТУПНЫЕ СЕТИ" = "NETWORKS AROUND", "Скрытая сеть" = "Hidden network", "ввести имя вручную" = "type its name", "ПРОЧЕЕ" = "OTHER", "Имя хоста" = "Host name", "Ethernet" = "Ethernet", "5 ГГц · WPA2" = "5 GHz · WPA2" }
+[Network.rows]
+r0 = { name = "wifi", later = "Moonraker has no API to switch Wi-Fi" }
+r1 = { name = "connected", data = ["title", "value", "sub"] }
+r2 = { name = "around", later = "Moonraker has no Wi-Fi scan" }
+r3 = { name = "nets", later = "Moonraker has no Wi-Fi scan" }
+r4 = { name = "nets", example = true }
+r5 = { name = "nets", example = true }
+r6 = { name = "hidden", later = "Moonraker has no API to join a network" }
+r7 = "other"
+r8 = { name = "host", data = ["value"] }
+r9 = { name = "ethernet", data = ["value"] }
+
+[Printers]
+component = "PrintersForm"
+en = { "Принтеры" = "Printers", "Добавить принтер" = "Add a printer", "адрес Moonraker и порт" = "Moonraker's address and port" }
+[Printers.rows]
+r0 = { name = "this", data = ["title", "sub"] }
+r1 = { name = "add", later = "M4: several printers" }
+
+[Updates]
+component = "UpdatesForm"
+en = { "Обновления" = "Updates", "ВЕРСИИ" = "VERSIONS", "обновляется образом KlipperMod с USB" = "updated with a KlipperMod image from USB", "ВЕБ-ИНТЕРФЕЙСЫ" = "WEB INTERFACES", "актуально" = "up to date", "Проверить обновления" = "Check for updates" }
+[Updates.rows]
+r0 = "versions"
+r1 = { name = "klipper", data = ["value"] }
+r2 = { name = "moonraker", data = ["value"] }
+r3 = { name = "rivet", data = ["value"] }
+r4 = "web"
+r5 = { name = "mainsail", data = ["value", "sub"] }
+r6 = { name = "fluidd", data = ["value", "sub"] }
+r7 = "check"

@@ -74,6 +74,16 @@ const ALL: &[&str] = &[
     "pid",
     "pa",
     "tmc",
+    "set-screen",
+    "set-lock",
+    "set-sound",
+    "set-language",
+    "set-safety",
+    "set-system",
+    "set-network",
+    "set-printers",
+    "set-updates",
+    "lock",
     "limits",
     "sensors",
     "history",
@@ -143,6 +153,7 @@ fn show(ui: &AppWindow, name: &str) {
     ui.set_overlay("".into());
     ui.set_runout(false);
     ui.set_prompt_shown(false);
+    ui.set_locked(false);
     ui.set_filament_out(false);
     ui.set_ambient(false);
     ui.set_toast_kind("".into());
@@ -579,11 +590,7 @@ fn show(ui: &AppWindow, name: &str) {
             let mesh: Vec<Vec<f64>> = (0..5)
                 .map(|r| {
                     (0..5)
-                        .map(|c| {
-                            -0.09
-                                + 0.02 * (c as f64)
-                                + 0.02 * (r as f64)
-                        })
+                        .map(|c| -0.09 + 0.02 * (c as f64) + 0.02 * (r as f64))
                         .collect()
                 })
                 .collect();
@@ -602,6 +609,33 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_pa_smooth(0.04);
             ui.set_probe_range(0.004);
             ui.set_screen(name.into());
+        }
+        "set-screen" | "set-lock" | "set-sound" | "set-language" | "set-safety" | "set-system"
+        | "set-network" | "set-printers" | "set-updates" => {
+            // The AD5M Pro as it answered: T113, 110 MB, KlipperMod's versions.
+            ui.set_sys_cpu("T113-S3 · 2 × · 18%".into());
+            ui.set_sys_memory("54 / 110 MB".into());
+            ui.set_sys_disk("1.2 / 7.1 GB".into());
+            ui.set_net_wifi("wlan0".into());
+            ui.set_net_ip("192.168.0.20".into());
+            ui.set_net_mac("8c:aa:b5:12:34:56".into());
+            ui.set_host_name("AD5M".into());
+            ui.set_ver_klipper("v0.13.0-285".into());
+            ui.set_ver_moonraker("v0.9.3".into());
+            ui.set_ver_rivet(env!("CARGO_PKG_VERSION").into());
+            ui.set_ver_mainsail("v2.19.0".into());
+            ui.set_ver_mainsail_sub("актуально".into());
+            ui.set_ver_fluidd("v1.37.7".into());
+            ui.set_ver_fluidd_sub("актуально".into());
+            ui.set_has_stock_macro(true);
+            ui.set_time_zone("Europe/Moscow".into());
+            ui.set_screen(name.into());
+        }
+        "lock" => {
+            print("printing", 0.42);
+            ui.set_remaining_minutes(48);
+            ui.set_set_pin("1234".into());
+            ui.set_locked(true);
         }
         "limits" => {
             ui.set_screen("limits".into());

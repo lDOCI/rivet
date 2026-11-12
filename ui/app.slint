@@ -2,7 +2,7 @@ import { Tokens } from "kit/tokens.slint";
 import { Rail } from "kit/rail.slint";
 import { ControlScreen } from "screens/control.slint";
 import { FansScreen, FanRow, ZOffsetScreen } from "screens/tune.slint";
-import { CalibrateForm, ProbeForm, ShaperForm, PidForm, PaForm, TmcForm, HistoryForm, SensorsForm, LightForm, SpeedForm, TuneForm, MoreForm, ExtruderForm, SettingsForm, FileActionsForm, JobQueueForm, MotionMoreForm, LayerPauseForm, RetractionForm, DryerForm, SpoolsForm, DevicesForm } from "generated/forms.slint";
+import { ScreenForm, LockForm, SoundForm, LangTimeForm, SafetyForm, SystemForm, NetworkForm, PrintersForm, UpdatesForm, CalibrateForm, ProbeForm, ShaperForm, PidForm, PaForm, TmcForm, HistoryForm, SensorsForm, LightForm, SpeedForm, TuneForm, MoreForm, ExtruderForm, SettingsForm, FileActionsForm, JobQueueForm, MotionMoreForm, LayerPauseForm, RetractionForm, DryerForm, SpoolsForm, DevicesForm } from "generated/forms.slint";
 import { FormRow } from "kit/form.slint";
 
 export { FormRow }
@@ -15,6 +15,9 @@ export global Strings {
     // Graph legend: "{} {}° / {}°" filled by the engine.
     out property <string> nozzle: @tr("Nozzle");
     out property <string> bed: @tr("Bed");
+    // Web interface versions: "{}" is the new one.
+    out property <string> up-to-date: @tr("up to date");
+    out property <string> update-to: @tr("update to {}", "{}");
 }
 import { Format } from "kit/format.slint";
 // Rust formats durations for rows it builds (the queue) the same way.
@@ -31,6 +34,7 @@ import { FilesScreen, FileScreen, FileItem, FileInfo, FindScreen, RenameScreen, 
 export { FileItem, FileInfo, ConsoleLine, FanRow }
 import { MessagesScreen, MessageRow } from "screens/messages.slint";
 import { FilamentScreen } from "screens/filament.slint";
+import { LockScreen } from "screens/lock.slint";
 import { BedMeshScreen, MeshProfilesScreen, ScrewsScreen, MeshCell, ScrewRow } from "screens/calib.slint";
 export { MeshCell, ScrewRow }
 import { LimitsScreen, ServiceScreen, ServiceItem, CameraScreen } from "screens/tools-extra.slint";
@@ -88,6 +92,8 @@ export component AppWindow inherits Window {
     changed print-state => {
         if (self.print-state != "complete") { self.done-dismissed = false; }
         if (self.print-state != "paused") { self.runout = false; } else if (self.filament-out) { self.runout = true; }
+        // Lock while printing: from the start of a print.
+        if (self.print-state == "printing" && self.set-lock-print) { self.locked = true; }
     }
 
     callback home-all();
@@ -345,7 +351,10 @@ export component AppWindow inherits Window {
     }
     // A new value for a row of a generated screen, by the row's key.
     function form-set(key: string, v: float) {
-        if (key == "pa-smooth") { root.run-gcode("SET_PRESSURE_ADVANCE SMOOTH_TIME=" + Format.fixed(v, 3)); }
+        if (key == "pin") {
+            if (v >= 1000) { root.set-pin = "" + round(v); root.setting-changed("pin", root.set-pin); }
+        }
+        else if (key == "pa-smooth") { root.run-gcode("SET_PRESSURE_ADVANCE SMOOTH_TIME=" + Format.fixed(v, 3)); }
         else if (key == "limit:cruise") { root.set-limit("cruise", v / 100); }
         else if (key == "limit:velocity" || key == "limit:accel" || key == "limit:corner") { root.set-limit(key == "limit:velocity" ? "velocity" : key == "limit:accel" ? "accel" : "corner", v); }
         else if (key == "speed") { root.set-speed(v); }
@@ -406,6 +415,44 @@ export component AppWindow inherits Window {
     in property <[string]> cameras;
     callback refresh-cameras();
 
+    // Rivet's settings (saved in Moonraker's database by setting-changed).
+    in-out property <int> set-sleep: 2;
+    in-out property <bool> set-awake: true;
+    in-out property <bool> set-lock-print;
+    in-out property <string> set-pin;
+    property <int> pin-digits: root.set-pin.character-count;
+    in-out property <int> set-autolock;
+    in-out property <bool> set-sounds: true;
+    in-out property <bool> set-tune: true;
+    in-out property <int> set-clock;
+    in-out property <bool> set-hold-stop;
+    in-out property <bool> set-confirm-macros: true;
+    callback setting-changed(string, string);
+    callback set-language(int);
+    // The screen is locked (print lock or the idle timer).
+    in-out property <bool> locked;
+    // System, network and versions, read when Settings opens.
+    in property <string> sys-cpu;
+    in property <string> sys-memory;
+    in property <string> sys-disk;
+    in property <string> net-wifi;
+    in property <string> net-ip;
+    in property <string> net-mac;
+    in property <string> net-eth;
+    in property <string> host-name;
+    in property <string> ver-klipper;
+    in property <string> ver-moonraker;
+    in property <string> ver-rivet;
+    in property <string> ver-mainsail;
+    in property <string> ver-mainsail-sub;
+    in property <string> ver-fluidd;
+    in property <string> ver-fluidd-sub;
+    in property <bool> has-stock-macro;
+    in property <string> time-zone;
+    callback refresh-system();
+    callback system-action(string);
+    in-out property <string> system-pending;
+
     // Calibrations: what the printer has, saved values, the mesh and screws.
     in property <bool> calib-has-probe;
     in property <bool> calib-has-mesh;
@@ -456,9 +503,11 @@ export component AppWindow inherits Window {
         Rail {
             active: !root.ready ? "" : (root.screen == "fans" || root.screen == "filament" || root.screen == "heating" || root.screen == "heat-presets" || root.screen == "temp-graph" || root.screen == "motion" || root.screen == "extruder" || root.screen == "light" || root.screen == "speed" || root.screen == "zoffset" || root.screen == "motion-more" || root.screen == "retraction" || root.screen == "dryer" || root.screen == "spools" || root.screen == "devices") ? "control"
                 : (root.screen == "control" || root.screen == "tools" || root.screen == "settings" || root.screen == "messages") ? root.screen
+                : (root.screen == "set-screen" || root.screen == "set-lock" || root.screen == "set-sound" || root.screen == "set-language" || root.screen == "set-safety" || root.screen == "set-system" || root.screen == "set-network" || root.screen == "set-printers" || root.screen == "set-updates") ? "settings"
                 : (root.screen == "console" || root.screen == "macros" || root.screen == "calibrate" || root.screen == "bed-mesh" || root.screen == "mesh-profiles" || root.screen == "screws" || root.screen == "probe" || root.screen == "shaper" || root.screen == "pid" || root.screen == "pa" || root.screen == "tmc" || root.screen == "limits" || root.screen == "sensors" || root.screen == "history" || root.screen == "service" || root.screen == "camera") ? "tools"
                 : "home";
             unread: root.unread;
+            hold-stop: root.set-hold-stop;
             navigate(section) => {
                 if (section == "messages") { root.refresh-messages(); }
                 root.screen = section;
@@ -890,10 +939,125 @@ export component AppWindow inherits Window {
         if root.ready && root.screen == "macros": MacrosScreen {
             macros: root.macros;
             back => { root.screen = "tools"; }
-            pick(name) => { root.macro-pending = name; root.overlay = "run-macro"; }
+            pick(name) => {
+                if (root.set-confirm-macros) { root.macro-pending = name; root.overlay = "run-macro"; } else { root.run-gcode(name); }
+            }
         }
         // The rows open M2 screens; until those exist they do nothing.
-        if root.ready && root.screen == "settings": SettingsForm { }
+        if root.ready && root.screen == "settings": SettingsForm {
+            network-sub: root.net-ip != "" ? (root.net-wifi != "" ? "Wi-Fi " : "") + root.net-ip : @tr("no network address");
+            screen-sub: @tr("sleep: {}", root.set-sleep == 4 ? @tr("never") : @tr("{} min", [1, 5, 10, 30][root.set-sleep]));
+            lock-sub: root.set-pin != "" ? @tr("PIN on") : root.set-lock-print ? @tr("while printing") : @tr("off");
+            language-sub: (root.russian ? "Русский" : "English") + " · " + (root.set-clock == 0 ? @tr("24 h") : @tr("12 h"));
+            printers-sub: @tr("1 connected");
+            updates-sub: root.ver-klipper != "" ? "Klipper " + root.ver-klipper : "";
+            activate(key) => {
+                root.refresh-system();
+                if (key == "screen" || key == "lock" || key == "sound" || key == "safety" || key == "system" || key == "network" || key == "printers" || key == "updates") { root.screen = "set-" + key; }
+                if (key == "language") { root.screen = "set-language"; }
+            }
+        }
+        if root.ready && root.screen == "set-screen": ScreenForm {
+            sleep-sel: root.set-sleep;
+            awake-on: root.set-awake;
+            back => { root.screen = "settings"; }
+            picked(key, i) => { if (key == "sleep") { root.set-sleep = i; root.setting-changed("screen_sleep_min", ["1", "5", "10", "30", "0"][i]); } }
+            toggled(key, on) => { if (key == "awake") { root.set-awake = on; root.setting-changed("awake_print", on ? "1" : "0"); } }
+        }
+        if root.ready && root.screen == "set-lock": LockForm {
+            lock-print-on: root.set-lock-print;
+            pin-on: root.set-pin != "";
+            pin-sub: root.set-pin != "" ? @tr("{} digits", root.pin-digits) : @tr("4–6 digits");
+            autolock-sel: root.set-autolock;
+            back => { root.screen = "settings"; }
+            toggled(key, on) => {
+                if (key == "lock-print") { root.set-lock-print = on; root.setting-changed("lock_print", on ? "1" : "0"); }
+                if (key == "pin") {
+                    if (on) { root.open-number("pin", @tr("New PIN, 4–6 digits"), 1000, 999999, 0, 0); }
+                    else { root.set-pin = ""; root.setting-changed("pin", ""); }
+                }
+            }
+            picked(key, i) => { if (key == "autolock") { root.set-autolock = i; root.setting-changed("autolock_min", ["0", "5", "15", "30"][i]); } }
+        }
+        if root.ready && root.screen == "set-sound": SoundForm {
+            sounds-on: root.set-sounds;
+            tune-on: root.set-tune;
+            tune-shown: root.set-sounds;
+            test-enabled: root.set-sounds;
+            back => { root.screen = "settings"; }
+            toggled(key, on) => {
+                if (key == "sounds") { root.set-sounds = on; root.setting-changed("sounds", on ? "1" : "0"); }
+                if (key == "tune") { root.set-tune = on; root.setting-changed("end_tune", on ? "1" : "0"); }
+            }
+            activate(key) => { if (key == "test") { root.run-gcode("M300 S1000 P200"); } }
+        }
+        if root.ready && root.screen == "set-language": LangTimeForm {
+            lang-sel: root.russian ? 0 : 1;
+            clock-sel: root.set-clock;
+            zone-value: root.time-zone != "" ? root.time-zone : @tr("not set");
+            zone-sub: root.time-zone != "" ? @tr("for “done at 15:20”") : @tr("set it in KlipperMod: the clock stays hidden until then");
+            back => { root.screen = "settings"; }
+            picked(key, i) => {
+                if (key == "lang") { root.set-language(i); }
+                if (key == "clock") { root.set-clock = i; root.setting-changed("clock_12h", i == 1 ? "1" : "0"); }
+            }
+        }
+        if root.ready && root.screen == "set-safety": SafetyForm {
+            hold-stop-on: root.set-hold-stop;
+            confirm-macros-on: root.set-confirm-macros;
+            back => { root.screen = "settings"; }
+            toggled(key, on) => {
+                if (key == "hold-stop") { root.set-hold-stop = on; root.setting-changed("hold_stop", on ? "1" : "0"); }
+                if (key == "confirm-macros") { root.set-confirm-macros = on; root.setting-changed("confirm_macros", on ? "1" : "0"); }
+            }
+        }
+        if root.ready && root.screen == "set-system": SystemForm {
+            off-after-on: root.off-after-print;
+            off-after-shown: root.busy;
+            stock-shown: root.has-stock-macro;
+            stock-sub: @tr("Flashforge's firmware until the next reboot");
+            cpu-value: root.sys-cpu;
+            memory-value: root.sys-memory;
+            disk-value: root.sys-disk;
+            klipper-enabled: !root.busy;
+            firmware-enabled: !root.busy;
+            moonraker-enabled: !root.busy;
+            reboot-enabled: !root.busy;
+            shutdown-enabled: !root.busy;
+            stock-enabled: !root.busy;
+            back => { root.screen = "settings"; }
+            toggled(key, on) => { if (key == "off-after") { root.off-after-print = on; root.off-after(on); } }
+            activate(key) => { root.system-pending = key; root.overlay = "system"; }
+        }
+        if root.ready && root.screen == "set-network": NetworkForm {
+            connected-title: root.net-wifi != "" ? "Wi-Fi · " + root.net-wifi : @tr("Connected");
+            connected-value: root.net-ip;
+            connected-sub: root.net-mac;
+            connected-shown: root.net-ip != "";
+            host-value: root.host-name;
+            ethernet-value: root.net-eth != "" ? root.net-eth : @tr("not connected");
+            back => { root.screen = "settings"; }
+        }
+        if root.ready && root.screen == "set-printers": PrintersForm {
+            this-title: root.host-name != "" ? root.host-name : @tr("This printer");
+            this-sub: @tr("this printer · connected");
+            this-value: "✓";
+            back => { root.screen = "settings"; }
+        }
+        if root.ready && root.screen == "set-updates": UpdatesForm {
+            klipper-value: root.ver-klipper;
+            moonraker-value: root.ver-moonraker;
+            rivet-value: root.ver-rivet;
+            mainsail-shown: root.ver-mainsail != "";
+            mainsail-value: root.ver-mainsail;
+            mainsail-sub: root.ver-mainsail-sub;
+            fluidd-shown: root.ver-fluidd != "";
+            fluidd-value: root.ver-fluidd;
+            fluidd-sub: root.ver-fluidd-sub;
+            web-shown: root.ver-mainsail != "" || root.ver-fluidd != "";
+            back => { root.screen = "settings"; }
+            activate(key) => { if (key == "check") { root.system-action("check-updates"); } }
+        }
         if root.ready && root.screen == "fans": FansScreen {
             bars: root.fan-bars;
             extras: root.fan-extras;
@@ -1246,6 +1410,23 @@ export component AppWindow inherits Window {
         confirmed => { root.overlay = ""; root.delete-file(root.open-path); root.screen = "files"; }
         cancelled => { root.overlay = ""; }
     }
+    if root.overlay == "system": Dialog {
+        title: root.system-pending == "klipper" ? @tr("Restart Klipper?")
+            : root.system-pending == "firmware" ? @tr("Restart the firmware?")
+            : root.system-pending == "moonraker" ? @tr("Restart Moonraker?")
+            : root.system-pending == "reboot" ? @tr("Reboot the printer?")
+            : root.system-pending == "shutdown" ? @tr("Power off the printer?")
+            : root.system-pending == "stock" ? @tr("Boot the stock firmware?")
+            : @tr("Reset Rivet's settings?");
+        message: root.system-pending == "reset" ? @tr("Presets, lock, sounds and the rest go back to how they came. Klipper's config is not touched.")
+            : root.system-pending == "stock" ? @tr("The printer restarts into Flashforge's firmware; the next reboot brings KlipperMod back.")
+            : root.system-pending == "shutdown" ? @tr("Turn it on again with its power switch.")
+            : @tr("The screen loses the printer for a few seconds.");
+        confirm-text: root.system-pending == "reset" ? @tr("Reset") : root.system-pending == "shutdown" ? @tr("Power off") : @tr("Restart");
+        danger: root.system-pending == "reset" || root.system-pending == "shutdown" || root.system-pending == "stock";
+        confirmed => { root.overlay = ""; root.system-action(root.system-pending); }
+        cancelled => { root.overlay = ""; }
+    }
     if root.overlay == "run-macro": Dialog {
         title: @tr("Run {}?", root.macro-pending);
         message: @tr("The macro starts at once on the printer.");
@@ -1268,6 +1449,15 @@ export component AppWindow inherits Window {
             else { root.form-set(root.keypad-target, v); }
         }
         cancelled => { root.overlay = ""; }
+    }
+    // Locked: over everything; only the PIN (or a long press) or Stop get through.
+    if root.locked && root.ready: LockScreen {
+        progress: root.progress;
+        remaining-minutes: root.remaining-minutes;
+        busy: root.busy;
+        pin: root.set-pin;
+        unlocked => { root.locked = false; }
+        emergency-stop => { root.emergency-stop(); }
     }
     // Above everything, rail included; a touch closes it and presses nothing below.
     if root.ambient && root.busy: AmbientScreen {

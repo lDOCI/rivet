@@ -1043,3 +1043,426 @@ export component TmcForm inherits FormScreen {
         
     ];
 }
+
+// Screen.dc.html
+export component ScreenForm inherits FormScreen {
+    // Яркость — later: no backlight control found on the AD5M (only LCD_ON / LCD_OFF)
+    in property <bool> brightness-shown: false;
+    in property <float> brightness-value: 10;
+    in property <float> brightness-source: -1;
+    // Гасить через, мин
+    in property <bool> sleep-shown: true;
+    in property <string> sleep-sub: @tr("without a touch");
+    in property <int> sleep-sel: 2;
+    // Не гасить во время печати
+    in property <bool> awake-shown: true;
+    in property <string> awake-sub: @tr("show the progress screensaver");
+    in property <bool> awake-on;
+    // Поворот — later: the framebuffer layer does not rotate yet
+    in property <bool> rotate-shown: false;
+    in property <string> rotate-sub: "";
+    in property <int> rotate-sel: 0;
+    // The options as numbers, for the app.
+    out property <[float]> rotate-values: [0, 90, 180, 270];
+    // Калибровка тача — later: tslib calibrates the touch on KlipperMod
+    in property <bool> touch-cal-shown: false;
+    in property <string> touch-cal-sub: @tr("touch 4 points");
+    in property <bool> touch-cal-enabled: true;
+    title: @tr("Screen");
+    // A stepper's new value, clamped to its range and rounded to its decimals.
+    callback set-value(string, float);
+    // Type a stepper's value: key, title, min, max, current, decimals.
+    callback edit-number(string, string, float, float, float, int);
+    stepped(key, d) => {
+    }
+    edit(key) => {
+    }
+    bars: [{ key: "brightness", title: @tr("Brightness"), value: root.brightness-value, source: root.brightness-source, min: 10, max: 100, step: 5, big-step: 9, unit: "%", off-at-zero: false, shown: root.brightness-shown }];
+    rows: [
+        { kind: "seg", key: "sleep", title: @tr("Sleep after, min"), sub: root.sleep-sub, shown: root.sleep-shown, opts: ["1", "5", "10", "30", "∞"], sel: root.sleep-sel },
+        { kind: "toggle", key: "awake", title: @tr("Stay on while printing"), sub: root.awake-sub, shown: root.awake-shown, on: root.awake-on },
+        { kind: "seg", key: "rotate", title: @tr("Rotation"), sub: root.rotate-sub, shown: root.rotate-shown, opts: ["0°", "90°", "180°", "270°"], sel: root.rotate-sel },
+        { kind: "action", key: "touch-cal", title: @tr("Touch calibration"), sub: root.touch-cal-sub, shown: root.touch-cal-shown, on: root.touch-cal-enabled }
+    ];
+}
+
+// LockSettings.dc.html
+export component LockForm inherits FormScreen {
+    // Блокировка во время печати
+    in property <bool> lock-print-shown: true;
+    in property <string> lock-print-sub: @tr("unlock with the PIN or a long press");
+    in property <bool> lock-print-on;
+    // PIN-код
+    in property <bool> pin-shown: true;
+    in property <string> pin-sub;
+    in property <bool> pin-on;
+    // Автоблокировка
+    in property <bool> autolock-shown: true;
+    in property <string> autolock-sub: @tr("without a touch");
+    in property <int> autolock-sel: 0;
+    title: @tr("Lock and PIN");
+    // A stepper's new value, clamped to its range and rounded to its decimals.
+    callback set-value(string, float);
+    // Type a stepper's value: key, title, min, max, current, decimals.
+    callback edit-number(string, string, float, float, float, int);
+    stepped(key, d) => {
+    }
+    edit(key) => {
+    }
+    bars: [];
+    rows: [
+        { kind: "toggle", key: "lock-print", title: @tr("Lock while printing"), sub: root.lock-print-sub, shown: root.lock-print-shown, on: root.lock-print-on },
+        { kind: "toggle", key: "pin", title: @tr("PIN code"), sub: root.pin-sub, shown: root.pin-shown, on: root.pin-on },
+        { kind: "seg", key: "autolock", title: @tr("Lock by itself"), sub: root.autolock-sub, shown: root.autolock-shown, opts: [@tr("Never"), @tr("5 min"), @tr("15 min"), @tr("30 min")], sel: root.autolock-sel }
+    ];
+}
+
+// Sound.dc.html
+export component SoundForm inherits FormScreen {
+    // Звуки
+    in property <bool> sounds-shown: true;
+    in property <string> sounds-sub: @tr("the printer's beeper");
+    in property <bool> sounds-on;
+    // Громкость — later: M300 has no volume
+    in property <bool> volume-shown: false;
+    in property <float> volume-value: 0;
+    in property <float> volume-source: -1;
+    // Мелодия в конце печати
+    in property <bool> tune-shown: true;
+    in property <string> tune-sub: "";
+    in property <bool> tune-on;
+    // Звук касаний — later: a beep per touch through G-code lags the finger
+    in property <bool> touch-shown: false;
+    in property <string> touch-sub: "";
+    in property <bool> touch-on;
+    // Проверить звук
+    in property <bool> test-shown: true;
+    in property <string> test-sub: "";
+    in property <bool> test-enabled: true;
+    title: @tr("Sound");
+    // A stepper's new value, clamped to its range and rounded to its decimals.
+    callback set-value(string, float);
+    // Type a stepper's value: key, title, min, max, current, decimals.
+    callback edit-number(string, string, float, float, float, int);
+    stepped(key, d) => {
+    }
+    edit(key) => {
+    }
+    bars: [{ key: "volume", title: @tr("Volume"), value: root.volume-value, source: root.volume-source, min: 0, max: 100, step: 10, big-step: 10, unit: "%", off-at-zero: true, shown: root.volume-shown }];
+    rows: [
+        { kind: "toggle", key: "sounds", title: @tr("Sounds"), sub: root.sounds-sub, shown: root.sounds-shown, on: root.sounds-on },
+        { kind: "toggle", key: "tune", title: @tr("Tune when a print ends"), sub: root.tune-sub, shown: root.tune-shown, on: root.tune-on },
+        { kind: "toggle", key: "touch", title: @tr("Touch sounds"), sub: root.touch-sub, shown: root.touch-shown, on: root.touch-on },
+        { kind: "action", key: "test", title: @tr("Test the sound"), sub: root.test-sub, shown: root.test-shown, on: root.test-enabled }
+    ];
+}
+
+// LangTime.dc.html
+export component LangTimeForm inherits FormScreen {
+    // Язык
+    in property <bool> lang-shown: true;
+    in property <string> lang-sub: "";
+    in property <int> lang-sel: 0;
+    // Формат времени
+    in property <bool> clock-shown: true;
+    in property <string> clock-sub: "";
+    in property <int> clock-sel: 0;
+    // The options as numbers, for the app.
+    out property <[float]> clock-values: [24, 12];
+    // Часовой пояс
+    in property <bool> zone-shown: true;
+    in property <string> zone-sub;
+    in property <string> zone-value;
+    title: @tr("Language and time");
+    // A stepper's new value, clamped to its range and rounded to its decimals.
+    callback set-value(string, float);
+    // Type a stepper's value: key, title, min, max, current, decimals.
+    callback edit-number(string, string, float, float, float, int);
+    stepped(key, d) => {
+    }
+    edit(key) => {
+    }
+    bars: [];
+    rows: [
+        { kind: "seg", key: "lang", title: @tr("Language"), sub: root.lang-sub, shown: root.lang-shown, opts: [@tr("Русский"), "English"], sel: root.lang-sel },
+        { kind: "seg", key: "clock", title: @tr("Time format"), sub: root.clock-sub, shown: root.clock-shown, opts: [@tr("24 h"), @tr("12 h")], sel: root.clock-sel },
+        { kind: "link", key: "zone", title: @tr("Time zone"), sub: root.zone-sub, shown: root.zone-shown, value: root.zone-value }
+    ];
+}
+
+// Safety.dc.html
+export component SafetyForm inherits FormScreen {
+    // Удерживать «Стоп» 1 секунду
+    in property <bool> hold-stop-shown: true;
+    in property <string> hold-stop-sub: @tr("against a stray touch; otherwise it stops at once");
+    in property <bool> hold-stop-on;
+    // Если отмена зависла — аварийная остановка — later: needs a watchdog on CANCEL_PRINT, not built
+    in property <bool> cancel-estop-shown: false;
+    in property <string> cancel-estop-sub: "";
+    in property <bool> cancel-estop-on;
+    // Ждать перед E-stop — later: goes with the cancel watchdog
+    in property <bool> estop-wait-shown: false;
+    in property <string> estop-wait-sub: "";
+    in property <float> estop-wait-num: 5;
+    // Подтверждать запуск макросов
+    in property <bool> confirm-macros-shown: true;
+    in property <string> confirm-macros-sub: "";
+    in property <bool> confirm-macros-on;
+    // Уведомления — later: only errors pop up today
+    in property <bool> notify-shown: false;
+    in property <string> notify-sub: @tr("what pops up over the screen");
+    in property <int> notify-sel: 1;
+    title: @tr("Safety");
+    // A stepper's new value, clamped to its range and rounded to its decimals.
+    callback set-value(string, float);
+    // Type a stepper's value: key, title, min, max, current, decimals.
+    callback edit-number(string, string, float, float, float, int);
+    stepped(key, d) => {
+        if (key == "estop-wait") { root.set-value(key, max(5, min(60, round((root.estop-wait-num + d) * 1) / 1))); }
+    }
+    edit(key) => {
+        if (key == "estop-wait") { root.edit-number(key, @tr("Wait before E-stop, s"), 5, 60, root.estop-wait-num, 0); }
+    }
+    bars: [];
+    rows: [
+        { kind: "toggle", key: "hold-stop", title: @tr("Hold Stop for 1 second"), sub: root.hold-stop-sub, shown: root.hold-stop-shown, on: root.hold-stop-on },
+        { kind: "toggle", key: "cancel-estop", title: @tr("If a cancel hangs: emergency stop"), sub: root.cancel-estop-sub, shown: root.cancel-estop-shown, on: root.cancel-estop-on },
+        { kind: "stepper", key: "estop-wait", title: @tr("Wait before E-stop"), sub: root.estop-wait-sub, shown: root.estop-wait-shown, value: Format.fixed(root.estop-wait-num, 0) + " " + @tr("s"), big: 5 },
+        { kind: "toggle", key: "confirm-macros", title: @tr("Confirm before running macros"), sub: root.confirm-macros-sub, shown: root.confirm-macros-shown, on: root.confirm-macros-on },
+        { kind: "seg", key: "notify", title: @tr("Notifications"), sub: root.notify-sub, shown: root.notify-shown, opts: [@tr("All"), @tr("Important"), @tr("Errors")], sel: root.notify-sel }
+    ];
+}
+
+// System.dc.html
+export component SystemForm inherits FormScreen {
+    // ПЕРЕЗАПУСК
+    in property <bool> restart-shown: true;
+    in property <string> restart-sub: "";
+    // Перезапустить Klipper
+    in property <bool> klipper-shown: true;
+    in property <string> klipper-sub: @tr("reads the config again");
+    in property <bool> klipper-enabled: true;
+    // Перезапустить прошивку
+    in property <bool> firmware-shown: true;
+    in property <string> firmware-sub: @tr("after a board error");
+    in property <bool> firmware-enabled: true;
+    // Перезапустить Moonraker
+    in property <bool> moonraker-shown: true;
+    in property <string> moonraker-sub: "";
+    in property <bool> moonraker-enabled: true;
+    // Перезапустить экран — later: needs the init script (M2) to bring the screen back
+    in property <bool> screen-shown: false;
+    in property <string> screen-sub: "";
+    in property <bool> screen-enabled: true;
+    // ПИТАНИЕ
+    in property <bool> power-shown: true;
+    in property <string> power-sub: "";
+    // Выключить после печати
+    in property <bool> off-after-shown: true;
+    in property <string> off-after-sub: @tr("once it cools below 50°");
+    in property <bool> off-after-on;
+    // Перезагрузить принтер
+    in property <bool> reboot-shown: true;
+    in property <string> reboot-sub: "";
+    in property <bool> reboot-enabled: true;
+    // Выключить принтер
+    in property <bool> shutdown-shown: true;
+    in property <string> shutdown-sub: "";
+    in property <bool> shutdown-enabled: true;
+    // Загрузить стоковую прошивку
+    in property <bool> stock-shown: true;
+    in property <string> stock-sub;
+    in property <bool> stock-enabled: true;
+    // О СИСТЕМЕ
+    in property <bool> about-shown: true;
+    in property <string> about-sub: "";
+    // Процессор
+    in property <bool> cpu-shown: true;
+    in property <string> cpu-sub: "";
+    in property <string> cpu-value;
+    // Память
+    in property <bool> memory-shown: true;
+    in property <string> memory-sub: "";
+    in property <string> memory-value;
+    // Диск
+    in property <bool> disk-shown: true;
+    in property <string> disk-sub: "";
+    in property <string> disk-value;
+    // Логи — later: log level is a start option (--log-level) for now
+    in property <bool> logs-shown: false;
+    in property <string> logs-sub: @tr("level");
+    in property <int> logs-sel: 1;
+    // Очистить место — later: which files are safe to remove is not settled
+    in property <bool> clean-shown: false;
+    in property <string> clean-sub: @tr("old logs, timelapses, preview cache");
+    in property <bool> clean-enabled: true;
+    // Сбросить настройки Rivet
+    in property <bool> reset-shown: true;
+    in property <string> reset-sub: @tr("Klipper is not touched");
+    in property <bool> reset-enabled: true;
+    title: @tr("System");
+    // A stepper's new value, clamped to its range and rounded to its decimals.
+    callback set-value(string, float);
+    // Type a stepper's value: key, title, min, max, current, decimals.
+    callback edit-number(string, string, float, float, float, int);
+    stepped(key, d) => {
+    }
+    edit(key) => {
+    }
+    bars: [];
+    rows: [
+        { kind: "section", key: "restart", title: @tr("RESTART"), sub: root.restart-sub, shown: root.restart-shown },
+        { kind: "action", key: "klipper", title: @tr("Restart Klipper"), sub: root.klipper-sub, shown: root.klipper-shown, on: root.klipper-enabled },
+        { kind: "action", key: "firmware", title: @tr("Restart the firmware"), sub: root.firmware-sub, shown: root.firmware-shown, on: root.firmware-enabled },
+        { kind: "action", key: "moonraker", title: @tr("Restart Moonraker"), sub: root.moonraker-sub, shown: root.moonraker-shown, on: root.moonraker-enabled },
+        { kind: "action", key: "screen", title: @tr("Restart the screen"), sub: root.screen-sub, shown: root.screen-shown, on: root.screen-enabled },
+        { kind: "section", key: "power", title: @tr("POWER"), sub: root.power-sub, shown: root.power-shown },
+        { kind: "toggle", key: "off-after", title: @tr("Power off after the print"), sub: root.off-after-sub, shown: root.off-after-shown, on: root.off-after-on },
+        { kind: "action", key: "reboot", title: @tr("Reboot the printer"), sub: root.reboot-sub, shown: root.reboot-shown, on: root.reboot-enabled },
+        { kind: "action", key: "shutdown", title: @tr("Power off the printer"), sub: root.shutdown-sub, shown: root.shutdown-shown, tone: "danger", on: root.shutdown-enabled },
+        { kind: "action", key: "stock", title: @tr("Boot the stock firmware"), sub: root.stock-sub, shown: root.stock-shown, on: root.stock-enabled },
+        { kind: "section", key: "about", title: @tr("ABOUT"), sub: root.about-sub, shown: root.about-shown },
+        { kind: "info", key: "cpu", title: @tr("Processor"), sub: root.cpu-sub, shown: root.cpu-shown, value: root.cpu-value },
+        { kind: "info", key: "memory", title: @tr("Memory"), sub: root.memory-sub, shown: root.memory-shown, value: root.memory-value },
+        { kind: "info", key: "disk", title: @tr("Disk"), sub: root.disk-sub, shown: root.disk-shown, value: root.disk-value },
+        { kind: "seg", key: "logs", title: @tr("Logs"), sub: root.logs-sub, shown: root.logs-shown, opts: [@tr("Errors"), @tr("Info"), @tr("Debug")], sel: root.logs-sel },
+        { kind: "action", key: "clean", title: @tr("Free up space"), sub: root.clean-sub, shown: root.clean-shown, on: root.clean-enabled },
+        { kind: "action", key: "reset", title: @tr("Reset Rivet's settings"), sub: root.reset-sub, shown: root.reset-shown, tone: "danger", on: root.reset-enabled }
+    ];
+}
+
+// Network.dc.html
+export component NetworkForm inherits FormScreen {
+    // Wi-Fi — later: Moonraker has no API to switch Wi-Fi
+    in property <bool> wifi-shown: false;
+    in property <string> wifi-sub: "";
+    in property <bool> wifi-on;
+    // Подключено
+    in property <bool> connected-shown: true;
+    in property <string> connected-title;
+    in property <string> connected-sub;
+    in property <string> connected-value;
+    // ДОСТУПНЫЕ СЕТИ — later: Moonraker has no Wi-Fi scan
+    in property <bool> around-shown: false;
+    in property <string> around-sub: "";
+    // HomeNet_5G — later: Moonraker has no Wi-Fi scan
+    in property <bool> nets-shown: false;
+    in property <string> nets-sub: @tr("5 GHz · WPA2");
+    in property <string> nets-value;
+    // Скрытая сеть — later: Moonraker has no API to join a network
+    in property <bool> hidden-shown: false;
+    in property <string> hidden-sub: @tr("type its name");
+    in property <string> hidden-value;
+    // ПРОЧЕЕ
+    in property <bool> other-shown: true;
+    in property <string> other-sub: "";
+    // Имя хоста
+    in property <bool> host-shown: true;
+    in property <string> host-sub: "";
+    in property <string> host-value;
+    // Ethernet
+    in property <bool> ethernet-shown: true;
+    in property <string> ethernet-sub: "";
+    in property <string> ethernet-value;
+    title: @tr("Network");
+    // A stepper's new value, clamped to its range and rounded to its decimals.
+    callback set-value(string, float);
+    // Type a stepper's value: key, title, min, max, current, decimals.
+    callback edit-number(string, string, float, float, float, int);
+    stepped(key, d) => {
+    }
+    edit(key) => {
+    }
+    bars: [];
+    rows: [
+        { kind: "toggle", key: "wifi", title: "Wi-Fi", sub: root.wifi-sub, shown: root.wifi-shown, on: root.wifi-on },
+        { kind: "info", key: "connected", title: root.connected-title, sub: root.connected-sub, shown: root.connected-shown, value: root.connected-value },
+        { kind: "section", key: "around", title: @tr("NETWORKS AROUND"), sub: root.around-sub, shown: root.around-shown },
+        { kind: "link", key: "nets", title: "HomeNet_5G", sub: root.nets-sub, shown: root.nets-shown, value: root.nets-value },
+        { kind: "link", key: "hidden", title: @tr("Hidden network"), sub: root.hidden-sub, shown: root.hidden-shown, value: root.hidden-value },
+        { kind: "section", key: "other", title: @tr("OTHER"), sub: root.other-sub, shown: root.other-shown },
+        { kind: "info", key: "host", title: @tr("Host name"), sub: root.host-sub, shown: root.host-shown, value: root.host-value },
+        { kind: "info", key: "ethernet", title: "Ethernet", sub: root.ethernet-sub, shown: root.ethernet-shown, value: root.ethernet-value }
+    ];
+}
+
+// Printers.dc.html
+export component PrintersForm inherits FormScreen {
+    // AD5M
+    in property <bool> this-shown: true;
+    in property <string> this-title;
+    in property <string> this-sub;
+    in property <string> this-value;
+    // Добавить принтер — later: M4: several printers
+    in property <bool> add-shown: false;
+    in property <string> add-sub: @tr("Moonraker's address and port");
+    in property <bool> add-enabled: true;
+    title: @tr("Printers");
+    // A stepper's new value, clamped to its range and rounded to its decimals.
+    callback set-value(string, float);
+    // Type a stepper's value: key, title, min, max, current, decimals.
+    callback edit-number(string, string, float, float, float, int);
+    stepped(key, d) => {
+    }
+    edit(key) => {
+    }
+    bars: [];
+    rows: [
+        { kind: "link", key: "this", title: root.this-title, sub: root.this-sub, shown: root.this-shown, value: root.this-value },
+        { kind: "action", key: "add", title: @tr("Add a printer"), sub: root.add-sub, shown: root.add-shown, tone: "accent", on: root.add-enabled }
+    ];
+}
+
+// Updates.dc.html
+export component UpdatesForm inherits FormScreen {
+    // ВЕРСИИ
+    in property <bool> versions-shown: true;
+    in property <string> versions-sub: "";
+    // Klipper
+    in property <bool> klipper-shown: true;
+    in property <string> klipper-sub: @tr("updated with a KlipperMod image from USB");
+    in property <string> klipper-value;
+    // Moonraker
+    in property <bool> moonraker-shown: true;
+    in property <string> moonraker-sub: @tr("updated with a KlipperMod image from USB");
+    in property <string> moonraker-value;
+    // Rivet
+    in property <bool> rivet-shown: true;
+    in property <string> rivet-sub: "";
+    in property <string> rivet-value;
+    // ВЕБ-ИНТЕРФЕЙСЫ
+    in property <bool> web-shown: true;
+    in property <string> web-sub: "";
+    // Mainsail
+    in property <bool> mainsail-shown: true;
+    in property <string> mainsail-sub;
+    in property <string> mainsail-value;
+    // Fluidd
+    in property <bool> fluidd-shown: true;
+    in property <string> fluidd-sub;
+    in property <string> fluidd-value;
+    // Проверить обновления
+    in property <bool> check-shown: true;
+    in property <string> check-sub: "";
+    in property <bool> check-enabled: true;
+    title: @tr("Updates");
+    // A stepper's new value, clamped to its range and rounded to its decimals.
+    callback set-value(string, float);
+    // Type a stepper's value: key, title, min, max, current, decimals.
+    callback edit-number(string, string, float, float, float, int);
+    stepped(key, d) => {
+    }
+    edit(key) => {
+    }
+    bars: [];
+    rows: [
+        { kind: "section", key: "versions", title: @tr("VERSIONS"), sub: root.versions-sub, shown: root.versions-shown },
+        { kind: "info", key: "klipper", title: "Klipper", sub: root.klipper-sub, shown: root.klipper-shown, value: root.klipper-value },
+        { kind: "info", key: "moonraker", title: "Moonraker", sub: root.moonraker-sub, shown: root.moonraker-shown, value: root.moonraker-value },
+        { kind: "info", key: "rivet", title: "Rivet", sub: root.rivet-sub, shown: root.rivet-shown, value: root.rivet-value },
+        { kind: "section", key: "web", title: @tr("WEB INTERFACES"), sub: root.web-sub, shown: root.web-shown },
+        { kind: "info", key: "mainsail", title: "Mainsail", sub: root.mainsail-sub, shown: root.mainsail-shown, value: root.mainsail-value },
+        { kind: "info", key: "fluidd", title: "Fluidd", sub: root.fluidd-sub, shown: root.fluidd-shown, value: root.fluidd-value },
+        { kind: "action", key: "check", title: @tr("Check for updates"), sub: root.check-sub, shown: root.check-shown, on: root.check-enabled }
+    ];
+}

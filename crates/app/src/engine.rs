@@ -212,6 +212,11 @@ pub enum Command {
         from: String,
         to: String,
     },
+    /// System, network and versions for Settings.
+    SystemInfo,
+    /// A Settings › System action: "klipper", "firmware", "moonraker", "reboot",
+    /// "shutdown", "stock", "reset", "check-updates".
+    SystemAction(String),
     /// A calibration's G-code; the screens show it running, then read the result.
     Calibrate(String),
     /// Read what the calibration screens show (config, bed mesh, screws, drivers).
@@ -437,7 +442,7 @@ pub async fn run(
                 #[cfg(feature = "fbdev")]
                 {
                     let running = matches!(snap.print_state.as_str(), "printing" | "paused");
-                    fbdev_platform::screen::set_keep_awake(running);
+                    fbdev_platform::screen::set_keep_awake(running && prefs::get(&prefs::AWAKE_PRINT));
                     if last_pushed.as_ref().is_some_and(|p| {
                         p.print_state != snap.print_state || (p.klippy != snap.klippy && snap.klippy != Klippy::Ready)
                     }) {
@@ -448,6 +453,13 @@ pub async fn run(
                 if snap.print_state != last_print_state {
                     let running = |s: &str| matches!(s, "printing" | "paused");
                     if running(&last_print_state) && !running(&snap.print_state) {
+                        if snap.print_state == "complete" && prefs::get(&prefs::END_TUNE) {
+                            // A short rising tune on the printer's beeper (KlipperMod's M300).
+                            spawn_gcode(
+                                &client,
+                                "M300 S1047 P150\nM300 S1319 P150\nM300 S1568 P300".to_owned(),
+                            );
+                        }
                         if off_after_print && snap.print_state == "complete" {
                             spawn_gcode(&client, "AUTO_SHUTDOWN".to_owned());
                         }
@@ -668,6 +680,147 @@ async fn list_messages(client: &Client, ui: &slint::Weak<AppWindow>) {
             .collect();
         ui.set_messages(slint::ModelRc::new(slint::VecModel::from(items)));
         ui.set_unread(unread);
+    });
+}
+
+/// CPU, memory, disk, network, versions and the time zone for Settings.
+async fn system_info(client: &Client, ui: &slint::Weak<AppWindow>) {
+    let call = |method: &'static str, params: Value| async move {
+        client
+            .call_timeout(method, params, SETUP_TIMEOUT)
+            .await
+            .unwrap_or(Value::Null)
+    };
+    let sys = call("machine.system_info", json!({})).await;
+    let stats = call("machine.proc_stats", json!({})).await;
+    let dir = call("server.files.get_directory", json!({ "path": "gcodes" })).await;
+    let printer = call("printer.info", json!({})).await;
+    let server = call("server.info", json!({})).await;
+    let updates = call("machine.update.status", json!({ "refresh": false })).await;
+    let objects = call("printer.objects.list", json!({})).await;
+    let sys = &sys["system_info"];
+    let cpu = format!(
+        "{} · {}{}",
+        sys["cpu_info"]["processor"]
+            .as_str()
+            .filter(|s| !s.is_empty())
+            .unwrap_or("CPU"),
+        sys["cpu_info"]["cpu_count"]
+            .as_i64()
+            .map(|n| format!("{n} × "))
+            .unwrap_or_default(),
+        stats["system_cpu_usage"]["cpu"]
+            .as_f64()
+            .map(|p| format!("{p:.0}%"))
+            .unwrap_or_default()
+    );
+    let mem = &stats["system_memory"];
+    let memory = match (
+        mem["total"].as_f64(),
+        mem["used"]
+            .as_f64()
+            .or_else(|| Some(mem["total"].as_f64()? - mem["available"].as_f64()?)),
+    ) {
+        (Some(total), Some(used)) => format!("{:.0} / {:.0} MB", used / 1024.0, total / 1024.0),
+        _ => String::new(),
+    };
+    let du = &dir["disk_usage"];
+    let disk = match (du["used"].as_f64(), du["total"].as_f64()) {
+        (Some(u), Some(t)) => format!("{:.1} / {:.1} GB", u / 1e9, t / 1e9),
+        _ => String::new(),
+    };
+    // Addresses by interface: Wi-Fi is wlan*, the cable eth*/end*.
+    let mut wifi = (String::new(), String::new(), String::new());
+    let mut eth = String::new();
+    if let Some(net) = sys["network"].as_object() {
+        for (name, iface) in net {
+            let ip = iface["ip_addresses"]
+                .as_array()
+                .and_then(|a| a.iter().find(|x| x["family"].as_str() == Some("ipv4")))
+                .and_then(|x| x["address"].as_str())
+                .unwrap_or_default()
+                .to_owned();
+            if ip.is_empty() {
+                continue;
+            }
+            if name.starts_with("wl") {
+                wifi = (
+                    name.clone(),
+                    ip,
+                    iface["mac_address"].as_str().unwrap_or_default().to_owned(),
+                );
+            } else if name.starts_with("eth") || name.starts_with("en") {
+                eth = ip;
+            }
+        }
+    }
+    let web = |name: &str| {
+        let v = &updates["version_info"][name];
+        let version = v["version"].as_str().unwrap_or_default().to_owned();
+        let remote = v["remote_version"].as_str().unwrap_or_default();
+        let fresh = remote.is_empty() || remote == version;
+        (version, fresh, remote.to_owned())
+    };
+    let (mainsail, fluidd) = (web("mainsail"), web("fluidd"));
+    let zone = std::fs::read_link("/etc/localtime")
+        .ok()
+        .and_then(|p| {
+            let p = p.to_string_lossy().into_owned();
+            p.split_once("zoneinfo/").map(|(_, z)| z.to_owned())
+        })
+        .unwrap_or_default();
+    let stock = objects["objects"].as_array().is_some_and(|o| {
+        o.iter()
+            .any(|n| n.as_str() == Some("gcode_macro REBOOT_STOCK_SYSTEM"))
+    });
+    let host = printer["hostname"].as_str().unwrap_or_default().to_owned();
+    let klipper = printer["software_version"]
+        .as_str()
+        .unwrap_or_default()
+        .split("-g")
+        .next()
+        .unwrap_or_default()
+        .to_owned();
+    let moonraker = server["moonraker_version"]
+        .as_str()
+        .unwrap_or_default()
+        .split("-g")
+        .next()
+        .unwrap_or_default()
+        .to_owned();
+    let _ = ui.upgrade_in_event_loop(move |ui| {
+        let words = slint::ComponentHandle::global::<crate::Strings>(&ui);
+        let state = |(_, fresh, remote): &(String, bool, String)| {
+            if *fresh {
+                words.get_up_to_date().to_string()
+            } else {
+                words.get_update_to().replace("{}", remote)
+            }
+        };
+        ui.set_sys_cpu(cpu.into());
+        ui.set_sys_memory(memory.into());
+        ui.set_sys_disk(disk.into());
+        ui.set_net_wifi(
+            if wifi.0.is_empty() {
+                String::new()
+            } else {
+                wifi.0.clone()
+            }
+            .into(),
+        );
+        ui.set_net_ip(wifi.1.clone().into());
+        ui.set_net_mac(wifi.2.clone().into());
+        ui.set_net_eth(eth.into());
+        ui.set_host_name(host.into());
+        ui.set_ver_klipper(klipper.into());
+        ui.set_ver_moonraker(moonraker.into());
+        ui.set_ver_rivet(env!("CARGO_PKG_VERSION").into());
+        ui.set_ver_mainsail_sub(state(&mainsail).into());
+        ui.set_ver_mainsail(mainsail.0.into());
+        ui.set_ver_fluidd_sub(state(&fluidd).into());
+        ui.set_ver_fluidd(fluidd.0.into());
+        ui.set_has_stock_macro(stock);
+        ui.set_time_zone(zone.into());
     });
 }
 
@@ -1486,7 +1639,18 @@ fn local_clock(unix: f64) -> Option<String> {
     // SAFETY: localtime_r only writes into the struct we pass.
     let mut tm: libc::tm = unsafe { std::mem::zeroed() };
     let ok = unsafe { !libc::localtime_r(&t, &mut tm).is_null() };
-    ok.then(|| format!("{:02}:{:02}", tm.tm_hour, tm.tm_min))
+    ok.then(|| {
+        if prefs::get(&prefs::CLOCK_12) {
+            let h = (tm.tm_hour + 11) % 12 + 1;
+            format!(
+                "{h}:{:02} {}",
+                tm.tm_min,
+                if tm.tm_hour < 12 { "AM" } else { "PM" }
+            )
+        } else {
+            format!("{:02}:{:02}", tm.tm_hour, tm.tm_min)
+        }
+    })
 }
 
 fn unix_now() -> f64 {
@@ -1591,6 +1755,23 @@ impl HeatRate {
 /// Rivet's settings live in Moonraker's database under this namespace.
 const DB_NAMESPACE: &str = "rivet";
 
+/// Settings the engine itself follows (set from the database and the screens).
+pub mod prefs {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    /// Keep the screen on while a print runs.
+    pub static AWAKE_PRINT: AtomicBool = AtomicBool::new(true);
+    /// Clocks as 12-hour "3:20 PM".
+    pub static CLOCK_12: AtomicBool = AtomicBool::new(false);
+    /// A tune on the beeper when a print completes.
+    pub static END_TUNE: AtomicBool = AtomicBool::new(true);
+    pub fn set(flag: &AtomicBool, on: bool) {
+        flag.store(on, Ordering::Relaxed);
+    }
+    pub fn get(flag: &AtomicBool) -> bool {
+        flag.load(Ordering::Relaxed)
+    }
+}
+
 /// Read Rivet's saved settings once Klipper is ready, show them, and act on
 /// "turn the light on at startup".
 async fn load_settings(
@@ -1645,7 +1826,50 @@ async fn load_settings(
             ))
         })
         .collect();
+    let text = |key: &str| saved[key].as_str().unwrap_or_default().to_owned();
+    let pin = text("pin");
+    let sleep = saved["screen_sleep_min"].as_f64().unwrap_or(10.0) as i32;
+    let autolock = saved["autolock_min"].as_f64().unwrap_or(0.0) as i32;
+    let on = |key: &str, default: bool| saved[key].as_bool().unwrap_or(default);
+    let (awake, lock_print, sounds, tune, clock12, hold, confirm) = (
+        on("awake_print", true),
+        on("lock_print", false),
+        on("sounds", true),
+        on("end_tune", true),
+        on("clock_12h", false),
+        on("hold_stop", false),
+        on("confirm_macros", true),
+    );
+    prefs::set(&prefs::AWAKE_PRINT, awake);
+    prefs::set(&prefs::CLOCK_12, clock12);
+    prefs::set(&prefs::END_TUNE, sounds && tune);
+    let language = text("language");
     let _ = ui.upgrade_in_event_loop(move |ui| {
+        ui.set_set_sleep(
+            [1, 5, 10, 30]
+                .iter()
+                .position(|m| *m == sleep)
+                .map_or(4, |i| i as i32),
+        );
+        ui.set_set_autolock(
+            [0, 5, 15, 30]
+                .iter()
+                .position(|m| *m == autolock)
+                .unwrap_or(0) as i32,
+        );
+        ui.set_set_awake(awake);
+        ui.set_set_lock_print(lock_print);
+        ui.set_set_pin(pin.into());
+        ui.set_set_sounds(sounds);
+        ui.set_set_tune(tune);
+        ui.set_set_clock(i32::from(clock12));
+        ui.set_set_hold_stop(hold);
+        ui.set_set_confirm_macros(confirm);
+        // A language picked on the screen wins over the start-up one.
+        if language == "ru" || language == "en" {
+            crate::apply_language(&language);
+            ui.set_russian(language == "ru");
+        }
         if !presets.is_empty() {
             let rows: Vec<crate::HeatPreset> = presets
                 .into_iter()
@@ -2071,6 +2295,60 @@ async fn execute(
             let _ = ui.upgrade_in_event_loop(|ui| ui.set_calib_busy(false));
             calib_info(client, ui).await;
             result
+        }
+        Command::SystemInfo => {
+            system_info(client, ui).await;
+            Ok(())
+        }
+        Command::SystemAction(what) => {
+            match what.as_str() {
+                "klipper" => client.call("printer.restart", json!({})).await.map(drop)?,
+                "firmware" => client
+                    .call("printer.firmware_restart", json!({}))
+                    .await
+                    .map(drop)?,
+                "moonraker" => client.call("server.restart", json!({})).await.map(drop)?,
+                "reboot" => client.call("machine.reboot", json!({})).await.map(drop)?,
+                "shutdown" => client.call("machine.shutdown", json!({})).await.map(drop)?,
+                "stock" => gcode(client, "REBOOT_STOCK_SYSTEM").await?,
+                "check-updates" => {
+                    client
+                        .call_timeout(
+                            "machine.update.refresh",
+                            json!({}),
+                            Duration::from_secs(120),
+                        )
+                        .await
+                        .map(drop)?;
+                    system_info(client, ui).await;
+                }
+                "reset" => {
+                    let keys = client
+                        .call_timeout(
+                            "server.database.get_item",
+                            json!({ "namespace": DB_NAMESPACE }),
+                            SETUP_TIMEOUT,
+                        )
+                        .await
+                        .ok()
+                        .and_then(|v| {
+                            v["value"]
+                                .as_object()
+                                .map(|o| o.keys().cloned().collect::<Vec<_>>())
+                        })
+                        .unwrap_or_default();
+                    for key in keys {
+                        client
+                            .call(
+                                "server.database.delete_item",
+                                json!({ "namespace": DB_NAMESPACE, "key": key }),
+                            )
+                            .await?;
+                    }
+                }
+                _ => {}
+            }
+            Ok(())
         }
         Command::CalibInfo => {
             calib_info(client, ui).await;
