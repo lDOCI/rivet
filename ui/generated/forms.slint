@@ -1047,8 +1047,8 @@ export component TmcForm inherits FormScreen {
 
 // Screen.dc.html
 export component ScreenForm inherits FormScreen {
-    // Яркость — later: no backlight control found on the AD5M (only LCD_ON / LCD_OFF)
-    in property <bool> brightness-shown: false;
+    // Яркость
+    in property <bool> brightness-shown: true;
     in property <float> brightness-value: 10;
     in property <float> brightness-source: -1;
     // Гасить через, мин

@@ -509,6 +509,10 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
                 "end_tune" => prefs::set(&prefs::END_TUNE, on),
                 "sounds" if !on => prefs::set(&prefs::END_TUNE, false),
                 #[cfg(feature = "fbdev")]
+                "brightness" => {
+                    fbdev_platform::screen::set_brightness(value.parse().unwrap_or(75));
+                }
+                #[cfg(feature = "fbdev")]
                 "screen_sleep_min" => {
                     let minutes: f64 = value.parse().unwrap_or(10.0);
                     fbdev_platform::screen::set_sleep_after(
@@ -520,7 +524,7 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
             // Flags as booleans, minutes as numbers, the PIN as text.
             let value = match key.as_str() {
                 "pin" => serde_json::Value::String(value.to_string()),
-                "screen_sleep_min" | "autolock_min" => value
+                "screen_sleep_min" | "autolock_min" | "brightness" => value
                     .parse::<f64>()
                     .map_or(serde_json::Value::Null, Into::into),
                 _ => serde_json::Value::Bool(on),
@@ -648,6 +652,8 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
         });
     }
     ui.set_wifi_available(rivet::wifi::available());
+    #[cfg(feature = "fbdev")]
+    ui.set_backlight_available(fbdev_platform::screen::backlight_available());
     ui.on_wifi_scan(send(Command::WifiScan));
     {
         let tx = tx.clone();

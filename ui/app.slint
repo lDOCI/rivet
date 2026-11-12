@@ -483,6 +483,9 @@ export component AppWindow inherits Window {
     in-out property <bool> set-hold-stop;
     in-out property <bool> set-confirm-macros: true;
     callback setting-changed(string, string);
+    // Screen settings: backlight percent, and whether it can be set here.
+    in-out property <float> set-brightness: 75;
+    in property <bool> backlight-available;
     callback set-language(int);
     // The screen is locked (print lock or the idle timer).
     in-out property <bool> locked;
@@ -1092,6 +1095,12 @@ export component AppWindow inherits Window {
             }
         }
         if root.ready && root.screen == "set-screen": ScreenForm {
+            // Only where Rivet can set the backlight (the printer's tool or sysfs).
+            brightness-shown: root.backlight-available;
+            brightness-value: root.set-brightness;
+            bar-committed(key, v) => {
+                if (key == "brightness") { root.set-brightness = v; root.setting-changed("brightness", "" + round(v)); }
+            }
             sleep-sel: root.set-sleep;
             awake-on: root.set-awake;
             back => { root.screen = "settings"; }

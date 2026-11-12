@@ -15,6 +15,11 @@ static SLEEP_AFTER: AtomicU64 = AtomicU64::new(600);
 static KEEP_AWAKE: AtomicBool = AtomicBool::new(false);
 /// Bumped to ask the event loop to wake the screen (e.g. an error came in).
 static WAKE_REQUESTS: AtomicU64 = AtomicU64::new(0);
+/// Backlight level asked for, percent (0: none asked yet), and how many asks.
+static BRIGHTNESS: AtomicU64 = AtomicU64::new(0);
+static BRIGHTNESS_ASKS: AtomicU64 = AtomicU64::new(0);
+/// Whether this system has a backlight Rivet can set.
+static BACKLIGHT_OK: AtomicBool = AtomicBool::new(false);
 /// Milliseconds since `START` at the last touch.
 static LAST_TOUCH_MS: AtomicU64 = AtomicU64::new(0);
 static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
@@ -55,6 +60,34 @@ pub fn set_keep_awake(on: bool) {
 /// Turn the screen on now (the printer stopped, a dialog wants attention, ...).
 pub fn wake() {
     WAKE_REQUESTS.fetch_add(1, Ordering::Relaxed);
+}
+
+/// Set the backlight, 5–100 %; it applies while the screen is on and again
+/// after it wakes.
+pub fn set_brightness(percent: u32) {
+    BRIGHTNESS.store(u64::from(percent.clamp(5, 100)), Ordering::Relaxed);
+    BRIGHTNESS_ASKS.fetch_add(1, Ordering::Relaxed);
+}
+
+/// Whether the backlight can be set here (known once the platform started).
+pub fn backlight_available() -> bool {
+    BACKLIGHT_OK.load(Ordering::Relaxed)
+}
+
+// Used by the Linux event loop only.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+pub(crate) fn set_backlight_available(ok: bool) {
+    BACKLIGHT_OK.store(ok, Ordering::Relaxed);
+}
+
+/// The brightness asked for (percent) and the count of asks so far.
+// Used by the Linux event loop only.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+pub(crate) fn brightness_asks() -> (u32, u64) {
+    (
+        BRIGHTNESS.load(Ordering::Relaxed) as u32,
+        BRIGHTNESS_ASKS.load(Ordering::Relaxed),
+    )
 }
 
 /// Idle time before the screen sleeps (or, while printing, shows the screensaver).
@@ -119,6 +152,27 @@ pub(crate) mod backlight {
 
         pub(crate) fn available(&self) -> bool {
             !matches!(self, Self::None)
+        }
+
+        /// A new brightness, percent; switched on now when `on`.
+        pub(crate) fn set_percent(&mut self, percent: u32, on: bool) {
+            match self {
+                Self::Sysfs(dir) => {
+                    let max: u32 = std::fs::read_to_string(dir.join("max_brightness"))
+                        .ok()
+                        .and_then(|m| m.trim().parse().ok())
+                        .unwrap_or(255);
+                    let value = (max * percent / 100).max(1);
+                    let _ = std::fs::write(dir.join("brightness"), value.to_string());
+                }
+                Self::Tool { level } => {
+                    *level = (255 * percent / 100).clamp(1, 255);
+                    if on {
+                        self.set_on(true);
+                    }
+                }
+                Self::None => {}
+            }
         }
 
         pub(crate) fn set_on(&mut self, on: bool) {

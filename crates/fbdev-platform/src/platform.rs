@@ -105,6 +105,8 @@ struct FbPlatform {
     asleep: Cell<bool>,
     swallow: Cell<bool>,
     wakes_seen: Cell<u64>,
+    /// Brightness asks handled.
+    brightness_seen: Cell<u64>,
     /// A finger lift not yet passed on: a finger on this panel loses contact for a
     /// few milliseconds mid-swipe, which would turn a scroll into taps. A press
     /// within RELEASE_DEBOUNCE continues the same touch instead.
@@ -180,11 +182,16 @@ pub fn init(config: Config) -> anyhow::Result<()> {
             wake_write,
         }),
         wake_read,
-        backlight: RefCell::new(crate::screen::backlight::Backlight::open()),
+        backlight: RefCell::new({
+            let b = crate::screen::backlight::Backlight::open();
+            crate::screen::set_backlight_available(b.available());
+            b
+        }),
         last_touch: Cell::new(Instant::now()),
         asleep: Cell::new(false),
         swallow: Cell::new(false),
         wakes_seen: Cell::new(crate::screen::wake_requests()),
+        brightness_seen: Cell::new(0),
         pending_release: Cell::new(None),
         slop: Cell::new(crate::touch_state::TapSlop::new(TAP_SLOP)),
     };
@@ -321,6 +328,11 @@ impl FbPlatform {
 
     /// Sleep after the idle time unless kept awake; wake on request.
     fn manage_sleep(&self) {
+        let (percent, asks) = crate::screen::brightness_asks();
+        if asks != self.brightness_seen.replace(asks) && percent > 0 {
+            let on = !self.asleep.get();
+            self.backlight.borrow_mut().set_percent(percent, on);
+        }
         let requests = crate::screen::wake_requests();
         if requests != self.wakes_seen.replace(requests) || crate::screen::keep_awake() {
             self.set_awake(true);

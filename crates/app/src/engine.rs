@@ -1959,7 +1959,13 @@ async fn load_settings(
         fbdev_platform::screen::set_sleep_after(
             (minutes > 0.0).then(|| Duration::from_secs_f64(minutes * 60.0)),
         );
+        // The backlight as last set from the Screen settings.
+        if let Some(percent) = saved["brightness"].as_f64() {
+            fbdev_platform::screen::set_brightness(percent as u32);
+        }
     }
+    let brightness = saved["brightness"].as_f64().unwrap_or(75.0) as f32;
+    let _ = ui.upgrade_in_event_loop(move |ui| ui.set_set_brightness(brightness));
     let (invert, jog_xy, jog_z) = (
         [flag("invert_x"), flag("invert_y"), flag("invert_z")],
         number("jog_xy_speed", 100.0),

@@ -246,7 +246,7 @@ r3 = { name = "drivers", example = true }
 component = "ScreenForm"
 en = { "Экран" = "Screen", "Яркость" = "Brightness", "подсветка экрана" = "the screen's backlight", "Гасить через, мин" = "Sleep after, min", "без касаний" = "without a touch", "Не гасить во время печати" = "Stay on while printing", "показывать заставку с прогрессом" = "show the progress screensaver", "Поворот" = "Rotation", "Калибровка тача" = "Touch calibration", "коснуться 4 точек" = "touch 4 points" }
 [Screen.rows]
-r0 = { name = "brightness", later = "no backlight control found on the AD5M (only LCD_ON / LCD_OFF)" }
+r0 = "brightness"
 r1 = "sleep"
 r2 = "awake"
 r3 = { name = "rotate", later = "the framebuffer layer does not rotate yet" }
