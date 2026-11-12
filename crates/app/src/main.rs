@@ -20,6 +20,8 @@ fn main() -> anyhow::Result<()> {
 
     #[cfg(feature = "fbdev")]
     fbdev_platform::init(fbdev_platform::Config::from_env())?;
+    #[cfg(feature = "fbdev")]
+    fbdev_platform::touch_state::set_correction(rivet::touchcal::load());
 
     let ui = AppWindow::new()?;
     // --lang, RIVET_LANG, rivet.toml, then the system's LANG.
@@ -654,6 +656,29 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
     ui.set_wifi_available(rivet::wifi::available());
     #[cfg(feature = "fbdev")]
     ui.set_backlight_available(fbdev_platform::screen::backlight_available());
+    // Touch calibration.
+    ui.on_cal_begin(rivet::touchcal::begin);
+    ui.on_cal_point(|i, x, y| rivet::touchcal::tap(i.max(0) as usize, x, y));
+    {
+        let weak = ui.as_weak();
+        ui.on_cal_finish(move || {
+            let Some(ui) = weak.upgrade() else { return };
+            let (was, now) = rivet::touchcal::finish().unwrap_or((-1.0, -1.0));
+            ui.set_cal_miss_before(was);
+            ui.set_cal_miss_after(now);
+        });
+    }
+    ui.on_cal_keep(|| {
+        if let Err(err) = rivet::touchcal::keep() {
+            tracing::warn!(%err, "touch calibration not saved");
+        }
+    });
+    ui.on_cal_undo(rivet::touchcal::undo);
+    ui.on_cal_reset(|| {
+        if let Err(err) = rivet::touchcal::reset() {
+            tracing::warn!(%err, "touch calibration not reset");
+        }
+    });
     ui.on_wifi_scan(send(Command::WifiScan));
     {
         let tx = tx.clone();

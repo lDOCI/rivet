@@ -41,6 +41,7 @@ import { MotionScreen } from "screens/motion.slint";
 import { ToolsScreen, ConsoleScreen, MacrosScreen, ConsoleLine } from "screens/tools.slint";
 import { FilesScreen, FileScreen, FileItem, FileInfo, FindScreen, RenameScreen, MoveScreen } from "screens/files.slint";
 import { WifiJoinScreen } from "screens/wifi.slint";
+import { TouchCalScreen } from "screens/touchcal.slint";
 export { FileItem, FileInfo, ConsoleLine, FanRow }
 import { MessagesScreen, MessageRow } from "screens/messages.slint";
 import { FilamentScreen } from "screens/filament.slint";
@@ -486,6 +487,15 @@ export component AppWindow inherits Window {
     // Screen settings: backlight percent, and whether it can be set here.
     in-out property <float> set-brightness: 75;
     in property <bool> backlight-available;
+    // Touch calibration (touchcal.rs): mean miss before / after, -1 when the taps made no sense.
+    in property <float> cal-miss-before: -1;
+    in property <float> cal-miss-after: -1;
+    callback cal-begin();
+    callback cal-point(int, float, float);
+    callback cal-finish();
+    callback cal-keep();
+    callback cal-undo();
+    callback cal-reset();
     callback set-language(int);
     // The screen is locked (print lock or the idle timer).
     in-out property <bool> locked;
@@ -1104,6 +1114,7 @@ export component AppWindow inherits Window {
             sleep-sel: root.set-sleep;
             awake-on: root.set-awake;
             back => { root.screen = "settings"; }
+            activate(key) => { if (key == "touch-cal") { root.overlay = "touch-cal"; } }
             picked(key, i) => { if (key == "sleep") { root.set-sleep = i; root.setting-changed("screen_sleep_min", ["1", "5", "10", "30", "0"][i]); } }
             toggled(key, on) => { if (key == "awake") { root.set-awake = on; root.setting-changed("awake_print", on ? "1" : "0"); } }
         }
@@ -1618,6 +1629,17 @@ export component AppWindow inherits Window {
         confirm-text: @tr("Run");
         confirmed => { root.overlay = ""; root.run-gcode(root.macro-pending); }
         cancelled => { root.overlay = ""; }
+    }
+    if root.overlay == "touch-cal": TouchCalScreen {
+        miss-before: root.cal-miss-before;
+        miss-after: root.cal-miss-after;
+        begin => { root.cal-begin(); }
+        point(i, x, y) => { root.cal-point(i, x, y); }
+        finish => { root.cal-finish(); }
+        keep => { root.cal-keep(); }
+        undo => { root.cal-undo(); }
+        reset => { root.cal-reset(); }
+        close => { root.overlay = ""; }
     }
     if root.overlay == "heat-pick": HeatPickDialog {
         title: @tr("Heat the nozzle to");

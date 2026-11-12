@@ -10,6 +10,7 @@ pub mod files;
 pub mod logfile;
 pub mod resonance;
 pub mod thumbs;
+pub mod touchcal;
 pub mod wifi;
 
 /// Interface language: `--lang ru`, else `RIVET_LANG`, else the `LANG` of the

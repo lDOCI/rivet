@@ -45,3 +45,34 @@ fn back_takes_taps_beside_it() {
     tap(&ui, 320.0, 48.0);
     assert_eq!(ui.get_screen(), "light");
 }
+
+#[test]
+fn touch_calibration_measures_and_fixes_the_miss() {
+    i_slint_backend_testing::init_no_event_loop();
+    let ui = AppWindow::new().unwrap();
+    ui.window().set_size(slint::PhysicalSize::new(800, 480));
+    ui.set_link_state("ready".into());
+    ui.on_cal_begin(rivet::touchcal::begin);
+    ui.on_cal_point(|i, x, y| rivet::touchcal::tap(i as usize, x, y));
+    let weak = ui.as_weak();
+    ui.on_cal_finish(move || {
+        let ui = weak.upgrade().unwrap();
+        let (was, now) = rivet::touchcal::finish().unwrap_or((-1.0, -1.0));
+        ui.set_cal_miss_before(was);
+        ui.set_cal_miss_after(now);
+    });
+    ui.on_cal_undo(rivet::touchcal::undo);
+    ui.show().unwrap();
+    ui.set_overlay("touch-cal".into());
+    // The finger lands 20 px right and 3 px low of each cross.
+    for (x, y) in rivet::touchcal::TARGETS {
+        tap(&ui, x + 20.0, y + 3.0);
+    }
+    assert!(
+        (ui.get_cal_miss_before() - 20.2).abs() < 0.5,
+        "{}",
+        ui.get_cal_miss_before()
+    );
+    assert!(ui.get_cal_miss_after() < 1.0);
+    rivet::touchcal::undo();
+}

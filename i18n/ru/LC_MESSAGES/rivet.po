@@ -2187,3 +2187,15 @@ msgstr "из последней печати"
 
 msgid "Other…"
 msgstr "Другая…"
+
+msgid "Touch the centre of the cross with your finger, as you usually tap. {} of 4."
+msgstr "Коснитесь центра крестика пальцем — как обычно нажимаете. {} из 4."
+
+msgid "These taps do not fit together: a cross was missed. Try again."
+msgstr "Касания не сходятся — похоже, промах мимо крестика. Попробуйте ещё раз."
+
+msgid "Taps were off by {} px on average, now {} px. Tap anywhere to check: a dot shows where the touch lands."
+msgstr "Касания промахивались в среднем на {} px, теперь на {} px. Коснитесь где угодно для проверки — точка покажет, куда попало касание."
+
+msgid "Again"
+msgstr "Заново"

@@ -250,7 +250,7 @@ r0 = "brightness"
 r1 = "sleep"
 r2 = "awake"
 r3 = { name = "rotate", later = "the framebuffer layer does not rotate yet" }
-r4 = { name = "touch-cal", later = "tslib calibrates the touch on KlipperMod" }
+r4 = "touch-cal"
 
 [LockSettings]
 component = "LockForm"

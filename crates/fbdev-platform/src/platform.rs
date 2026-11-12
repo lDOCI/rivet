@@ -245,6 +245,21 @@ impl FbPlatform {
                 return;
             }
             let mut slop = self.slop.get();
+            // The user's touch calibration, if any.
+            let action = match action {
+                TouchAction::Pressed { x, y } => {
+                    let (x, y) = crate::touch_state::corrected(x, y);
+                    TouchAction::Pressed { x, y }
+                }
+                TouchAction::Moved { x, y } => {
+                    let (x, y) = crate::touch_state::corrected(x, y);
+                    TouchAction::Moved { x, y }
+                }
+                TouchAction::Released { x, y } => {
+                    let (x, y) = crate::touch_state::corrected(x, y);
+                    TouchAction::Released { x, y }
+                }
+            };
             let event = match action {
                 // Back within the debounce time and near where it was: the same
                 // touch goes on. Elsewhere it is a new touch: end the old one.

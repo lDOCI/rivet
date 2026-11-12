@@ -145,6 +145,30 @@ impl TouchState {
     }
 }
 
+/// A correction for where touches land, from Rivet's touch calibration:
+/// x' = a·x + b·y + c, y' = d·x + e·y + f, applied to every touch point.
+static CORRECTION: std::sync::Mutex<Option<[f32; 6]>> = std::sync::Mutex::new(None);
+
+/// Use this correction from now on (None: touches as the panel reports them).
+pub fn set_correction(c: Option<[f32; 6]>) {
+    if let Ok(mut slot) = CORRECTION.lock() {
+        *slot = c;
+    }
+}
+
+/// The correction in use.
+pub fn correction() -> Option<[f32; 6]> {
+    CORRECTION.lock().ok().and_then(|c| *c)
+}
+
+/// A touch point with the correction applied.
+pub fn corrected(x: f32, y: f32) -> (f32, f32) {
+    match correction() {
+        Some([a, b, c, d, e, f]) => (a * x + b * y + c, d * x + e * y + f),
+        None => (x, y),
+    }
+}
+
 /// Tells a tap from a drag for a finger on this resistive panel (a stylus
 /// barely needs it). Tuned on a recording of real fingers on the AD5M
 /// (testdata/ad5m-finger.evdev; the panel reports every 10 ms):

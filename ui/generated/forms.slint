@@ -1065,8 +1065,8 @@ export component ScreenForm inherits FormScreen {
     in property <int> rotate-sel: 0;
     // The options as numbers, for the app.
     out property <[float]> rotate-values: [0, 90, 180, 270];
-    // Калибровка тача — later: tslib calibrates the touch on KlipperMod
-    in property <bool> touch-cal-shown: false;
+    // Калибровка тача
+    in property <bool> touch-cal-shown: true;
     in property <string> touch-cal-sub: @tr("touch 4 points");
     in property <bool> touch-cal-enabled: true;
     title: @tr("Screen");
