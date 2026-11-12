@@ -131,7 +131,11 @@ component FormItem inherits VerticalLayout {
         clicked => { root.activate(root.r.key); }
     }}
 
-export component FormScreen inherits VerticalLayout {
+// The whole page of a list form. Kept apart from FormScreen: every generated form
+// inherits FormScreen, and Slint copies an inherited component's elements into
+// each form. As a child component this body is generated once and shared, which
+// keeps the printer binary small (31 forms used to carry 31 copies).
+component FormBody inherits VerticalLayout {
     in property <string> title;
     in property <bool> has-back: true;
     // One line under the header, as some prototype pages have.
@@ -228,5 +232,43 @@ export component FormScreen inherits VerticalLayout {
                 picked(k, i) => { root.picked(k, i); }
             }
         }
+    }
+}
+
+export component FormScreen inherits VerticalLayout {
+    in property <string> title;
+    in property <bool> has-back: true;
+    in property <string> intro;
+    in property <[FormBar]> bars;
+    in property <[FormRow]> rows;
+    in property <[FormRow]> rows-1;
+    in property <[FormRow]> rows-2;
+    in property <[FormRow]> rows-3;
+    in property <[FormRow]> rows-4;
+    callback back;
+    callback activate(string);
+    callback toggled(string, bool);
+    callback bar-committed(string, float);
+    callback stepped(string, float);
+    callback edit(string);
+    callback picked(string, int);
+    horizontal-stretch: 1;
+    FormBody {
+        title: root.title;
+        has-back: root.has-back;
+        intro: root.intro;
+        bars: root.bars;
+        rows: root.rows;
+        rows-1: root.rows-1;
+        rows-2: root.rows-2;
+        rows-3: root.rows-3;
+        rows-4: root.rows-4;
+        back => { root.back(); }
+        activate(k) => { root.activate(k); }
+        toggled(k, v) => { root.toggled(k, v); }
+        bar-committed(k, v) => { root.bar-committed(k, v); }
+        stepped(k, d) => { root.stepped(k, d); }
+        edit(k) => { root.edit(k); }
+        picked(k, i) => { root.picked(k, i); }
     }
 }
