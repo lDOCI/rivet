@@ -1,0 +1,92 @@
+// Any colour: a hue strip and a saturation × brightness square, as photo apps
+// have. Square corners: the printer's renderer draws gradients only there.
+import { Tokens } from "../kit/tokens.slint";
+import { Header, PrimaryButton, SecondaryButton } from "../kit/controls.slint";
+
+export component ColorPicker inherits VerticalLayout {
+    horizontal-stretch: 1;
+    in property <string> title;
+    // A background must stay dark enough for light text on it.
+    in property <float> max-value: 1;
+    in-out property <float> hue: 170;
+    in-out property <float> sat: 0.8;
+    in-out property <float> val: 0.85;
+    out property <color> picked: hsv(root.hue, root.sat, min(root.val, root.max-value));
+    callback done(color);
+    callback back;
+    padding: Tokens.pad;
+    padding-right: 20px;
+    spacing: 10px;
+    Header { title: root.title; back-clicked => { root.back(); } }
+    HorizontalLayout {
+        vertical-stretch: 1;
+        spacing: 14px;
+        // Saturation left to right, brightness bottom to top.
+        sv := Rectangle {
+            horizontal-stretch: 1;
+            background: @linear-gradient(90deg, #ffffff 0%, hsv(root.hue, 1, 1) 100%);
+            Rectangle { background: @linear-gradient(180deg, #00000000 0%, #000000 100%); }
+            // Too bright for a background: shaded, and the pick stops at its edge.
+            if root.max-value < 1: Rectangle {
+                height: parent.height * (1 - root.max-value);
+                background: #0b0d10b3;
+            }
+            Rectangle {
+                x: root.sat * parent.width - 12px;
+                y: (1 - min(root.val, root.max-value)) * parent.height - 12px;
+                width: 24px;
+                height: 24px;
+                border-radius: 12px;
+                border-width: 3px;
+                border-color: #ffffff;
+                background: root.picked;
+            }
+            TouchArea {
+                moved => { self.pick(); }
+                pointer-event(ev) => { if (ev.kind == PointerEventKind.down) { self.pick(); } }
+                function pick() {
+                    root.sat = max(0, min(1, self.mouse-x / self.width));
+                    root.val = max(0, min(root.max-value, 1 - self.mouse-y / self.height));
+                }
+            }
+        }
+        // Hue, top to bottom.
+        hue-bar := Rectangle {
+            width: 56px;
+            background: @linear-gradient(180deg, #ff0000 0%, #ffff00 16.7%, #00ff00 33.3%, #00ffff 50%, #0000ff 66.7%, #ff00ff 83.3%, #ff0000 100%);
+            Rectangle {
+                y: root.hue / 360 * parent.height - 3px;
+                height: 6px;
+                border-width: 2px;
+                border-color: #ffffff;
+            }
+            TouchArea {
+                moved => { self.pick(); }
+                pointer-event(ev) => { if (ev.kind == PointerEventKind.down) { self.pick(); } }
+                function pick() {
+                    root.hue = max(0, min(359.9, self.mouse-y / self.height * 360));
+                }
+            }
+        }
+        VerticalLayout {
+            width: 170px;
+            spacing: 10px;
+            Rectangle {
+                height: 96px;
+                background: root.picked;
+                border-width: 1px;
+                border-color: #ffffff1f;
+            }
+            Rectangle { vertical-stretch: 1; }
+            SecondaryButton {
+                text: @tr("Cancel");
+                min-height: Tokens.touch;
+                clicked => { root.back(); }
+            }
+            PrimaryButton {
+                text: @tr("Done");
+                clicked => { root.done(root.picked); }
+            }
+        }
+    }
+}

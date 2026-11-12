@@ -145,6 +145,24 @@ impl TouchState {
     }
 }
 
+type GlideProbe = Box<dyn Fn() -> bool>;
+
+thread_local! {
+    /// Asks the UI whether a list is moving right now (set by the app; the event
+    /// loop runs on the UI thread).
+    static GLIDE_PROBE: std::cell::RefCell<Option<GlideProbe>> = const { std::cell::RefCell::new(None) };
+}
+
+/// Tell the touch filter how to see whether a list is still gliding, so a
+/// press only stops it when it really moves (not after it hit its end).
+pub fn set_glide_probe(probe: impl Fn() -> bool + 'static) {
+    GLIDE_PROBE.with(|p| *p.borrow_mut() = Some(Box::new(probe)));
+}
+
+fn list_moving() -> Option<bool> {
+    GLIDE_PROBE.with(|p| p.borrow().as_ref().map(|f| f()))
+}
+
 /// A correction for where touches land, from Rivet's touch calibration:
 /// x' = a·x + b·y + c, y' = d·x + e·y + f, applied to every touch point.
 static CORRECTION: std::sync::Mutex<Option<[f32; 6]>> = std::sync::Mutex::new(None);
@@ -237,7 +255,9 @@ impl TapSlop {
 
     /// A finger lands. Returns where, and whether it only stops a glide.
     pub fn press(&mut self, x: f32, y: f32, now: std::time::Instant) -> (f32, f32, bool) {
-        self.stopper = self.glide_until.is_some_and(|t| now < t);
+        // The UI says whether a list moves; without it, the speed of the last
+        // flick is the guess.
+        self.stopper = list_moving().unwrap_or_else(|| self.glide_until.is_some_and(|t| now < t));
         self.glide_until = None;
         self.origin = Some((x, y));
         self.start = (x, y);
@@ -307,7 +327,18 @@ impl TapSlop {
             return (x, y, true);
         }
         let (x, y) = self.origin.unwrap_or((x, y));
+        tracing::debug!(x, y, stopper = self.stopper, "tap");
         (x, y, !self.stopper)
+    }
+
+    /// Whether this touch became a drag.
+    pub fn dragging(&self) -> bool {
+        self.dragging
+    }
+
+    /// Move the touch point (touch targeting moved it onto a touch area).
+    pub fn set_origin(&mut self, x: f32, y: f32) {
+        self.origin = Some((x, y));
     }
 
     /// Whether a point is close enough to the touch to be the same finger.

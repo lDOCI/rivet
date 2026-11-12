@@ -2231,7 +2231,7 @@ msgid "Black"
 msgstr "Чёрный"
 
 msgid "Navy"
-msgstr "Тёмно-синий"
+msgstr "Ночной"
 
 msgid "Appearance"
 msgstr "Оформление"
@@ -2250,3 +2250,15 @@ msgstr "по умолчанию"
 
 msgid "Loading…"
 msgstr "Загружаю…"
+
+msgid "Your own"
+msgstr "Свой"
+
+msgid "Accent colour"
+msgstr "Цвет акцента"
+
+msgid "Background colour"
+msgstr "Цвет фона"
+
+msgid "Default colours"
+msgstr "Цвета по умолчанию"

@@ -1,6 +1,6 @@
 // Appearance: the accent colour and the background, as swatches.
 import { Tokens } from "../kit/tokens.slint";
-import { Header, SectionLabel } from "../kit/controls.slint";
+import { Header, SectionLabel, SecondaryButton } from "../kit/controls.slint";
 
 export struct Swatch { name: string, color: color, under: color }
 
@@ -66,18 +66,29 @@ export component ThemeScreen inherits VerticalLayout {
     in property <int> base-sel;
     callback pick-accent(int);
     callback pick-base(int);
+    // Back to the design's colours.
+    callback reset;
     callback back;
     padding: Tokens.pad;
     padding-right: 20px;
     spacing: 10px;
-    Header { title: @tr("Appearance"); back-clicked => { root.back(); } }
+    Header {
+        title: @tr("Appearance");
+        back-clicked => { root.back(); }
+        SecondaryButton {
+            width: 220px;
+            text: @tr("Default colours");
+            clicked => { root.reset(); }
+        }
+    }
     SectionLabel { text: @tr("ACCENT"); }
     Rectangle {
         height: 2 * 84px + 8px;
+        // Five a row: eight colours and "your own" (the colour picker).
         for a[i] in root.accents: Pick {
-            x: mod(i, 4) * (parent.width + 8px) / 4;
-            y: floor(i / 4) * 92px;
-            width: (parent.width - 24px) / 4;
+            x: mod(i, 5) * (parent.width + 8px) / 5;
+            y: floor(i / 5) * 92px;
+            width: (parent.width - 32px) / 5;
             swatch: a;
             round: true;
             on: i == root.accent-sel;

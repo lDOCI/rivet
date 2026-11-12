@@ -2013,7 +2013,16 @@ async fn load_settings(
         saved["theme_accent"].as_u64().unwrap_or(0) as usize,
         saved["theme_base"].as_u64().unwrap_or(0) as usize,
     );
-    let _ = ui.upgrade_in_event_loop(move |ui| crate::theme::apply(&ui, accent, base));
+    let own = |key: &str| {
+        saved[key]
+            .as_str()
+            .and_then(|h| u32::from_str_radix(h, 16).ok())
+    };
+    let (own_accent, own_base) = (own("theme_accent_rgb"), own("theme_base_rgb"));
+    let _ = ui.upgrade_in_event_loop(move |ui| {
+        crate::theme::set_own(own_accent, own_base);
+        crate::theme::apply(&ui, accent, base);
+    });
     let brightness = saved["brightness"].as_f64().unwrap_or(75.0) as f32;
     let _ = ui.upgrade_in_event_loop(move |ui| ui.set_set_brightness(brightness));
     let (invert, jog_xy, jog_z) = (

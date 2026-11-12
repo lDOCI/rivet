@@ -84,6 +84,7 @@ const ALL: &[&str] = &[
     "set-system",
     "set-network",
     "set-theme",
+    "theme-picker",
     "macro-params",
     "wifi-join",
     "set-printers",
@@ -646,7 +647,8 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_screen(name.into());
         }
         "set-screen" | "set-lock" | "set-sound" | "set-language" | "set-safety" | "set-system"
-        | "set-network" | "set-printers" | "set-updates" | "wifi-join" | "set-theme" => {
+        | "set-network" | "set-printers" | "set-updates" | "wifi-join" | "set-theme"
+        | "theme-picker" => {
             // The AD5M Pro as it answered: T113, 110 MB, KlipperMod's versions.
             ui.set_sys_cpu("T113-S3 · 2 × · 18%".into());
             ui.set_sys_memory("54 / 110 MB".into());
@@ -682,7 +684,7 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_join_auth("psk".into());
             ui.set_join_password("hunter22".into());
             ui.on_mask(|n| "•".repeat(n.max(0) as usize).into());
-            if name == "set-theme" {
+            if name == "set-theme" || name == "theme-picker" {
                 // Orange on black: every accent and surface follows.
                 rivet::theme::show_choices(ui);
                 rivet::theme::apply(ui, 1, 1);

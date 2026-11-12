@@ -121,6 +121,8 @@ const RELEASE_DEBOUNCE: Duration = Duration::from_millis(60);
 /// How far a finger may wander and still tap, logical px (~2.7 mm on the
 /// AD5M's 7" 800×480 panel). Slint's own scroll threshold is 8 px.
 const TAP_SLOP: f32 = 14.0;
+/// How far a touch that hit nothing may be moved onto the nearest touch area, px.
+const TARGET_REACH: f32 = 24.0;
 /// A new press this close to the lost one is the same finger coming back.
 const SAME_FINGER: f32 = 40.0;
 
@@ -276,6 +278,7 @@ impl FbPlatform {
                     } else {
                         release(window.window(), lx, ly, click);
                         let (x, y, _) = slop.press(x, y, Instant::now());
+                        let (x, y) = target(window.window(), &mut slop, x, y);
                         Some(WindowEvent::PointerPressed {
                             position: LogicalPosition::new(x, y),
                             button: PointerEventButton::Left,
@@ -284,6 +287,7 @@ impl FbPlatform {
                 }
                 TouchAction::Pressed { x, y } => {
                     let (x, y, _) = slop.press(x, y, Instant::now());
+                    let (x, y) = target(window.window(), &mut slop, x, y);
                     Some(WindowEvent::PointerPressed {
                         position: LogicalPosition::new(x, y),
                         button: PointerEventButton::Left,
@@ -298,7 +302,15 @@ impl FbPlatform {
                 // Held back; `flush_release` passes it on once the finger stays up.
                 // A tap lands where the finger touched.
                 TouchAction::Released { x, y } => {
-                    let (x, y, click) = slop.release(x, y, Instant::now());
+                    let (mut x, mut y, click) = slop.release(x, y, Instant::now());
+                    // The landed point of a tap may have drifted off: target it again.
+                    if !slop.dragging() {
+                        if let Some((sx, sy)) =
+                            crate::snap::snap(window.window(), x, y, TARGET_REACH)
+                        {
+                            (x, y) = (sx, sy);
+                        }
+                    }
                     self.pending_release
                         .set(Some((Instant::now(), x, y, click)));
                     None
@@ -462,4 +474,20 @@ fn release(window: &slint::Window, x: f32, y: f32, click: bool) {
         button: PointerEventButton::Left,
     });
     window.dispatch_event(WindowEvent::PointerExited);
+}
+
+/// Touch targeting for a press: onto the nearest touch area when it hit none.
+fn target(
+    window: &slint::Window,
+    slop: &mut crate::touch_state::TapSlop,
+    x: f32,
+    y: f32,
+) -> (f32, f32) {
+    match crate::snap::snap(window, x, y, TARGET_REACH) {
+        Some((sx, sy)) => {
+            slop.set_origin(sx, sy);
+            (sx, sy)
+        }
+        None => (x, y),
+    }
 }

@@ -17,3 +17,9 @@ libc = "0.2"
 # Only here to turn on dlopen: Slint's font stack would otherwise link
 # libfontconfig, which a static musl binary can't. Fonts are embedded anyway.
 fontique = { version = "0.11", default-features = false, features = ["fontconfig-dlopen"] }
+
+# The same Slint core as `slint` (pinned with it): touch targeting walks the
+# window's items to find the touch areas around a finger (snap.rs).
+[dependencies.i-slint-core]
+version = "=1.18.1"
+default-features = false

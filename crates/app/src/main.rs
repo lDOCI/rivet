@@ -656,6 +656,20 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
     ui.set_wifi_available(rivet::wifi::available());
     #[cfg(feature = "fbdev")]
     ui.set_backlight_available(fbdev_platform::screen::backlight_available());
+    // A press stops a list only while it really glides: lists report each move.
+    #[cfg(feature = "fbdev")]
+    {
+        use std::{cell::Cell, rc::Rc, time::Instant};
+        let moved: Rc<Cell<Option<Instant>>> = Rc::default();
+        let m = moved.clone();
+        slint::ComponentHandle::global::<rivet::Glide>(ui)
+            .on_moved(move || m.set(Some(Instant::now())));
+        fbdev_platform::touch_state::set_glide_probe(move || {
+            moved
+                .get()
+                .is_some_and(|t| t.elapsed() < std::time::Duration::from_millis(120))
+        });
+    }
     // Macro parameters.
     {
         let tx = tx.clone();
@@ -715,6 +729,36 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
                 let _ = tx.send(Command::SaveSetting {
                     key: key.into(),
                     value: serde_json::json!(v),
+                });
+            }
+        });
+    }
+    {
+        let weak = ui.as_weak();
+        let tx = tx.clone();
+        ui.on_theme_custom(move |kind, color| {
+            let Some(ui) = weak.upgrade() else { return };
+            let c = rivet::theme::color_hex(color);
+            let (mut accent, mut base) =
+                (ui.get_theme_accent() as usize, ui.get_theme_base() as usize);
+            if kind == "accent" {
+                rivet::theme::set_own(Some(c), None);
+                accent = rivet::theme::OWN_ACCENT_INDEX;
+            } else {
+                rivet::theme::set_own(None, Some(c));
+                base = rivet::theme::OWN_BASE_INDEX;
+            }
+            rivet::theme::apply(&ui, accent, base);
+            let (own_accent, own_base) = rivet::theme::own_hex();
+            for (key, v) in [
+                ("theme_accent", serde_json::json!(accent)),
+                ("theme_base", serde_json::json!(base)),
+                ("theme_accent_rgb", serde_json::json!(own_accent)),
+                ("theme_base_rgb", serde_json::json!(own_base)),
+            ] {
+                let _ = tx.send(Command::SaveSetting {
+                    key: key.into(),
+                    value: v,
                 });
             }
         });

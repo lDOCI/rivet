@@ -1,5 +1,7 @@
 import { Tokens } from "kit/tokens.slint";
 export { Tokens }
+import { Glide } from "kit/scroll.slint";
+export { Glide }
 import { Rail } from "kit/rail.slint";
 import { ControlScreen } from "screens/control.slint";
 import { FansScreen, FanRow, ZOffsetScreen } from "screens/tune.slint";
@@ -39,6 +41,7 @@ export global Strings {
     out property <string> theme-graphite: @tr("Graphite");
     out property <string> theme-black: @tr("Black");
     out property <string> theme-navy: @tr("Navy");
+    out property <string> theme-own: @tr("Your own");
     out property <string> join-failed: @tr("Could not join “{}”. Check the password and try again.", "{}");
 }
 import { Format } from "kit/format.slint";
@@ -56,6 +59,7 @@ import { FilesScreen, FileScreen, FileItem, FileInfo, FindScreen, RenameScreen, 
 import { WifiJoinScreen } from "screens/wifi.slint";
 import { TouchCalScreen } from "screens/touchcal.slint";
 import { ThemeScreen, Swatch } from "screens/theme.slint";
+import { ColorPicker } from "screens/picker.slint";
 import { MacroParamsScreen, MacroParam } from "screens/macro.slint";
 export { MacroParam }
 export { Swatch }
@@ -519,6 +523,11 @@ export component AppWindow inherits Window {
     in property <int> theme-base;
     callback theme-open();
     callback theme-pick(int, int);
+    // Your own colour (the last swatch of each row): "accent" or "base", and the colour.
+    callback theme-custom(string, color);
+    // Which colour the picker is choosing, and where it starts.
+    property <string> picking: "accent";
+    property <color> picking-from;
     // Touch calibration (touchcal.rs): mean miss before / after, -1 when the taps made no sense.
     in property <float> cal-miss-before: -1;
     in property <float> cal-miss-after: -1;
@@ -629,12 +638,17 @@ export component AppWindow inherits Window {
 
     property <bool> ready: root.link-state == "ready";
     property <bool> busy: root.ready && (root.print-state == "printing" || root.print-state == "paused");
+    // A layer over the whole glass (screensaver, touch calibration, lock): the
+    // screen under it is not drawn at all, else the renderer's partial redraws
+    // could let bits of it show through.
+    property <bool> covered: (root.ambient && root.busy) || root.overlay == "touch-cal" || (root.locked && root.ready);
 
     HorizontalLayout {
+        visible: !root.covered;
         Rail {
             active: !root.ready ? "" : (root.screen == "fans" || root.screen == "filament" || root.screen == "heating" || root.screen == "heat-presets" || root.screen == "temp-graph" || root.screen == "motion" || root.screen == "extruder" || root.screen == "light" || root.screen == "speed" || root.screen == "zoffset" || root.screen == "motion-more" || root.screen == "retraction" || root.screen == "dryer" || root.screen == "spools" || root.screen == "devices") ? "control"
                 : (root.screen == "control" || root.screen == "tools" || root.screen == "settings" || root.screen == "messages") ? root.screen
-                : (root.screen == "set-screen" || root.screen == "set-theme" || root.screen == "set-lock" || root.screen == "set-sound" || root.screen == "set-language" || root.screen == "set-safety" || root.screen == "set-system" || root.screen == "set-network" || root.screen == "wifi-join" || root.screen == "set-printers" || root.screen == "set-updates") ? "settings"
+                : (root.screen == "set-screen" || root.screen == "set-theme" || root.screen == "theme-picker" || root.screen == "set-lock" || root.screen == "set-sound" || root.screen == "set-language" || root.screen == "set-safety" || root.screen == "set-system" || root.screen == "set-network" || root.screen == "wifi-join" || root.screen == "set-printers" || root.screen == "set-updates") ? "settings"
                 : (root.screen == "console" || root.screen == "macros" || root.screen == "macro-params" || root.screen == "calibrate" || root.screen == "bed-mesh" || root.screen == "mesh-profiles" || root.screen == "screws" || root.screen == "probe" || root.screen == "shaper" || root.screen == "shaper-result" || root.screen == "belts" || root.screen == "pid" || root.screen == "pa" || root.screen == "tmc" || root.screen == "limits" || root.screen == "sensors" || root.screen == "history" || root.screen == "service" || root.screen == "camera") ? "tools"
                 : "home";
             unread: root.unread;
@@ -1167,9 +1181,26 @@ export component AppWindow inherits Window {
             bases: root.theme-bases;
             accent-sel: root.theme-accent;
             base-sel: root.theme-base;
-            pick-accent(i) => { root.theme-pick(i, root.theme-base); }
-            pick-base(i) => { root.theme-pick(root.theme-accent, i); }
+            // The last swatch of each row is "your own": the colour picker.
+            pick-accent(i) => {
+                if (i == root.theme-accents.length - 1) { root.picking = "accent"; root.picking-from = root.theme-accents[i].color; root.screen = "theme-picker"; }
+                else { root.theme-pick(i, root.theme-base); }
+            }
+            pick-base(i) => {
+                if (i == root.theme-bases.length - 1) { root.picking = "base"; root.picking-from = root.theme-bases[i].under; root.screen = "theme-picker"; }
+                else { root.theme-pick(root.theme-accent, i); }
+            }
+            reset => { root.theme-pick(0, 0); }
             back => { root.screen = "set-screen"; }
+        }
+        if root.ready && root.screen == "theme-picker": ColorPicker {
+            title: root.picking == "accent" ? @tr("Accent colour") : @tr("Background colour");
+            max-value: root.picking == "base" ? 0.3 : 1;
+            hue: root.picking-from.to-hsv().hue;
+            sat: root.picking-from.to-hsv().saturation;
+            val: root.picking-from.to-hsv().value;
+            done(c) => { root.theme-custom(root.picking, c); root.theme-open(); root.screen = "set-theme"; }
+            back => { root.screen = "set-theme"; }
         }
         if root.ready && root.screen == "set-lock": LockForm {
             lock-print-on: root.set-lock-print;
