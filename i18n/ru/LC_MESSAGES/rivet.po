@@ -2247,3 +2247,6 @@ msgstr "цвет акцента и фона"
 
 msgid "default"
 msgstr "по умолчанию"
+
+msgid "Loading…"
+msgstr "Загружаю…"

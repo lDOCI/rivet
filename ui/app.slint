@@ -258,6 +258,8 @@ export component AppWindow inherits Window {
     in-out property <bool> files-on-usb;
     // Where the file list was scrolled to.
     in-out property <length> files-scroll;
+    // Files: the list came in at least once (Moonraker takes a second).
+    in-out property <bool> files-loaded;
     in property <string> spool-material;
     in property <color> spool-color;
     in property <string> loaded-material;
@@ -1466,7 +1468,9 @@ export component AppWindow inherits Window {
             usb-count: root.files-usb;
             on-usb <=> root.files-on-usb;
             scroll-y <=> root.files-scroll;
-            storage-changed(usb) => { root.files-scroll = 0; root.refresh-files(); }
+            loaded: root.files-loaded;
+            // The other storage's list is not here yet: show it loading, not empty.
+            storage-changed(usb) => { root.files-scroll = 0; root.files-loaded = false; root.files = []; root.refresh-files(); }
             window(first) => { root.files-window(first); }
             select-mode <=> root.select-mode;
             selected-count <=> root.selected-count;

@@ -1495,19 +1495,6 @@ fn set_file_counts(ui: &slint::Weak<AppWindow>, files: &[model::FileEntry]) {
 }
 
 /// Count the files once Klipper is ready, for the Home screen.
-async fn count_files(client: &Client, ui: &slint::Weak<AppWindow>) {
-    if let Ok(result) = client
-        .call_timeout(
-            "server.files.list",
-            json!({ "root": "gcodes" }),
-            Duration::from_secs(20),
-        )
-        .await
-    {
-        set_file_counts(ui, &model::parse_file_list(&result));
-    }
-}
-
 async fn list_files(
     client: &Client,
     ui: &slint::Weak<AppWindow>,
@@ -1547,6 +1534,7 @@ async fn list_files(
         })
         .collect();
     let _ = ui.upgrade_in_event_loop(move |ui| {
+        ui.set_files_loaded(true);
         let items: Vec<crate::FileItem> = rows
             .into_iter()
             .enumerate()
@@ -2120,7 +2108,11 @@ async fn load_settings(
             save_dryer(&client, None);
         }
     }
-    count_files(&client, &ui).await;
+    // The whole list now, not just the counts: Moonraker takes about a second to
+    // list files on this printer, and Files then opens with them already there.
+    if let Err(err) = list_files(&client, &ui, false).await {
+        tracing::debug!(%err, "file list at start");
+    }
     if caps.spoolman {
         if let Err(err) = list_spools(&client, &ui).await {
             tracing::warn!(%err, "spoolman");

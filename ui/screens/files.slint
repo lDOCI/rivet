@@ -106,6 +106,8 @@ export component FilesScreen inherits VerticalLayout {
     in property <int> queue-count: -1;
     // A search is on: the grid shows what matches.
     in property <string> query;
+    // The list for this storage came in at least once.
+    in property <bool> loaded: true;
     callback storage-changed(bool);
     callback queue;
     callback find;
@@ -217,7 +219,13 @@ export component FilesScreen inherits VerticalLayout {
         }
     }
 
-    if root.files.length == 0: VerticalLayout {
+    // Until Moonraker's list came in (it takes a second here), no "no files".
+    if root.files.length == 0 && !root.loaded: VerticalLayout {
+        vertical-stretch: 1;
+        alignment: center;
+        Text { text: @tr("Loading…"); color: Tokens.text-dim; font-size: Tokens.body; horizontal-alignment: center; }
+    }
+    if root.files.length == 0 && root.loaded: VerticalLayout {
         vertical-stretch: 1;
         alignment: center;
         spacing: 8px;
