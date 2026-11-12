@@ -281,7 +281,7 @@ pub fn fit(img: Rgba, width: u32, height: u32, max_scale: f32) -> Rgba {
 /// A preview for a box of its own: margins cut, fitted to the box (the shadow
 /// takes the rows below), the shadow under it.
 pub fn prepare_for(img: Rgba, width: u32, height: u32) -> Rgba {
-    shadow(fit(trim(img), width, height * 9 / 10, 2.0))
+    shadow(fit(trim(img), width, height * 9 / 10, 3.0))
 }
 
 /// Catmull-Rom bicubic resize.
