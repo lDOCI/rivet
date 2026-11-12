@@ -1333,7 +1333,7 @@ export component SystemForm inherits FormScreen {
 
 // Network.dc.html
 export component NetworkForm inherits FormScreen {
-    // Wi-Fi — later: Moonraker has no API to switch Wi-Fi
+    // Wi-Fi — later: switching the radio off from the screen would cut the printer off the network it is reached by
     in property <bool> wifi-shown: false;
     in property <string> wifi-sub: "";
     in property <bool> wifi-on;
@@ -1342,15 +1342,13 @@ export component NetworkForm inherits FormScreen {
     in property <string> connected-title;
     in property <string> connected-sub;
     in property <string> connected-value;
-    // ДОСТУПНЫЕ СЕТИ — later: Moonraker has no Wi-Fi scan
-    in property <bool> around-shown: false;
+    // ДОСТУПНЫЕ СЕТИ
+    in property <bool> around-shown: true;
     in property <string> around-sub: "";
-    // HomeNet_5G — later: Moonraker has no Wi-Fi scan
-    in property <bool> nets-shown: false;
-    in property <string> nets-sub: @tr("5 GHz · WPA2");
-    in property <string> nets-value;
-    // Скрытая сеть — later: Moonraker has no API to join a network
-    in property <bool> hidden-shown: false;
+    // HomeNet_5G: a live list of link rows
+    in property <[FormRow]> nets-items;
+    // Скрытая сеть
+    in property <bool> hidden-shown: true;
     in property <string> hidden-sub: @tr("type its name");
     in property <string> hidden-value;
     // ПРОЧЕЕ
@@ -1377,8 +1375,10 @@ export component NetworkForm inherits FormScreen {
     rows: [
         { kind: "toggle", key: "wifi", title: "Wi-Fi", sub: root.wifi-sub, shown: root.wifi-shown, on: root.wifi-on },
         { kind: "info", key: "connected", title: root.connected-title, sub: root.connected-sub, shown: root.connected-shown, value: root.connected-value },
-        { kind: "section", key: "around", title: @tr("NETWORKS AROUND"), sub: root.around-sub, shown: root.around-shown },
-        { kind: "link", key: "nets", title: "HomeNet_5G", sub: root.nets-sub, shown: root.nets-shown, value: root.nets-value },
+        { kind: "section", key: "around", title: @tr("NETWORKS AROUND"), sub: root.around-sub, shown: root.around-shown }
+    ];
+    rows-1: root.nets-items;
+    rows-2: [
         { kind: "link", key: "hidden", title: @tr("Hidden network"), sub: root.hidden-sub, shown: root.hidden-shown, value: root.hidden-value },
         { kind: "section", key: "other", title: @tr("OTHER"), sub: root.other-sub, shown: root.other-shown },
         { kind: "info", key: "host", title: @tr("Host name"), sub: root.host-sub, shown: root.host-shown, value: root.host-value },

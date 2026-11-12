@@ -112,14 +112,24 @@ export component ConsoleScreen inherits VerticalLayout {
             accessible-role: button;
             accessible-label: @tr("Command, tap to type");
             accessible-action-default => { root.keyboard-open = true; }
-            Text {
+            HorizontalLayout {
                 x: 18px;
                 width: parent.width - 36px;
-                text: root.text != "" ? root.text + (root.keyboard-open ? "▏" : "") : (root.keyboard-open ? "▏" : @tr("G-code or macro"));
-                color: root.text != "" ? Tokens.text : Tokens.text-faint;
-                font-size: 17px;
-                vertical-alignment: center;
-                overflow: elide;
+                Text {
+                    horizontal-stretch: 0;
+                    text: root.text != "" ? root.text : root.keyboard-open ? "" : @tr("G-code or macro");
+                    color: root.text != "" ? Tokens.text : Tokens.text-faint;
+                    font-size: 17px;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+                // The caret: drawn, the font has no thin bar.
+                if root.keyboard-open: VerticalLayout {
+                    alignment: center;
+                    padding-left: 1px;
+                    Rectangle { width: 2px; height: 22px; background: Tokens.accent; }
+                }
+                Rectangle { horizontal-stretch: 1; }
             }
             TouchArea { clicked => { root.keyboard-open = true; } }
         }

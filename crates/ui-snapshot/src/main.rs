@@ -83,6 +83,7 @@ const ALL: &[&str] = &[
     "set-safety",
     "set-system",
     "set-network",
+    "wifi-join",
     "set-printers",
     "set-updates",
     "lock",
@@ -626,7 +627,7 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_screen(name.into());
         }
         "set-screen" | "set-lock" | "set-sound" | "set-language" | "set-safety" | "set-system"
-        | "set-network" | "set-printers" | "set-updates" => {
+        | "set-network" | "set-printers" | "set-updates" | "wifi-join" => {
             // The AD5M Pro as it answered: T113, 110 MB, KlipperMod's versions.
             ui.set_sys_cpu("T113-S3 · 2 × · 18%".into());
             ui.set_sys_memory("54 / 110 MB".into());
@@ -644,6 +645,24 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_ver_fluidd_sub("актуально".into());
             ui.set_has_stock_macro(true);
             ui.set_time_zone("Europe/Moscow".into());
+            // Networks as the prototype page lists them.
+            let row = |key: &str, title: &str, sub: &str| rivet::FormRow {
+                kind: "link".into(),
+                key: key.into(),
+                title: title.into(),
+                sub: sub.into(),
+                shown: true,
+                ..Default::default()
+            };
+            ui.set_wifi_available(true);
+            ui.set_wifi_rows(slint::ModelRc::new(slint::VecModel::from(vec![
+                row("0", "HomeNet_5G", "5 ГГц · WPA2 · сильный сигнал"),
+                row("1", "Office", "2.4 ГГц · WPA2 · средний сигнал"),
+            ])));
+            ui.set_join_ssid("HomeNet".into());
+            ui.set_join_auth("psk".into());
+            ui.set_join_password("hunter22".into());
+            ui.on_mask(|n| "•".repeat(n.max(0) as usize).into());
             ui.set_screen(name.into());
         }
         "lock" => {

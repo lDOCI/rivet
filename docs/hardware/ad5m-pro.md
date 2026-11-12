@@ -54,3 +54,25 @@ and calibration data is read from disk, not held.
 | Homed axes | empty after boot | — | Motion must show «not homed» |
 | `skew_correction` | present | not in the feature map | added as a candidate for M3 |
 | Extra macros | `BELTS_TEST`, `GUPPY_EXCITATE_AXIS_AT_FREQ` (from GuppyScreen) | — | belt check can use core `TEST_RESONANCES` |
+
+## On the device (2026-11-12)
+
+| What | Found | For Rivet |
+|---|---|---|
+| Display | `/dev/fb0`, 800×480, `Bgrx8888`, double-buffered by panning | `fbdev-platform` draws into RAM and flips pages |
+| Touch | `ts_uinput` (event3), axes 0–799 × 0–479, no rotation | no calibration needed |
+| Accelerometer | `adxl345` on the eboard, `resonance_tester` configured; not listed among Klipper's objects | detected from the config |
+| Wi-Fi | `wpa_supplicant` on `wlan0`, control socket `/var/run/wpa_supplicant`, `update_config=1`; `udhcpc` per interface | scan and join through the socket, renew with SIGUSR1 |
+| Backlight | `/usr/bin/backlight <percent>` (Guppy's init sets 0 % then 75 %) | brightness setting can use it |
+| Moonraker `[machine]` | `provider: none` | `machine.shutdown` as KlipperScreen and HelixScreen do |
+| Power | rear switch only; `gcode_button btn_power` runs `_SHUTDOWN_BUTTON_TRIGGER` | not verified what the switch does before the power drops |
+
+### How KlipperMod picks the screen
+
+It does not pick at run time: `/etc/init.d/rcS` starts every executable
+`/etc/init.d/S??*` in order, and the screen is just `S80guppyscreen`
+(`start-stop-daemon`, niceness 10, backlight set first). `/etc` is writable.
+So installing Rivet means an `S80rivet` of the same shape and keeping
+`S80guppyscreen` from starting (rename it, e.g. `_S80guppyscreen`, which the
+`S??*` pattern skips); uninstalling restores it. `tools/swap-screen.sh` does the
+same for one boot without touching `/etc`.

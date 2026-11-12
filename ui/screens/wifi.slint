@@ -1,0 +1,92 @@
+// Joining a Wi-Fi network: the prototype's WifiJoin page. A hidden network
+// first asks for its name, then for the password.
+import { Tokens } from "../kit/tokens.slint";
+import { Header, PrimaryButton } from "../kit/controls.slint";
+import { Keyboard } from "../kit/keyboard.slint";
+import { TextLine } from "files.slint";
+
+export component WifiJoinScreen inherits VerticalLayout {
+    horizontal-stretch: 1;
+    // Empty for a hidden network: its name is typed first.
+    in-out property <string> ssid;
+    in-out property <string> password;
+    // "open" needs no password; "psk" and "sae" need 8 to 63 characters.
+    in property <string> auth;
+    in property <bool> busy;
+    // Why the last try failed; empty when it did not.
+    in property <string> error;
+    in property <bool> cyrillic;
+    callback join;
+    callback back;
+    callback apply-key(string, string) -> string;
+    // n bullets (•) for a hidden password.
+    pure callback mask(int) -> string;
+    property <bool> naming: root.ssid == "" || root.typing-name;
+    property <bool> typing-name;
+    property <string> name;
+    property <bool> show;
+    property <bool> valid: root.naming ? root.name != "" : (root.auth == "open" || (root.password.character-count >= 8 && root.password.character-count <= 63));
+    init => { root.typing-name = root.ssid == ""; }
+    padding: Tokens.pad;
+    padding-right: 20px;
+    spacing: 10px;
+    Header {
+        title: root.naming ? @tr("Hidden network") : @tr("Network “{}”", root.ssid);
+        back-clicked => { root.back(); }
+    }
+    HorizontalLayout {
+        spacing: 8px;
+        if root.naming: TextLine { horizontal-stretch: 1; text: root.name; placeholder: @tr("Network name"); }
+        if !root.naming && root.auth != "open": TextLine {
+            horizontal-stretch: 1;
+            // Dots unless shown; the font has •.
+            text: root.show ? root.password : root.mask(root.password.character-count);
+            placeholder: @tr("Password");
+        }
+        if !root.naming && root.auth != "open": Rectangle {
+            width: 120px;
+            border-radius: 18px;
+            background: Tokens.surface-1;
+            Text { text: root.show ? @tr("Hide") : @tr("Show"); color: Tokens.text-2; font-size: 15px; font-weight: 600; horizontal-alignment: center; vertical-alignment: center; }
+            TouchArea { clicked => { root.show = !root.show; } }
+        }
+        if !root.naming && root.auth == "open": Text {
+            horizontal-stretch: 1;
+            text: @tr("An open network: no password.");
+            color: Tokens.text-dim;
+            font-size: Tokens.body;
+            vertical-alignment: center;
+        }
+        PrimaryButton {
+            width: 150px;
+            min-height: 64px;
+            text: root.naming ? @tr("Next") : root.busy ? @tr("Joining…") : @tr("Join");
+            enabled: root.valid && !root.busy;
+            clicked => { root.next(); }
+        }
+    }
+    if root.error != "": Text { text: root.error; color: Tokens.danger; font-size: Tokens.body; wrap: word-wrap; }
+    if root.busy: Text { text: @tr("The printer stays on its network until the new one answers."); color: Tokens.text-dim; font-size: Tokens.caption; wrap: word-wrap; }
+    Rectangle { vertical-stretch: 1; }
+    if root.naming || root.auth != "open": Keyboard {
+        cyrillic: root.cyrillic;
+        upper: false;
+        key(k) => {
+            if (k == "⏎") {
+                if (root.valid && !root.busy) { root.next(); }
+            } else if (root.naming) {
+                root.name = root.apply-key(root.name, k);
+            } else {
+                root.password = root.apply-key(root.password, k);
+            }
+        }
+    }
+    function next() {
+        if (root.naming) {
+            root.ssid = root.name;
+            root.typing-name = false;
+        } else {
+            root.join();
+        }
+    }
+}

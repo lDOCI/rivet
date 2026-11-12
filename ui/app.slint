@@ -18,6 +18,14 @@ export global Strings {
     // Web interface versions: "{}" is the new one.
     out property <string> up-to-date: @tr("up to date");
     out property <string> update-to: @tr("update to {}", "{}");
+    // Wi-Fi rows: band, security, joined before, signal.
+    out property <string> ghz: @tr("{} GHz", "{}");
+    out property <string> open-net: @tr("open");
+    out property <string> saved-net: @tr("joined before");
+    out property <string> signal-strong: @tr("strong signal");
+    out property <string> signal-fair: @tr("fair signal");
+    out property <string> signal-weak: @tr("weak signal");
+    out property <string> join-failed: @tr("Could not join “{}”. Check the password and try again.", "{}");
 }
 import { Format } from "kit/format.slint";
 // Rust formats durations for rows it builds (the queue) the same way.
@@ -31,6 +39,7 @@ import { HeatingScreen } from "screens/heating.slint";
 import { MotionScreen } from "screens/motion.slint";
 import { ToolsScreen, ConsoleScreen, MacrosScreen, ConsoleLine } from "screens/tools.slint";
 import { FilesScreen, FileScreen, FileItem, FileInfo, FindScreen, RenameScreen, MoveScreen } from "screens/files.slint";
+import { WifiJoinScreen } from "screens/wifi.slint";
 export { FileItem, FileInfo, ConsoleLine, FanRow }
 import { MessagesScreen, MessageRow } from "screens/messages.slint";
 import { FilamentScreen } from "screens/filament.slint";
@@ -453,6 +462,24 @@ export component AppWindow inherits Window {
     in property <bool> has-stock-macro;
     in property <string> time-zone;
     callback refresh-system();
+    // Wi-Fi through wpa_supplicant (on the printer only).
+    in property <bool> wifi-available;
+    in property <bool> wifi-scanning;
+    // The joined network's name (wpa_supplicant).
+    in property <string> wifi-current;
+    in property <[FormRow]> wifi-rows;
+    // Per row of wifi-rows: name, "open"/"psk"/"sae", joined before.
+    in property <[string]> wifi-ssids;
+    in property <[string]> wifi-auths;
+    in property <[bool]> wifi-saved;
+    in-out property <string> join-ssid;
+    in-out property <string> join-auth;
+    in-out property <string> join-password;
+    in property <bool> join-busy;
+    in-out property <string> join-error;
+    callback wifi-scan();
+    callback wifi-join(string, string, string);
+    pure callback mask(int) -> string;
     callback system-action(string);
     in-out property <string> system-pending;
 
@@ -519,7 +546,7 @@ export component AppWindow inherits Window {
         Rail {
             active: !root.ready ? "" : (root.screen == "fans" || root.screen == "filament" || root.screen == "heating" || root.screen == "heat-presets" || root.screen == "temp-graph" || root.screen == "motion" || root.screen == "extruder" || root.screen == "light" || root.screen == "speed" || root.screen == "zoffset" || root.screen == "motion-more" || root.screen == "retraction" || root.screen == "dryer" || root.screen == "spools" || root.screen == "devices") ? "control"
                 : (root.screen == "control" || root.screen == "tools" || root.screen == "settings" || root.screen == "messages") ? root.screen
-                : (root.screen == "set-screen" || root.screen == "set-lock" || root.screen == "set-sound" || root.screen == "set-language" || root.screen == "set-safety" || root.screen == "set-system" || root.screen == "set-network" || root.screen == "set-printers" || root.screen == "set-updates") ? "settings"
+                : (root.screen == "set-screen" || root.screen == "set-lock" || root.screen == "set-sound" || root.screen == "set-language" || root.screen == "set-safety" || root.screen == "set-system" || root.screen == "set-network" || root.screen == "wifi-join" || root.screen == "set-printers" || root.screen == "set-updates") ? "settings"
                 : (root.screen == "console" || root.screen == "macros" || root.screen == "calibrate" || root.screen == "bed-mesh" || root.screen == "mesh-profiles" || root.screen == "screws" || root.screen == "probe" || root.screen == "shaper" || root.screen == "shaper-result" || root.screen == "belts" || root.screen == "pid" || root.screen == "pa" || root.screen == "tmc" || root.screen == "limits" || root.screen == "sensors" || root.screen == "history" || root.screen == "service" || root.screen == "camera") ? "tools"
                 : "home";
             unread: root.unread;
@@ -1070,13 +1097,54 @@ export component AppWindow inherits Window {
             activate(key) => { root.system-pending = key; root.overlay = "system"; }
         }
         if root.ready && root.screen == "set-network": NetworkForm {
-            connected-title: root.net-wifi != "" ? "Wi-Fi · " + root.net-wifi : @tr("Connected");
+            connected-title: root.wifi-current != "" ? "Wi-Fi · " + root.wifi-current : root.net-wifi != "" ? "Wi-Fi · " + root.net-wifi : @tr("Connected");
             connected-value: root.net-ip;
-            connected-sub: root.net-mac;
-            connected-shown: root.net-ip != "";
+            connected-sub: root.join-busy ? @tr("joining “{}”…", root.join-ssid) : root.net-mac;
+            connected-shown: root.net-ip != "" || root.join-busy;
             host-value: root.host-name;
             ethernet-value: root.net-eth != "" ? root.net-eth : @tr("not connected");
+            // Joining needs wpa_supplicant on this machine (Rivet on the printer).
+            around-shown: root.wifi-available;
+            around-sub: root.wifi-scanning ? @tr("looking…") : "";
+            nets-items: root.wifi-rows;
+            hidden-shown: root.wifi-available;
+            init => { root.wifi-scan(); }
             back => { root.screen = "settings"; }
+            activate(key) => {
+                if (key == "hidden") {
+                    root.join-ssid = "";
+                    root.join-auth = "psk";
+                    root.join-password = "";
+                    root.join-error = "";
+                    root.screen = "wifi-join";
+                } else if (key.is-float()) {
+                    root.join-ssid = root.wifi-ssids[key.to-float()];
+                    root.join-auth = root.wifi-auths[key.to-float()];
+                    root.join-password = "";
+                    root.join-error = "";
+                    // Saved and open networks join at a tap; others ask for the password.
+                    if (root.wifi-saved[key.to-float()] || root.join-auth == "open") {
+                        root.wifi-join(root.join-ssid, root.join-auth, "");
+                    } else {
+                        root.screen = "wifi-join";
+                    }
+                }
+            }
+            // Look around again now and then while the screen is open.
+            Timer { interval: 20s; running: root.wifi-available && !root.join-busy; triggered => { root.wifi-scan(); } }
+        }
+        if root.ready && root.screen == "wifi-join": WifiJoinScreen {
+            ssid <=> root.join-ssid;
+            password <=> root.join-password;
+            auth: root.join-auth;
+            busy: root.join-busy;
+            error: root.join-error;
+            // Passwords and network names are mostly Latin.
+            cyrillic: false;
+            back => { root.screen = "set-network"; }
+            join => { root.wifi-join(root.join-ssid, root.join-auth, root.join-password); }
+            apply-key(t, k) => { return root.apply-key(t, k); }
+            mask(n) => { return root.mask(n); }
         }
         if root.ready && root.screen == "set-printers": PrintersForm {
             this-title: root.host-name != "" ? root.host-name : @tr("This printer");

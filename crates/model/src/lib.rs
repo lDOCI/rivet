@@ -1322,6 +1322,131 @@ impl AxisShapers {
     }
 }
 
+/// How a Wi-Fi network wants to be joined.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WifiAuth {
+    Open,
+    /// WPA/WPA2 passphrase (WPA3 networks that also allow WPA2 count here).
+    Psk,
+    /// WPA3 only.
+    Sae,
+    /// WEP or enterprise: not offered.
+    Other,
+}
+
+/// A network from wpa_supplicant's SCAN_RESULTS.
+#[derive(Debug, Clone, PartialEq)]
+pub struct WifiNet {
+    pub ssid: String,
+    /// MHz.
+    pub freq: u32,
+    /// dBm.
+    pub signal: i32,
+    pub auth: WifiAuth,
+}
+
+/// wpa_supplicant writes SSIDs with printf escapes: \xNN, \\, \", \e, \n…
+pub fn wpa_unescape(s: &str) -> String {
+    let mut out = Vec::new();
+    let b = s.as_bytes();
+    let mut i = 0;
+    while i < b.len() {
+        if b[i] == b'\\' && i + 1 < b.len() {
+            match b[i + 1] {
+                b'x' if i + 4 <= b.len() => {
+                    if let Some(v) = s
+                        .get(i + 2..i + 4)
+                        .and_then(|h| u8::from_str_radix(h, 16).ok())
+                    {
+                        out.push(v);
+                        i += 4;
+                        continue;
+                    }
+                    out.push(b'\\');
+                    i += 1;
+                    continue;
+                }
+                b'n' => out.push(b'\n'),
+                b'r' => out.push(b'\r'),
+                b't' => out.push(b'\t'),
+                b'e' => out.push(0x1b),
+                c => out.push(c),
+            }
+            i += 2;
+        } else {
+            out.push(b[i]);
+            i += 1;
+        }
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
+/// SCAN_RESULTS → networks with a name, one per name (the strongest), the
+/// strongest first.
+pub fn parse_wifi_scan(text: &str) -> Vec<WifiNet> {
+    let mut nets: Vec<WifiNet> = Vec::new();
+    for line in text.lines().skip(1) {
+        let cols: Vec<&str> = line.splitn(5, '\t').collect();
+        let [_, freq, signal, flags, ssid] = cols[..] else {
+            continue;
+        };
+        let ssid = wpa_unescape(ssid);
+        if ssid.is_empty() || ssid.chars().all(|c| c == '\0') {
+            continue;
+        }
+        let auth = if flags.contains("PSK") {
+            WifiAuth::Psk
+        } else if flags.contains("SAE") {
+            WifiAuth::Sae
+        } else if flags.contains("WEP") || flags.contains("EAP") {
+            WifiAuth::Other
+        } else {
+            WifiAuth::Open
+        };
+        let net = WifiNet {
+            ssid,
+            freq: freq.parse().unwrap_or(0),
+            signal: signal.parse().unwrap_or(-100),
+            auth,
+        };
+        match nets.iter_mut().find(|n| n.ssid == net.ssid) {
+            Some(n) if n.signal < net.signal => *n = net,
+            Some(_) => {}
+            None => nets.push(net),
+        }
+    }
+    nets.sort_by_key(|n| -n.signal);
+    nets
+}
+
+/// LIST_NETWORKS → (id, ssid, is it the current one).
+pub fn parse_wifi_saved(text: &str) -> Vec<(u32, String, bool)> {
+    text.lines()
+        .skip(1)
+        .filter_map(|line| {
+            let cols: Vec<&str> = line.split('\t').collect();
+            Some((
+                cols.first()?.parse().ok()?,
+                wpa_unescape(cols.get(1)?),
+                cols.get(3).is_some_and(|f| f.contains("[CURRENT]")),
+            ))
+        })
+        .collect()
+}
+
+/// An SSID as SET_NETWORK takes it without quoting trouble: hex bytes.
+pub fn wpa_hex(s: &str) -> String {
+    s.bytes().map(|b| format!("{b:02x}")).collect()
+}
+
+/// "key=value" lines of STATUS.
+pub fn parse_wpa_status(text: &str) -> std::collections::HashMap<String, String> {
+    text.lines()
+        .filter_map(|l| l.split_once('='))
+        .map(|(k, v)| (k.to_owned(), v.to_owned()))
+        .collect()
+}
+
 /// How alike two belts' responses are, 0..100 %: the cosine of the two curves
 /// between lo and hi Hz (1 when they have the same shape).
 pub fn belt_similarity(a: &Psd, b: &Psd, lo: f64, hi: f64) -> Option<f64> {
@@ -2593,5 +2718,39 @@ mod tests {
             assert_eq!(fx.recommended, Some(("mzv".into(), 56.4)));
             assert_eq!(fy.recommended, Some(("zv".into(), 46.0)));
         }
+    }
+
+    #[test]
+    fn wifi_scan_saved_and_status() {
+        let scan = "bssid / frequency / signal level / flags / ssid\n\
+            aa:aa:aa:aa:aa:01\t5200\t-55\t[WPA-PSK-CCMP+TKIP][WPA2-PSK-CCMP+TKIP][WPS][ESS]\tHome\n\
+            aa:aa:aa:aa:aa:02\t2457\t-65\t[WPA2-PSK-CCMP][ESS]\tHome\n\
+            aa:aa:aa:aa:aa:03\t2452\t-73\t[WPA2-PSK+SAE-CCMP][SAE-H2E][ESS]\tMixed\n\
+            aa:aa:aa:aa:aa:04\t2412\t-80\t[SAE-CCMP][ESS]\tOnly WPA3\n\
+            aa:aa:aa:aa:aa:05\t2437\t-60\t[ESS]\tCafe \\\"free\\\"\n\
+            aa:aa:aa:aa:aa:06\t2437\t-50\t[WPA2-PSK-CCMP][ESS]\t\\x00\\x00\n\
+            aa:aa:aa:aa:aa:07\t2437\t-90\t[WEP][ESS]\t\\xd0\\x94\\xd0\\xbe\\xd0\\xbc\n";
+        let nets = parse_wifi_scan(scan);
+        let names: Vec<&str> = nets.iter().map(|n| n.ssid.as_str()).collect();
+        assert_eq!(
+            names,
+            ["Home", "Cafe \"free\"", "Mixed", "Only WPA3", "Дом"]
+        );
+        assert_eq!(nets[0].freq, 5200);
+        assert_eq!(nets[0].auth, WifiAuth::Psk);
+        assert_eq!(nets[1].auth, WifiAuth::Open);
+        assert_eq!(nets[2].auth, WifiAuth::Psk);
+        assert_eq!(nets[3].auth, WifiAuth::Sae);
+        assert_eq!(nets[4].auth, WifiAuth::Other);
+        let saved = parse_wifi_saved(
+            "network id / ssid / bssid / flags\n0\tHome\tany\t[CURRENT]\n1\tOld net\tany\t[DISABLED]\n",
+        );
+        assert_eq!(
+            saved,
+            [(0, "Home".into(), true), (1, "Old net".into(), false)]
+        );
+        assert_eq!(wpa_hex("Дом"), "d094d0bed0bc");
+        let st = parse_wpa_status("wpa_state=COMPLETED\nssid=Home\nip_address=192.168.0.20\n");
+        assert_eq!(st["wpa_state"], "COMPLETED");
     }
 }

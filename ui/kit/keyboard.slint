@@ -18,13 +18,37 @@ component KeyCap inherits Rectangle {
     accessible-role: button;
     accessible-label: root.accessible-name != "" ? root.accessible-name : root.label;
     accessible-action-default => { root.pressed(); }
-    Text {
+    // ⌫ and ⏎ are drawn: the embedded font has neither glyph.
+    property <bool> drawn: root.label == "⌫" || root.label == "⏎";
+    if !root.drawn: Text {
         text: root.label;
         color: root.primary ? Tokens.accent-ink : Tokens.text;
         font-size: 19px;
         font-weight: 600;
         horizontal-alignment: center;
         vertical-alignment: center;
+    }
+    if root.label == "⌫": Path {
+        width: 24px;
+        height: 24px;
+        viewbox-width: 24;
+        viewbox-height: 24;
+        commands: "M9 5 H20 A1 1 0 0 1 21 6 V18 A1 1 0 0 1 20 19 H9 L3 12 Z M12 9 L17 14 M17 9 L12 14";
+        stroke: Tokens.text;
+        stroke-width: 2px;
+        fill: transparent;
+        stroke-line-cap: round;
+    }
+    if root.label == "⏎": Path {
+        width: 24px;
+        height: 24px;
+        viewbox-width: 24;
+        viewbox-height: 24;
+        commands: "M20 5 V12 A2 2 0 0 1 18 14 H5 M9 10 L5 14 L9 18";
+        stroke: root.primary ? Tokens.accent-ink : Tokens.text;
+        stroke-width: 2.2px;
+        fill: transparent;
+        stroke-line-cap: round;
     }
     ta := TouchArea { clicked => { root.pressed(); } }
 }

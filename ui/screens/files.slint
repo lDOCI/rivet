@@ -291,7 +291,7 @@ export component FilesScreen inherits VerticalLayout {
 }
 
 // A line of text typed on the on-screen keyboard.
-component TextLine inherits Rectangle {
+export component TextLine inherits Rectangle {
     in property <string> text;
     in property <string> placeholder;
     height: 64px;
@@ -299,15 +299,25 @@ component TextLine inherits Rectangle {
     background: Tokens.surface-1;
     border-width: 2px;
     border-color: Tokens.accent;
-    Text {
+    HorizontalLayout {
         x: 18px;
         width: parent.width - 36px;
-        text: root.text != "" ? root.text + "▏" : "▏";
-        color: Tokens.text;
-        font-size: 19px;
-        font-weight: 600;
-        vertical-alignment: center;
-        overflow: elide;
+        Text {
+            horizontal-stretch: 0;
+            text: root.text;
+            color: Tokens.text;
+            font-size: 19px;
+            font-weight: 600;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+        // The caret: drawn, the font has no thin bar.
+        VerticalLayout {
+            alignment: center;
+            padding-left: 1px;
+            Rectangle { width: 2px; height: 24px; background: Tokens.accent; }
+        }
+        Rectangle { horizontal-stretch: 1; }
     }
     if root.text == "": Text {
         x: 30px;

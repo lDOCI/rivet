@@ -2103,3 +2103,60 @@ msgstr "Ремни отличаются. Проверьте оба натяжи�
 
 msgid "Check"
 msgstr "Проверить"
+
+msgid "{} GHz"
+msgstr "{} ГГц"
+
+msgid "open"
+msgstr "открытая"
+
+msgid "joined before"
+msgstr "сохранена"
+
+msgid "strong signal"
+msgstr "сильный сигнал"
+
+msgid "fair signal"
+msgstr "средний сигнал"
+
+msgid "weak signal"
+msgstr "слабый сигнал"
+
+msgid "Could not join “{}”. Check the password and try again."
+msgstr "Не удалось подключиться к «{}». Проверьте пароль и попробуйте снова."
+
+msgid "joining “{}”…"
+msgstr "подключаюсь к «{}»…"
+
+msgid "looking…"
+msgstr "ищу…"
+
+msgid "Network “{}”"
+msgstr "Сеть «{}»"
+
+msgid "Network name"
+msgstr "Имя сети"
+
+msgid "Password"
+msgstr "Пароль"
+
+msgid "Hide"
+msgstr "Скрыть"
+
+msgid "Show"
+msgstr "Показать"
+
+msgid "An open network: no password."
+msgstr "Открытая сеть: пароль не нужен."
+
+msgid "Next"
+msgstr "Далее"
+
+msgid "Joining…"
+msgstr "Подключаюсь…"
+
+msgid "Join"
+msgstr "Подключиться"
+
+msgid "The printer stays on its network until the new one answers."
+msgstr "Принтер остаётся в своей сети, пока новая не ответит."

@@ -312,13 +312,13 @@ r16 = "reset"
 component = "NetworkForm"
 en = { "Сеть" = "Network", "Подключено" = "Connected", "ДОСТУПНЫЕ СЕТИ" = "NETWORKS AROUND", "Скрытая сеть" = "Hidden network", "ввести имя вручную" = "type its name", "ПРОЧЕЕ" = "OTHER", "Имя хоста" = "Host name", "Ethernet" = "Ethernet", "5 ГГц · WPA2" = "5 GHz · WPA2" }
 [Network.rows]
-r0 = { name = "wifi", later = "Moonraker has no API to switch Wi-Fi" }
+r0 = { name = "wifi", later = "switching the radio off from the screen would cut the printer off the network it is reached by" }
 r1 = { name = "connected", data = ["title", "value", "sub"] }
-r2 = { name = "around", later = "Moonraker has no Wi-Fi scan" }
-r3 = { name = "nets", later = "Moonraker has no Wi-Fi scan" }
+r2 = "around"
+r3 = { name = "nets", repeat = true }
 r4 = { name = "nets", example = true }
 r5 = { name = "nets", example = true }
-r6 = { name = "hidden", later = "Moonraker has no API to join a network" }
+r6 = "hidden"
 r7 = "other"
 r8 = { name = "host", data = ["value"] }
 r9 = { name = "ethernet", data = ["value"] }

@@ -239,6 +239,10 @@ pub enum Command {
     TempGraph(f32),
     /// Vibration and belt curves, drawn for the plot's width / height.
     DrawResonance(f32),
+    /// Look for Wi-Fi networks around (wpa_supplicant on this machine).
+    WifiScan,
+    /// Join a network: name, "open"/"psk"/"sae", password ("" for a saved one).
+    WifiJoin(String, String, String),
     /// Previews for these Files grid entries (the ones near the glass).
     Thumbs(Vec<String>),
     /// Read the messages again; mark all of them read.
@@ -965,7 +969,7 @@ async fn list_history(client: &Client, ui: &slint::Weak<AppWindow>) {
                     value: match status.as_str() {
                         "completed" => "✓",
                         "cancelled" => "■",
-                        _ => "✕",
+                        _ => "✗",
                     }
                     .into(),
                     shown: true,
@@ -1504,6 +1508,96 @@ fn load_thumbs(
                 });
             });
         }
+    });
+}
+
+/// Networks around, for the Network screen: the connected one is on its own
+/// row, so the list has the others, strongest first.
+async fn wifi_scan(ui: &slint::Weak<AppWindow>) {
+    if !crate::wifi::available() {
+        let _ = ui.upgrade_in_event_loop(|ui| ui.set_wifi_available(false));
+        return;
+    }
+    let _ = ui.upgrade_in_event_loop(|ui| {
+        ui.set_wifi_available(true);
+        ui.set_wifi_scanning(true);
+    });
+    let view = tokio::task::spawn_blocking(crate::wifi::scan)
+        .await
+        .unwrap_or_else(|e| Err(e.to_string()));
+    let view = match view {
+        Ok(v) => v,
+        Err(err) => {
+            tracing::warn!(%err, "Wi-Fi scan failed");
+            let _ = ui.upgrade_in_event_loop(|ui| ui.set_wifi_scanning(false));
+            return;
+        }
+    };
+    let nets: Vec<model::WifiNet> = view
+        .nets
+        .into_iter()
+        .filter(|n| Some(&n.ssid) != view.current.as_ref() && n.auth != model::WifiAuth::Other)
+        .collect();
+    let saved = view.saved;
+    let current = view.current.unwrap_or_default();
+    let _ = ui.upgrade_in_event_loop(move |ui| {
+        ui.set_wifi_current(current.into());
+        let words = slint::ComponentHandle::global::<crate::Strings>(&ui);
+        let rows: Vec<crate::FormRow> = nets
+            .iter()
+            .enumerate()
+            .map(|(i, n)| {
+                let band = if n.freq >= 4900 { "5" } else { "2.4" };
+                let security = match n.auth {
+                    model::WifiAuth::Open => words.get_open_net().to_string(),
+                    model::WifiAuth::Sae => "WPA3".into(),
+                    _ => "WPA2".into(),
+                };
+                let signal = if n.signal >= -60 {
+                    words.get_signal_strong()
+                } else if n.signal >= -72 {
+                    words.get_signal_fair()
+                } else {
+                    words.get_signal_weak()
+                };
+                let mut sub = format!(
+                    "{} · {security} · {signal}",
+                    words.get_ghz().replace("{}", band)
+                );
+                if saved.contains(&n.ssid) {
+                    sub = format!("{sub} · {}", words.get_saved_net());
+                }
+                crate::FormRow {
+                    kind: "link".into(),
+                    key: i.to_string().into(),
+                    title: n.ssid.clone().into(),
+                    sub: sub.into(),
+                    shown: true,
+                    ..Default::default()
+                }
+            })
+            .collect();
+        let model_of = |v: Vec<slint::SharedString>| slint::ModelRc::new(slint::VecModel::from(v));
+        ui.set_wifi_ssids(model_of(
+            nets.iter().map(|n| n.ssid.clone().into()).collect(),
+        ));
+        ui.set_wifi_auths(model_of(
+            nets.iter()
+                .map(|n| match n.auth {
+                    model::WifiAuth::Open => "open",
+                    model::WifiAuth::Sae => "sae",
+                    _ => "psk",
+                })
+                .map(Into::into)
+                .collect(),
+        ));
+        ui.set_wifi_saved(slint::ModelRc::new(slint::VecModel::from(
+            nets.iter()
+                .map(|n| saved.contains(&n.ssid))
+                .collect::<Vec<bool>>(),
+        )));
+        ui.set_wifi_rows(slint::ModelRc::new(slint::VecModel::from(rows)));
+        ui.set_wifi_scanning(false);
     });
 }
 
@@ -2328,6 +2422,51 @@ async fn execute(
             calib_info(client, ui).await;
             result
         }
+        Command::WifiScan => {
+            wifi_scan(ui).await;
+            Ok(())
+        }
+        Command::WifiJoin(ssid, auth, password) => {
+            let _ = ui.upgrade_in_event_loop(|ui| {
+                ui.set_join_busy(true);
+                ui.set_join_error("".into());
+            });
+            let (s, p) = (ssid.clone(), password.clone());
+            let kind = match auth.as_str() {
+                "open" => model::WifiAuth::Open,
+                "sae" => model::WifiAuth::Sae,
+                _ => model::WifiAuth::Psk,
+            };
+            let result = tokio::task::spawn_blocking(move || crate::wifi::join(&s, kind, &p))
+                .await
+                .unwrap_or_else(|e| Err(e.to_string()));
+            let ok = result.is_ok();
+            if let Err(err) = &result {
+                tracing::warn!(%err, ssid, "Wi-Fi join failed");
+            }
+            let name = ssid.clone();
+            let _ = ui.upgrade_in_event_loop(move |ui| {
+                ui.set_join_busy(false);
+                if ok {
+                    ui.set_join_password("".into());
+                    if ui.get_screen() == "wifi-join" {
+                        ui.set_screen("set-network".into());
+                    }
+                } else {
+                    let words = slint::ComponentHandle::global::<crate::Strings>(&ui);
+                    ui.set_join_error(words.get_join_failed().replace("{}", &name).into());
+                    // A tap on a saved network failed: let the password be typed.
+                    ui.set_screen("wifi-join".into());
+                }
+            });
+            if ok {
+                // The new address comes with the lease; give DHCP a moment.
+                tokio::time::sleep(Duration::from_secs(4)).await;
+                system_info(client, ui).await;
+            }
+            wifi_scan(ui).await;
+            Ok(())
+        }
         Command::Thumbs(paths) => {
             load_thumbs(client, ui, thumbs, paths.clone());
             Ok(())
@@ -2702,9 +2841,17 @@ fn push(ui: &slint::Weak<AppWindow>, s: Snapshot) {
         ui.set_link_state(link.into());
         ui.set_klippy_message(s.klippy_message.as_str().into());
         ui.set_error_kind(model::error_kind(&s.klippy_message).into());
-        ui.set_extruder_temp(s.extruder.temperature as f32);
+        // Whole degrees, as every screen shows them, and only when they change:
+        // a reading moves by hundredths several times a second, and each change
+        // would redraw the dials (most of Rivet's idle CPU while heating).
+        let whole = |t: f64| t.round() as f32;
+        if ui.get_extruder_temp() != whole(s.extruder.temperature) {
+            ui.set_extruder_temp(whole(s.extruder.temperature));
+        }
+        if ui.get_bed_temp() != whole(s.bed.temperature) {
+            ui.set_bed_temp(whole(s.bed.temperature));
+        }
         ui.set_extruder_target(s.extruder.target as f32);
-        ui.set_bed_temp(s.bed.temperature as f32);
         ui.set_bed_target(s.bed.target as f32);
         ui.set_print_state(s.print_state.as_str().into());
         ui.set_filename(s.filename.as_str().into());

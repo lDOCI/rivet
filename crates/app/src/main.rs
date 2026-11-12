@@ -592,6 +592,15 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
             let _ = tx.send(Command::TempGraph(aspect));
         });
     }
+    ui.on_mask(|n| "•".repeat(n.clamp(0, 64) as usize).into());
+    ui.set_wifi_available(rivet::wifi::available());
+    ui.on_wifi_scan(send(Command::WifiScan));
+    {
+        let tx = tx.clone();
+        ui.on_wifi_join(move |ssid, auth, password| {
+            let _ = tx.send(Command::WifiJoin(ssid.into(), auth.into(), password.into()));
+        });
+    }
     {
         let tx = tx.clone();
         let weak = ui.as_weak();
