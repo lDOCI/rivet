@@ -1,0 +1,207 @@
+// Bed mesh and bed screws: the prototype's BedMesh and Screws pages.
+import { Tokens } from "../kit/tokens.slint";
+import { Icon, Header, PrimaryButton } from "../kit/controls.slint";
+import { LinkRow } from "../kit/rows.slint";
+import { ScrollList } from "../kit/scroll.slint";
+import { Format } from "../kit/format.slint";
+
+// One probed point: its height and colour (blue lower, orange higher).
+export struct MeshCell { text: string, color: color }
+
+export component BedMeshScreen inherits Rectangle {
+    horizontal-stretch: 1;
+    // Rows from the back of the bed to the front, as seen from above.
+    in property <[MeshCell]> cells;
+    in property <int> cols: 5;
+    in property <float> range: -1;
+    in property <string> profile;
+    in property <[string]> profiles;
+    // A calibration is running.
+    in property <bool> busy;
+    // A print is running: no probing then.
+    in property <bool> printing;
+    callback probe;
+    callback open-profiles;
+    callback back;
+    property <int> rows: root.cols > 0 ? ceil(root.cells.length / root.cols) : 0;
+    HorizontalLayout {
+        padding: Tokens.pad;
+        spacing: 20px;
+        VerticalLayout {
+            width: 340px;
+            spacing: 10px;
+            HorizontalLayout { spacing: 14px; height: Tokens.touch; Header { title: @tr("Bed mesh"); back-clicked => { root.back(); } } }
+            grid := Rectangle {
+                height: 348px;
+                border-radius: 24px;
+                background: Tokens.surface-1;
+                accessible-role: image;
+                accessible-label: @tr("Bed mesh {} by {}", root.cols, root.rows);
+                property <length> gap: 5px;
+                property <length> cw: (self.width - 24px - (root.cols - 1) * self.gap) / max(1, root.cols);
+                property <length> ch: (self.height - 24px - (root.rows - 1) * self.gap) / max(1, root.rows);
+                for c[i] in root.cells: Rectangle {
+                    x: 12px + mod(i, root.cols) * (grid.cw + grid.gap);
+                    y: 12px + floor(i / root.cols) * (grid.ch + grid.gap);
+                    width: grid.cw;
+                    height: grid.ch;
+                    border-radius: 10px;
+                    background: c.color;
+                    Text { text: c.text; color: #ffffff; font-size: root.cols > 6 ? 10px : 13px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+                }
+                if root.cells.length == 0: Text { text: @tr("No mesh yet"); color: Tokens.text-dim; font-size: Tokens.body; horizontal-alignment: center; vertical-alignment: center; }
+            }
+            HorizontalLayout {
+                spacing: 10px;
+                Text { text: @tr("lower"); color: Tokens.text-dim; font-size: 13px; vertical-alignment: center; }
+                VerticalLayout { alignment: center; horizontal-stretch: 1; Rectangle { height: 6px; border-radius: 3px; background: @linear-gradient(90deg, #2563eb 0%, #2a2f37 50%, #ea580c 100%); } }
+                Text { text: @tr("higher"); color: Tokens.text-dim; font-size: 13px; vertical-alignment: center; }
+            }
+        }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            spacing: 10px;
+            Text { text: @tr("Spread across the bed"); color: Tokens.text-dim; font-size: 15px; font-weight: 600; }
+            HorizontalLayout {
+                alignment: start;
+                spacing: 6px;
+                Text { text: root.range >= 0 ? Format.fixed(root.range, 2) : "—"; color: Tokens.text; font-size: 64px; font-weight: 800; }
+                Text { text: @tr("mm"); color: Tokens.text-dim; font-size: 26px; font-weight: 800; vertical-alignment: bottom; }
+            }
+            if root.range >= 0: HorizontalLayout {
+                alignment: start;
+                Rectangle {
+                    height: 34px;
+                    border-radius: 17px;
+                    background: root.range <= 0.3 ? Tokens.accent-soft : #fbbf2426;
+                    HorizontalLayout {
+                        padding-left: 14px;
+                        padding-right: 14px;
+                        Text {
+                            text: root.range <= 0.3 ? @tr("Fine: the mesh compensates") : @tr("Uneven: level the bed with its screws");
+                            color: root.range <= 0.3 ? #5eead4 : Tokens.warn;
+                            font-size: 15px;
+                            font-weight: 600;
+                            vertical-alignment: center;
+                        }
+                    }
+                }
+            }
+            Text {
+                text: (root.profile != "" ? @tr("Profile “{}”.", root.profile) : @tr("No profile loaded.")) + " " + @tr("Over 0.3 mm: level the bed with its screws.");
+                color: Tokens.text-dim;
+                font-size: 15px;
+                wrap: word-wrap;
+            }
+            Rectangle { vertical-stretch: 1; }
+            PrimaryButton {
+                min-height: 80px;
+                text: root.busy ? @tr("Probing…") : @tr("Probe again");
+                sub: root.printing ? @tr("after the print") : "";
+                enabled: !root.busy && !root.printing;
+                clicked => { root.probe(); }
+            }
+            if root.profiles.length > 0: Rectangle {
+                height: 64px;
+                border-radius: 20px;
+                background: prof-ta.pressed ? Tokens.surface-2 : Tokens.surface-1;
+                accessible-role: button;
+                accessible-label: @tr("Profiles");
+                accessible-action-default => { root.open-profiles(); }
+                Text { text: @tr("Profiles: {} ›", root.profiles-text); color: Tokens.text; font-size: 16px; font-weight: 600; horizontal-alignment: center; vertical-alignment: center; overflow: elide; }
+                prof-ta := TouchArea { clicked => { root.open-profiles(); } }
+            }
+        }
+    }
+    in property <string> profiles-text;
+}
+
+export component MeshProfilesScreen inherits VerticalLayout {
+    horizontal-stretch: 1;
+    in property <[string]> profiles;
+    in property <string> current;
+    callback load(string);
+    callback back;
+    padding: Tokens.pad;
+    padding-bottom: 0;
+    spacing: Tokens.gap-s;
+    Header { title: @tr("Mesh profiles"); back-clicked => { root.back(); } }
+    ScrollList {
+        vertical-stretch: 1;
+        for p in root.profiles: LinkRow {
+            title: p;
+            value: p == root.current ? @tr("loaded") : @tr("load");
+            clicked => { if (p != root.current) { root.load(p); } }
+        }
+    }
+}
+
+// One screw: where it is on the bed (0..1, y from the back), its name, what to
+// do ("none" not checked, "base", "level", "cw", "ccw") and how far ("¼").
+export struct ScrewRow { name: string, x: float, y: float, state: string, amount: string }
+
+export component ScrewsScreen inherits Rectangle {
+    horizontal-stretch: 1;
+    in property <[ScrewRow]> screws;
+    in property <bool> busy;
+    in property <bool> printing;
+    callback check;
+    callback back;
+    HorizontalLayout {
+        padding: Tokens.pad;
+        spacing: 20px;
+        VerticalLayout {
+            width: 432px;
+            spacing: 12px;
+            Header { title: @tr("Bed screws"); back-clicked => { root.back(); } }
+            plate := Rectangle {
+                vertical-stretch: 1;
+                border-radius: 24px;
+                background: Tokens.surface-1;
+                Text { text: @tr("the bed from above"); color: Tokens.text-faint; font-size: 13px; horizontal-alignment: center; vertical-alignment: center; }
+                for s in root.screws: Rectangle {
+                    width: 172px;
+                    height: 78px;
+                    x: 14px + s.x * (parent.width - 28px - self.width);
+                    y: 14px + s.y * (parent.height - 28px - self.height);
+                    border-radius: 16px;
+                    background: s.state == "cw" || s.state == "ccw" ? #134e4a99 : Tokens.surface-2;
+                    VerticalLayout {
+                        padding: 12px;
+                        spacing: 2px;
+                        Text { text: s.name; color: Tokens.text-2; font-size: 14px; overflow: elide; }
+                        Text {
+                            text: s.state == "none" ? "—" : s.state == "base" ? @tr("base") : s.state == "level" ? "✓" : (s.state == "cw" ? "↻ " : "↺ ") + s.amount;
+                            color: s.state == "base" ? Tokens.text : Tokens.accent;
+                            font-size: 20px;
+                            font-weight: 800;
+                        }
+                        Text {
+                            text: s.state == "none" ? @tr("not checked yet") : s.state == "base" ? @tr("don't turn") : s.state == "level" ? @tr("level") : s.state == "cw" ? @tr("clockwise") : @tr("anticlockwise");
+                            color: Tokens.text-dim;
+                            font-size: 13px;
+                        }
+                    }
+                }
+            }
+        }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            padding-top: 76px;
+            Text {
+                text: @tr("Turn the screws as far as shown and check again. Repeat until all are “level”.");
+                color: Tokens.text;
+                font-size: 16px;
+                wrap: word-wrap;
+            }
+            Rectangle { vertical-stretch: 1; }
+            PrimaryButton {
+                min-height: 80px;
+                text: root.busy ? @tr("Checking…") : @tr("Check again");
+                sub: root.printing ? @tr("after the print") : @tr("the probe touches near each screw");
+                enabled: !root.busy && !root.printing;
+                clicked => { root.check(); }
+            }
+        }
+    }
+}

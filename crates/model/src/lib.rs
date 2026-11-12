@@ -62,6 +62,15 @@ fn is_filament_sensor(name: &str) -> bool {
     name.starts_with("filament_switch_sensor ") || name.starts_with("filament_motion_sensor ")
 }
 
+/// A temperature sensor of a board: the MCU or the host.
+fn is_board_sensor(name: &str) -> bool {
+    let lower = name.to_ascii_lowercase();
+    lower.starts_with("temperature_sensor ")
+        && ["mcu", "host", "raspberry"]
+            .iter()
+            .any(|w| lower.contains(w))
+}
+
 /// An `output_pin` meant for the user (names starting with `_` are internal).
 fn is_user_pin(name: &str) -> bool {
     name.strip_prefix("output_pin ")
@@ -86,6 +95,8 @@ pub struct Caps {
     pub power_devices: bool,
     pub job_queue: bool,
     pub load_filament: bool,
+    /// The AD5M Pro's air sensor (`flashforge_tvoc`).
+    pub air_sensor: bool,
 }
 
 impl Caps {
@@ -109,6 +120,7 @@ impl Caps {
             power_devices: component("power"),
             job_queue: component("job_queue"),
             load_filament: macro_("LOAD_FILAMENT") && macro_("UNLOAD_FILAMENT"),
+            air_sensor: has("flashforge_tvoc"),
         }
     }
 }
@@ -129,11 +141,20 @@ pub fn subscription_for(available: &[String]) -> Value {
     let mut sub = subscription();
     if let Some(objects) = sub["objects"].as_object_mut() {
         for name in available.iter().filter(|n| {
-            n.starts_with("led ") || is_fan_object(n) || is_user_pin(n) || is_filament_sensor(n)
+            n.starts_with("led ")
+                || is_fan_object(n)
+                || is_user_pin(n)
+                || is_filament_sensor(n)
+                || is_board_sensor(n)
         }) {
             objects.insert(name.clone(), Value::Null);
         }
-        for name in ["firmware_retraction", "exclude_object"] {
+        for name in [
+            "firmware_retraction",
+            "exclude_object",
+            "flashforge_tvoc",
+            "flashforge_loadcell",
+        ] {
             if available.iter().any(|n| n == name) {
                 objects.insert(name.to_owned(), Value::Null);
             }
@@ -175,6 +196,8 @@ pub struct PrinterState {
     /// The prompt being built between `prompt_begin` and `prompt_show`.
     prompt_draft: Option<Prompt>,
     pub prompt_revision: u64,
+    /// Range of the last PROBE_ACCURACY, mm.
+    pub probe_range: Option<f64>,
     status: Value,
 }
 
@@ -246,6 +269,8 @@ pub struct Snapshot {
     /// Live Z offset, mm (`gcode_move.homing_origin[2]`).
     pub z_offset: f64,
     pub pressure_advance: f64,
+    /// Pressure advance smooth time, s.
+    pub pa_smooth: f64,
     /// Real toolhead speed, mm/s (`motion_report.live_velocity`).
     pub live_velocity: f64,
     /// Part fan, percent.
@@ -277,6 +302,22 @@ pub struct Snapshot {
     pub filament_out: bool,
     /// Objects of the print (`exclude_object`), when the slicer labelled them.
     pub objects: Vec<PrintObject>,
+    /// The first runout sensor: its name, switched on, sees filament.
+    pub runout: Option<(String, bool, bool)>,
+    /// Air quality (AD5M Pro): TVOC, CO₂, formaldehyde; `None` until it reports.
+    pub air: Option<[f64; 3]>,
+    /// The load cell under the bed (AD5M), grams.
+    pub load_g: Option<f64>,
+    /// MCU / host temperatures, by sensor name.
+    pub board_temps: Vec<(String, f64)>,
+    /// Range of the last PROBE_ACCURACY, mm.
+    pub probe_range: Option<f64>,
+    /// Motion limits: velocity, acceleration, square corner velocity, minimum
+    /// cruise ratio (0..1; `None` on Klipper versions without it).
+    pub max_velocity: f64,
+    pub max_accel: f64,
+    pub corner_velocity: f64,
+    pub cruise_ratio: Option<f64>,
 }
 
 /// One labelled object of the print, by its outline's bounding box (mm).
@@ -762,6 +803,162 @@ pub fn parse_file_meta(result: &Value) -> FileMeta {
     }
 }
 
+/// What the calibration screens show, from the saved config and live status.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct CalibInfo {
+    pub has_probe: bool,
+    /// Z offset saved in the config (`probe.z_offset`), mm.
+    pub z_offset: Option<f64>,
+    pub probe_offset: [f64; 2],
+    pub probe_samples: u32,
+    pub has_mesh: bool,
+    /// Loaded mesh profile ("" when none) and saved profile names.
+    pub mesh_profile: String,
+    pub mesh_profiles: Vec<String>,
+    /// Probed heights, rows from the front (min Y) to the back.
+    pub mesh: Vec<Vec<f64>>,
+    pub has_screws: bool,
+    /// Screws: name, X, Y, and the last result (turn "CW"/"CCW", "HH:MM", base).
+    pub screws: Vec<Screw>,
+    /// PID of the nozzle and the bed: Kp, Ki, Kd.
+    pub pid: [Option<[f64; 3]>; 2],
+    /// Input shaper per axis: type and frequency.
+    pub shaper: [Option<(String, f64)>; 2],
+    pub has_accel: bool,
+    /// Stepper drivers: section ("tmc2209 stepper_x"), run current, quiet mode.
+    pub drivers: Vec<(String, f64, bool)>,
+    pub has_tare: bool,
+}
+
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Screw {
+    pub name: String,
+    pub x: f64,
+    pub y: f64,
+    /// "CW" / "CCW" with "HH:MM" (turns:minutes of a turn); None before a check.
+    pub turn: Option<(String, String)>,
+    pub base: bool,
+}
+
+impl CalibInfo {
+    pub fn read(cfg: &Value, status: &Value, objects: &[String]) -> Self {
+        let has = |name: &str| objects.iter().any(|o| o == name);
+        let num = |sec: &str, key: &str| cfg[sec][key].as_f64();
+        let pid = |sec: &str| {
+            Some([
+                num(sec, "pid_kp")?,
+                num(sec, "pid_ki")?,
+                num(sec, "pid_kd")?,
+            ])
+        };
+        let shaper = |axis: &str| {
+            let t = cfg["input_shaper"][format!("shaper_type_{axis}")]
+                .as_str()
+                .or_else(|| cfg["input_shaper"]["shaper_type"].as_str())?;
+            Some((
+                t.to_ascii_uppercase(),
+                num("input_shaper", &format!("shaper_freq_{axis}"))?,
+            ))
+        };
+        let mesh_status = &status["bed_mesh"];
+        let mesh: Vec<Vec<f64>> = mesh_status["probed_matrix"]
+            .as_array()
+            .map(|rows| {
+                rows.iter()
+                    .filter_map(|r| {
+                        r.as_array()
+                            .map(|r| r.iter().filter_map(Value::as_f64).collect::<Vec<_>>())
+                    })
+                    .filter(|r| !r.is_empty())
+                    .collect()
+            })
+            .unwrap_or_default();
+        let results = &status["screws_tilt_adjust"]["results"];
+        let screws = (1..=8)
+            .filter_map(|i| {
+                let key = format!("screw{i}");
+                let pos = cfg["screws_tilt_adjust"][&key].as_array()?;
+                let r = &results[&key];
+                Some(Screw {
+                    name: cfg["screws_tilt_adjust"][format!("{key}_name")]
+                        .as_str()
+                        .map_or_else(|| format!("{i}"), str::to_owned),
+                    x: pos.first()?.as_f64()?,
+                    y: pos.get(1)?.as_f64()?,
+                    turn: r["sign"]
+                        .as_str()
+                        .zip(r["adjust"].as_str())
+                        .map(|(s, a)| (s.to_owned(), a.to_owned())),
+                    base: r["is_base"].as_bool().unwrap_or(false),
+                })
+            })
+            .collect();
+        let drivers = objects
+            .iter()
+            .filter(|o| o.starts_with("tmc"))
+            .map(|o| {
+                let current = status[o]["run_current"]
+                    .as_f64()
+                    .or_else(|| num(o, "run_current"))
+                    .unwrap_or(0.0);
+                // StealthChop below this speed: "quiet" when it is set high.
+                let quiet = num(o, "stealthchop_threshold").is_some_and(|t| t > 0.0);
+                (o.clone(), current, quiet)
+            })
+            .collect();
+        let mut profiles: Vec<String> = mesh_status["profiles"]
+            .as_object()
+            .map(|p| p.keys().cloned().collect())
+            .unwrap_or_default();
+        profiles.sort();
+        Self {
+            has_probe: has("probe")
+                || objects
+                    .iter()
+                    .any(|o| o == "bltouch" || o.starts_with("probe_eddy") || o == "beacon"),
+            z_offset: num("probe", "z_offset"),
+            probe_offset: [
+                num("probe", "x_offset").unwrap_or(0.0),
+                num("probe", "y_offset").unwrap_or(0.0),
+            ],
+            probe_samples: num("probe", "samples").unwrap_or(1.0) as u32,
+            has_mesh: has("bed_mesh"),
+            mesh_profile: mesh_status["profile_name"]
+                .as_str()
+                .unwrap_or_default()
+                .to_owned(),
+            mesh_profiles: profiles,
+            mesh,
+            has_screws: has("screws_tilt_adjust"),
+            screws,
+            pid: [pid("extruder"), pid("heater_bed")],
+            shaper: [shaper("x"), shaper("y")],
+            has_accel: objects.iter().any(|o| {
+                o.starts_with("adxl345")
+                    || o.starts_with("lis2dw")
+                    || o.starts_with("mpu9250")
+                    || o.starts_with("lis3dh")
+            }),
+            drivers,
+            has_tare: has("gcode_macro LOAD_CELL_TARE"),
+        }
+    }
+}
+
+/// "probe accuracy results: maximum …, range 0.004000, …" → the range, mm.
+pub fn probe_range(line: &str) -> Option<f64> {
+    let rest = line.split("probe accuracy results:").nth(1)?;
+    let after = rest.split("range").nth(1)?;
+    after
+        .trim()
+        .trim_start_matches(':')
+        .split(',')
+        .next()?
+        .trim()
+        .parse()
+        .ok()
+}
+
 /// A message for the Messages screen. `time` 0: a standing condition (no date).
 #[derive(Debug, Clone, PartialEq)]
 pub struct Message {
@@ -1198,6 +1395,7 @@ impl PrinterState {
                 .and_then(Value::as_f64)
                 .unwrap_or(0.0),
             pressure_advance: self.f64("extruder", "pressure_advance"),
+            pa_smooth: self.f64("extruder", "smooth_time"),
             live_velocity: self.f64("motion_report", "live_velocity"),
             fan_percent: self.f64("fan", "speed") * 100.0,
             fans: self.fans(),
@@ -1238,6 +1436,57 @@ impl PrinterState {
                 .and_then(Value::as_bool)
                 .unwrap_or(false),
             objects: self.print_objects(),
+            runout: self.status.as_object().and_then(|objects| {
+                objects
+                    .iter()
+                    .find(|(n, _)| is_filament_sensor(n))
+                    .map(|(n, v)| {
+                        (
+                            n.split_once(' ')
+                                .map_or(n.as_str(), |(_, name)| name)
+                                .to_owned(),
+                            v["enabled"].as_bool().unwrap_or(true),
+                            v["filament_detected"].as_bool().unwrap_or(false),
+                        )
+                    })
+            }),
+            air: self
+                .status
+                .get("flashforge_tvoc")
+                .filter(|v| v["status"].as_str().is_some_and(|s| s != "unknown"))
+                .map(|v| {
+                    [
+                        v["tvoc"].as_f64().unwrap_or(0.0),
+                        v["co2"].as_f64().unwrap_or(0.0),
+                        v["hcho"].as_f64().unwrap_or(0.0),
+                    ]
+                }),
+            load_g: self
+                .field("flashforge_loadcell", "force_g")
+                .and_then(Value::as_f64),
+            board_temps: self
+                .status
+                .as_object()
+                .map(|objects| {
+                    objects
+                        .iter()
+                        .filter(|(n, _)| is_board_sensor(n))
+                        .filter_map(|(n, v)| {
+                            Some((
+                                n.trim_start_matches("temperature_sensor ").to_owned(),
+                                v["temperature"].as_f64()?,
+                            ))
+                        })
+                        .collect()
+                })
+                .unwrap_or_default(),
+            probe_range: self.probe_range,
+            max_velocity: self.f64("toolhead", "max_velocity"),
+            max_accel: self.f64("toolhead", "max_accel"),
+            corner_velocity: self.f64("toolhead", "square_corner_velocity"),
+            cruise_ratio: self
+                .field("toolhead", "minimum_cruise_ratio")
+                .and_then(Value::as_f64),
             filament_out: self.status.as_object().is_some_and(|objects| {
                 objects.iter().any(|(name, v)| {
                     is_filament_sensor(name)
@@ -1416,6 +1665,79 @@ mod tests {
         assert!(st.prompt_line("// action:prompt_end"));
         assert!(st.prompt.is_none());
         assert!(!st.prompt_line("ok"));
+    }
+
+    #[test]
+    fn calibration_info() {
+        let cfg: Value =
+            serde_json::from_str(include_str!("../tests/fixtures/ad5m-pro/configfile.json"))
+                .unwrap();
+        let cfg = cfg.get("result").unwrap_or(&cfg);
+        let cfg = &cfg["status"]["configfile"]["settings"];
+        let objects: Vec<String> = [
+            "probe",
+            "bed_mesh",
+            "screws_tilt_adjust",
+            "tmc2209 stepper_x",
+            "gcode_macro LOAD_CELL_TARE",
+        ]
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+        let status = serde_json::json!({
+            "bed_mesh": { "profile_name": "", "profiles": { "auto": {} }, "probed_matrix": [[0.1, 0.2], [0.0, -0.1]] },
+            "screws_tilt_adjust": { "results": { "screw2": { "z": 2.0, "sign": "CW", "adjust": "00:15", "is_base": false } } }
+        });
+        let i = CalibInfo::read(cfg, &status, &objects);
+        assert!(i.has_probe && i.has_mesh && i.has_screws && i.has_tare && !i.has_accel);
+        assert_eq!(i.z_offset, Some(-0.275));
+        assert_eq!(i.mesh_profiles, ["auto"]);
+        assert_eq!(i.mesh.len(), 2);
+        assert_eq!(i.screws.len(), 4);
+        assert_eq!(i.screws[0].name, "Left Near");
+        assert_eq!(i.screws[1].turn, Some(("CW".into(), "00:15".into())));
+        assert_eq!(i.shaper[0], Some(("MZV".into(), 56.4)));
+        assert_eq!(i.pid[0].map(|p| p[0]), Some(39.652));
+        assert_eq!(i.drivers[0].1, 0.9);
+        assert_eq!(
+            probe_range(
+                "// probe accuracy results: maximum 2.5, minimum 2.4, range 0.004000, average 2.45"
+            ),
+            Some(0.004)
+        );
+    }
+
+    #[test]
+    fn sensors_and_limits() {
+        let mut st = PrinterState::default();
+        st.apply_status(serde_json::json!({
+            "flashforge_tvoc": { "tvoc": 0, "co2": 0, "hcho": 0, "status": "unknown" },
+            "flashforge_loadcell": { "force_g": -40 },
+            "filament_switch_sensor runout_sensor": { "filament_detected": true, "enabled": true },
+            "temperature_sensor mcu_temp": { "temperature": 41.5 },
+            "toolhead": { "max_velocity": 600.0, "max_accel": 20000.0, "minimum_cruise_ratio": 0.5, "square_corner_velocity": 9.0 }
+        }));
+        let s = st.snapshot();
+        assert_eq!(s.runout, Some(("runout_sensor".into(), true, true)));
+        assert_eq!(s.air, None);
+        assert_eq!(s.load_g, Some(-40.0));
+        assert_eq!(s.board_temps, [("mcu_temp".to_owned(), 41.5)]);
+        assert_eq!(
+            (
+                s.max_velocity,
+                s.max_accel,
+                s.corner_velocity,
+                s.cruise_ratio
+            ),
+            (600.0, 20000.0, 9.0, Some(0.5))
+        );
+        let sub = subscription_for(&[
+            "flashforge_tvoc".into(),
+            "temperature_sensor mcu_temp".into(),
+            "temperature_sensor Load_Cell".into(),
+        ]);
+        assert!(sub["objects"].get("temperature_sensor mcu_temp").is_some());
+        assert!(sub["objects"].get("temperature_sensor Load_Cell").is_none());
     }
 
     #[test]

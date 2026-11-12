@@ -1,0 +1,246 @@
+// Motion limits, service intervals and the camera. The prototype's Limits,
+// Maintenance and Camera pages.
+import { Tokens } from "../kit/tokens.slint";
+import { Icons } from "../kit/icons.slint";
+import { Icon, Header } from "../kit/controls.slint";
+import { ScrollList } from "../kit/scroll.slint";
+import { Format } from "../kit/format.slint";
+
+component LimitCard inherits Rectangle {
+    in property <string> title;
+    in property <string> unit;
+    in property <string> sub;
+    in property <string> value;
+    in property <bool> big: true;
+    callback step(int);
+    callback edit;
+    height: root.big ? 163px : 151px;
+    border-radius: 22px;
+    background: Tokens.surface-1;
+    VerticalLayout {
+        padding: 12px;
+        padding-top: 14px;
+        spacing: 0;
+        HorizontalLayout {
+            padding-left: 6px;
+            spacing: 8px;
+            alignment: start;
+            Text { text: root.title; color: Tokens.text; font-size: root.big ? 20px : 17px; font-weight: 700; }
+            Text { text: root.unit; color: Tokens.text-faint; font-size: 14px; font-weight: 600; vertical-alignment: bottom; }
+        }
+        Rectangle { height: 6px; }
+        HorizontalLayout { padding-left: 6px; Text { text: root.sub; color: Tokens.text-dim; font-size: 14px; overflow: elide; } }
+        Rectangle { vertical-stretch: 1; }
+        HorizontalLayout {
+            height: root.big ? 76px : 64px;
+            spacing: 8px;
+            // −, room for the number, +.
+            for d[i] in [-1, 0, 1]: Rectangle {
+                min-width: d == 0 ? 0px : 72px;
+                max-width: d == 0 ? 2000px : 72px;
+                horizontal-stretch: d == 0 ? 1 : 0;
+                visible: d != 0;
+                border-radius: 18px;
+                background: ta.pressed ? Tokens.surface-3 : Tokens.surface-2;
+                accessible-role: button;
+                accessible-label: root.title + (d < 0 ? " −" : " +");
+                accessible-action-default => { root.step(d); }
+                Text { text: d < 0 ? "−" : "+"; color: Tokens.text; font-size: 30px; font-weight: 500; horizontal-alignment: center; vertical-alignment: center; }
+                ta := TouchArea { clicked => { root.step(d); } }
+            }
+        }
+    }
+    // The number between the buttons; tap to type it.
+    Rectangle {
+        x: 92px;
+        y: parent.height - (root.big ? 88px : 76px);
+        width: parent.width - 184px;
+        height: root.big ? 76px : 64px;
+        border-radius: 18px;
+        background: #0b0d10;
+        accessible-role: button;
+        accessible-label: root.title + ": " + root.value;
+        accessible-action-default => { root.edit(); }
+        Text { text: root.value; color: Tokens.text; font-size: root.big ? 32px : 26px; font-weight: 800; horizontal-alignment: center; vertical-alignment: center; }
+        TouchArea { clicked => { root.edit(); } }
+    }
+}
+
+export component LimitsScreen inherits VerticalLayout {
+    horizontal-stretch: 1;
+    in property <float> velocity;
+    in property <float> accel;
+    in property <float> corner;
+    // 0..1; negative when Klipper has no minimum cruise ratio.
+    in property <float> cruise;
+    // Key ("velocity", "accel", "corner", "cruise") and the new value.
+    callback set(string, float);
+    callback edit(string);
+    callback back;
+    padding: Tokens.pad;
+    padding-bottom: 8px;
+    spacing: 10px;
+    Header { title: @tr("Motion limits"); back-clicked => { root.back(); } }
+    HorizontalLayout {
+        spacing: 10px;
+        LimitCard {
+            horizontal-stretch: 1;
+            preferred-width: 0px;
+            min-width: 0px;
+            title: @tr("Speed");
+            unit: @tr("mm/s");
+            sub: @tr("the head's top speed");
+            value: Format.grouped(root.velocity);
+            step(d) => { root.set("velocity", max(10, root.velocity + d * 50)); }
+            edit => { root.edit("velocity"); }
+        }
+        LimitCard {
+            horizontal-stretch: 1;
+            preferred-width: 0px;
+            min-width: 0px;
+            title: @tr("Acceleration");
+            unit: @tr("mm/s²");
+            sub: @tr("lower: quieter, less ringing");
+            value: Format.grouped(root.accel);
+            step(d) => { root.set("accel", max(100, root.accel + d * 500)); }
+            edit => { root.edit("accel"); }
+        }
+    }
+    Text { text: @tr("FINE TUNING"); color: Tokens.text-faint; font-size: 13px; font-weight: 700; }
+    HorizontalLayout {
+        spacing: 10px;
+        LimitCard {
+            horizontal-stretch: 1;
+            preferred-width: 0px;
+            min-width: 0px;
+            big: false;
+            title: @tr("Corner speed");
+            unit: @tr("mm/s");
+            sub: @tr("higher: faster, rounder corners");
+            value: round(root.corner);
+            step(d) => { root.set("corner", max(1, root.corner + d)); }
+            edit => { root.edit("corner"); }
+        }
+        if root.cruise >= 0: LimitCard {
+            horizontal-stretch: 1;
+            preferred-width: 0px;
+            min-width: 0px;
+            big: false;
+            title: @tr("Smooth cruising");
+            unit: "%";
+            sub: @tr("share of the path at full speed");
+            value: round(root.cruise * 100);
+            step(d) => { root.set("cruise", max(0, min(1, root.cruise + d * 0.05))); }
+            edit => { root.edit("cruise"); }
+        }
+    }
+    Text { text: @tr("Until Klipper restarts."); color: Tokens.text-dim; font-size: 14px; }
+}
+
+// A part that wears with print hours.
+export struct ServiceItem { key: string, title: string, used: float, every: float }
+
+export component ServiceScreen inherits VerticalLayout {
+    horizontal-stretch: 1;
+    in property <[ServiceItem]> items;
+    callback replaced(string);
+    callback back;
+    padding: Tokens.pad;
+    padding-bottom: 0;
+    spacing: 10px;
+    Header { title: @tr("Service"); back-clicked => { root.back(); } }
+    ScrollList {
+        vertical-stretch: 1;
+        for it in root.items: Rectangle {
+            height: 122px;
+            border-radius: 20px;
+            background: Tokens.surface-1;
+            VerticalLayout {
+                padding: 18px;
+                padding-top: 14px;
+                spacing: 10px;
+                HorizontalLayout {
+                    Text { horizontal-stretch: 1; text: it.key == "filter" ? @tr("HEPA filter") : it.key == "nozzle" ? @tr("Nozzle") : it.key == "rails" ? @tr("Rails") : it.title; color: Tokens.text; font-size: 17px; font-weight: 700; }
+                    Text {
+                        text: (it.used >= it.every * 0.9) ? (it.key == "rails" ? @tr("time to grease") : @tr("time to replace")) : @tr("replace in {} h", round(it.every - it.used));
+                        color: (it.used >= it.every * 0.9) ? Tokens.warn : Tokens.text-dim;
+                        font-size: 14px;
+                        font-weight: 600;
+                    }
+                }
+                Rectangle {
+                    height: 10px;
+                    border-radius: 5px;
+                    background: Tokens.surface-3;
+                    Rectangle {
+                        x: 0;
+                        width: parent.width * min(1, it.used / max(1, it.every));
+                        border-radius: 5px;
+                        background: (it.used >= it.every * 0.9) ? Tokens.warn : Tokens.accent;
+                    }
+                }
+                HorizontalLayout {
+                    Text { horizontal-stretch: 1; text: @tr("{} of {} print hours", round(it.used), round(it.every)); color: Tokens.text-dim; font-size: 13px; vertical-alignment: center; }
+                    Rectangle {
+                        width: 100px;
+                        height: 44px;
+                        border-radius: 14px;
+                        background: ta.pressed ? Tokens.surface-3 : Tokens.surface-2;
+                        accessible-role: button;
+                        accessible-label: it.key == "rails" ? @tr("Greased") : @tr("Replaced");
+                        accessible-action-default => { root.replaced(it.key); }
+                        Text { text: it.key == "rails" ? @tr("Greased") : @tr("Replaced"); color: Tokens.accent; font-size: 14px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+                        ta := TouchArea { clicked => { root.replaced(it.key); } }
+                    }
+                }
+            }
+        }
+    }
+}
+
+export component CameraScreen inherits VerticalLayout {
+    horizontal-stretch: 1;
+    // Webcams Moonraker knows.
+    in property <[string]> cameras;
+    callback back;
+    padding: Tokens.pad;
+    spacing: 10px;
+    Header { title: @tr("Camera"); back-clicked => { root.back(); } }
+    Rectangle {
+        vertical-stretch: 1;
+        border-radius: 24px;
+        background: Tokens.surface-1;
+        VerticalLayout {
+            alignment: center;
+            spacing: 12px;
+            padding-left: 60px;
+            padding-right: 60px;
+            HorizontalLayout {
+                alignment: center;
+                Rectangle {
+                    width: 72px;
+                    height: 72px;
+                    border-radius: 22px;
+                    background: Tokens.surface-2;
+                    Icon { d: Icons.camera; size: 30px; weight: 1.9; color: Tokens.text-dim; }
+                }
+            }
+            Text {
+                text: root.cameras.length == 0 ? @tr("No camera connected") : root.cameras[0];
+                color: Tokens.text;
+                font-size: 26px;
+                font-weight: 800;
+                horizontal-alignment: center;
+            }
+            Text {
+                text: root.cameras.length == 0
+                    ? @tr("Add a camera to Moonraker: the picture from the printer shows here, and a timelapse while printing.")
+                    : @tr("The camera is set up in Moonraker. Watch it in Fluidd or Mainsail: this screen cannot show its stream yet.");
+                color: Tokens.text-dim;
+                font-size: 17px;
+                horizontal-alignment: center;
+                wrap: word-wrap;
+            }
+        }
+    }
+}

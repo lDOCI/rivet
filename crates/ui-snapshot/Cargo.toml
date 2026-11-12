@@ -11,6 +11,7 @@ publish = false
 anyhow.workspace = true
 rivet = { path = "../app", default-features = false }
 model.workspace = true
+serde_json.workspace = true
 slint = { workspace = true, features = ["renderer-software"] }
 png = "0.17"
 

@@ -1269,3 +1269,435 @@ msgstr "Выдавить {} мм"
 
 msgid "Yes, done"
 msgstr "Да, готово"
+
+msgid "Motion limits"
+msgstr "Лимиты движения"
+
+msgid "the head's top speed"
+msgstr "предел скорости головы"
+
+msgid "Acceleration"
+msgstr "Ускорение"
+
+msgid "mm/s²"
+msgstr "мм/с²"
+
+msgid "lower: quieter, less ringing"
+msgstr "меньше — тише и меньше ряби"
+
+msgid "FINE TUNING"
+msgstr "ТОНКАЯ НАСТРОЙКА"
+
+msgid "Corner speed"
+msgstr "Скорость в углах"
+
+msgid "higher: faster, rounder corners"
+msgstr "выше — быстрее, но углы круглее"
+
+msgid "Smooth cruising"
+msgstr "Плавность разгона"
+
+msgid "share of the path at full speed"
+msgstr "сколько пути на полной скорости"
+
+msgid "Until Klipper restarts."
+msgstr "Действует до перезапуска Klipper."
+
+msgid "Service"
+msgstr "Сервис"
+
+msgid "time to grease"
+msgstr "пора смазать"
+
+msgid "time to replace"
+msgstr "пора заменить"
+
+msgid "replace in {} h"
+msgstr "заменить через {} ч"
+
+msgid "{} of {} print hours"
+msgstr "{} из {} ч печати"
+
+msgid "Greased"
+msgstr "Смазал"
+
+msgid "Replaced"
+msgstr "Заменил"
+
+msgid "HEPA filter"
+msgstr "Фильтр HEPA"
+
+msgid "Rails"
+msgstr "Направляющие"
+
+msgid "Camera"
+msgstr "Камера"
+
+msgid "No camera connected"
+msgstr "Камера не подключена"
+
+msgid "Add a camera to Moonraker: the picture from the printer shows here, and a timelapse while printing."
+msgstr "Добавьте камеру в Moonraker — здесь появится картинка с принтера, а в печати — таймлапс."
+
+msgid "The camera is set up in Moonraker. Watch it in Fluidd or Mainsail: this screen cannot show its stream yet."
+msgstr "Камера настроена в Moonraker. Смотрите её в Fluidd или Mainsail: этот экран пока не умеет показывать поток."
+
+msgid "Speed, mm/s"
+msgstr "Скорость, мм/с"
+
+msgid "Acceleration, mm/s²"
+msgstr "Ускорение, мм/с²"
+
+msgid "Corner speed, mm/s"
+msgstr "Скорость в углах, мм/с"
+
+msgid "Smooth cruising, %"
+msgstr "Плавность разгона, %"
+
+msgid "off: a print goes on without filament"
+msgstr "выключен: печать не остановится без прутка"
+
+msgid "now: filament is in"
+msgstr "сейчас: пруток есть"
+
+msgid "now: no filament"
+msgstr "сейчас: прутка нет"
+
+msgid "no data"
+msgstr "нет данных"
+
+msgid "formaldehyde"
+msgstr "формальдегид"
+
+msgid "filament {} km"
+msgstr "филамент {} км"
+
+msgid "Clear the history?"
+msgstr "Очистить историю?"
+
+msgid "The list of past prints and its totals are removed. The files stay."
+msgstr "Список прошлых печатей и итоги удалятся. Файлы останутся."
+
+msgid "History"
+msgstr "История"
+
+msgid "Limits"
+msgstr "Лимиты"
+
+msgid "speed, acceleration"
+msgstr "скорость, ускорение"
+
+msgid "Sensors"
+msgstr "Датчики"
+
+msgid "runout, temperatures"
+msgstr "обрыв нити, температуры"
+
+msgid "filter, nozzle, rails"
+msgstr "фильтр, сопло, рельсы"
+
+msgid "and timelapse"
+msgstr "и таймлапс"
+
+msgid "{n} print"
+msgid_plural "{n} prints"
+msgstr[0] "{n} печать"
+msgstr[1] "{n} печати"
+msgstr[2] "{n} печатей"
+
+msgid "Air quality"
+msgstr "Качество воздуха"
+
+msgid "Load cell"
+msgstr "Тензодатчик"
+
+msgid "MCU and host temperature"
+msgstr "Температура MCU и хоста"
+
+msgid "Runout sensor"
+msgstr "Датчик обрыва"
+
+msgid "OTHER SENSORS"
+msgstr "ДРУГИЕ ДАТЧИКИ"
+
+msgid "force on the nozzle"
+msgstr "нагрузка на сопло"
+
+msgid "no sensors"
+msgstr "нет датчиков"
+
+msgid "not set up on this printer"
+msgstr "на этом принтере не настроены"
+
+msgid "LATEST"
+msgstr "ПОСЛЕДНИЕ"
+
+msgid "Clear the history"
+msgstr "Очистить историю"
+
+msgid "the files stay"
+msgstr "файлы останутся"
+
+msgid "Prints in all"
+msgstr "Всего печатей"
+
+msgid "since Moonraker's first start"
+msgstr "с первого запуска Moonraker"
+
+msgid "profile “{}”"
+msgstr "профиль «{}»"
+
+msgid "profiles: {} · none loaded"
+msgstr "профили: {} · не загружен"
+
+msgid "not probed yet"
+msgstr "ещё не снята"
+
+msgid "Hz"
+msgstr "Гц"
+
+msgid "not set up"
+msgstr "не настроены"
+
+msgid "live, while printing"
+msgstr "на ходу, во время печати"
+
+msgid "measuring…"
+msgstr "идёт замер…"
+
+msgid "10 touches at one spot"
+msgstr "10 касаний в одной точке"
+
+msgid "spread {} mm"
+msgstr "разброс {} мм"
+
+msgid "running: the heater cycles, about 5 minutes"
+msgstr "идёт: нагреватель переключается, около 5 минут"
+
+msgid "the heater switches on and off several times"
+msgstr "нагреватель несколько раз включится и выключится"
+
+msgid "how far to turn each screw"
+msgstr "сколько крутить каждый винт"
+
+msgid "fine tuning, probe check"
+msgstr "точная подстройка, проверка датчика"
+
+msgid "compare the two belts"
+msgstr "сравнить два ремня"
+
+msgid "nozzle and bed"
+msgstr "сопло и стол"
+
+msgid "current, modes"
+msgstr "ток, режимы"
+
+msgid "zero it when touches are off"
+msgstr "обнулить, если врёт касание"
+
+msgid "Calibrations"
+msgstr "Калибровки"
+
+msgid "Bed mesh"
+msgstr "Карта стола"
+
+msgid "Bed screws"
+msgstr "Винты стола"
+
+msgid "Vibrations"
+msgstr "Вибрации"
+
+msgid "Belts"
+msgstr "Ремни"
+
+msgid "Heating (PID)"
+msgstr "Нагрев (PID)"
+
+msgid "TMC drivers"
+msgstr "Драйверы TMC"
+
+msgid "saved in the config"
+msgstr "сохранён в конфиге"
+
+msgid "fine up to 0.01"
+msgstr "норма до 0.01"
+
+msgid "Fine tuning"
+msgstr "Точная подстройка"
+
+msgid "Check the probe's accuracy"
+msgstr "Проверить точность датчика"
+
+msgid "Last check"
+msgstr "Последняя проверка"
+
+msgid "PROBE"
+msgstr "ДАТЧИК"
+
+msgid "Offset X / Y"
+msgstr "Смещение X / Y"
+
+msgid "Touches per point"
+msgstr "Касаний на точку"
+
+msgid "from printer.cfg"
+msgstr "из printer.cfg"
+
+msgid "don't touch the printer while it measures"
+msgstr "не трогайте принтер во время замера"
+
+msgid "graphs and every shaper"
+msgstr "графики и все варианты сглаживания"
+
+msgid "accelerometer noise"
+msgstr "шум акселерометра"
+
+msgid "X axis"
+msgstr "Ось X"
+
+msgid "Y axis"
+msgstr "Ось Y"
+
+msgid "What to measure"
+msgstr "Что измерить"
+
+msgid "Both axes"
+msgstr "Обе оси"
+
+msgid "Measure"
+msgstr "Измерить"
+
+msgid "Last measurement"
+msgstr "Последний замер"
+
+msgid "Check the sensor"
+msgstr "Проверить датчик"
+
+msgid "as for a normal print"
+msgstr "как при обычной печати"
+
+msgid "as when printing"
+msgstr "как при печати"
+
+msgid "Temperature, °"
+msgstr "Температура, °"
+
+msgid "Heater"
+msgstr "Нагреватель"
+
+msgid "Temperature"
+msgstr "Температура"
+
+msgid "Part fan during it"
+msgstr "Обдув во время"
+
+msgid "Start"
+msgstr "Запустить"
+
+msgid "until a restart"
+msgstr "действует до перезапуска"
+
+msgid "prints PA 0→0.1 up the height, then enter the best layer's height"
+msgstr "печать с PA 0→0.1 по высоте, потом ввести высоту лучшего слоя"
+
+msgid "Smooth time, s"
+msgstr "Smooth time, с"
+
+msgid "s"
+msgstr "с"
+
+msgid "Apply"
+msgstr "Применить"
+
+msgid "Test tower"
+msgstr "Тестовая башня"
+
+msgid "Bed mesh {} by {}"
+msgstr "Карта стола {} на {}"
+
+msgid "No mesh yet"
+msgstr "Карта ещё не снята"
+
+msgid "lower"
+msgstr "ниже"
+
+msgid "higher"
+msgstr "выше"
+
+msgid "Spread across the bed"
+msgstr "Разброс по столу"
+
+msgid "Fine: the mesh compensates"
+msgstr "В норме — компенсация справится"
+
+msgid "Uneven: level the bed with its screws"
+msgstr "Неровно — выровняйте стол винтами"
+
+msgid "Profile “{}”."
+msgstr "Профиль «{}»."
+
+msgid "No profile loaded."
+msgstr "Профиль не загружен."
+
+msgid "Over 0.3 mm: level the bed with its screws."
+msgstr "Если разброс больше 0.3 мм — выровняйте стол винтами."
+
+msgid "Probing…"
+msgstr "Снимаю карту…"
+
+msgid "Probe again"
+msgstr "Снять заново"
+
+msgid "after the print"
+msgstr "после печати"
+
+msgid "Profiles"
+msgstr "Профили"
+
+msgid "Profiles: {} ›"
+msgstr "Профили: {} ›"
+
+msgid "Mesh profiles"
+msgstr "Профили карты"
+
+msgid "loaded"
+msgstr "загружен"
+
+msgid "load"
+msgstr "загрузить"
+
+msgid "the bed from above"
+msgstr "стол, вид сверху"
+
+msgid "base"
+msgstr "опорный"
+
+msgid "not checked yet"
+msgstr "ещё не проверен"
+
+msgid "don't turn"
+msgstr "не крутить"
+
+msgid "level"
+msgstr "ровно"
+
+msgid "clockwise"
+msgstr "по часовой"
+
+msgid "anticlockwise"
+msgstr "против часовой"
+
+msgid "Turn the screws as far as shown and check again. Repeat until all are “level”."
+msgstr "Подкрутите винты на столько, сколько показано, и проверьте снова. Повторять, пока все не станут «ровно»."
+
+msgid "Checking…"
+msgstr "Проверяю…"
+
+msgid "Check again"
+msgstr "Проверить снова"
+
+msgid "the probe touches near each screw"
+msgstr "датчик коснётся у каждого винта"
+
+msgid "bed, probe, vibrations"
+msgstr "стол, щуп, вибрации"

@@ -30,7 +30,7 @@ PAIRS = {
     "motion-more": "MotionAdvanced", "file-actions": "FileActions",
     "layer-pause": "LayerPause", "retraction": "Retraction", "dryer": "Dryer",
     "spools": "Spools", "devices": "Devices", "ambient": "Ambient",
-    "queue": "JobQueue", "dialog": "ConfirmStop", "estop": "EStop", "runout": "Runout", "prompt": "Prompt", "exclude": "Exclude", "messages": "Messages", "heat-presets": "HeatPresets", "filament": "FilamentLoad", "temp-graph": "TempGraph",
+    "queue": "JobQueue", "dialog": "ConfirmStop", "estop": "EStop", "runout": "Runout", "prompt": "Prompt", "exclude": "Exclude", "messages": "Messages", "heat-presets": "HeatPresets", "filament": "FilamentLoad", "calibrate": "Calibrate", "bed-mesh": "BedMesh", "screws": "Screws", "probe": "ProbeZ", "shaper": "InputShaper", "pid": "PidCal", "pa": "PressureAdvance", "tmc": "Tmc", "limits": "Limits", "sensors": "Sensors", "history": "History", "service": "Maintenance", "camera": "Camera", "temp-graph": "TempGraph",
 }
 
 def main():

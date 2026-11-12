@@ -4614,6 +4614,7 @@ dependencies = [
  "model",
  "png 0.17.16",
  "rivet",
+ "serde_json",
  "slint",
 ]
 

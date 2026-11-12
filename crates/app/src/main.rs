@@ -460,6 +460,38 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
     ui.on_queue_clear(send(Command::QueueClear));
     ui.on_refresh_queue(send(Command::ListQueue));
     ui.on_refresh_messages(send(Command::ListMessages));
+    ui.on_refresh_history(send(Command::ListHistory));
+    ui.on_refresh_calib(send(Command::CalibInfo));
+    {
+        let tx = tx.clone();
+        ui.on_calibrate(move |script| {
+            let _ = tx.send(Command::Calibrate(script.to_string()));
+        });
+    }
+    ui.on_clear_history(send(Command::ClearHistory));
+    ui.on_refresh_service(send(Command::ListService));
+    ui.on_refresh_cameras(send(Command::ListCameras));
+    {
+        let tx = tx.clone();
+        ui.on_service_done(move |key| {
+            let _ = tx.send(Command::ServiceDone(key.to_string()));
+        });
+    }
+    {
+        let tx = tx.clone();
+        ui.on_set_limit(move |key, value| {
+            let _ = tx.send(Command::SetLimit {
+                key: key.to_string(),
+                value,
+            });
+        });
+    }
+    {
+        let tx = tx.clone();
+        ui.on_set_runout(move |on| {
+            let _ = tx.send(Command::SetRunout(on));
+        });
+    }
     {
         let tx = tx.clone();
         let weak = ui.as_weak();

@@ -66,6 +66,19 @@ const ALL: &[&str] = &[
     "messages",
     "heat-presets",
     "filament",
+    "calibrate",
+    "bed-mesh",
+    "screws",
+    "probe",
+    "shaper",
+    "pid",
+    "pa",
+    "tmc",
+    "limits",
+    "sensors",
+    "history",
+    "service",
+    "camera",
     "temp-graph",
     "keypad",
     "toast",
@@ -543,6 +556,106 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_overlay("cancel-print".into());
         }
         "heat-presets" => ui.set_screen("heat-presets".into()),
+        "calibrate" | "bed-mesh" | "screws" | "probe" | "shaper" | "pid" | "pa" | "tmc" => {
+            // The AD5M Pro's own config and the prototype pages' mesh and screws.
+            let cfg: serde_json::Value = serde_json::from_str(include_str!(
+                "../../model/tests/fixtures/ad5m-pro/configfile.json"
+            ))
+            .unwrap();
+            let cfg = cfg.get("result").unwrap_or(&cfg)["status"]["configfile"]["settings"].clone();
+            let objects: Vec<String> = [
+                "probe",
+                "bed_mesh",
+                "screws_tilt_adjust",
+                "tmc2209 stepper_x",
+                "tmc2209 stepper_y",
+                "tmc2209 stepper_z",
+                "tmc2209 extruder",
+                "gcode_macro LOAD_CELL_TARE",
+            ]
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+            let mesh: Vec<Vec<f64>> = (0..5)
+                .map(|r| {
+                    (0..5)
+                        .map(|c| {
+                            -0.09
+                                + 0.02 * (c as f64)
+                                + 0.02 * (r as f64)
+                        })
+                        .collect()
+                })
+                .collect();
+            let status = serde_json::json!({
+                "bed_mesh": { "profile_name": "default", "profiles": { "default": {}, "PETG-80": {} }, "probed_matrix": mesh },
+                "screws_tilt_adjust": { "results": {
+                    "screw1": { "sign": "CCW", "adjust": "00:20", "is_base": false },
+                    "screw2": { "sign": "CW", "adjust": "00:00", "is_base": false },
+                    "screw3": { "sign": "CW", "adjust": "00:15", "is_base": false },
+                    "screw4": { "sign": "CW", "adjust": "00:00", "is_base": true }
+                } }
+            });
+            let info = model::CalibInfo::read(&cfg, &status, &objects);
+            rivet::calib::show(ui, info);
+            ui.set_pressure_advance(0.04);
+            ui.set_pa_smooth(0.04);
+            ui.set_probe_range(0.004);
+            ui.set_screen(name.into());
+        }
+        "limits" => {
+            ui.set_screen("limits".into());
+            ui.set_limit_velocity(600.0);
+            ui.set_limit_accel(20000.0);
+            ui.set_limit_corner(25.0);
+            ui.set_limit_cruise(0.5);
+        }
+        "sensors" => {
+            ui.set_screen("sensors".into());
+            ui.set_runout_name("runout_sensor".into());
+            ui.set_runout_enabled(true);
+            ui.set_runout_sees(true);
+            ui.set_has_air(true);
+            ui.set_has_load_cell(true);
+            ui.set_load_g(-40);
+        }
+        "history" => {
+            ui.set_screen("history".into());
+            ui.set_history_total(770);
+            ui.set_history_minutes(999 * 60);
+            ui.set_history_km(8.1);
+            let r = |t: &str, sub: &str, v: &str| rivet::FormRow {
+                kind: "link".into(),
+                key: t.into(),
+                title: t.into(),
+                sub: sub.into(),
+                value: v.into(),
+                shown: true,
+                ..Default::default()
+            };
+            let rows = vec![
+                r("Корпус вентилятора №2", "вчера · 1 ч 23 мин · PETG", "✓"),
+                r("Benchy", "вчера · 31 мин · PLA", "■"),
+                r("Держатель катушки v3", "3 дня назад · 3 ч 05 мин", "✓"),
+            ];
+            ui.set_history_rows(slint::ModelRc::new(slint::VecModel::from(rows)));
+        }
+        "service" => {
+            ui.set_screen("service".into());
+            let s = |key: &str, used: f32, every: f32| rivet::ServiceItem {
+                key: key.into(),
+                title: "".into(),
+                used,
+                every,
+            };
+            let items = vec![
+                s("filter", 82.0, 300.0),
+                s("nozzle", 311.0, 500.0),
+                s("rails", 96.0, 100.0),
+            ];
+            ui.set_service_items(slint::ModelRc::new(slint::VecModel::from(items)));
+        }
+        "camera" => ui.set_screen("camera".into()),
         "filament" => {
             ui.set_screen("filament".into());
             ui.set_filament_step(1);

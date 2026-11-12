@@ -151,3 +151,92 @@ r0 = "power-section"
 r1 = { name = "power", repeat = true }
 r2 = "pins-section"
 r3 = { name = "pins", repeat = true }
+
+[History]
+component = "HistoryForm"
+en = { "История" = "History", "Всего печатей" = "Prints in all", "с первого запуска Moonraker" = "since Moonraker's first start", "Время печати" = "Print time", "ПОСЛЕДНИЕ" = "LATEST", "Очистить историю" = "Clear the history", "файлы останутся" = "the files stay" }
+[History.rows]
+r0 = { name = "total", data = ["value"] }
+r1 = { name = "time", data = ["value", "sub"] }
+r2 = "latest"
+r3 = { name = "jobs", repeat = true }
+r4 = { name = "jobs", example = true }
+r5 = { name = "jobs", example = true }
+r6 = "clear"
+
+[Sensors]
+component = "SensorsForm"
+en = { "Датчики" = "Sensors", "ФИЛАМЕНТ" = "FILAMENT", "Датчик обрыва" = "Runout sensor", "ДРУГИЕ ДАТЧИКИ" = "OTHER SENSORS", "Качество воздуха" = "Air quality", "Тензодатчик" = "Load cell", "нагрузка на сопло" = "force on the nozzle", "Температура MCU и хоста" = "MCU and host temperature" }
+[Sensors.rows]
+r0 = "filament"
+r1 = { name = "runout", data = ["sub"] }
+r2 = "others"
+r3 = { name = "air", data = ["value", "sub"] }
+r4 = { name = "loadcell", data = ["value"] }
+r5 = { name = "mcu", data = ["value", "sub"] }
+
+[Calibrate]
+component = "CalibrateForm"
+en = { "Калибровки" = "Calibrations", "Карта стола" = "Bed mesh", "Винты стола" = "Bed screws", "сколько крутить каждый винт" = "how far to turn each screw", "Z-offset" = "Z offset", "точная подстройка, проверка датчика" = "fine tuning, probe check", "Вибрации" = "Vibrations", "Ремни" = "Belts", "Нагрев (PID)" = "Heating (PID)", "сопло и стол" = "nozzle and bed", "Pressure advance" = "Pressure advance", "Драйверы TMC" = "TMC drivers", "ток, режимы" = "current, modes", "обнулить, если врёт касание" = "zero it when touches are off", "сравнить два ремня" = "compare the two belts" }
+[Calibrate.rows]
+r0 = { name = "mesh", data = ["sub"] }
+r1 = "screws"
+r2 = "probe"
+r3 = { name = "shaper", data = ["sub"] }
+r4 = { name = "belts", later = "needs an accelerometer (adxl345 / lis2dw); the AD5M has none to test with" }
+r5 = "pid"
+r6 = { name = "pa", data = ["sub"] }
+r7 = "tmc"
+r8 = "tare"
+
+[ProbeZ]
+component = "ProbeForm"
+en = { "Сейчас" = "Now", "сохранён в конфиге" = "saved in the config", "Точная подстройка" = "Fine tuning", "на тестовом слое" = "on a test layer", "Проверить точность датчика" = "Check the probe's accuracy", "10 касаний в одной точке" = "10 touches at one spot", "Последняя проверка" = "Last check", "норма до 0.01" = "fine up to 0.01", "ДАТЧИК" = "PROBE", "Смещение X / Y" = "Offset X / Y", "Касаний на точку" = "Touches per point" }
+[ProbeZ.rows]
+r0 = { name = "now", data = ["value"] }
+r1 = { name = "tune", data = ["sub"] }
+r2 = "accuracy"
+r3 = { name = "last", data = ["value"] }
+r4 = "probe"
+r5 = { name = "offset", data = ["value"] }
+r6 = { name = "samples", data = ["value"] }
+
+[InputShaper]
+component = "ShaperForm"
+en = { "Ось X" = "X axis", "Ось Y" = "Y axis", "из printer.cfg" = "from printer.cfg", "Что измерить" = "What to measure", "Обе оси" = "Both axes", "Измерить" = "Measure", "не трогайте принтер во время замера" = "don't touch the printer while it measures", "Последний замер" = "Last measurement", "графики и все варианты сглаживания" = "graphs and every shaper", "Проверить датчик" = "Check the sensor", "шум акселерометра" = "accelerometer noise", "Вибрации" = "Vibrations" }
+[InputShaper.rows]
+r0 = { name = "x", data = ["value"] }
+r1 = { name = "y", data = ["value"] }
+r2 = "axes"
+r3 = "measure"
+r4 = { name = "last", later = "the result screen needs an accelerometer to test with" }
+r5 = "noise"
+
+[PidCal]
+component = "PidForm"
+en = { "Нагреватель" = "Heater", "Сопло" = "Nozzle", "Стол" = "Bed", "Температура" = "Temperature", "как при обычной печати" = "as for a normal print", "Обдув во время" = "Part fan during it", "как при печати" = "as when printing", "Выкл." = "Off", "Текущие" = "Now", "Запустить" = "Start", "нагреватель несколько раз включится и выключится" = "the heater switches on and off several times", "Температура, °" = "Temperature, °", "Нагрев (PID)" = "Heating (PID)" }
+[PidCal.rows]
+r0 = "heater"
+r1 = "temp"
+r2 = "fan"
+r3 = { name = "now", data = ["value"] }
+r4 = "run"
+
+[PressureAdvance]
+component = "PaForm"
+en = { "сейчас" = "now", "Smooth time" = "Smooth time", "с" = "s", "Smooth time, с" = "Smooth time, s", "Применить" = "Apply", "действует до перезапуска" = "until a restart", "Тестовая башня" = "Test tower", "печать с PA 0→0.1 по высоте, потом ввести высоту лучшего слоя" = "prints PA 0→0.1 up the height, then enter the best layer's height" }
+[PressureAdvance.rows]
+r0 = "pa"
+r1 = "smooth"
+r2 = "apply"
+r3 = { name = "tower", later = "needs a test-tower G-code file to print" }
+
+[Tmc]
+component = "TmcForm"
+en = { "Драйверы TMC" = "TMC drivers" }
+[Tmc.rows]
+r0 = { name = "drivers", repeat = true }
+r1 = { name = "drivers", example = true }
+r2 = { name = "drivers", example = true }
+r3 = { name = "drivers", example = true }
+

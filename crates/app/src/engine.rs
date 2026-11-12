@@ -212,6 +212,23 @@ pub enum Command {
         from: String,
         to: String,
     },
+    /// A calibration's G-code; the screens show it running, then read the result.
+    Calibrate(String),
+    /// Read what the calibration screens show (config, bed mesh, screws, drivers).
+    CalibInfo,
+    /// SET_VELOCITY_LIMIT: "velocity", "accel", "corner" or "cruise" (0..1).
+    SetLimit {
+        key: String,
+        value: f32,
+    },
+    /// Switch the runout sensor on or off.
+    SetRunout(bool),
+    ListHistory,
+    ClearHistory,
+    /// Service intervals from print hours; a part replaced (or greased) now.
+    ListService,
+    ServiceDone(String),
+    ListCameras,
     /// Temperatures of the last minutes for the graph, drawn for the plot's
     /// width / height.
     TempGraph(f32),
@@ -513,6 +530,9 @@ async fn handle_event(ev: Event, client: &Client, state: &mut PrinterState) {
             "notify_gcode_response" => {
                 if let Some(line) = params.get(0).and_then(Value::as_str) {
                     state.prompt_line(line);
+                    if let Some(range) = model::probe_range(line) {
+                        state.probe_range = Some(range);
+                    }
                     state.push_console(line.to_owned(), model::line_kind(line));
                 }
             }
@@ -648,6 +668,210 @@ async fn list_messages(client: &Client, ui: &slint::Weak<AppWindow>) {
             .collect();
         ui.set_messages(slint::ModelRc::new(slint::VecModel::from(items)));
         ui.set_unread(unread);
+    });
+}
+
+/// Everything the calibration screens show, read fresh: the saved config, the
+/// bed mesh, the screws' last result, the stepper drivers.
+async fn calib_info(client: &Client, ui: &slint::Weak<AppWindow>) {
+    let objects: Vec<String> = client
+        .call_timeout("printer.objects.list", json!({}), SETUP_TIMEOUT)
+        .await
+        .ok()
+        .and_then(|l| l["objects"].as_array().cloned())
+        .unwrap_or_default()
+        .into_iter()
+        .filter_map(|v| v.as_str().map(str::to_owned))
+        .collect();
+    let has = |name: &str| objects.iter().any(|o| o == name);
+    let tmcs: Vec<String> = objects
+        .iter()
+        .filter(|o| o.starts_with("tmc"))
+        .cloned()
+        .collect();
+    let mut query = serde_json::Map::new();
+    query.insert("configfile".into(), json!(["settings"]));
+    for name in ["bed_mesh", "screws_tilt_adjust"] {
+        if has(name) {
+            query.insert(name.into(), Value::Null);
+        }
+    }
+    for t in &tmcs {
+        query.insert(t.clone(), Value::Null);
+    }
+    let status = client
+        .call_timeout(
+            "printer.objects.query",
+            json!({ "objects": query }),
+            SETUP_TIMEOUT,
+        )
+        .await
+        .map(|v| v["status"].clone())
+        .unwrap_or(Value::Null);
+    let cfg = &status["configfile"]["settings"];
+    let info = model::CalibInfo::read(cfg, &status, &objects);
+    let _ = ui.upgrade_in_event_loop(move |ui| crate::calib::show(&ui, info));
+}
+
+/// Run a G-code line and wait for Klipper's answer.
+async fn gcode(client: &Client, script: &str) -> Result<(), moonraker::Error> {
+    client.gcode(script).await
+}
+
+/// The runout sensor's name, from the printer's objects.
+async fn runout_name(client: &Client) -> Option<String> {
+    let list = client
+        .call_timeout("printer.objects.list", json!({}), SETUP_TIMEOUT)
+        .await
+        .ok()?;
+    list["objects"]
+        .as_array()?
+        .iter()
+        .filter_map(Value::as_str)
+        .find_map(|n| {
+            n.strip_prefix("filament_switch_sensor ")
+                .or_else(|| n.strip_prefix("filament_motion_sensor "))
+                .map(str::to_owned)
+        })
+}
+
+/// Hours printed in all, from Moonraker's history totals.
+async fn print_hours(client: &Client) -> f64 {
+    client
+        .call_timeout("server.history.totals", json!({}), SETUP_TIMEOUT)
+        .await
+        .ok()
+        .and_then(|t| t["job_totals"]["total_print_time"].as_f64())
+        .unwrap_or(0.0)
+        / 3600.0
+}
+
+/// Totals and the latest jobs for the History screen.
+async fn list_history(client: &Client, ui: &slint::Weak<AppWindow>) {
+    let totals = client
+        .call_timeout("server.history.totals", json!({}), SETUP_TIMEOUT)
+        .await
+        .unwrap_or(Value::Null);
+    let list = client
+        .call_timeout(
+            "server.history.list",
+            json!({ "limit": 20, "order": "desc" }),
+            SETUP_TIMEOUT,
+        )
+        .await
+        .unwrap_or(Value::Null);
+    let t = &totals["job_totals"];
+    let total = t["total_jobs"].as_i64().map_or(-1, |n| n as i32);
+    let minutes = (t["total_print_time"].as_f64().unwrap_or(0.0) / 60.0) as i32;
+    let km = (t["total_filament_used"].as_f64().unwrap_or(0.0) / 1_000_000.0) as f32;
+    let now = unix_now();
+    let jobs: Vec<(String, String, i32, i32, String)> = list["jobs"]
+        .as_array()
+        .map(Vec::as_slice)
+        .unwrap_or_default()
+        .iter()
+        .filter_map(|j| {
+            let status = j["status"].as_str()?;
+            if status == "in_progress" {
+                return None;
+            }
+            Some((
+                j["filename"].as_str()?.to_owned(),
+                status.to_owned(),
+                days_between(j["end_time"].as_f64().unwrap_or(now), now),
+                (j["print_duration"].as_f64().unwrap_or(0.0) / 60.0).round() as i32,
+                j.pointer("/metadata/filament_type")
+                    .and_then(Value::as_str)
+                    .map(|t| t.split(';').next().unwrap_or(t).trim().to_owned())
+                    .unwrap_or_default(),
+            ))
+        })
+        .collect();
+    let _ = ui.upgrade_in_event_loop(move |ui| {
+        let format = slint::ComponentHandle::global::<crate::Format>(&ui);
+        let rows: Vec<crate::FormRow> = jobs
+            .into_iter()
+            .map(|(path, status, days, minutes, material)| {
+                let mut sub = vec![format.invoke_age(days).to_string()];
+                if minutes > 0 {
+                    sub.push(format.invoke_duration(minutes).to_string());
+                }
+                if !material.is_empty() {
+                    sub.push(material);
+                }
+                crate::FormRow {
+                    kind: "link".into(),
+                    key: path.as_str().into(),
+                    title: crate::files::title(&path).into(),
+                    sub: sub.join(" · ").into(),
+                    value: match status.as_str() {
+                        "completed" => "✓",
+                        "cancelled" => "■",
+                        _ => "✕",
+                    }
+                    .into(),
+                    shown: true,
+                    ..Default::default()
+                }
+            })
+            .collect();
+        ui.set_history_total(total);
+        ui.set_history_minutes(minutes);
+        ui.set_history_km(km);
+        ui.set_history_rows(slint::ModelRc::new(slint::VecModel::from(rows)));
+    });
+}
+
+/// Wear of the parts from print hours since each was last replaced.
+async fn list_service(client: &Client, ui: &slint::Weak<AppWindow>) {
+    let hours = print_hours(client).await;
+    let saved = client
+        .call_timeout(
+            "server.database.get_item",
+            json!({ "namespace": DB_NAMESPACE }),
+            SETUP_TIMEOUT,
+        )
+        .await
+        .map(|v| v["value"].clone())
+        .unwrap_or(Value::Null);
+    // The HEPA filter only on printers with the chamber air macros (AD5M Pro).
+    let has_filter = client
+        .call_timeout("printer.objects.list", json!({}), SETUP_TIMEOUT)
+        .await
+        .ok()
+        .and_then(|l| l["objects"].as_array().cloned())
+        .is_some_and(|o| {
+            o.iter()
+                .any(|n| n.as_str() == Some("gcode_macro AIR_CIRCULATION_INTERNAL"))
+        });
+    let mut items: Vec<(&'static str, f64)> = Vec::new();
+    if has_filter {
+        items.push(("filter", 300.0));
+    }
+    items.push(("nozzle", 500.0));
+    items.push(("rails", 100.0));
+    let rows: Vec<(String, f32, f32)> = items
+        .into_iter()
+        .map(|(key, every)| {
+            let since = saved[format!("service_{key}")].as_f64().unwrap_or(0.0);
+            (
+                key.to_owned(),
+                (hours - since).max(0.0) as f32,
+                every as f32,
+            )
+        })
+        .collect();
+    let _ = ui.upgrade_in_event_loop(move |ui| {
+        let items: Vec<crate::ServiceItem> = rows
+            .into_iter()
+            .map(|(key, used, every)| crate::ServiceItem {
+                key: key.into(),
+                title: "".into(),
+                used,
+                every,
+            })
+            .collect();
+        ui.set_service_items(slint::ModelRc::new(slint::VecModel::from(items)));
     });
 }
 
@@ -1841,6 +2065,81 @@ async fn execute(
             let usb = from.to_ascii_lowercase().starts_with("usb/");
             list_files(client, ui, thumbs, usb).await
         }
+        Command::Calibrate(script) => {
+            let _ = ui.upgrade_in_event_loop(|ui| ui.set_calib_busy(true));
+            let result = gcode(client, script).await;
+            let _ = ui.upgrade_in_event_loop(|ui| ui.set_calib_busy(false));
+            calib_info(client, ui).await;
+            result
+        }
+        Command::CalibInfo => {
+            calib_info(client, ui).await;
+            Ok(())
+        }
+        Command::SetLimit { key, value } => {
+            let arg = match key.as_str() {
+                "velocity" => format!("VELOCITY={value:.0}"),
+                "accel" => format!("ACCEL={value:.0}"),
+                "corner" => format!("SQUARE_CORNER_VELOCITY={value:.1}"),
+                _ => format!("MINIMUM_CRUISE_RATIO={:.2}", value.clamp(0.0, 0.99)),
+            };
+            gcode(client, &format!("SET_VELOCITY_LIMIT {arg}")).await
+        }
+        Command::SetRunout(on) => {
+            let name = runout_name(client)
+                .await
+                .unwrap_or_else(|| "runout_sensor".into());
+            gcode(
+                client,
+                &format!("SET_FILAMENT_SENSOR SENSOR={name} ENABLE={}", u8::from(*on)),
+            )
+            .await
+        }
+        Command::ListHistory => {
+            list_history(client, ui).await;
+            Ok(())
+        }
+        Command::ClearHistory => {
+            client
+                .call("server.history.delete_job", json!({ "all": true }))
+                .await?;
+            list_history(client, ui).await;
+            Ok(())
+        }
+        Command::ListService => {
+            list_service(client, ui).await;
+            Ok(())
+        }
+        Command::ServiceDone(key) => {
+            let hours = print_hours(client).await;
+            client
+                .call(
+                    "server.database.post_item",
+                    json!({ "namespace": DB_NAMESPACE, "key": format!("service_{key}"), "value": hours }),
+                )
+                .await?;
+            list_service(client, ui).await;
+            Ok(())
+        }
+        Command::ListCameras => {
+            let cams = client
+                .call_timeout("server.webcams.list", json!({}), SETUP_TIMEOUT)
+                .await
+                .unwrap_or(Value::Null);
+            let names: Vec<String> = cams["webcams"]
+                .as_array()
+                .map(Vec::as_slice)
+                .unwrap_or_default()
+                .iter()
+                .filter(|w| w["enabled"].as_bool() != Some(false))
+                .filter_map(|w| w["name"].as_str().map(str::to_owned))
+                .collect();
+            let _ = ui.upgrade_in_event_loop(move |ui| {
+                let rows: Vec<slint::SharedString> = names.into_iter().map(Into::into).collect();
+                ui.set_cameras(slint::ModelRc::new(slint::VecModel::from(rows)));
+            });
+            Ok(())
+        }
         Command::TempGraph(aspect) => {
             let store = client
                 .call_timeout(
@@ -2110,6 +2409,32 @@ fn push(ui: &slint::Weak<AppWindow>, s: Snapshot) {
         ui.set_axis_max_z(s.axis_max[2] as f32);
         ui.set_can_extrude(s.can_extrude);
         ui.set_filament_out(s.filament_out);
+        ui.set_probe_range(s.probe_range.map_or(-1.0, |r| r as f32));
+        ui.set_limit_velocity(s.max_velocity as f32);
+        ui.set_limit_accel(s.max_accel as f32);
+        ui.set_limit_corner(s.corner_velocity as f32);
+        ui.set_limit_cruise(s.cruise_ratio.map_or(-1.0, |r| r as f32));
+        let (name, enabled, sees) = s.runout.clone().unwrap_or_default();
+        ui.set_runout_name(name.into());
+        ui.set_runout_enabled(enabled);
+        ui.set_runout_sees(sees);
+        ui.set_has_air(s.caps.air_sensor);
+        ui.set_air_text(
+            s.air
+                .map(|[tvoc, co2, hcho]| format!("{tvoc:.0} · {co2:.0} · {hcho:.2}"))
+                .unwrap_or_default()
+                .into(),
+        );
+        ui.set_has_load_cell(s.load_g.is_some());
+        ui.set_load_g(s.load_g.unwrap_or(0.0).round() as i32);
+        ui.set_board_temps(
+            s.board_temps
+                .iter()
+                .map(|(_, t)| format!("{t:.0}°"))
+                .collect::<Vec<_>>()
+                .join(" · ")
+                .into(),
+        );
         // Objects on the plate as fractions of the bed, Y up (top of the map = back).
         let (w, h) = (
             (s.axis_max[0] - s.axis_min[0]).max(1.0),
@@ -2143,6 +2468,7 @@ fn push(ui: &slint::Weak<AppWindow>, s: Snapshot) {
         ui.set_flow_percent(s.flow_percent as f32);
         ui.set_z_offset(s.z_offset as f32);
         ui.set_pressure_advance(s.pressure_advance as f32);
+        ui.set_pa_smooth(s.pa_smooth as f32);
         ui.set_live_velocity(s.live_velocity as f32);
         let caps = &s.caps;
         // Pause at layer needs the slicer's layer numbers, or it never fires.
