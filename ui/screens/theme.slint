@@ -1,0 +1,98 @@
+// Appearance: the accent colour and the background, as swatches.
+import { Tokens } from "../kit/tokens.slint";
+import { Header, SectionLabel } from "../kit/controls.slint";
+
+export struct Swatch { name: string, color: color, under: color }
+
+component Pick inherits Rectangle {
+    in property <Swatch> swatch;
+    in property <bool> on;
+    in property <bool> round;
+    callback picked;
+    height: root.round ? 84px : 76px;
+    border-radius: Tokens.r-m;
+    background: root.on ? Tokens.accent-soft : Tokens.surface-1;
+    border-width: root.on ? 2px : 0px;
+    border-color: Tokens.accent;
+    accessible-role: button;
+    accessible-label: root.swatch.name;
+    accessible-action-default => { root.picked(); }
+    // Accents: the colour above its name; backgrounds: side by side.
+    if root.round: VerticalLayout {
+        alignment: center;
+        spacing: 6px;
+        HorizontalLayout {
+            alignment: center;
+            Rectangle {
+                width: 36px;
+                height: 36px;
+                border-radius: 18px;
+                background: root.swatch.color;
+            }
+        }
+        Text { text: root.swatch.name; color: Tokens.text; font-size: Tokens.caption; font-weight: 600; horizontal-alignment: center; overflow: elide; }
+    }
+    if !root.round: HorizontalLayout {
+        padding-left: 14px;
+        padding-right: 12px;
+        spacing: 12px;
+        VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: 40px;
+                height: 40px;
+                border-radius: root.round ? 20px : 10px;
+                background: root.swatch.under;
+                border-width: 1px;
+                border-color: #ffffff1f;
+                Rectangle {
+                    width: root.round ? 40px : 22px;
+                    height: root.round ? 40px : 22px;
+                    border-radius: root.round ? 20px : 6px;
+                    background: root.swatch.color;
+                }
+            }
+        }
+        Text { text: root.swatch.name; color: Tokens.text; font-size: Tokens.body; font-weight: 600; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
+    }
+    TouchArea { clicked => { root.picked(); } }
+}
+
+export component ThemeScreen inherits VerticalLayout {
+    horizontal-stretch: 1;
+    in property <[Swatch]> accents;
+    in property <[Swatch]> bases;
+    in property <int> accent-sel;
+    in property <int> base-sel;
+    callback pick-accent(int);
+    callback pick-base(int);
+    callback back;
+    padding: Tokens.pad;
+    padding-right: 20px;
+    spacing: 10px;
+    Header { title: @tr("Appearance"); back-clicked => { root.back(); } }
+    SectionLabel { text: @tr("ACCENT"); }
+    Rectangle {
+        height: 2 * 84px + 8px;
+        for a[i] in root.accents: Pick {
+            x: mod(i, 4) * (parent.width + 8px) / 4;
+            y: floor(i / 4) * 92px;
+            width: (parent.width - 24px) / 4;
+            swatch: a;
+            round: true;
+            on: i == root.accent-sel;
+            picked => { root.pick-accent(i); }
+        }
+    }
+    SectionLabel { text: @tr("BACKGROUND"); }
+    HorizontalLayout {
+        spacing: 8px;
+        for b[i] in root.bases: Pick {
+            horizontal-stretch: 1;
+            swatch: b;
+            on: i == root.base-sel;
+            picked => { root.pick-base(i); }
+        }
+    }
+    Rectangle { vertical-stretch: 1; }
+}

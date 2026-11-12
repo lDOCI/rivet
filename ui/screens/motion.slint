@@ -79,7 +79,7 @@ export component MotionScreen inherits Rectangle {
                     width: 84px;
                     height: 84px;
                     border-radius: 42px;
-                    background: home.pressed ? #2dd4bf33 : Tokens.accent-soft;
+                    background: home.pressed ? Tokens.accent.with-alpha(0.2) : Tokens.accent-soft;
                     accessible-role: button;
                     accessible-label: @tr("Home all axes");
                     accessible-action-default => { root.home-all(); }

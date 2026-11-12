@@ -229,6 +229,19 @@ def main():
                 f.append(f"changed: root.{n}-side-enabled")
             items.append("{ " + ", ".join(f) + " }")
 
+        # Rows Rivet adds beyond the prototype page (spec `extra`): link rows at the end.
+        for x in conf.get("extra", []):
+            n = x["name"]
+            props.append(f"    // {x['t']} — not on the prototype page")
+            props.append(f"    in property <bool> {n}-shown: true;")
+            props.append(f"    in property <string> {n}-sub: {tr(page, x['sub']) if x.get('sub') else chr(34)*2};")
+            props.append(f"    in property <string> {n}-value;")
+            f = [f'kind: "link"', f'key: "{n}"', f"title: {tr(page, x['t'])}", f"sub: root.{n}-sub",
+                 f"shown: root.{n}-shown", f"value: root.{n}-value"]
+            if x.get("icon"):
+                f.append(f"icon: {s(x['icon'])}")
+            items.append("{ " + ", ".join(f) + " }")
+
         out.append(f"// {page}.dc.html")
         out.append(f"export component {conf['component']} inherits FormScreen {{")
         out += props

@@ -1,4 +1,5 @@
 import { Tokens } from "kit/tokens.slint";
+export { Tokens }
 import { Rail } from "kit/rail.slint";
 import { ControlScreen } from "screens/control.slint";
 import { FansScreen, FanRow, ZOffsetScreen } from "screens/tune.slint";
@@ -26,6 +27,18 @@ export global Strings {
     out property <string> signal-fair: @tr("fair signal");
     out property <string> signal-weak: @tr("weak signal");
     out property <string> last-print-filament: @tr("from the last print");
+    // Theme swatch names.
+    out property <string> theme-teal: @tr("Teal");
+    out property <string> theme-orange: @tr("Orange");
+    out property <string> theme-blue: @tr("Blue");
+    out property <string> theme-violet: @tr("Violet");
+    out property <string> theme-pink: @tr("Pink");
+    out property <string> theme-lime: @tr("Lime");
+    out property <string> theme-amber: @tr("Amber");
+    out property <string> theme-cyan: @tr("Cyan");
+    out property <string> theme-graphite: @tr("Graphite");
+    out property <string> theme-black: @tr("Black");
+    out property <string> theme-navy: @tr("Navy");
     out property <string> join-failed: @tr("Could not join “{}”. Check the password and try again.", "{}");
 }
 import { Format } from "kit/format.slint";
@@ -42,6 +55,8 @@ import { ToolsScreen, ConsoleScreen, MacrosScreen, ConsoleLine } from "screens/t
 import { FilesScreen, FileScreen, FileItem, FileInfo, FindScreen, RenameScreen, MoveScreen } from "screens/files.slint";
 import { WifiJoinScreen } from "screens/wifi.slint";
 import { TouchCalScreen } from "screens/touchcal.slint";
+import { ThemeScreen, Swatch } from "screens/theme.slint";
+export { Swatch }
 export { FileItem, FileInfo, ConsoleLine, FanRow }
 import { MessagesScreen, MessageRow } from "screens/messages.slint";
 import { FilamentScreen } from "screens/filament.slint";
@@ -487,6 +502,13 @@ export component AppWindow inherits Window {
     // Screen settings: backlight percent, and whether it can be set here.
     in-out property <float> set-brightness: 75;
     in property <bool> backlight-available;
+    // Appearance (theme.rs): the swatches and the picks.
+    in property <[Swatch]> theme-accents;
+    in property <[Swatch]> theme-bases;
+    in property <int> theme-accent;
+    in property <int> theme-base;
+    callback theme-open();
+    callback theme-pick(int, int);
     // Touch calibration (touchcal.rs): mean miss before / after, -1 when the taps made no sense.
     in property <float> cal-miss-before: -1;
     in property <float> cal-miss-after: -1;
@@ -602,7 +624,7 @@ export component AppWindow inherits Window {
         Rail {
             active: !root.ready ? "" : (root.screen == "fans" || root.screen == "filament" || root.screen == "heating" || root.screen == "heat-presets" || root.screen == "temp-graph" || root.screen == "motion" || root.screen == "extruder" || root.screen == "light" || root.screen == "speed" || root.screen == "zoffset" || root.screen == "motion-more" || root.screen == "retraction" || root.screen == "dryer" || root.screen == "spools" || root.screen == "devices") ? "control"
                 : (root.screen == "control" || root.screen == "tools" || root.screen == "settings" || root.screen == "messages") ? root.screen
-                : (root.screen == "set-screen" || root.screen == "set-lock" || root.screen == "set-sound" || root.screen == "set-language" || root.screen == "set-safety" || root.screen == "set-system" || root.screen == "set-network" || root.screen == "wifi-join" || root.screen == "set-printers" || root.screen == "set-updates") ? "settings"
+                : (root.screen == "set-screen" || root.screen == "set-theme" || root.screen == "set-lock" || root.screen == "set-sound" || root.screen == "set-language" || root.screen == "set-safety" || root.screen == "set-system" || root.screen == "set-network" || root.screen == "wifi-join" || root.screen == "set-printers" || root.screen == "set-updates") ? "settings"
                 : (root.screen == "console" || root.screen == "macros" || root.screen == "calibrate" || root.screen == "bed-mesh" || root.screen == "mesh-profiles" || root.screen == "screws" || root.screen == "probe" || root.screen == "shaper" || root.screen == "shaper-result" || root.screen == "belts" || root.screen == "pid" || root.screen == "pa" || root.screen == "tmc" || root.screen == "limits" || root.screen == "sensors" || root.screen == "history" || root.screen == "service" || root.screen == "camera") ? "tools"
                 : "home";
             unread: root.unread;
@@ -1114,9 +1136,23 @@ export component AppWindow inherits Window {
             sleep-sel: root.set-sleep;
             awake-on: root.set-awake;
             back => { root.screen = "settings"; }
-            activate(key) => { if (key == "touch-cal") { root.overlay = "touch-cal"; } }
+            theme-value: root.theme-accents.length > 0 ? root.theme-accents[root.theme-accent].name + " · " + root.theme-bases[root.theme-base].name : "";
+            init => { root.theme-open(); }
+            activate(key) => {
+                if (key == "touch-cal") { root.overlay = "touch-cal"; }
+                if (key == "theme") { root.theme-open(); root.screen = "set-theme"; }
+            }
             picked(key, i) => { if (key == "sleep") { root.set-sleep = i; root.setting-changed("screen_sleep_min", ["1", "5", "10", "30", "0"][i]); } }
             toggled(key, on) => { if (key == "awake") { root.set-awake = on; root.setting-changed("awake_print", on ? "1" : "0"); } }
+        }
+        if root.ready && root.screen == "set-theme": ThemeScreen {
+            accents: root.theme-accents;
+            bases: root.theme-bases;
+            accent-sel: root.theme-accent;
+            base-sel: root.theme-base;
+            pick-accent(i) => { root.theme-pick(i, root.theme-base); }
+            pick-base(i) => { root.theme-pick(root.theme-accent, i); }
+            back => { root.screen = "set-screen"; }
         }
         if root.ready && root.screen == "set-lock": LockForm {
             lock-print-on: root.set-lock-print;

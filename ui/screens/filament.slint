@@ -35,7 +35,7 @@ component ExtruderArt inherits Rectangle {
     in property <bool> hot;
     in property <bool> fed;
     in property <bool> flowing;
-    property <brush> ink: root.hot ? #5eead4 : #3a414a;
+    property <brush> ink: root.hot ? Tokens.accent-hi : #3a414a;
     width: 170px;
     height: 190px;
     property <float> sx: self.width / 1px / 100;

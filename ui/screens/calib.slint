@@ -80,7 +80,7 @@ export component BedMeshScreen inherits Rectangle {
                         padding-right: 14px;
                         Text {
                             text: root.range <= 0.3 ? @tr("Fine: the mesh compensates") : @tr("Uneven: level the bed with its screws");
-                            color: root.range <= 0.3 ? #5eead4 : Tokens.warn;
+                            color: root.range <= 0.3 ? Tokens.accent-hi : Tokens.warn;
                             font-size: 15px;
                             font-weight: 600;
                             vertical-alignment: center;
@@ -166,7 +166,7 @@ export component ScrewsScreen inherits Rectangle {
                     x: 14px + s.x * (parent.width - 28px - self.width);
                     y: 14px + s.y * (parent.height - 28px - self.height);
                     border-radius: 16px;
-                    background: s.state == "cw" || s.state == "ccw" ? #134e4a99 : Tokens.surface-2;
+                    background: s.state == "cw" || s.state == "ccw" ? Tokens.accent.with-alpha(0.25) : Tokens.surface-2;
                     VerticalLayout {
                         padding: 12px;
                         spacing: 2px;
@@ -363,7 +363,7 @@ export component ShaperResultScreen inherits Rectangle {
                     border-radius: 12px;
                     background: i == root.pick ? Tokens.accent-soft : Tokens.surface-1;
                     border-width: i == root.pick ? 2px : 0px;
-                    border-color: #2dd4bf80;
+                    border-color: Tokens.accent.with-alpha(0.5);
                     accessible-role: button;
                     accessible-label: r.name;
                     HorizontalLayout {

@@ -2018,6 +2018,12 @@ async fn load_settings(
             fbdev_platform::screen::set_brightness(percent as u32);
         }
     }
+    // The theme picked in Settings › Screen › Appearance.
+    let (accent, base) = (
+        saved["theme_accent"].as_u64().unwrap_or(0) as usize,
+        saved["theme_base"].as_u64().unwrap_or(0) as usize,
+    );
+    let _ = ui.upgrade_in_event_loop(move |ui| crate::theme::apply(&ui, accent, base));
     let brightness = saved["brightness"].as_f64().unwrap_or(75.0) as f32;
     let _ = ui.upgrade_in_event_loop(move |ui| ui.set_set_brightness(brightness));
     let (invert, jog_xy, jog_z) = (

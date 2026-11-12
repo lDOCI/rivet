@@ -2199,3 +2199,48 @@ msgstr "Касания промахивались в среднем на {} px, 
 
 msgid "Again"
 msgstr "Заново"
+
+msgid "Teal"
+msgstr "Бирюзовый"
+
+msgid "Orange"
+msgstr "Оранжевый"
+
+msgid "Blue"
+msgstr "Синий"
+
+msgid "Violet"
+msgstr "Фиолетовый"
+
+msgid "Pink"
+msgstr "Розовый"
+
+msgid "Lime"
+msgstr "Лаймовый"
+
+msgid "Amber"
+msgstr "Янтарный"
+
+msgid "Cyan"
+msgstr "Голубой"
+
+msgid "Graphite"
+msgstr "Графит"
+
+msgid "Black"
+msgstr "Чёрный"
+
+msgid "Navy"
+msgstr "Тёмно-синий"
+
+msgid "Appearance"
+msgstr "Оформление"
+
+msgid "ACCENT"
+msgstr "АКЦЕНТ"
+
+msgid "BACKGROUND"
+msgstr "ФОН"
+
+msgid "accent and background colours"
+msgstr "цвет акцента и фона"

@@ -656,6 +656,29 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
     ui.set_wifi_available(rivet::wifi::available());
     #[cfg(feature = "fbdev")]
     ui.set_backlight_available(fbdev_platform::screen::backlight_available());
+    // Appearance: the swatches, and a pick applied and saved.
+    {
+        let weak = ui.as_weak();
+        ui.on_theme_open(move || {
+            if let Some(ui) = weak.upgrade() {
+                rivet::theme::show_choices(&ui);
+            }
+        });
+    }
+    {
+        let weak = ui.as_weak();
+        let tx = tx.clone();
+        ui.on_theme_pick(move |accent, base| {
+            let Some(ui) = weak.upgrade() else { return };
+            rivet::theme::apply(&ui, accent.max(0) as usize, base.max(0) as usize);
+            for (key, v) in [("theme_accent", accent), ("theme_base", base)] {
+                let _ = tx.send(Command::SaveSetting {
+                    key: key.into(),
+                    value: serde_json::json!(v),
+                });
+            }
+        });
+    }
     // Touch calibration.
     ui.on_cal_begin(rivet::touchcal::begin);
     ui.on_cal_point(|i, x, y| rivet::touchcal::tap(i.max(0) as usize, x, y));

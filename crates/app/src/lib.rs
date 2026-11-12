@@ -9,6 +9,7 @@ pub mod engine;
 pub mod files;
 pub mod logfile;
 pub mod resonance;
+pub mod theme;
 pub mod thumbs;
 pub mod touchcal;
 pub mod wifi;

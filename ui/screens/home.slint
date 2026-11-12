@@ -125,7 +125,7 @@ export component HomeScreen inherits VerticalLayout {
                             // box-shadow: 0 8px 24px rgba(45, 212, 191, 0.2)
                             drop-shadow-offset-y: 8px;
                             drop-shadow-blur: 24px;
-                            drop-shadow-color: #2dd4bf33;
+                            drop-shadow-color: Tokens.accent.with-alpha(0.2);
                             accessible-role: button;
                             accessible-label: @tr("Print again");
                             accessible-action-default => { root.print-again(); }
