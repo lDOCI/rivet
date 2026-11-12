@@ -14,7 +14,7 @@ use std::ops::ControlFlow;
 use i_slint_core::lengths::{LogicalPoint, LogicalSize};
 use i_slint_core::{
     item_tree::{ItemRc, ParentItemTraversalMode},
-    items::TouchArea,
+    items::{Flickable, TouchArea},
     lengths::LogicalRect,
     window::WindowInner,
 };
@@ -55,6 +55,46 @@ fn targets(window: &slint::Window) -> Vec<LogicalRect> {
         ControlFlow::<()>::Continue(())
     });
     out
+}
+
+/// Whether a finger pressed at (x, y) can drag anything: a list that scrolls
+/// under it, or a touch area that follows the finger (a dial, a slider). If not,
+/// the touch is a tap however the finger wobbles, as in LVGL, where a press only
+/// stops being a click once something has scrolled.
+// Used by the Linux event loop only.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+pub fn can_drag(window: &slint::Window, x: f32, y: f32) -> bool {
+    let Some(root) = WindowInner::from_pub(window).window_item_rc() else {
+        return true;
+    };
+    let mut drag = false;
+    root.visit_descendants(|item| {
+        let under = || visible_rect(item).is_some_and(|r| distance(&r, x, y) == 0.0);
+        if let Some(ta) = item.downcast::<TouchArea>() {
+            let ta = ta.as_pin_ref();
+            if ta.enabled()
+                && (ta.moved.has_handler() || ta.pointer_event.has_handler())
+                && item.is_visible()
+                && under()
+            {
+                drag = true;
+            }
+        } else if let Some(f) = item.downcast::<Flickable>() {
+            let f = f.as_pin_ref();
+            let g = item.geometry();
+            let scrolls = f.content_height().get() > g.height() + 0.5
+                || f.content_width().get() > g.width() + 0.5;
+            if f.interactive() && scrolls && item.is_visible() && under() {
+                drag = true;
+            }
+        }
+        if drag {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    });
+    drag
 }
 
 fn distance(r: &LogicalRect, x: f32, y: f32) -> f32 {

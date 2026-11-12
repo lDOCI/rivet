@@ -340,6 +340,9 @@ impl FbPlatform {
         }
         let Some((x, y)) = slop.origin() else { return };
         let (x, y) = target(window, slop, x, y);
+        if !slop.dragging() && !crate::snap::can_drag(window, x, y) {
+            slop.pin();
+        }
         window.dispatch_event(WindowEvent::PointerPressed {
             position: LogicalPosition::new(x, y),
             button: PointerEventButton::Left,

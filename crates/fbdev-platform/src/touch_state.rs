@@ -211,6 +211,8 @@ pub struct TapSlop {
     start: (f32, f32),
     pressed_at: Option<std::time::Instant>,
     dragging: bool,
+    /// Nothing under the finger drags: the touch stays a tap.
+    pinned: bool,
     /// The previous sample, when it was already out of the slop.
     out: bool,
     /// The last point passed on while dragging.
@@ -244,6 +246,7 @@ impl TapSlop {
             start: (0.0, 0.0),
             pressed_at: None,
             dragging: false,
+            pinned: false,
             out: false,
             last_pos: None,
             last: None,
@@ -263,6 +266,7 @@ impl TapSlop {
         self.start = (x, y);
         self.pressed_at = Some(now);
         self.dragging = false;
+        self.pinned = false;
         self.out = false;
         self.last_pos = None;
         self.last = None;
@@ -275,6 +279,9 @@ impl TapSlop {
         let Some((ox, oy)) = self.origin else {
             return Some((x, y));
         };
+        if self.pinned {
+            return None;
+        }
         if !self.dragging {
             // A finger this far from where it pressed is surely moving: a short
             // flick may give only two samples.
@@ -336,6 +343,12 @@ impl TapSlop {
         self.origin
     }
 
+    /// Nothing under the finger can be dragged: the touch stays a tap at its
+    /// landed point however the finger moves.
+    pub fn pin(&mut self) {
+        self.pinned = true;
+    }
+
     /// Whether this touch became a drag.
     pub fn dragging(&self) -> bool {
         self.dragging
@@ -356,6 +369,23 @@ impl TapSlop {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_pinned_touch_stays_a_tap_however_the_finger_moves() {
+        let t0 = std::time::Instant::now();
+        let ms = |n| t0 + std::time::Duration::from_millis(n);
+        let mut t = TapSlop::new(14.0);
+        t.press(100.0, 100.0, t0);
+        t.pin();
+        // A thumb rolling 40 px over a button with nothing to scroll.
+        assert_eq!(t.moved(120.0, 110.0, ms(60)), None);
+        assert_eq!(t.moved(140.0, 115.0, ms(120)), None);
+        assert!(!t.dragging());
+        // The lift clicks where it pressed.
+        let (x, y, click) = t.release(140.0, 115.0, ms(160));
+        assert_eq!((x, y), (100.0, 100.0));
+        assert_eq!(click, !t.stopper);
+    }
 
     fn state(transform: TouchTransform) -> TouchState {
         TouchState::new(
