@@ -7,7 +7,8 @@
 #   tools/swap-screen.sh status [PRINTER_IP]   show what is running
 #   tools/swap-screen.sh log    [PRINTER_IP]   tail the Rivet log
 #
-# Rivet lives in /tmp (RAM): a reboot always brings the printer back to Guppy.
+# Rivet lives in /tmp (RAM): a reboot brings the printer back to Guppy, or to the
+# installed Rivet if tools/install.sh was used (this script stops it until then).
 #
 # Environment:
 #   PRINTER_HOST   printer address (or pass it as the 2nd argument)
@@ -49,6 +50,8 @@ find_guppy() {
 }
 
 stop_rivet() {
+  # Rivet installed by tools/install.sh: stop its supervisor too, or it would restart it.
+  run "if [ -x /etc/init.d/S80rivet ]; then /etc/init.d/S80rivet stop; fi"
   run "if [ -f $pidfile ] && kill -0 \$(cat $pidfile) 2>/dev/null; then kill \$(cat $pidfile); sleep 1; fi; rm -f $pidfile"
 }
 

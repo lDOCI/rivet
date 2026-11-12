@@ -76,3 +76,4 @@ So installing Rivet means an `S80rivet` of the same shape and keeping
 `S80guppyscreen` from starting (rename it, e.g. `_S80guppyscreen`, which the
 `S??*` pattern skips); uninstalling restores it. `tools/swap-screen.sh` does the
 same for one boot without touching `/etc`.
+Done by `tools/install.sh` / `tools/uninstall.sh` ([docs/install.md](../install.md)).

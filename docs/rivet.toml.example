@@ -1,4 +1,4 @@
-# Copy to /data/printer_data/config/rivet.toml (KlipperMod) or next to the binary.
+# Copy to /root/printer_data/config/rivet.toml (Klipper Mod; tools/install.sh does it) or next to the binary.
 # Command line (--lang, --moonraker) and environment (RIVET_LANG, RIVET_MOONRAKER) win over this file.
 
 # Interface language: "en" or "ru". Without it Rivet follows the system LANG, then English.
@@ -8,5 +8,5 @@ language = "ru"
 # moonraker = "ws://127.0.0.1:7125/websocket"
 
 # Log to a file (rotated: 512 KB, 3 old copies) instead of the terminal.
-# log_file = "/data/printer_data/logs/rivet.log"
+# log_file = "/root/printer_data/logs/rivet.log"   # /etc/init.d/S80rivet passes --log-file, which wins
 # log_level = "info"   # error, warn, info, debug

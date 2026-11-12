@@ -1,0 +1,116 @@
+#!/bin/sh
+#
+# Start Rivet, the touch screen (replaces S80guppyscreen, see tools/install.sh)
+#
+# start-stop-daemon runs this script's "supervise" loop in the background; the
+# loop starts Rivet and starts it again if it exits, waiting longer after each
+# quick crash (1, 2, 4 ... 60 s) so a crash loop does not eat the CPU.
+#
+# Rivet logs to $LOG_FILE (rotated by Rivet itself). Its stderr (panics) and the
+# restarts go to $CONSOLE_LOG, cut to one old copy when it passes 256 KB.
+#
+
+RIVET=/opt/rivet/rivet
+CONFIG=/root/printer_data/config/rivet.toml
+LOG_FILE=/root/printer_data/logs/rivet.log
+CONSOLE_LOG=/root/printer_data/logs/rivet-console.log
+PID_FILE=/run/rivet.pid
+CHILD_PID_FILE=/run/rivet.child.pid
+NICENESS=10
+# A run shorter than this counts as a crash and doubles the wait before the next start.
+HEALTHY_SECONDS=30
+MAX_DELAY=60
+
+say() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') supervisor: $*" >> $CONSOLE_LOG
+}
+
+cut_console_log() {
+    if [ -f $CONSOLE_LOG ] && [ "$(wc -c < $CONSOLE_LOG)" -gt 262144 ]; then
+        mv -f $CONSOLE_LOG $CONSOLE_LOG.1
+    fi
+}
+
+supervise() {
+    child=
+    trap 'say "stop"; [ -n "$child" ] && kill $child 2>/dev/null; wait $child 2>/dev/null; rm -f $CHILD_PID_FILE; exit 0' TERM INT
+    delay=1
+    while :; do
+        cut_console_log
+        started=$(cut -d. -f1 /proc/uptime)
+        $RIVET --config $CONFIG --log-file $LOG_FILE >> $CONSOLE_LOG 2>&1 < /dev/null &
+        child=$!
+        echo $child > $CHILD_PID_FILE
+        say "started rivet (pid $child)"
+        wait $child
+        code=$?
+        child=
+        rm -f $CHILD_PID_FILE
+        ran=$(( $(cut -d. -f1 /proc/uptime) - started ))
+        if [ $ran -ge $HEALTHY_SECONDS ]; then
+            delay=1
+        fi
+        say "rivet exited with code $code after ${ran}s, restarting in ${delay}s"
+        sleep $delay &
+        wait $!
+        if [ $ran -lt $HEALTHY_SECONDS ]; then
+            delay=$(( delay * 2 ))
+            [ $delay -gt $MAX_DELAY ] && delay=$MAX_DELAY
+        fi
+    done
+}
+
+start() {
+    if start-stop-daemon -K -t -q -p $PID_FILE; then
+        echo "rivet is already running"
+        return 0
+    fi
+    # set backlight to 0% first, the LCD values are not initialized properly
+    # which is done when disable/enable is triggered. Otherwise
+    # 1% would be 100% and 100% would be 1%
+    backlight 0%
+    backlight 75%
+
+    start-stop-daemon -S -b -m -p $PID_FILE -N $NICENESS --exec /bin/sh -- /etc/init.d/S80rivet supervise
+}
+
+stop() {
+    start-stop-daemon -K -q -p $PID_FILE
+    # The supervisor stops Rivet on TERM; wait for the screen to be free.
+    i=0
+    while [ -f $CHILD_PID_FILE ] && [ $i -lt 50 ]; do
+        sleep 0.1
+        i=$((i + 1))
+    done
+    if [ -f $CHILD_PID_FILE ]; then
+        kill -9 "$(cat $CHILD_PID_FILE)" 2>/dev/null
+        rm -f $CHILD_PID_FILE
+    fi
+    rm -f $PID_FILE
+}
+
+restart() {
+    stop
+    sleep 2
+    start
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    restart|reload)
+        restart
+        ;;
+    supervise)
+        supervise
+        ;;
+  *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+esac
+
+exit $?

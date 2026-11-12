@@ -45,6 +45,9 @@ cargo printer
 
 Output: `target/armv7-unknown-linux-musleabihf/release/rivet`. CI builds the same binary on every push.
 
+Install it as the printer's screen (and undo): `tools/install.sh PRINTER_IP`, `tools/uninstall.sh PRINTER_IP` —
+see [docs/install.md](docs/install.md).
+
 On the device it draws to `/dev/fb0` and reads touch from evdev. Overrides: `RIVET_FB`, `RIVET_TOUCH`,
 `RIVET_ROTATION` (`0`/`90`/`180`/`270`), `RIVET_TOUCH_SWAP_XY`, `RIVET_TOUCH_INVERT_X`, `RIVET_TOUCH_INVERT_Y`.
 
