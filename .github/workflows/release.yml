@@ -1,11 +1,12 @@
 name: Release
 
 # A tag v<version>[-alpha|-beta…] builds the printer binary and publishes a GitHub
-# release (a pre-release while the version has a suffix) with:
-#   rivet.zip                         first asset: what Moonraker's update manager
-#                                     ([update_manager rivet], type web) unpacks
-#                                     into /opt/rivet: rivet, rivet.sha256,
-#                                     release_info.json
+# release with the files below. Never a pre-release, even for an alpha: Z-Mod's
+# update manager entry (channel: stable) only sees GitHub's "latest" release.
+#   rivet-ad5m.zip                    first asset: the update Moonraker's update
+#                                     manager (type web) unpacks: Klipper Mod takes
+#                                     the first asset, Z-Mod the one release_info.json
+#                                     names (asset_name); keep the name
 #   rivet-<tag>-usb.zip               install from a USB stick (tools/usb)
 #   rivet-<tag>-usb-remove.zip        remove from a USB stick
 #   rivet-<tag>-installer.tar.gz      install over ssh from a computer
@@ -53,11 +54,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG=${GITHUB_REF_NAME}
-          PRE=
-          case "$TAG" in *-*) PRE=--prerelease ;; esac
           NOTES=$(awk -v t="$TAG" '$0 ~ "^## " t {p=1; next} /^## /{p=0} p' CHANGELOG.md 2>/dev/null || true)
           [ -n "$NOTES" ] || NOTES="Rivet $TAG"
-          # rivet.zip goes up first: Moonraker installs a release's first asset.
-          gh release create "$TAG" dist/rivet.zip --title "$TAG" --notes "$NOTES" $PRE
+          # rivet-ad5m.zip goes up first: Klipper Mod's Moonraker installs a
+          # release's first asset.
+          gh release create "$TAG" dist/rivet-ad5m.zip --title "$TAG" --notes "$NOTES" --latest
           gh release upload "$TAG" "dist/rivet-$TAG-usb.zip" "dist/rivet-$TAG-usb-remove.zip" \
             "dist/rivet-$TAG-installer.tar.gz"

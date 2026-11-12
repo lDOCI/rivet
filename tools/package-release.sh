@@ -5,8 +5,11 @@
 #
 # Needs the printer binary (`cargo printer`) and runs ui-snapshot for the USB
 # installer's pictures. Writes to OUT_DIR:
-#   rivet.zip                        Moonraker's update manager unpacks it into
-#                                    /opt/rivet: rivet, rivet.sha256, release_info.json
+#   rivet-ad5m.zip                   the update: Moonraker's update manager
+#                                    (type web) unpacks it into /opt/rivet (Klipper
+#                                    Mod) or /srv/rivet (Z-Mod, which finds it by
+#                                    release_info.json's asset_name): rivet,
+#                                    rivet.sha256, release_info.json, S80rivet
 #   rivet-VERSION-usb.zip            unpack onto a FAT32 USB stick, switch the
 #                                    printer on with it: installs Rivet
 #   rivet-VERSION-usb-remove.zip     the same, but removes Rivet
@@ -32,9 +35,10 @@ sha() { if command -v sha256sum >/dev/null; then sha256sum "$@"; else shasum -a 
 mkdir -p "$work/zip"
 cp "$bin" "$work/zip/rivet" && chmod 755 "$work/zip/rivet"
 (cd "$work/zip" && sha rivet > rivet.sha256)
-printf '{"project_name": "rivet", "project_owner": "%s", "version": "%s"}\n' "$owner" "$version" > "$work/zip/release_info.json"
-rm -f "$out/rivet.zip"
-(cd "$work/zip" && zip -qX "$out/rivet.zip" rivet rivet.sha256 release_info.json)
+printf '{"project_name": "rivet", "project_owner": "%s", "version": "%s", "asset_name": "rivet-ad5m.zip"}\n' "$owner" "$version" > "$work/zip/release_info.json"
+cp "$root/tools/install/S80rivet" "$work/zip/" && chmod 755 "$work/zip/S80rivet"
+rm -f "$out/rivet-ad5m.zip"
+(cd "$work/zip" && zip -qX "$out/rivet-ad5m.zip" rivet rivet.sha256 release_info.json S80rivet)
 
 # The USB installer's pictures, as raw framebuffer images.
 (cd "$root" && RIVET_FB_RAW=1 cargo run -q -p ui-snapshot -- "$work/pics" usb-installing usb-done usb-removed usb-error >/dev/null)

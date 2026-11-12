@@ -67,7 +67,7 @@ sleep 1
 for p in $(pidof rivet); do kill -9 "$p" 2>/dev/null || true; done
 # Rivet may have stopped on its second page of video memory; the screen that
 # comes back takes that offset for good and would draw off screen: reset it.
-echo 0,0 > /sys/class/graphics/fb0/pan 2>/dev/null || true
+[ -w /sys/class/graphics/fb0/pan ] && echo 0,0 > /sys/class/graphics/fb0/pan || true
 
 gone /etc/init.d/S80rivet /etc/init.d/.S80rivet.new /opt/rivet
 gone /run/rivet.pid /run/rivet.child.pid

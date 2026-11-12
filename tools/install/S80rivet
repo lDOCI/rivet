@@ -2,6 +2,11 @@
 #
 # Start Rivet, the touch screen (replaces S80guppyscreen, see tools/install.sh)
 #
+# Where it lives decides where it works: run from a folder that holds the rivet
+# binary (Z-Mod: /srv/rivet/S80rivet), that folder; else /opt/rivet (Klipper Mod,
+# /etc/init.d/S80rivet). RIVET_DIR overrides it. Config and logs go to Klipper
+# Mod's printer_data, or to Z-Mod's /opt/config/mod_data.
+#
 # start-stop-daemon runs this script's "supervise" loop in the background; the
 # loop starts Rivet and starts it again if it exits, waiting longer after each
 # quick crash (1, 2, 4 ... 60 s) so a crash loop does not eat the CPU.
@@ -16,14 +21,39 @@
 # restarts go to $CONSOLE_LOG, cut to one old copy when it passes 256 KB.
 #
 
-DIR=/opt/rivet
+SELF=$(readlink -f "$0")
+if [ -n "$RIVET_DIR" ]; then
+    DIR=$RIVET_DIR
+elif [ -x "$(dirname "$SELF")/rivet" ]; then
+    DIR=$(dirname "$SELF")
+else
+    DIR=/opt/rivet
+fi
+# Z-Mod first: it has a printer_data too, but keeps its screens' files in mod_data.
+if [ -d /opt/config/mod_data ]; then
+    CONFIG_DIR=/opt/config/mod_data
+    LOG_DIR=/opt/config/mod_data/log
+elif [ -d /root/printer_data/config ]; then
+    CONFIG_DIR=/root/printer_data/config
+    LOG_DIR=/root/printer_data/logs
+else
+    CONFIG_DIR=$DIR
+    LOG_DIR=$DIR
+fi
 RIVET=$DIR/rivet
+# Z-Mod's language (language: ru in mod_data/lang.cfg) as the system's; a
+# language set in rivet.toml still wins.
+LANGUAGE=$LANG
+if [ -f /opt/config/mod_data/lang.cfg ]; then
+    l=$(sed -n 's/^language: *\([a-z][a-z]\).*/\1/p' /opt/config/mod_data/lang.cfg | head -n1)
+    [ -n "$l" ] && LANGUAGE=$l
+fi
 GOOD=$DIR/rivet.good
 SUM=$DIR/rivet.sha256
 ROLLED=$DIR/rolled-back
-CONFIG=/root/printer_data/config/rivet.toml
-LOG_FILE=/root/printer_data/logs/rivet.log
-CONSOLE_LOG=/root/printer_data/logs/rivet-console.log
+CONFIG=$CONFIG_DIR/rivet.toml
+LOG_FILE=$LOG_DIR/rivet.log
+CONSOLE_LOG=$LOG_DIR/rivet-console.log
 PID_FILE=/run/rivet.pid
 CHILD_PID_FILE=/run/rivet.child.pid
 NICENESS=10
@@ -59,6 +89,8 @@ roll_back() {
 
 # Before a start: a binary that does not match its checksum is not run.
 check_binary() {
+    # The binary that worked (after a roll-back the checksum is the bad one's).
+    [ -f $GOOD ] && cmp -s $RIVET $GOOD && return 0
     if [ -f $SUM ] && [ "$(sum_of $RIVET)" != "$(cut -d' ' -f1 $SUM)" ]; then
         roll_back "rivet does not match rivet.sha256 (broken download?)"
     fi
@@ -73,7 +105,7 @@ supervise() {
         cut_console_log
         check_binary
         started=$(cut -d. -f1 /proc/uptime)
-        $RIVET --config $CONFIG --log-file $LOG_FILE >> $CONSOLE_LOG 2>&1 < /dev/null &
+        LANG=$LANGUAGE RIVET_SUPERVISED=1 RIVET_CONFIG_DIR=$CONFIG_DIR $RIVET --config $CONFIG --log-file $LOG_FILE >> $CONSOLE_LOG 2>&1 < /dev/null &
         child=$!
         echo $child > $CHILD_PID_FILE
         say "started rivet (pid $child)"
@@ -97,7 +129,8 @@ supervise() {
         child=
         rm -f $CHILD_PID_FILE
         ran=$(( $(cut -d. -f1 /proc/uptime) - started ))
-        if [ $ran -ge $HEALTHY_SECONDS ]; then
+        if [ $ran -ge $HEALTHY_SECONDS ] || [ $code -eq 0 ]; then
+            # Ran long enough, or exited on purpose (a new binary to start).
             delay=1
         elif [ -f $GOOD ] && ! cmp -s $RIVET $GOOD; then
             # A new binary that does not come up: two tries, then the old one.
@@ -110,7 +143,7 @@ supervise() {
         say "rivet exited with code $code after ${ran}s, restarting in ${delay}s"
         sleep $delay &
         wait $!
-        if [ $ran -lt $HEALTHY_SECONDS ]; then
+        if [ $ran -lt $HEALTHY_SECONDS ] && [ $code -ne 0 ]; then
             delay=$(( delay * 2 ))
             [ $delay -gt $MAX_DELAY ] && delay=$MAX_DELAY
         fi
@@ -125,10 +158,15 @@ start() {
     # set backlight to 0% first, the LCD values are not initialized properly
     # which is done when disable/enable is triggered. Otherwise
     # 1% would be 100% and 100% would be 1%
-    backlight 0%
-    backlight 75%
+    # Klipper Mod's tool only (Z-Mod's takes other values; Rivet sets the
+    # backlight itself there).
+    if [ -x /usr/bin/backlight ] && /usr/bin/backlight 2>/dev/null | grep -q 'Current brightness'; then
+        backlight 0%
+        backlight 75%
+    fi
+    mkdir -p $LOG_DIR
 
-    start-stop-daemon -S -b -m -p $PID_FILE -N $NICENESS --exec /bin/sh -- /etc/init.d/S80rivet supervise
+    start-stop-daemon -S -b -m -p $PID_FILE -N $NICENESS --exec /bin/sh -- "$SELF" supervise
 }
 
 stop() {
@@ -136,7 +174,8 @@ stop() {
     # The supervisor stops Rivet on TERM; wait for the screen to be free.
     i=0
     while [ -f $CHILD_PID_FILE ] && [ $i -lt 50 ]; do
-        sleep 0.1
+        # (Z-Mod's busybox sleeps whole seconds only.)
+        sleep 0.1 2>/dev/null || usleep 100000 2>/dev/null || { sleep 1; i=$((i + 9)); }
         i=$((i + 1))
     done
     if [ -f $CHILD_PID_FILE ]; then
@@ -151,7 +190,7 @@ stop() {
 # A screen started next (GuppyScreen's LVGL) takes that offset for good and
 # draws where nothing is shown: point the display back at the first page.
 show_first_page() {
-    echo 0,0 > /sys/class/graphics/fb0/pan 2>/dev/null || true
+    [ -w /sys/class/graphics/fb0/pan ] && echo 0,0 > /sys/class/graphics/fb0/pan || true
 }
 
 restart() {

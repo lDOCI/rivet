@@ -137,13 +137,30 @@ impl Framebuffer {
 
         let mut var = FbVarScreeninfo::default();
         let mut fix = FbFixScreeninfo::default();
-        // SAFETY: the structs match the kernel ABI and outlive the calls.
-        unsafe {
-            if libc::ioctl(fd, FBIOGET_VSCREENINFO as _, &mut var) < 0 {
-                return Err(io::Error::last_os_error());
-            }
-            if libc::ioctl(fd, FBIOGET_FSCREENINFO as _, &mut fix) < 0 {
-                return Err(io::Error::last_os_error());
+        if file.metadata()?.is_file() {
+            // A plain file stands in for the screen (tests in an emulator with
+            // no framebuffer): one 800×480 BGRX page, readable as a picture.
+            let (w, h) = (800u32, 480u32);
+            file.set_len(u64::from(w * h * 4))?;
+            var.xres = w;
+            var.yres = h;
+            var.xres_virtual = w;
+            var.yres_virtual = h;
+            var.bits_per_pixel = 32;
+            var.red.offset = 16;
+            var.green.offset = 8;
+            var.blue.offset = 0;
+            fix.line_length = w * 4;
+            fix.smem_len = w * h * 4;
+        } else {
+            // SAFETY: the structs match the kernel ABI and outlive the calls.
+            unsafe {
+                if libc::ioctl(fd, FBIOGET_VSCREENINFO as _, &mut var) < 0 {
+                    return Err(io::Error::last_os_error());
+                }
+                if libc::ioctl(fd, FBIOGET_FSCREENINFO as _, &mut fix) < 0 {
+                    return Err(io::Error::last_os_error());
+                }
             }
         }
 

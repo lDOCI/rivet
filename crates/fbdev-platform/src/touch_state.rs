@@ -41,6 +41,49 @@ impl AxisRange {
     }
 }
 
+/// tslib's linear calibration (`pointercal`: "a b c d e f s xres yres"):
+/// x = (c + a·rx + b·ry) / s, y = (f + d·rx + e·ry) / s, in an xres × yres screen.
+/// What tslib applies to a raw panel when no `ts_uinput` does it for us (Z-Mod
+/// reads the AD5M's resistive panel straight).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Pointercal {
+    c: [f32; 7],
+    res: (f32, f32),
+}
+
+impl Pointercal {
+    pub fn parse(text: &str) -> Option<Self> {
+        let n: Vec<f32> = text
+            .split_whitespace()
+            .map(str::parse)
+            .collect::<Result<_, _>>()
+            .ok()?;
+        if n.len() < 7 || n[6] == 0.0 {
+            return None;
+        }
+        let res = match (n.get(7), n.get(8)) {
+            (Some(&w), Some(&h)) if w > 0.0 && h > 0.0 => (w, h),
+            _ => (800.0, 480.0),
+        };
+        Some(Self {
+            c: [n[0], n[1], n[2], n[3], n[4], n[5], n[6]],
+            res,
+        })
+    }
+
+    /// Raw panel values to 0–1 across the screen.
+    fn apply(&self, rx: i32, ry: i32) -> (f32, f32) {
+        let (rx, ry) = (rx as f32, ry as f32);
+        let [a, b, c, d, e, f, s] = self.c;
+        let x = (c + a * rx + b * ry) / s;
+        let y = (f + d * rx + e * ry) / s;
+        (
+            (x / self.res.0).clamp(0.0, 1.0),
+            (y / self.res.1).clamp(0.0, 1.0),
+        )
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TouchAction {
     Pressed { x: f32, y: f32 },
@@ -57,6 +100,8 @@ pub struct TouchState {
     width: f32,
     height: f32,
     transform: TouchTransform,
+    /// The panel is raw and tslib's calibration is known: use it, not the ranges.
+    pointercal: Option<Pointercal>,
 
     raw_x: i32,
     raw_y: i32,
@@ -79,6 +124,7 @@ impl TouchState {
             width,
             height,
             transform,
+            pointercal: None,
             raw_x: 0,
             raw_y: 0,
             down: false,
@@ -87,13 +133,24 @@ impl TouchState {
         }
     }
 
+    /// Map raw panel values through tslib's calibration.
+    pub fn with_pointercal(mut self, cal: Option<Pointercal>) -> Self {
+        self.pointercal = cal;
+        self
+    }
+
     pub fn is_down(&self) -> bool {
         self.down
     }
 
     fn position(&self) -> (f32, f32) {
-        let mut nx = self.range_x.normalize(self.raw_x);
-        let mut ny = self.range_y.normalize(self.raw_y);
+        let (mut nx, mut ny) = match &self.pointercal {
+            Some(cal) => cal.apply(self.raw_x, self.raw_y),
+            None => (
+                self.range_x.normalize(self.raw_x),
+                self.range_y.normalize(self.raw_y),
+            ),
+        };
         if self.transform.swap_xy {
             std::mem::swap(&mut nx, &mut ny);
         }
@@ -369,6 +426,32 @@ impl TapSlop {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_raw_panel_goes_through_tslibs_calibration() {
+        // The AD5M Pro's /etc/pointercal (Klipper Mod).
+        let cal = Pointercal::parse("14978 99 -5050696 -14 -11162 38220684 65536 800 480").unwrap();
+        let mut st = TouchState::new(
+            AxisRange { min: 0, max: 4095 },
+            AxisRange { min: 0, max: 4095 },
+            800.0,
+            480.0,
+            TouchTransform::default(),
+        )
+        .with_pointercal(Some(cal));
+        // Raw values tslib maps to the screen's centre (solved from the line above).
+        st.process(EV_ABS, ABS_X, 2074);
+        st.process(EV_ABS, ABS_Y, 2012);
+        st.process(EV_KEY, BTN_TOUCH, 1);
+        let Some(TouchAction::Pressed { x, y }) = st.process(EV_SYN, SYN_REPORT, 0) else {
+            panic!("no press");
+        };
+        assert!(
+            (x - 400.0).abs() < 2.0 && (y - 240.0).abs() < 2.0,
+            "{x},{y}"
+        );
+        assert_eq!(Pointercal::parse("garbage"), None);
+    }
 
     #[test]
     fn a_pinned_touch_stays_a_tap_however_the_finger_moves() {

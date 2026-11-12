@@ -680,13 +680,11 @@ async fn handle_event(ev: Event, client: &Client, state: &mut PrinterState) {
     }
 }
 
-/// Moonraker has put a new Rivet into /opt/rivet: exit, and S80rivet starts it
+/// Moonraker has put a new Rivet next to this one: exit, and S80rivet starts it
 /// (and rolls back if it does not come up). Only when S80rivet runs this
-/// binary: started by hand, Rivet would just be gone.
+/// binary (it sets RIVET_SUPERVISED): started by hand, Rivet would just be gone.
 fn restart_for_update() {
-    let installed =
-        std::env::current_exe().is_ok_and(|p| p.to_string_lossy().starts_with("/opt/rivet/"));
-    if !installed {
+    if std::env::var_os("RIVET_SUPERVISED").is_none() {
         tracing::info!(
             "a new Rivet is installed; this one is not run by S80rivet, so it keeps running"
         );
@@ -899,7 +897,11 @@ async fn system_info(client: &Client, ui: &slint::Weak<AppWindow>) {
     let rivet = updates["version_info"]["rivet"]
         .is_object()
         .then(|| web("rivet"));
-    let rolled_back = std::path::Path::new("/opt/rivet/rolled-back").exists();
+    // S80rivet leaves this next to the binary when a new one did not come up.
+    let rolled_back = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|d| d.join("rolled-back")))
+        .is_some_and(|p| p.exists());
     let zone = std::fs::read_link("/etc/localtime")
         .ok()
         .and_then(|p| {

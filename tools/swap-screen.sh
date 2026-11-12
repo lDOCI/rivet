@@ -54,7 +54,7 @@ stop_rivet() {
   run "if [ -x /etc/init.d/S80rivet ]; then /etc/init.d/S80rivet stop; fi"
   run "if [ -f $pidfile ] && kill -0 \$(cat $pidfile) 2>/dev/null; then kill \$(cat $pidfile); sleep 1; fi; rm -f $pidfile"
   # Back to the first page of video memory, or the next screen draws off screen.
-  run "echo 0,0 > /sys/class/graphics/fb0/pan 2>/dev/null || true"
+  run "[ -w /sys/class/graphics/fb0/pan ] && echo 0,0 > /sys/class/graphics/fb0/pan || true"
 }
 
 case "$cmd" in

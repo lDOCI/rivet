@@ -126,6 +126,11 @@ pub(crate) mod backlight {
         Tool {
             level: u32,
         },
+        /// The AD5M's display driver straight (Z-Mod has no such tool), with the
+        /// brightness to come back to, 1–255.
+        Disp {
+            level: u32,
+        },
         None,
     }
 
@@ -143,6 +148,9 @@ pub(crate) mod backlight {
             } else if Path::new(AD5M_TOOL).exists() {
                 let level = tool_level().filter(|l| *l > 0).unwrap_or(128);
                 Self::Tool { level }
+            } else if Path::new(disp::DEVICE).exists() {
+                let level = disp::level().filter(|l| *l > 0).unwrap_or(153);
+                Self::Disp { level }
             } else {
                 Self::None
             };
@@ -165,7 +173,7 @@ pub(crate) mod backlight {
                     let value = (max * percent / 100).max(1);
                     let _ = std::fs::write(dir.join("brightness"), value.to_string());
                 }
-                Self::Tool { level } => {
+                Self::Tool { level } | Self::Disp { level } => {
                     *level = (255 * percent / 100).clamp(1, 255);
                     if on {
                         self.set_on(true);
@@ -194,8 +202,61 @@ pub(crate) mod backlight {
                         Err(err) => tracing::warn!(%err, "backlight tool failed"),
                     }
                 }
+                Self::Disp { level } => {
+                    if !on {
+                        if let Some(l) = disp::level().filter(|l| *l > 0) {
+                            *level = l;
+                        }
+                    }
+                    if let Err(err) = disp::set(on, *level) {
+                        tracing::warn!(%err, "backlight (/dev/disp) failed");
+                    }
+                }
                 Self::None => {}
             }
+        }
+    }
+
+    /// The Allwinner display driver's backlight calls, as Z-Mod's `backlight`
+    /// script makes them: each takes [screen, value, …] as C longs.
+    mod disp {
+        use std::os::fd::AsRawFd;
+
+        pub(super) const DEVICE: &str = "/dev/disp";
+        const SET_BRIGHTNESS: libc::c_ulong = 0x102;
+        const GET_BRIGHTNESS: libc::c_ulong = 0x103;
+        const BACKLIGHT_ENABLE: libc::c_ulong = 0x104;
+        const BACKLIGHT_DISABLE: libc::c_ulong = 0x105;
+
+        fn call(request: libc::c_ulong, value: libc::c_ulong) -> std::io::Result<i32> {
+            let f = std::fs::OpenOptions::new().write(true).open(DEVICE)?;
+            let mut args: [libc::c_ulong; 4] = [0, value, 0, 0];
+            // SAFETY: the driver reads up to four longs from `args`, which
+            // outlives the call.
+            let r = unsafe { libc::ioctl(f.as_raw_fd(), request as _, args.as_mut_ptr()) };
+            if r < 0 {
+                Err(std::io::Error::last_os_error())
+            } else {
+                Ok(r)
+            }
+        }
+
+        /// Brightness 1–255, or off.
+        pub(super) fn set(on: bool, level: u32) -> std::io::Result<()> {
+            if on {
+                call(BACKLIGHT_ENABLE, 0)?;
+                call(SET_BRIGHTNESS, libc::c_ulong::from(level.clamp(1, 255)))?;
+            } else {
+                call(BACKLIGHT_DISABLE, 0)?;
+            }
+            Ok(())
+        }
+
+        /// The brightness now, 0–255.
+        pub(super) fn level() -> Option<u32> {
+            call(GET_BRIGHTNESS, 0)
+                .ok()
+                .and_then(|v| u32::try_from(v).ok())
         }
     }
 

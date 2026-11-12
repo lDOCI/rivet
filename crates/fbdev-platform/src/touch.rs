@@ -123,6 +123,16 @@ fn find_device() -> io::Result<PathBuf> {
     fallback.ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "no touch device found"))
 }
 
+/// tslib's calibration file: where TSLIB_CALIBFILE says, else the usual places
+/// (Z-Mod copies the stock one to /tmp/pointercal).
+fn find_pointercal() -> Option<crate::touch_state::Pointercal> {
+    let env = std::env::var_os("TSLIB_CALIBFILE").map(PathBuf::from);
+    env.into_iter()
+        .chain(["/etc/pointercal", "/tmp/pointercal"].map(PathBuf::from))
+        .find_map(|p| std::fs::read_to_string(p).ok())
+        .and_then(|t| crate::touch_state::Pointercal::parse(&t))
+}
+
 pub struct Touch {
     file: File,
     state: TouchState,
@@ -160,18 +170,29 @@ impl Touch {
             max: height as i32,
         });
 
+        // A raw panel (no ts_uinput in between, as on Z-Mod): calibrate it as
+        // tslib would, with the printer's pointercal.
+        let name = eviocgname(fd);
+        let pointercal = if name.contains("ts_uinput") || name.contains("tslib") {
+            None
+        } else {
+            find_pointercal()
+        };
+
         tracing::info!(
             device = %path.display(),
-            name = %eviocgname(fd),
+            %name,
             ?range_x,
             ?range_y,
             ?transform,
+            ?pointercal,
             "touch opened"
         );
 
         Ok(Self {
             file,
-            state: TouchState::new(range_x, range_y, width, height, transform),
+            state: TouchState::new(range_x, range_y, width, height, transform)
+                .with_pointercal(pointercal),
         })
     }
 

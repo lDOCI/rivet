@@ -166,7 +166,7 @@ if [ -f $conf ] && ! grep -q '^\[update_manager rivet\]' $conf; then
 [update_manager rivet]
 # Rivet, the touch screen: releases from GitHub (added by Rivet's tools/install.sh)
 type: web
-channel: beta
+channel: stable
 repo: lDOCI/rivet
 path: /opt/rivet
 persistent_files:
