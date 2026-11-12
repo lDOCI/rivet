@@ -57,7 +57,7 @@ component LimitCard inherits Rectangle {
         width: parent.width - 184px;
         height: root.big ? 76px : 64px;
         border-radius: 18px;
-        background: #0b0d10;
+        background: Tokens.bg;
         accessible-role: button;
         accessible-label: root.title + ": " + root.value;
         accessible-action-default => { root.edit(); }

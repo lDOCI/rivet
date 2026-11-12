@@ -12,8 +12,8 @@ component KeyCap inherits Rectangle {
     height: 50px;
     border-radius: 12px;
     background: root.primary ? (ta.pressed ? Tokens.accent.darker(15%) : Tokens.accent)
-        : ta.pressed ? #3a414a
-        : root.active ? #3a414a
+        : ta.pressed ? Tokens.control
+        : root.active ? Tokens.control
         : root.special ? Tokens.surface-2 : Tokens.surface-3;
     accessible-role: button;
     accessible-label: root.accessible-name != "" ? root.accessible-name : root.label;

@@ -65,7 +65,7 @@ export component StatusScreen inherits Rectangle {
         Rectangle { height: 14px; }
         Text {
             text: root.progress > 0 ? @tr("Heaters and motors are off. The print stopped at {}% and cannot be resumed.", round(root.progress * 100)) : @tr("Heaters and motors are off.");
-            color: #c7cdd4;
+            color: Tokens.text-2;
             font-size: 18px;
             wrap: word-wrap;
             max-width: 560px;
@@ -188,7 +188,7 @@ export component StatusScreen inherits Rectangle {
                 : root.kind == "heating" ? @tr("A heater does not warm up as expected: check the heater and its sensor before restarting.")
                 : root.kind == "range" ? @tr("A move went past the printer's limits. Home the axes after the restart.")
                 : @tr("A firmware restart usually brings the printer back.");
-            color: #e2e6ea;
+            color: Tokens.text-2;
             font-size: 18px;
             wrap: word-wrap;
         }

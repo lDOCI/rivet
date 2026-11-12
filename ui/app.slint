@@ -1172,6 +1172,7 @@ export component AppWindow inherits Window {
             back => { root.screen = "settings"; }
             theme-value: root.theme-accents.length > 0 ? root.theme-accents[root.theme-accent].name + " · " + root.theme-bases[root.theme-base].name : "";
             init => { root.theme-open(); }
+            touch-cal-sub: @tr("touch 9 points with a finger");
             activate(key) => {
                 if (key == "touch-cal") { root.overlay = "touch-cal"; }
                 if (key == "touch-test") { root.overlay = "touch-test"; }
@@ -1199,7 +1200,6 @@ export component AppWindow inherits Window {
         }
         if root.ready && root.screen == "theme-picker": ColorPicker {
             title: root.picking == "accent" ? @tr("Accent colour") : @tr("Background colour");
-            max-value: root.picking == "base" ? 0.3 : 1;
             hue: root.picking-from.to-hsv().hue;
             sat: root.picking-from.to-hsv().saturation;
             val: root.picking-from.to-hsv().value;

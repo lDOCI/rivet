@@ -8,8 +8,19 @@
 
 use std::{cell::RefCell, path::PathBuf};
 
-/// Where the four crosses are, logical px of the 800×480 screen.
-pub const TARGETS: [(f32, f32); 4] = [(70.0, 70.0), (730.0, 70.0), (730.0, 410.0), (70.0, 410.0)];
+/// Where the nine crosses are (a 3×3 grid), logical px of the 800×480 screen.
+/// Nine, not four: one careless tap among four bends the whole correction.
+pub const TARGETS: [(f32, f32); 9] = [
+    (70.0, 70.0),
+    (400.0, 70.0),
+    (730.0, 70.0),
+    (70.0, 240.0),
+    (400.0, 240.0),
+    (730.0, 240.0),
+    (70.0, 410.0),
+    (400.0, 410.0),
+    (730.0, 410.0),
+];
 
 pub type Affine = [f32; 6];
 
@@ -17,7 +28,7 @@ const IDENTITY: Affine = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0];
 
 thread_local! {
     /// Taps so far, by cross; and the correction in use when calibration began.
-    static TAPS: RefCell<[Option<(f32, f32)>; 4]> = const { RefCell::new([None; 4]) };
+    static TAPS: RefCell<[Option<(f32, f32)>; 9]> = const { RefCell::new([None; 9]) };
     static BEFORE: RefCell<Option<Affine>> = const { RefCell::new(None) };
 }
 
@@ -102,6 +113,40 @@ fn solve3(m: [[f64; 3]; 3], v: [f64; 3]) -> Option<[f64; 3]> {
     Some([col(0), col(1), col(2)])
 }
 
+/// A fit that leaves out one tap far worse than the rest (a slip), then fits again.
+fn robust_fit(from: &[(f32, f32)], to: &[(f32, f32)]) -> Option<Affine> {
+    let first = fit(from, to)?;
+    let miss: Vec<f32> = from
+        .iter()
+        .zip(to)
+        .map(|(&p, t)| {
+            let q = apply(&first, p);
+            (q.0 - t.0).hypot(q.1 - t.1)
+        })
+        .collect();
+    let mut sorted = miss.clone();
+    sorted.sort_by(f32::total_cmp);
+    let median = sorted[sorted.len() / 2];
+    let (worst, &w) = miss.iter().enumerate().max_by(|a, b| a.1.total_cmp(b.1))?;
+    if w > 15.0 && w > 2.5 * median {
+        let keep = |i: usize| i != worst;
+        let f: Vec<_> = from
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| keep(*i))
+            .map(|(_, p)| *p)
+            .collect();
+        let t: Vec<_> = to
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| keep(*i))
+            .map(|(_, p)| *p)
+            .collect();
+        return fit(&f, &t);
+    }
+    Some(first)
+}
+
 fn apply(c: &Affine, (x, y): (f32, f32)) -> (f32, f32) {
     (c[0] * x + c[1] * y + c[2], c[3] * x + c[4] * y + c[5])
 }
@@ -122,7 +167,7 @@ fn compose(outer: &Affine, inner: &Affine) -> Affine {
 
 /// Calibration starts: touches as corrected so far are what gets measured.
 pub fn begin() {
-    TAPS.with(|t| *t.borrow_mut() = [None; 4]);
+    TAPS.with(|t| *t.borrow_mut() = [None; 9]);
     BEFORE.with(|b| *b.borrow_mut() = current());
 }
 
@@ -142,7 +187,7 @@ pub fn finish() -> Option<(f32, f32)> {
     if taps.len() != TARGETS.len() {
         return None;
     }
-    let fix = fit(&taps, &TARGETS)?;
+    let fix = robust_fit(&taps, &TARGETS)?;
     let before = BEFORE.with(|b| *b.borrow()).unwrap_or(IDENTITY);
     let new = compose(&fix, &before);
     if !sane(&new) {
@@ -240,12 +285,20 @@ mod tests {
     #[test]
     fn a_missed_cross_is_no_correction() {
         begin();
-        // Three taps where asked, one on the other side of the screen.
-        tap(0, 70.0, 70.0);
-        tap(1, 730.0, 70.0);
-        tap(2, 70.0, 410.0);
-        tap(3, 730.0, 410.0);
+        // The crosses tapped in a mirrored order: no panel does that.
+        for (i, (x, y)) in TARGETS.iter().enumerate() {
+            tap(i, 800.0 - x, 480.0 - y);
+        }
         assert!(finish().is_none());
+        // One slip among nine is left out: the others still fit exactly.
+        begin();
+        for (i, (x, y)) in TARGETS.iter().enumerate() {
+            let slip = if i == 4 { 60.0 } else { 0.0 };
+            tap(i, x + 20.0 + slip, y + 3.0);
+        }
+        let (_, now) = finish().unwrap();
+        assert!(now < 8.0, "{now}");
+        undo();
         // Taps a little off: a correction, and the miss goes down.
         begin();
         for (i, (x, y)) in TARGETS.iter().enumerate() {

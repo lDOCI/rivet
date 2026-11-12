@@ -2289,3 +2289,9 @@ msgstr "Тест касаний"
 
 msgid "Begin"
 msgstr "Начать"
+
+msgid "touch 9 points with a finger"
+msgstr "коснуться 9 точек пальцем"
+
+msgid "Touch the centre of the cross with your finger, as you usually tap. {} of 9."
+msgstr "Коснитесь центра крестика пальцем — как обычно нажимаете. {} из 9."

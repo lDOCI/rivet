@@ -112,7 +112,7 @@ export component MessagesScreen inherits VerticalLayout {
             accessible-role: button;
             accessible-label: @tr("Mark all read");
             accessible-action-default => { root.read-all(); }
-            Text { text: @tr("Mark all read"); color: #c7cdd4; font-size: 15px; font-weight: 600; horizontal-alignment: center; vertical-alignment: center; }
+            Text { text: @tr("Mark all read"); color: Tokens.text-2; font-size: 15px; font-weight: 600; horizontal-alignment: center; vertical-alignment: center; }
             read-ta := TouchArea { clicked => { root.read-all(); } }
         }
     }

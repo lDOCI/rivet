@@ -1,4 +1,4 @@
-// Touch calibration over the whole screen: four crosses, one after another,
+// Touch calibration over the whole screen: nine crosses, one after another,
 // then a check where every touch leaves a dot, and save / again / reset.
 import { Tokens } from "../kit/tokens.slint";
 import { PrimaryButton, SecondaryButton } from "../kit/controls.slint";
@@ -21,7 +21,11 @@ component Cross inherits Rectangle {
 
 export component TouchCalScreen inherits Rectangle {
     // Cross centres (logical px), same order as touchcal::TARGETS.
-    in property <[{ x: float, y: float }]> targets: [{ x: 70, y: 70 }, { x: 730, y: 70 }, { x: 730, y: 410 }, { x: 70, y: 410 }];
+    in property <[{ x: float, y: float }]> targets: [
+        { x: 70, y: 70 }, { x: 400, y: 70 }, { x: 730, y: 70 },
+        { x: 70, y: 240 }, { x: 400, y: 240 }, { x: 730, y: 240 },
+        { x: 70, y: 410 }, { x: 400, y: 410 }, { x: 730, y: 410 },
+    ];
     // Mean miss before and after, px, once the four are in; -1 if the taps made no sense.
     in property <float> miss-before: -1;
     in property <float> miss-after: -1;
@@ -32,7 +36,7 @@ export component TouchCalScreen inherits Rectangle {
     callback undo;
     callback reset;
     callback close;
-    // 0..3: which cross; 4: checking.
+    // 0..8: which cross; 9: checking.
     property <int> step;
     property <length> dot-x: -100px;
     property <length> dot-y: -100px;
@@ -41,10 +45,10 @@ export component TouchCalScreen inherits Rectangle {
     TouchArea {
         pointer-event(ev) => {
             if (ev.kind == PointerEventKind.up) {
-                if (root.step < 4) {
+                if (root.step < 9) {
                     root.point(root.step, self.mouse-x / 1px, self.mouse-y / 1px);
                     root.step += 1;
-                    if (root.step == 4) { root.finish(); }
+                    if (root.step == 9) { root.finish(); }
                 } else {
                     root.dot-x = self.mouse-x;
                     root.dot-y = self.mouse-y;
@@ -52,21 +56,21 @@ export component TouchCalScreen inherits Rectangle {
             }
         }
     }
-    if root.step < 4: Cross {
+    if root.step < 9: Cross {
         x: root.targets[root.step].x * 1px - self.width / 2;
         y: root.targets[root.step].y * 1px - self.height / 2;
     }
-    if root.step < 4: Text {
+    if root.step < 9: Text {
         x: 120px;
         width: parent.width - 240px;
         y: (parent.height - self.height) / 2;
-        text: @tr("Touch the centre of the cross with your finger, as you usually tap. {} of 4.", root.step + 1);
+        text: @tr("Touch the centre of the cross with your finger, as you usually tap. {} of 9.", root.step + 1);
         color: Tokens.text;
         font-size: Tokens.row-title;
         horizontal-alignment: center;
         wrap: word-wrap;
     }
-    if root.step == 4: VerticalLayout {
+    if root.step == 9: VerticalLayout {
         x: 140px;
         width: parent.width - 280px;
         y: 120px;
@@ -104,7 +108,7 @@ export component TouchCalScreen inherits Rectangle {
             }
         }
     }
-    if root.step == 4: Rectangle {
+    if root.step == 9: Rectangle {
         x: root.dot-x - 8px;
         y: root.dot-y - 8px;
         width: 16px;

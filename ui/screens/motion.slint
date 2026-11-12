@@ -17,7 +17,7 @@ component MoveButton inherits Rectangle {
     in property <bool> enabled: true;
     callback clicked;
     border-radius: Tokens.r-m;
-    background: !root.enabled ? Tokens.surface-1 : ta.pressed ? Tokens.surface-3 : root.big ? #252a31 : #181c21;
+    background: !root.enabled ? Tokens.surface-1 : ta.pressed ? Tokens.surface-3 : root.big ? Tokens.surface-3 : Tokens.surface-1;
     opacity: root.enabled ? 1 : 0.4;
     accessible-role: button;
     accessible-label: root.text;

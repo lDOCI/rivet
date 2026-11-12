@@ -118,7 +118,7 @@ export component TempGraphScreen inherits VerticalLayout {
             for g in root.grid: Rectangle {
                 y: g.y * parent.height;
                 height: 1px;
-                background: #ffffff0f;
+                background: Tokens.text.with-alpha(0.06);
                 Text { x: 4px; y: -18px; text: g.label; color: Tokens.text-faint; font-size: 12px; }
             }
             for l in root.lines: Path {

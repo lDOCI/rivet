@@ -88,14 +88,55 @@ fn base_shades(c: u32) -> [u32; 6] {
     if c == DEFAULT_BASE[0] {
         return DEFAULT_BASE;
     }
+    // On a light background the cards step darker, on a dark one lighter.
+    let toward = if light(c) { 0x000000 } else { 0xffffff };
     [
         c,
-        mix(c, 0xffffff, 0.02),
-        mix(c, 0xffffff, 0.05),
-        mix(c, 0xffffff, 0.09),
-        mix(c, 0xffffff, 0.12),
+        mix(c, toward, 0.02),
+        mix(c, toward, 0.05),
+        mix(c, toward, 0.09),
+        mix(c, toward, 0.12),
         c,
     ]
+}
+
+/// A background light enough for dark text.
+fn light(c: u32) -> bool {
+    luminance(c) > 0.35
+}
+
+/// Text and the shades that follow the background: text, text-2, text-dim,
+/// text-faint, text-mute, track, control, line.
+fn ink_shades(bg: u32) -> [u32; 8] {
+    if bg == DEFAULT_BASE[0] {
+        // The design code's own values.
+        return [
+            0xf4f6f8, 0xc7cdd4, 0x98a1ac, 0x66707b, 0x7d8792, 0x171b21, 0x3a414a, 0x4a525c,
+        ];
+    }
+    if light(bg) {
+        [
+            0x111317,
+            0x2c323a,
+            0x58616c,
+            0x8a929c,
+            0x6b7480,
+            mix(bg, 0x000000, 0.08),
+            mix(bg, 0x000000, 0.22),
+            mix(bg, 0x000000, 0.32),
+        ]
+    } else {
+        [
+            0xf4f6f8,
+            0xc7cdd4,
+            0x98a1ac,
+            0x66707b,
+            0x7d8792,
+            mix(bg, 0xffffff, 0.06),
+            mix(bg, 0xffffff, 0.18),
+            mix(bg, 0xffffff, 0.25),
+        ]
+    }
 }
 
 fn name(ui: &AppWindow, key: &str) -> SharedString {
@@ -201,6 +242,15 @@ pub fn apply(ui: &AppWindow, accent: usize, base: usize) {
     t.set_surface_2(rgb(s[3]));
     t.set_surface_3(rgb(s[4]));
     t.set_well(rgb(s[5]));
+    let k = ink_shades(b);
+    t.set_text(rgb(k[0]));
+    t.set_text_2(rgb(k[1]));
+    t.set_text_dim(rgb(k[2]));
+    t.set_text_faint(rgb(k[3]));
+    t.set_text_mute(rgb(k[4]));
+    t.set_track(rgb(k[5]));
+    t.set_control(rgb(k[6]));
+    t.set_line(rgb(k[7]));
     ui.set_theme_accent(accent.min(OWN_ACCENT_INDEX) as i32);
     ui.set_theme_base(base.min(OWN_BASE_INDEX) as i32);
 }
@@ -220,6 +270,9 @@ mod tests {
         // A dark accent gets white text on it, a light one dark text.
         assert_eq!(accent_shades(0x1e3a8a).2, 0xffffff);
         assert!(luminance(accent_shades(0xfde047).2) < 0.05);
+        // A white background reads dark text, cards a little darker.
+        assert!(light(0xffffff) && ink_shades(0xffffff)[0] == 0x111317);
+        assert!(luminance(base_shades(0xffffff)[2]) < luminance(0xffffff));
         // Surfaces step lighter than the background.
         let s = base_shades(0x101820);
         assert!(luminance(s[2]) > luminance(s[0]) && luminance(s[4]) > luminance(s[3]));

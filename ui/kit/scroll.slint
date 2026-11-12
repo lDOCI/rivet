@@ -41,7 +41,7 @@ export component ScrollList inherits Rectangle {
         Rectangle {
             width: parent.width;
             border-radius: 4px;
-            background: #4a525c;
+            background: Tokens.line;
             height: max(32px, parent.height * flick.height / flick.content-height);
             y: (parent.height - self.height) * (-flick.content-y) / max(1px, flick.content-height - flick.height);
         }

@@ -105,7 +105,7 @@ component ZButton inherits Rectangle {
     min-width: 0px;
     horizontal-stretch: 1;
     border-radius: 22px;
-    background: ta.pressed ? Tokens.surface-3.brighter(10%) : root.big ? Tokens.surface-3 : #181c21;
+    background: ta.pressed ? Tokens.surface-3.brighter(10%) : root.big ? Tokens.surface-3 : Tokens.surface-1;
     accessible-role: button;
     accessible-label: root.text;
     accessible-action-default => { root.clicked(); }

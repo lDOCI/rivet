@@ -122,7 +122,8 @@ const RELEASE_DEBOUNCE: Duration = Duration::from_millis(60);
 /// AD5M's 7" 800×480 panel). Slint's own scroll threshold is 8 px.
 const TAP_SLOP: f32 = 14.0;
 /// How far a touch that hit nothing may be moved onto the nearest touch area, px.
-const TARGET_REACH: f32 = 24.0;
+/// A thumb on this panel misses by up to ~40 px, an index finger ~24 (touch test).
+const TARGET_REACH: f32 = 32.0;
 /// A new press this close to the lost one is the same finger coming back.
 const SAME_FINGER: f32 = 40.0;
 

@@ -35,7 +35,7 @@ component ExtruderArt inherits Rectangle {
     in property <bool> hot;
     in property <bool> fed;
     in property <bool> flowing;
-    property <brush> ink: root.hot ? Tokens.accent-hi : #3a414a;
+    property <brush> ink: root.hot ? Tokens.accent-hi : Tokens.control;
     width: 170px;
     height: 190px;
     property <float> sx: self.width / 1px / 100;
@@ -64,13 +64,13 @@ component ExtruderArt inherits Rectangle {
     Rectangle {
         x: 24px * root.sx; y: 42px * root.sy; width: 52px * root.sx; height: 24px * root.sy;
         border-radius: 7px * root.sx;
-        background: #252a31;
+        background: Tokens.surface-3;
         for ly in [49, 54, 59]: Rectangle { x: 6px * root.sx; y: (ly - 43) * 1px * root.sy; width: 40px * root.sx; height: 2px * root.sy; background: #1a1e24; }
     }
     Rectangle {
         x: 30px * root.sx; y: 68px * root.sy; width: 40px * root.sx; height: 15px * root.sy;
         border-radius: 4px * root.sx;
-        background: root.hot ? @linear-gradient(135deg, #fbbf24 0%, #f97316 100%) : #3a414a;
+        background: root.hot ? @linear-gradient(135deg, #fbbf24 0%, #f97316 100%) : Tokens.control;
     }
     Path {
         x: 0; y: 0; width: parent.width; height: parent.height;
@@ -137,7 +137,7 @@ export component FilamentScreen inherits VerticalLayout {
             width: 220px;
             height: 220px;
             border-radius: 24px;
-            background: @radial-gradient(circle, #222a36 0%, #171b21 75%);
+            background: @radial-gradient(circle, Tokens.surface-2 0%, Tokens.track 75%);
             ExtruderArt { hot: root.picked >= 0 && root.nozzle-target > 0 && root.nozzle >= 150; fed: root.step >= 3; flowing: root.purged > 0; }
             }
         }
@@ -158,7 +158,7 @@ export component FilamentScreen inherits VerticalLayout {
                 text: root.step == 1 ? @tr("The nozzle heats to the plastic's temperature.")
                     : root.step == 2 ? (root.hot ? @tr("Push the end into the extruder until it stops, hold it, then pull 50 mm.") : @tr("Nozzle {}° of {}°: wait until it is hot, then push the strand in.", round(root.nozzle), root.preset.nozzle))
                     : @tr("If the old colour still comes out, purge some more.") + (root.purged > 0 ? " " + @tr("Purged: {} mm.", root.purged) : "");
-                color: #c7cdd4;
+                color: Tokens.text-2;
                 font-size: 17px;
                 wrap: word-wrap;
             }

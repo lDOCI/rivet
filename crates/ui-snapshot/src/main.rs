@@ -86,6 +86,7 @@ const ALL: &[&str] = &[
     "set-theme",
     "theme-picker",
     "touch-test",
+    "theme-light",
     "macro-params",
     "wifi-join",
     "set-printers",
@@ -600,6 +601,12 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_screen("macro-params".into());
         }
         "touch-test" => ui.set_overlay("touch-test".into()),
+        "theme-light" => {
+            // A white background picked: dark text, cards a little darker.
+            rivet::theme::set_own(None, Some(0xffffff));
+            rivet::theme::apply(ui, 2, rivet::theme::OWN_BASE_INDEX);
+            ui.set_screen("control".into());
+        }
         "heat-presets" => ui.set_screen("heat-presets".into()),
         "calibrate" | "bed-mesh" | "screws" | "probe" | "shaper" | "pid" | "pa" | "tmc"
         | "shaper-result" | "belts" => {

@@ -49,7 +49,7 @@ export component HeatDial inherits Rectangle {
         height: parent.height;
         viewbox-width: root.width / 1px;
         viewbox-height: root.height / 1px;
-        stroke: #171b21;
+        stroke: Tokens.track;
         stroke-width: 20px * root.s;
         stroke-line-cap: round;
         MoveTo { x: (150 + 130 * cos(135deg)) * root.s; y: (150 + 130 * sin(135deg)) * root.s; }
@@ -95,7 +95,7 @@ export component HeatDial inherits Rectangle {
         width: 44px * root.s;
         height: self.width;
         border-radius: self.width / 2;
-        background: #f4f6f8;
+        background: Tokens.text;
         opacity: root.dragging ? 0.18 : 0;
     }
     Rectangle {
@@ -104,7 +104,7 @@ export component HeatDial inherits Rectangle {
         width: 30px * root.s;
         height: self.width;
         border-radius: self.width / 2;
-        background: #0b0d10;
+        background: Tokens.bg;
     }
     Rectangle {
         x: root.kx - self.width / 2;
@@ -112,7 +112,7 @@ export component HeatDial inherits Rectangle {
         width: 20px * root.s;
         height: self.width;
         border-radius: self.width / 2;
-        background: #f4f6f8;
+        background: Tokens.text;
     }
     @children
     TouchArea {

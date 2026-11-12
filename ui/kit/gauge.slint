@@ -30,7 +30,7 @@ export component Gauge inherits Rectangle {
         height: parent.height;
         viewbox-width: 120;
         viewbox-height: 120;
-        stroke: root.target > 0 ? Tokens.heat-2 : #4a525c;
+        stroke: root.target > 0 ? Tokens.heat-2 : Tokens.line;
         stroke-width: root.size * 0.1;
         stroke-line-cap: round;
         // Path elements, not a command string: a string would format the
