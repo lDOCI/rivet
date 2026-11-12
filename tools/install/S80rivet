@@ -144,6 +144,14 @@ stop() {
         rm -f $CHILD_PID_FILE
     fi
     rm -f $PID_FILE
+    show_first_page
+}
+
+# Rivet flips between two pages of video memory and may stop on the second.
+# A screen started next (GuppyScreen's LVGL) takes that offset for good and
+# draws where nothing is shown: point the display back at the first page.
+show_first_page() {
+    echo 0,0 > /sys/class/graphics/fb0/pan 2>/dev/null || true
 }
 
 restart() {
