@@ -1106,6 +1106,8 @@ pub struct Psd {
     pub psd: Vec<f64>,
     /// Each shaper's response (0..1 per frequency), keyed by name ("mzv").
     pub shapers: Vec<(String, Vec<f64>)>,
+    /// Each shaper's frequency, from the header ("mzv(56.4)"), same order.
+    pub shaper_freqs: Vec<f64>,
 }
 
 impl Psd {
@@ -1125,6 +1127,16 @@ impl Psd {
             shapers: shaper_cols
                 .iter()
                 .map(|(_, n)| (n.clone(), Vec::new()))
+                .collect(),
+            shaper_freqs: head
+                .iter()
+                .skip(p + 1)
+                .map(|h| {
+                    h.split('(')
+                        .nth(1)
+                        .and_then(|f| f.trim_end_matches(')').parse().ok())
+                        .unwrap_or(0.0)
+                })
                 .collect(),
             ..Self::default()
         };
@@ -1156,6 +1168,157 @@ impl Psd {
             .filter(|(f, _)| **f >= lo && **f <= hi)
             .max_by(|a, b| a.1.total_cmp(b.1))
             .map(|(f, _)| *f)
+    }
+}
+
+/// The square corner velocity SHAPER_CALIBRATE uses unless given SCV=.
+pub const SHAPER_SCV: f64 = 5.0;
+
+/// Klipper's input shapers (klippy/extras/shaper_defs.py): impulse amplitudes
+/// and times for a frequency, at the default damping ratio 0.1.
+fn shaper_impulses(name: &str, freq: f64) -> Option<(Vec<f64>, Vec<f64>)> {
+    const DAMPING: f64 = 0.1;
+    // 1 / SHAPER_VIBRATION_REDUCTION
+    const V_TOL: f64 = 1.0 / 20.0;
+    let pi = std::f64::consts::PI;
+    let df = (1.0 - DAMPING * DAMPING).sqrt();
+    let t_d = 1.0 / (freq * df);
+    let k = (-DAMPING * pi / df).exp();
+    let shaper = match name {
+        "zv" => (vec![1.0, k], vec![0.0, 0.5 * t_d]),
+        "mzv" => {
+            let k = (-0.75 * DAMPING * pi / df).exp();
+            let a1 = 1.0 - 1.0 / 2f64.sqrt();
+            let a2 = (2f64.sqrt() - 1.0) * k;
+            let a3 = a1 * k * k;
+            (vec![a1, a2, a3], vec![0.0, 0.375 * t_d, 0.75 * t_d])
+        }
+        "ei" => {
+            let a1 = 0.25 * (1.0 + V_TOL);
+            let a2 = 0.5 * (1.0 - V_TOL) * k;
+            let a3 = a1 * k * k;
+            (vec![a1, a2, a3], vec![0.0, 0.5 * t_d, t_d])
+        }
+        "2hump_ei" => {
+            let v2 = V_TOL * V_TOL;
+            let x = (v2 * ((1.0 - v2).sqrt() + 1.0)).powf(1.0 / 3.0);
+            let a1 = (3.0 * x * x + 2.0 * x + 3.0 * v2) / (16.0 * x);
+            let a2 = (0.5 - a1) * k;
+            let a3 = a2 * k;
+            let a4 = a1 * k * k * k;
+            (vec![a1, a2, a3, a4], vec![0.0, 0.5 * t_d, t_d, 1.5 * t_d])
+        }
+        "3hump_ei" => {
+            let k2 = k * k;
+            let a1 = 0.0625 * (1.0 + 3.0 * V_TOL + 2.0 * (2.0 * (V_TOL + 1.0) * V_TOL).sqrt());
+            let a2 = 0.25 * (1.0 - V_TOL) * k;
+            let a3 = (0.5 * (1.0 + V_TOL) - 2.0 * a1) * k2;
+            let a4 = a2 * k2;
+            let a5 = a1 * k2 * k2;
+            (
+                vec![a1, a2, a3, a4, a5],
+                vec![0.0, 0.5 * t_d, t_d, 1.5 * t_d, 2.0 * t_d],
+            )
+        }
+        _ => return None,
+    };
+    Some(shaper)
+}
+
+/// Klipper's `_get_shaper_smoothing`: how far a corner gets rounded, mm.
+fn shaper_smoothing(a: &[f64], t: &[f64], accel: f64, scv: f64) -> f64 {
+    let half_accel = accel * 0.5;
+    let inv_d = 1.0 / a.iter().sum::<f64>();
+    let ts = a.iter().zip(t).map(|(a, t)| a * t).sum::<f64>() * inv_d;
+    let (mut off_90, mut off_180) = (0.0, 0.0);
+    for (a, t) in a.iter().zip(t) {
+        if *t >= ts {
+            off_90 += a * (scv + half_accel * (t - ts)) * (t - ts);
+        }
+        off_180 += a * half_accel * (t - ts) * (t - ts);
+    }
+    (off_90 * inv_d * 2f64.sqrt()).max(off_180 * inv_d)
+}
+
+/// Klipper's `find_shaper_max_accel`: the highest acceleration that keeps the
+/// smoothing at or under 0.12 mm (its `_bisect`).
+fn shaper_max_accel(a: &[f64], t: &[f64], scv: f64) -> f64 {
+    let ok = |accel: f64| shaper_smoothing(a, t, accel, scv) <= 0.12;
+    if !ok(1e-9) {
+        return 0.0;
+    }
+    let (mut left, mut right) = (1.0_f64, 1.0_f64);
+    while !ok(left) {
+        right = left;
+        left *= 0.5;
+    }
+    if right == left {
+        while ok(right) {
+            right *= 2.0;
+        }
+    }
+    while right - left > 1e-8 {
+        let mid = (left + right) * 0.5;
+        if ok(mid) {
+            left = mid;
+        } else {
+            right = mid;
+        }
+    }
+    left
+}
+
+impl AxisShapers {
+    /// What SHAPER_CALIBRATE printed, worked out again from the CSV it wrote:
+    /// remaining vibrations, smoothing and max accel per shaper, and the pick
+    /// by Klipper's rule (`find_best_shaper`). `scv`: [`SHAPER_SCV`] as Klipper.
+    ///
+    /// The CSV keeps each shaper's response at its fitted frequency, already
+    /// the worst over Klipper's test damping ratios, so the figures come out
+    /// as Klipper's up to rounding.
+    pub fn from_csv(psd: &Psd, scv: f64) -> Self {
+        let top = psd.psd.iter().fold(0.0_f64, |m, v| m.max(*v));
+        // Vibrations under 1/20 of the peak do not count (SHAPER_VIBRATION_REDUCTION).
+        let thr = top / 20.0;
+        let all: f64 = psd.psd.iter().map(|p| (p - thr).max(0.0)).sum();
+        let mut fits = Vec::new();
+        // Index, score and smoothing of the best so far.
+        let mut best: Option<(usize, f64, f64)> = None;
+        for ((name, vals), freq) in psd.shapers.iter().zip(&psd.shaper_freqs) {
+            let Some((a, t)) = shaper_impulses(name, *freq) else {
+                continue;
+            };
+            let left: f64 = psd
+                .psd
+                .iter()
+                .zip(vals)
+                .map(|(p, v)| (v * p - thr).max(0.0))
+                .sum();
+            let vib = if all > 0.0 { left / all } else { 0.0 };
+            let smoothing = shaper_smoothing(&a, &t, 5000.0, scv);
+            let score = smoothing * (vib.powf(1.5) + vib * 0.2 + 0.01);
+            // A later shaper wins only when clearly better.
+            let better = match best {
+                None => true,
+                Some((_, s, sm)) => score * 1.2 < s || (score * 1.05 < s && smoothing * 1.1 < sm),
+            };
+            if better {
+                best = Some((fits.len(), score, smoothing));
+            }
+            fits.push(ShaperFit {
+                name: name.clone(),
+                freq: *freq,
+                vibrations: vib * 100.0,
+                smoothing,
+                max_accel: Some(shaper_max_accel(&a, &t, scv)),
+            });
+        }
+        let recommended = best.map(|(i, _, _)| (fits[i].name.clone(), fits[i].freq));
+        Self {
+            fits,
+            recommended,
+            csv: None,
+        }
     }
 }
 
@@ -2397,5 +2560,38 @@ mod tests {
         assert!(b.shapers.is_empty());
         assert!(belt_similarity(&a, &b, 5.0, 100.0).unwrap() < 50.0);
         assert!(Psd::parse("nothing").is_none());
+    }
+
+    #[test]
+    fn shapers_worked_out_from_the_ad5m_csv() {
+        // The AD5M Pro's own measurement; Klipper picked MZV 56.4 Hz for X and
+        // ZV 46.0 Hz for Y (what its printer.cfg says).
+        let x = Psd::parse(include_str!(
+            "../tests/fixtures/ad5m-pro/resonance/calibration_data_x_20260726_132933.csv"
+        ))
+        .unwrap();
+        let y = Psd::parse(include_str!(
+            "../tests/fixtures/ad5m-pro/resonance/calibration_data_y_20260726_133151.csv"
+        ))
+        .unwrap();
+        assert_eq!(x.shaper_freqs, [61.0, 56.4, 66.4, 84.0, 102.0]);
+        // Klipper calibrates with a square corner velocity of 5 unless told
+        // otherwise; with the printer's 9, Y would come out as MZV.
+        for scv in [SHAPER_SCV] {
+            let fx = AxisShapers::from_csv(&x, scv);
+            let fy = AxisShapers::from_csv(&y, scv);
+            for f in fx.fits.iter().chain(&fy.fits) {
+                println!(
+                    "scv {scv}: {} {:.1} Hz vib {:.1}% smooth {:.3} accel {:.0}",
+                    f.name,
+                    f.freq,
+                    f.vibrations,
+                    f.smoothing,
+                    f.max_accel.unwrap()
+                );
+            }
+            assert_eq!(fx.recommended, Some(("mzv".into(), 56.4)));
+            assert_eq!(fy.recommended, Some(("zv".into(), 46.0)));
+        }
     }
 }

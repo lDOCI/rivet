@@ -489,6 +489,8 @@ export component AppWindow inherits Window {
     in-out property <int> shaper-pick-y;
     in-out property <int> shaper-axis;
     in property <BeltsResult> belts;
+    // When the shown vibration measurement was taken.
+    in property <string> shaper-taken;
     // One resonance sweep, minutes (from resonance_tester).
     in property <int> sweep-minutes: 2;
     // Curves for a plot of these proportions.
@@ -840,6 +842,7 @@ export component AppWindow inherits Window {
             noise-shown: root.calib-has-accel;
             measure-sub: root.calib-busy ? @tr("measuring… don't touch the printer") : @tr("~{} min · don't touch the printer", (root.shaper-axes == 0 ? 2 : 1) * root.sweep-minutes);
             last-shown: root.shaper-result[0].shown || root.shaper-result[1].shown;
+            last-value: root.shaper-taken;
             back => { root.screen = "calibrate"; }
             picked(key, i) => { if (key == "axes") { root.shaper-axes = i; } }
             activate(key) => {

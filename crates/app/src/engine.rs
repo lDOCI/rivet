@@ -21,6 +21,8 @@ use crate::{thumbs, AppWindow};
 const UI_TICK: Duration = Duration::from_millis(100);
 /// Setup calls run inline in the event loop, so a hung Moonraker must not
 /// stall UI updates for the default 30 s.
+/// Where Klipper writes its resonance CSVs (Rivet runs on the same host).
+const KLIPPER_TMP: &str = "/tmp";
 const SETUP_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// Decoded preview, shared between the cache and the UI without copying.
@@ -2299,6 +2301,7 @@ async fn execute(
             let result = gcode(client, script).await;
             if resonance {
                 crate::resonance::load();
+                crate::resonance::load_latest(std::path::Path::new(KLIPPER_TMP));
                 crate::resonance::show(ui);
             }
             let fitted = shaper && result.is_ok() && crate::resonance::has_shapers();
@@ -2378,6 +2381,8 @@ async fn execute(
         }
         Command::CalibInfo => {
             calib_info(client, ui).await;
+            crate::resonance::load_latest(std::path::Path::new(KLIPPER_TMP));
+            crate::resonance::show(ui);
             Ok(())
         }
         Command::SetLimit { key, value } => {

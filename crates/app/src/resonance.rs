@@ -23,6 +23,8 @@ struct Data {
     /// The measured range (resonance_tester min_freq..max_freq).
     range: (f64, f64),
     aspect: f64,
+    /// When the shown vibration measurement was taken ("26.07 13:31").
+    when: String,
 }
 
 static DATA: LazyLock<Mutex<Data>> = LazyLock::new(|| {
@@ -31,6 +33,7 @@ static DATA: LazyLock<Mutex<Data>> = LazyLock::new(|| {
         psd: Default::default(),
         range: (5.0, 133.33),
         aspect: 1.2,
+        when: String::new(),
     })
 });
 
@@ -68,6 +71,87 @@ pub fn load() {
             .and_then(|p| std::fs::read_to_string(p).ok())
             .and_then(|t| Psd::parse(&t));
     }
+}
+
+/// The newest file in `dir` named `{prefix}…{suffix}`; Klipper puts the date
+/// and time in the name, so the newest sorts last.
+fn newest(dir: &std::path::Path, prefix: &str, suffix: &str) -> Option<String> {
+    let mut names: Vec<String> = std::fs::read_dir(dir)
+        .ok()?
+        .filter_map(|e| e.ok()?.file_name().into_string().ok())
+        .filter(|n| n.starts_with(prefix) && n.ends_with(suffix))
+        .collect();
+    names.sort();
+    names.pop().map(|n| dir.join(n).display().to_string())
+}
+
+/// "…_20260726_133151.csv" → "26.07 13:31".
+fn taken(path: &str) -> Option<String> {
+    let stem = path.rsplit('/').next()?.trim_end_matches(".csv");
+    let mut parts = stem.rsplit('_');
+    let time = parts.next()?;
+    let date = parts.next()?;
+    (date.len() == 8
+        && time.len() == 6
+        && date.chars().chain(time.chars()).all(|c| c.is_ascii_digit()))
+    .then(|| {
+        format!(
+            "{}.{} {}:{}",
+            &date[6..8],
+            &date[4..6],
+            &time[0..2],
+            &time[2..4]
+        )
+    })
+}
+
+/// Pick up measurements already in Klipper's /tmp: the newest
+/// SHAPER_CALIBRATE CSVs (X and Y) and belt checks, so a measurement made
+/// before Rivet started (or from Mainsail, Fluidd, the console) shows too.
+/// The table is worked out from the CSV as Klipper does; a measurement this
+/// Rivet watched keeps Klipper's own printed figures.
+pub fn load_latest(dir: &std::path::Path) {
+    let Ok(mut d) = DATA.lock() else { return };
+    for (a, axis) in ["x", "y"].iter().enumerate() {
+        let Some(path) = newest(dir, &format!("calibration_data_{axis}_"), ".csv") else {
+            continue;
+        };
+        if d.log.axes[a].csv.as_deref() == Some(path.as_str()) {
+            continue;
+        }
+        let Some(psd) = std::fs::read_to_string(&path)
+            .ok()
+            .and_then(|t| Psd::parse(&t))
+        else {
+            continue;
+        };
+        let mut fit = AxisShapers::from_csv(&psd, model::SHAPER_SCV);
+        fit.csv = Some(path);
+        d.log.axes[a] = fit;
+        d.psd[a] = Some(psd);
+    }
+    for (b, name) in ["belt_a", "belt_b"].iter().enumerate() {
+        if d.log.belts[b].is_some() {
+            continue;
+        }
+        if let Some(path) = newest(dir, "resonances_", &format!("{name}.csv")) {
+            d.psd[2 + b] = std::fs::read_to_string(&path)
+                .ok()
+                .and_then(|t| Psd::parse(&t));
+            d.log.belts[b] = Some(path);
+        }
+    }
+    let latest = d
+        .log
+        .axes
+        .iter()
+        .filter_map(|a| a.csv.as_deref())
+        .filter_map(taken)
+        .max_by_key(|w| {
+            // dd.mm hh:mm → mm dd hh:mm for comparing
+            format!("{}{}{}", &w[3..5], &w[0..2], &w[6..])
+        });
+    d.when = latest.unwrap_or_default();
 }
 
 /// Whether SHAPER_CALIBRATE has fitted anything yet.
@@ -223,19 +307,19 @@ fn belts(
 
 /// Everything the two screens show, built from the last measurements.
 pub fn show(ui: &slint::Weak<AppWindow>) {
-    let (axes, belts) = build();
-    let _ = ui.upgrade_in_event_loop(move |ui| apply(&ui, axes, belts));
+    let (axes, belts, when) = build();
+    let _ = ui.upgrade_in_event_loop(move |ui| apply(&ui, axes, belts, when));
 }
 
 /// The same, on the UI thread (for snapshots and tests).
 pub fn show_now(ui: &AppWindow) {
-    let (axes, belts) = build();
-    apply(ui, axes, belts);
+    let (axes, belts, when) = build();
+    apply(ui, axes, belts, when);
 }
 
-fn build() -> (Vec<Plain>, BeltsResult) {
+fn build() -> (Vec<Plain>, BeltsResult, String) {
     let Ok(d) = DATA.lock() else {
-        return (Vec::new(), BeltsResult::default());
+        return (Vec::new(), BeltsResult::default(), String::new());
     };
     let width = 1000.0 * d.aspect;
     let axes = vec![
@@ -250,10 +334,11 @@ fn build() -> (Vec<Plain>, BeltsResult) {
         d.range,
         width,
     );
-    (axes, belts)
+    (axes, belts, d.when.clone())
 }
 
-fn apply(ui: &AppWindow, axes: Vec<Plain>, belts: BeltsResult) {
+fn apply(ui: &AppWindow, axes: Vec<Plain>, belts: BeltsResult, when: String) {
+    ui.set_shaper_taken(when.into());
     let axes: Vec<ShaperAxis> = axes.into_iter().map(Plain::into_axis).collect();
     ui.set_shaper_result(ModelRc::new(VecModel::from(axes)));
     ui.set_belts(belts);
@@ -279,5 +364,17 @@ impl Plain {
             peak: self.peak,
             peak_at: self.peak_at,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn taken_from_klipper_file_names() {
+        assert_eq!(
+            super::taken("/tmp/calibration_data_y_20260726_133151.csv").as_deref(),
+            Some("26.07 13:31")
+        );
+        assert_eq!(super::taken("/tmp/resonances_x_belt_a.csv"), None);
     }
 }

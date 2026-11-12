@@ -369,7 +369,24 @@ export component ShaperResultScreen inherits Rectangle {
                     HorizontalLayout {
                         padding-left: 10px;
                         padding-right: 10px;
-                        Text { horizontal-stretch: 1.7; text: r.name + (r.best ? " ★" : ""); color: i == root.pick ? Tokens.accent-hi : Tokens.text-2; font-size: 13px; font-weight: 800; vertical-alignment: center; overflow: elide; }
+                        HorizontalLayout {
+                            horizontal-stretch: 1.7;
+                            spacing: 4px;
+                            Text { text: r.name; color: i == root.pick ? Tokens.accent-hi : Tokens.text-2; font-size: 13px; font-weight: 800; vertical-alignment: center; overflow: elide; }
+                            // Klipper's pick. Drawn: the embedded font has no ★.
+                            if r.best: VerticalLayout {
+                                alignment: center;
+                                Path {
+                                    width: 11px;
+                                    height: 11px;
+                                    viewbox-width: 24;
+                                    viewbox-height: 24;
+                                    commands: "M12 2 L14.9 8.6 L22 9.3 L16.6 14 L18.2 21 L12 17.3 L5.8 21 L7.4 14 L2 9.3 L9.1 8.6 Z";
+                                    fill: i == root.pick ? Tokens.accent-hi : Tokens.text-2;
+                                }
+                            }
+                            Rectangle { horizontal-stretch: 1; }
+                        }
                         Text { horizontal-stretch: 0.9; text: r.freq; color: i == root.pick ? Tokens.accent-hi : Tokens.text-2; font-size: 13px; vertical-alignment: center; }
                         Text { horizontal-stretch: 0.8; text: r.vib; color: i == root.pick ? Tokens.accent-hi : Tokens.text-2; font-size: 13px; vertical-alignment: center; }
                         Text { horizontal-stretch: 1.1; text: r.accel; color: i == root.pick ? Tokens.accent-hi : Tokens.text-2; font-size: 13px; vertical-alignment: center; }

@@ -1003,94 +1003,39 @@ fn write_png(path: &PathBuf, buf: &[Rgb8Pixel]) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// A made-up measurement for the vibration screens: what Klipper prints, and
-/// CSVs in its format with one main resonance per axis and belt (54 and 42 Hz
-/// for X and Y, 78 and 71 Hz for belts A and B, as the prototype pages).
+/// The vibration screens from the AD5M Pro's own SHAPER_CALIBRATE CSVs, read
+/// the way the printer does (newest files in Klipper's /tmp). There is no real
+/// belt check yet, so the belts get made-up responses (78 and 71 Hz, as the
+/// prototype page).
 fn resonance_fixture() {
     let dir = std::env::temp_dir().join("rivet-snapshot");
+    let _ = std::fs::remove_dir_all(&dir);
     let _ = std::fs::create_dir_all(&dir);
-    let peak = |f: f64, at: f64, width: f64| 1.0 / (1.0 + ((f - at) / width).powi(2));
-    let shapers = [
-        ("zv", 58.6),
-        ("mzv", 54.2),
-        ("ei", 62.0),
-        ("2hump_ei", 74.4),
-        ("3hump_ei", 89.2),
-    ];
-    let write = |file: &str, main: f64, second: f64, with_shapers: bool| {
-        let mut csv = String::from("freq,psd_x,psd_y,psd_z,psd_xyz");
-        if with_shapers {
-            for (n, f) in shapers {
-                csv.push_str(&format!(",{n}({f:.1})"));
-            }
-        }
-        csv.push('\n');
-        let mut f = 0.0;
-        while f < 200.0 {
-            let p = 1.0e4 * (peak(f, main, 4.0) + 0.25 * peak(f, second, 6.0)) + 300.0;
-            csv.push_str(&format!("{f:.1},0,0,0,{p:.3e}"));
-            if with_shapers {
-                for (_, sf) in shapers {
-                    // Shapers damp everything above about 70 % of their frequency.
-                    let k = 1.0 / (1.0 + (f / (0.7 * sf)).powi(6));
-                    csv.push_str(&format!(",{k:.3}"));
-                }
-            }
-            csv.push('\n');
-            f += 0.5;
-        }
-        let path = dir.join(file);
-        let _ = std::fs::write(&path, csv);
-        path.display().to_string()
-    };
-    let x = write("calibration_data_x.csv", 54.2, 98.0, true);
-    let y = write("calibration_data_y.csv", 41.8, 86.0, true);
-    let a = write("resonances_belt_a.csv", 78.0, 40.0, false);
-    let b = write("resonances_belt_b.csv", 71.0, 38.0, false);
-    let mut lines = vec![];
-    for (axis, csv, rows, best) in [
+    for (name, text) in [
         (
-            "x",
-            x,
-            [
-                (58.6, 4.2, 11200.0),
-                (54.2, 0.7, 7400.0),
-                (62.0, 0.2, 6100.0),
-                (74.4, 0.0, 4900.0),
-                (89.2, 0.0, 4300.0),
-            ],
-            "mzv",
+            "calibration_data_x_20260726_132933.csv",
+            include_str!("../../model/tests/fixtures/ad5m-pro/resonance/calibration_data_x_20260726_132933.csv"),
         ),
         (
-            "y",
-            y,
-            [
-                (45.0, 6.1, 9800.0),
-                (41.8, 1.4, 5200.0),
-                (47.2, 0.6, 4600.0),
-                (56.0, 0.1, 3700.0),
-                (66.6, 0.0, 3200.0),
-            ],
-            "mzv",
+            "calibration_data_y_20260726_133151.csv",
+            include_str!("../../model/tests/fixtures/ad5m-pro/resonance/calibration_data_y_20260726_133151.csv"),
         ),
     ] {
-        lines.push(format!(
-            "// Calculating the best input shaper parameters for {axis} axis"
-        ));
-        for ((name, _), (freq, vib, accel)) in shapers.iter().zip(rows) {
-            lines.push(format!("// Fitted shaper '{name}' frequency = {freq:.1} Hz (vibrations = {vib:.1}%, smoothing ~= 0.090)"));
-            lines.push(format!("// To avoid too much smoothing with '{name}', suggested max_accel <= {accel:.0} mm/sec^2"));
+        let _ = std::fs::write(dir.join(name), text);
+    }
+    let peak = |f: f64, at: f64, width: f64| 1.0 / (1.0 + ((f - at) / width).powi(2));
+    for (name, main, second) in [("belt_a", 78.0, 40.0), ("belt_b", 71.0, 38.0)] {
+        let mut csv = String::from("freq,psd_x,psd_y,psd_z,psd_xyz\n");
+        let mut f = 0.0;
+        while f < 150.0 {
+            let p = 1.0e4 * (peak(f, main, 4.0) + 0.25 * peak(f, second, 6.0)) + 300.0;
+            csv.push_str(&format!("{f:.1},0,0,0,{p:.3e}\n"));
+            f += 1.6;
         }
-        let freq = rows[1].0;
-        lines.push(format!(
-            "// Recommended shaper_type_{axis} = {best}, shaper_freq_{axis} = {freq:.1} Hz"
-        ));
-        lines.push(format!("// Shaper calibration data written to {csv} file"));
+        let _ = std::fs::write(
+            dir.join(format!("resonances_axis_20260726_120000_{name}.csv")),
+            csv,
+        );
     }
-    lines.push(format!("// Resonances data written to {a} file"));
-    lines.push(format!("// Resonances data written to {b} file"));
-    for l in &lines {
-        rivet::resonance::feed(l);
-    }
-    rivet::resonance::load();
+    rivet::resonance::load_latest(&dir);
 }
