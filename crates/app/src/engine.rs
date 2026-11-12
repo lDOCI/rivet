@@ -30,8 +30,6 @@ type Preview = SharedPixelBuffer<Rgba8Pixel>;
 
 /// Cache limit for decoded previews. The printer has ~38 MB free in total.
 const THUMB_CACHE_BYTES: usize = 3 * 1024 * 1024;
-/// Files whose preview is fetched after a list loads (newest first).
-const THUMB_PREFETCH: usize = 24;
 
 /// Where previews come from and what is already decoded.
 pub struct Thumbs {
@@ -241,6 +239,8 @@ pub enum Command {
     TempGraph(f32),
     /// Vibration and belt curves, drawn for the plot's width / height.
     DrawResonance(f32),
+    /// Previews for these Files grid entries (the ones near the glass).
+    Thumbs(Vec<String>),
     /// Read the messages again; mark all of them read.
     ListMessages,
     ReadMessages,
@@ -1405,7 +1405,6 @@ async fn count_files(client: &Client, ui: &slint::Weak<AppWindow>) {
 async fn list_files(
     client: &Client,
     ui: &slint::Weak<AppWindow>,
-    thumbs: &Arc<Thumbs>,
     usb: bool,
 ) -> Result<(), moonraker::Error> {
     let result = client
@@ -1441,7 +1440,6 @@ async fn list_files(
             )
         })
         .collect();
-    let paths: Vec<String> = files.into_iter().map(|f| f.path).collect();
     let _ = ui.upgrade_in_event_loop(move |ui| {
         let items: Vec<crate::FileItem> = rows
             .into_iter()
@@ -1460,11 +1458,22 @@ async fn list_files(
         ui.set_move_folders(slint::ModelRc::new(slint::VecModel::from(folders)));
     });
 
-    // Previews arrive one by one, newest first, and appear as they land.
+    // Previews: the grid asks for the ones near the glass (Command::Thumbs).
+    Ok(())
+}
+
+/// Previews (and print time, material) for these grid files, one by one, as
+/// they land. A newer request (the grid scrolled) stops this one.
+fn load_thumbs(
+    client: &Client,
+    ui: &slint::Weak<AppWindow>,
+    thumbs: &Arc<Thumbs>,
+    paths: Vec<String>,
+) {
     let generation = thumbs.generation.fetch_add(1, Ordering::SeqCst) + 1;
     let (client, ui, thumbs) = (client.clone(), ui.clone(), thumbs.clone());
     tokio::spawn(async move {
-        for path in paths.into_iter().take(THUMB_PREFETCH) {
+        for path in paths {
             if thumbs.generation.load(Ordering::SeqCst) != generation {
                 return;
             }
@@ -1496,7 +1505,6 @@ async fn list_files(
             });
         }
     });
-    Ok(())
 }
 
 /// Moonraker's print queue for the Files button and the Queue screen. A printer
@@ -2272,7 +2280,7 @@ async fn execute(
         Command::ClearConsole => Ok(()),
         Command::ListFiles { usb } => {
             list_queue(client, ui).await;
-            list_files(client, ui, thumbs, *usb).await
+            list_files(client, ui, *usb).await
         }
         Command::MoveFile { from, to } => {
             client
@@ -2282,7 +2290,7 @@ async fn execute(
                 )
                 .await?;
             let usb = from.to_ascii_lowercase().starts_with("usb/");
-            list_files(client, ui, thumbs, usb).await
+            list_files(client, ui, usb).await
         }
         Command::CopyFile { from, to } => {
             client
@@ -2292,7 +2300,7 @@ async fn execute(
                 )
                 .await?;
             let usb = from.to_ascii_lowercase().starts_with("usb/");
-            list_files(client, ui, thumbs, usb).await
+            list_files(client, ui, usb).await
         }
         Command::Calibrate(script) => {
             let shaper = script.contains("SHAPER_CALIBRATE");
@@ -2319,6 +2327,10 @@ async fn execute(
             });
             calib_info(client, ui).await;
             result
+        }
+        Command::Thumbs(paths) => {
+            load_thumbs(client, ui, thumbs, paths.clone());
+            Ok(())
         }
         Command::DrawResonance(aspect) => {
             crate::resonance::set_aspect(f64::from(*aspect));
@@ -2516,7 +2528,7 @@ async fn execute(
             let usb = paths
                 .first()
                 .is_some_and(|p| p.to_ascii_lowercase().starts_with("usb/"));
-            list_files(client, ui, thumbs, usb).await
+            list_files(client, ui, usb).await
         }
         Command::SetSpeed(_)
         | Command::SetFlow(_)

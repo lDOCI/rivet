@@ -594,6 +594,15 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
     }
     {
         let tx = tx.clone();
+        let weak = ui.as_weak();
+        ui.on_files_window(move |first| {
+            let Some(ui) = weak.upgrade() else { return };
+            let paths = rivet::files::window(&ui, first.max(0) as usize);
+            let _ = tx.send(Command::Thumbs(paths));
+        });
+    }
+    {
+        let tx = tx.clone();
         ui.on_draw_resonance(move |aspect| {
             let _ = tx.send(Command::DrawResonance(aspect));
         });

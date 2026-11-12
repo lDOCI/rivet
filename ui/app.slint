@@ -233,6 +233,8 @@ export component AppWindow inherits Window {
     in-out property <string> files-query;
     in-out property <string> files-sort: "new";
     callback files-view-changed();
+    // Load previews around this card of the grid, free the far ones.
+    callback files-window(int);
     // Russian interface: the keyboard starts with Russian letters for file names.
     in property <bool> russian;
     // Moonraker's print queue: rows, count (-1: the printer has no queue), state
@@ -1259,6 +1261,7 @@ export component AppWindow inherits Window {
             on-usb <=> root.files-on-usb;
             scroll-y <=> root.files-scroll;
             storage-changed(usb) => { root.files-scroll = 0; root.refresh-files(); }
+            window(first) => { root.files-window(first); }
             select-mode <=> root.select-mode;
             selected-count <=> root.selected-count;
             queue-count: root.queue-count;

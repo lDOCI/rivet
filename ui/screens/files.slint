@@ -114,6 +114,8 @@ export component FilesScreen inherits VerticalLayout {
     callback open(string);
     callback select-all(bool);
     callback ask-delete;
+    // The index of the first card on the glass: previews load around it.
+    callback window(int);
     padding: Tokens.pad;
     padding-right: 20px;
     spacing: 12px;
@@ -121,6 +123,10 @@ export component FilesScreen inherits VerticalLayout {
     property <length> gap: 12px;
     property <length> card-height: 180px;
     property <int> rows: ceil(root.files.length / 3);
+    property <int> first-row: floor(max(0px, -root.scroll-y) / (root.card-height + root.gap));
+    init => { root.window(root.first-row * 3); }
+    changed first-row => { root.window(root.first-row * 3); }
+    changed files => { root.window(root.first-row * 3); }
 
     if !root.select-mode: Header {
         title: root.usb-count > 0 ? "" : @tr("Files");
