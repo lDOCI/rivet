@@ -30,6 +30,7 @@ import { ToolsScreen, ConsoleScreen, MacrosScreen, ConsoleLine } from "screens/t
 import { FilesScreen, FileScreen, FileItem, FileInfo, FindScreen, RenameScreen, MoveScreen } from "screens/files.slint";
 export { FileItem, FileInfo, ConsoleLine, FanRow }
 import { MessagesScreen, MessageRow } from "screens/messages.slint";
+import { FilamentScreen } from "screens/filament.slint";
 import { HeatPresetsScreen, HeatPreset, TempGraphScreen, GraphLine } from "screens/heat-extra.slint";
 export { HeatPreset, GraphLine }
 export { MessageRow }
@@ -283,6 +284,9 @@ export component AppWindow inherits Window {
         { name: "TPU", nozzle: 225, bed: 50 },
     ];
     callback preset-changed(int, int, int);
+    // Filament wizard: its step, and what it loaded (saved, shown on Home).
+    in-out property <int> filament-step: 1;
+    callback set-loaded(string);
     in property <[GraphLine]> graph-lines;
     in property <[{ y: float, label: string }]> graph-grid;
     callback refresh-graph(float);
@@ -382,7 +386,7 @@ export component AppWindow inherits Window {
 
     HorizontalLayout {
         Rail {
-            active: !root.ready ? "" : (root.screen == "fans" || root.screen == "heating" || root.screen == "heat-presets" || root.screen == "temp-graph" || root.screen == "motion" || root.screen == "extruder" || root.screen == "light" || root.screen == "speed" || root.screen == "zoffset" || root.screen == "motion-more" || root.screen == "retraction" || root.screen == "dryer" || root.screen == "spools" || root.screen == "devices") ? "control"
+            active: !root.ready ? "" : (root.screen == "fans" || root.screen == "filament" || root.screen == "heating" || root.screen == "heat-presets" || root.screen == "temp-graph" || root.screen == "motion" || root.screen == "extruder" || root.screen == "light" || root.screen == "speed" || root.screen == "zoffset" || root.screen == "motion-more" || root.screen == "retraction" || root.screen == "dryer" || root.screen == "spools" || root.screen == "devices") ? "control"
                 : (root.screen == "control" || root.screen == "tools" || root.screen == "settings" || root.screen == "messages") ? root.screen
                 : (root.screen == "console" || root.screen == "macros") ? "tools"
                 : "home";
@@ -470,6 +474,8 @@ export component AppWindow inherits Window {
             nozzle-sub: root.min-extrude-temp > 0 ? @tr("to extrude, needs ≥ {}°", round(root.min-extrude-temp))
                 : root.can-extrude ? @tr("hot enough to extrude") : @tr("too cold to extrude");
             nozzle-value: round(root.extruder-temp) + "° / " + round(root.extruder-target) + "°";
+            load-value: root.loaded-material;
+            unload-shown: root.has-load-macros;
             length-sel: root.extrude-length;
             rate-sel: root.extrude-rate;
             extrude-enabled: root.can-extrude;
@@ -489,6 +495,8 @@ export component AppWindow inherits Window {
                 if (key == "retract") { root.extrude(-self.length-values[root.extrude-length], self.rate-values[root.extrude-rate]); }
                 if (key == "spools") { root.list-spools(); root.screen = "spools"; }
                 if (key == "retraction") { root.screen = "retraction"; }
+                if (key == "load") { root.filament-step = 1; root.screen = "filament"; }
+                if (key == "unload") { root.run-gcode("UNLOAD_FILAMENT"); }
                 if (key == "dryer") { root.screen = "dryer"; }
             }
         }
@@ -593,6 +601,17 @@ export component AppWindow inherits Window {
                 root.keypad-hint = "0 … " + round(which == 0 ? root.nozzle-limit : root.bed-limit);
                 root.overlay = "keypad";
             }
+        }
+        if root.ready && root.screen == "filament": FilamentScreen {
+            presets: root.heat-presets;
+            nozzle: root.extruder-temp;
+            nozzle-target: root.extruder-target;
+            can-extrude: root.can-extrude;
+            step <=> root.filament-step;
+            heat(t) => { root.set-nozzle(t); }
+            extrude(mm) => { root.extrude(mm, 5); }
+            done(name) => { root.set-loaded(name); root.screen = "extruder"; }
+            cancel => { root.screen = "extruder"; }
         }
         if root.ready && root.screen == "heat-presets": HeatPresetsScreen {
             presets: root.heat-presets;
@@ -781,7 +800,7 @@ export component AppWindow inherits Window {
                 if (target == "files") { root.files-scroll = 0; root.refresh-files(); root.screen = "files"; }
                 if (target == "heating" || target == "heating-bed") { root.heating-heater = target == "heating-bed" ? 1 : 0; root.screen = "heating"; }
                 // The filament wizard comes later in this wave; until then, the Extruder.
-                if (target == "filament") { root.screen = "extruder"; }
+                if (target == "filament") { root.filament-step = 1; root.screen = "filament"; }
             }
         }
         if root.ready && root.screen == "files": FilesScreen {

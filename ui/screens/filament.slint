@@ -1,0 +1,234 @@
+// Load filament in three steps: pick the plastic and heat, push the strand in
+// and pull 50 mm, purge until the colour is clean. The prototype's FilamentLoad.
+import { Tokens } from "../kit/tokens.slint";
+import { Icons } from "../kit/icons.slint";
+import { Icon, PrimaryButton } from "../kit/controls.slint";
+import { HeatPreset } from "heat-extra.slint";
+
+component Big inherits Rectangle {
+    in property <string> text;
+    in property <bool> primary;
+    in property <bool> enabled: true;
+    callback clicked;
+    height: 80px;
+    border-radius: 22px;
+    background: !root.enabled ? Tokens.surface-2
+        : root.primary ? (ta.pressed ? Tokens.accent.darker(15%) : Tokens.accent)
+        : (ta.pressed ? Tokens.surface-2 : Tokens.surface-1);
+    accessible-role: button;
+    accessible-label: root.text;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+    Text {
+        text: root.text;
+        color: !root.enabled ? Tokens.text-faint : root.primary ? Tokens.accent-ink : Tokens.text;
+        font-size: 18px;
+        font-weight: root.primary ? 800 : 700;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    ta := TouchArea { clicked => { if (root.enabled) { root.clicked(); } } }
+}
+
+// The prototype's drawing: filament through the gears into a heater block,
+// glowing once hot, a strand out of the nozzle once it extrudes.
+component ExtruderArt inherits Rectangle {
+    in property <bool> hot;
+    in property <bool> fed;
+    in property <bool> flowing;
+    property <brush> ink: root.hot ? #5eead4 : #3a414a;
+    width: 170px;
+    height: 190px;
+    property <float> sx: self.width / 1px / 100;
+    property <float> sy: self.height / 1px / 112;
+    // Glow under the heater.
+    if root.hot: Rectangle {
+        x: 10px * root.sx; y: 58px * root.sy; width: 80px * root.sx; height: 44px * root.sy;
+        border-radius: self.height / 2;
+        background: @radial-gradient(circle, #f9731659 0%, #f9731600 70%);
+    }
+    // Filament from the top, down to the gears or through them.
+    Rectangle {
+        x: 47.5px * root.sx; y: 2px * root.sy; width: 5px * root.sx;
+        height: (root.fed ? 64 : 12) * 1px * root.sy;
+        border-radius: 2.5px * root.sx;
+        background: #4f7ae0;
+    }
+    for gx in [38, 62]: Rectangle {
+        x: (gx - 9) * 1px * root.sx; y: 17px * root.sy; width: 18px * root.sx; height: 18px * root.sy;
+        border-radius: self.width / 2;
+        background: #1f242b;
+        border-width: 3px * root.sx;
+        border-color: root.ink;
+        Rectangle { width: 5px * root.sx; height: 5px * root.sy; border-radius: self.width / 2; background: root.ink; }
+    }
+    Rectangle {
+        x: 24px * root.sx; y: 42px * root.sy; width: 52px * root.sx; height: 24px * root.sy;
+        border-radius: 7px * root.sx;
+        background: #252a31;
+        for ly in [49, 54, 59]: Rectangle { x: 6px * root.sx; y: (ly - 43) * 1px * root.sy; width: 40px * root.sx; height: 2px * root.sy; background: #1a1e24; }
+    }
+    Rectangle {
+        x: 30px * root.sx; y: 68px * root.sy; width: 40px * root.sx; height: 15px * root.sy;
+        border-radius: 4px * root.sx;
+        background: root.hot ? @linear-gradient(135deg, #fbbf24 0%, #f97316 100%) : #3a414a;
+    }
+    Path {
+        x: 0; y: 0; width: parent.width; height: parent.height;
+        viewbox-width: 100; viewbox-height: 112;
+        commands: "M43 83h14l-4 9h-6z";
+        fill: #b8913f;
+    }
+    if root.flowing: Rectangle {
+        x: 47.5px * root.sx; y: 92px * root.sy; width: 5px * root.sx; height: 16px * root.sy;
+        border-radius: 2.5px * root.sx;
+        background: #4f7ae0;
+    }
+}
+
+export component FilamentScreen inherits VerticalLayout {
+    horizontal-stretch: 1;
+    in property <[HeatPreset]> presets;
+    in property <float> nozzle;
+    in property <float> nozzle-target;
+    in property <bool> can-extrude;
+    in-out property <int> step: 1;
+    in-out property <int> picked: -1;
+    in-out property <int> purged;
+    property <int> amount: 25;
+    callback heat(float);
+    callback extrude(float);
+    callback done(string);
+    callback cancel;
+    padding: Tokens.pad;
+    spacing: 14px;
+    property <HeatPreset> preset: root.picked >= 0 && root.picked < root.presets.length ? root.presets[root.picked] : { name: "", nozzle: 0, bed: 0 };
+    property <bool> hot: root.can-extrude && root.nozzle >= root.preset.nozzle - 5;
+
+    HorizontalLayout {
+        height: Tokens.touch;
+        spacing: 14px;
+        Rectangle {
+            width: Tokens.touch;
+            border-radius: Tokens.r-m;
+            background: close-ta.pressed ? Tokens.surface-2 : Tokens.surface-1;
+            accessible-role: button;
+            accessible-label: @tr("Cancel");
+            accessible-action-default => { root.cancel(); }
+            Icon { d: "M6 6l12 12M18 6 6 18"; size: 22px; weight: 2; }
+            close-ta := TouchArea { clicked => { root.cancel(); } }
+        }
+        VerticalLayout {
+            alignment: center;
+            spacing: 10px;
+            Text { text: @tr("Load filament · step {} of 3", root.step); color: Tokens.text-2; font-size: 15px; font-weight: 600; }
+            HorizontalLayout {
+                spacing: 6px;
+                height: 5px;
+                for i in 3: Rectangle { horizontal-stretch: 1; border-radius: 3px; background: i < root.step ? Tokens.accent : Tokens.surface-2; }
+            }
+        }
+    }
+    HorizontalLayout {
+        vertical-stretch: 1;
+        spacing: 22px;
+        VerticalLayout {
+            alignment: center;
+            Rectangle {
+            width: 220px;
+            height: 220px;
+            border-radius: 24px;
+            background: @radial-gradient(circle, #222a36 0%, #171b21 75%);
+            ExtruderArt { hot: root.picked >= 0 && root.nozzle-target > 0 && root.nozzle >= 150; fed: root.step >= 3; flowing: root.purged > 0; }
+            }
+        }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            alignment: center;
+            spacing: 12px;
+            Text {
+                text: root.step == 1 ? @tr("Which plastic are you loading?")
+                    : root.step == 2 ? @tr("Push the strand in as far as it goes")
+                    : @tr("Is the right colour coming out?");
+                color: Tokens.text;
+                font-size: 26px;
+                font-weight: 800;
+                wrap: word-wrap;
+            }
+            Text {
+                text: root.step == 1 ? @tr("The nozzle heats to the plastic's temperature.")
+                    : root.step == 2 ? (root.hot ? @tr("Push the end into the extruder until it stops, hold it, then pull 50 mm.") : @tr("Nozzle {}° of {}°: wait until it is hot, then push the strand in.", round(root.nozzle), root.preset.nozzle))
+                    : @tr("If the old colour still comes out, purge some more.") + (root.purged > 0 ? " " + @tr("Purged: {} mm.", root.purged) : "");
+                color: #c7cdd4;
+                font-size: 17px;
+                wrap: word-wrap;
+            }
+            if root.step == 1: HorizontalLayout {
+                spacing: 10px;
+                height: 76px;
+                for p[i] in root.presets: Rectangle {
+                    visible: i < 4;
+                    horizontal-stretch: 1;
+                    preferred-width: 0px;
+                    min-width: 0px;
+                    border-radius: 20px;
+                    background: i == root.picked ? Tokens.accent : Tokens.surface-1;
+                    accessible-role: button;
+                    accessible-label: p.name;
+                    accessible-action-default => { root.picked = i; }
+                    VerticalLayout {
+                        alignment: center;
+                        Text { text: p.name; color: i == root.picked ? Tokens.accent-ink : Tokens.text; font-size: 18px; font-weight: 800; horizontal-alignment: center; }
+                        Text { text: p.nozzle + "°"; color: i == root.picked ? Tokens.accent-ink : Tokens.text-dim; font-size: 13px; horizontal-alignment: center; }
+                    }
+                    TouchArea { clicked => { root.picked = i; } }
+                }
+            }
+            if root.step == 3: HorizontalLayout {
+                spacing: 10px;
+                height: 56px;
+                for mm in [10, 25, 50]: Rectangle {
+                    horizontal-stretch: 1;
+                    border-radius: 16px;
+                    background: mm == root.amount ? Tokens.surface-3 : Tokens.surface-1;
+                    border-width: mm == root.amount ? 2px : 0;
+                    border-color: Tokens.accent;
+                    accessible-role: button;
+                    accessible-label: @tr("{} mm", mm);
+                    Text { text: @tr("{} mm", mm); color: Tokens.text; font-size: 17px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+                    TouchArea { clicked => { root.amount = mm; } }
+                }
+            }
+        }
+    }
+    HorizontalLayout {
+        spacing: 12px;
+        if root.step == 1: Big { horizontal-stretch: 1; text: @tr("Cancel"); clicked => { root.cancel(); } }
+        if root.step == 1: Big {
+            horizontal-stretch: 1.4;
+            primary: true;
+            enabled: root.picked >= 0;
+            text: @tr("Heat the nozzle");
+            clicked => { root.heat(root.preset.nozzle); root.step = 2; }
+        }
+        if root.step == 2: Big { horizontal-stretch: 1; text: @tr("Back"); clicked => { root.step = 1; } }
+        if root.step == 2: Big {
+            horizontal-stretch: 1.4;
+            primary: true;
+            enabled: root.hot;
+            text: @tr("Pull 50 mm");
+            clicked => { root.extrude(50); root.purged = 0; root.step = 3; }
+        }
+        if root.step == 3: Big {
+            horizontal-stretch: 1;
+            enabled: root.can-extrude;
+            text: @tr("Purge {} mm", root.amount);
+            clicked => { root.extrude(root.amount); root.purged += root.amount; }
+        }
+        if root.step == 3: Big {
+            horizontal-stretch: 1.4;
+            primary: true;
+            text: @tr("Yes, done");
+            clicked => { root.done(root.preset.name); }
+        }
+    }
+}

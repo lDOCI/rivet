@@ -1227,3 +1227,45 @@ msgstr "последние {} мин"
 
 msgid "No readings yet"
 msgstr "Пока нет данных"
+
+msgid "Load filament · step {} of 3"
+msgstr "Загрузка филамента · шаг {} из 3"
+
+msgid "Which plastic are you loading?"
+msgstr "Какой пластик заправляете?"
+
+msgid "Push the strand in as far as it goes"
+msgstr "Вставьте пруток до упора"
+
+msgid "Is the right colour coming out?"
+msgstr "Пошёл пластик нужного цвета?"
+
+msgid "The nozzle heats to the plastic's temperature."
+msgstr "Сопло нагреется до температуры этого пластика."
+
+msgid "Push the end into the extruder until it stops, hold it, then pull 50 mm."
+msgstr "Протолкните конец прутка в экструдер до сопротивления, держите и протяните 50 мм."
+
+msgid "Nozzle {}° of {}°: wait until it is hot, then push the strand in."
+msgstr "Сопло {}° из {}°: дождитесь нагрева, затем вставьте пруток."
+
+msgid "If the old colour still comes out, purge some more."
+msgstr "Если из сопла ещё идёт старый цвет — выдавите ещё."
+
+msgid "Purged: {} mm."
+msgstr "Выдавлено: {} мм."
+
+msgid "{} mm"
+msgstr "{} мм"
+
+msgid "Heat the nozzle"
+msgstr "Нагреть сопло"
+
+msgid "Pull 50 mm"
+msgstr "Протянуть 50 мм"
+
+msgid "Purge {} mm"
+msgstr "Выдавить {} мм"
+
+msgid "Yes, done"
+msgstr "Да, готово"

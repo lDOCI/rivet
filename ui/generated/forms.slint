@@ -215,15 +215,15 @@ export component ExtruderForm inherits FormScreen {
     in property <bool> retract-shown: true;
     in property <string> retract-sub: @tr("back into the extruder");
     in property <bool> retract-enabled: true;
-    // ФИЛАМЕНТ — later: wave 2: filament wizard
-    in property <bool> filament-shown: false;
+    // ФИЛАМЕНТ
+    in property <bool> filament-shown: true;
     in property <string> filament-sub: "";
-    // Заправить / сменить пруток — later: wave 2: filament wizard
-    in property <bool> load-shown: false;
+    // Заправить / сменить пруток
+    in property <bool> load-shown: true;
     in property <string> load-sub: @tr("wizard: heat, feed, check the colour");
     in property <string> load-value;
-    // Выгрузить пруток — later: wave 2: filament wizard
-    in property <bool> unload-shown: false;
+    // Выгрузить пруток
+    in property <bool> unload-shown: true;
     in property <string> unload-sub: @tr("heats and pulls it out");
     in property <string> unload-value;
     // Катушки Spoolman

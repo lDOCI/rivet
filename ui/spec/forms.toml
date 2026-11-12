@@ -50,9 +50,9 @@ r1 = "length"
 r2 = "rate"
 r3 = "extrude"
 r4 = "retract"
-r5 = { name = "filament", later = "wave 2: filament wizard" }
-r6 = { name = "load", later = "wave 2: filament wizard" }
-r7 = { name = "unload", later = "wave 2: filament wizard" }
+r5 = "filament"
+r6 = "load"
+r7 = "unload"
 r8 = { name = "spools", data = ["sub"] }
 r9 = { name = "retraction", data = ["sub"] }
 r10 = { name = "dryer", data = ["sub"] }

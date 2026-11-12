@@ -462,6 +462,19 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
     ui.on_refresh_messages(send(Command::ListMessages));
     {
         let tx = tx.clone();
+        let weak = ui.as_weak();
+        ui.on_set_loaded(move |name| {
+            if let Some(ui) = weak.upgrade() {
+                ui.set_loaded_material(name.clone());
+            }
+            let _ = tx.send(Command::SaveSetting {
+                key: "loaded_material".into(),
+                value: serde_json::Value::String(name.to_string()),
+            });
+        });
+    }
+    {
+        let tx = tx.clone();
         ui.on_refresh_graph(move |aspect| {
             let _ = tx.send(Command::TempGraph(aspect));
         });

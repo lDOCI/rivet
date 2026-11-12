@@ -65,6 +65,7 @@ const ALL: &[&str] = &[
     "exclude",
     "messages",
     "heat-presets",
+    "filament",
     "temp-graph",
     "keypad",
     "toast",
@@ -542,6 +543,10 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_overlay("cancel-print".into());
         }
         "heat-presets" => ui.set_screen("heat-presets".into()),
+        "filament" => {
+            ui.set_screen("filament".into());
+            ui.set_filament_step(1);
+        }
         "temp-graph" => {
             ui.set_screen("temp-graph".into());
             // The prototype's curves: the nozzle to 220°, the bed to 80°, from 25°.
