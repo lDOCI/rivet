@@ -361,3 +361,73 @@ export component Keypad inherits Rectangle {
         }
     }
 }
+
+// One choice of a heat dialog: what it is and how hot.
+export struct HeatChoice { label: string, sub: string, temp: int }
+
+// A cold nozzle before Extrude or Retract: how hot it should get. Nothing is
+// guessed: switching from PLA to ABS needs the new filament's heat.
+export component HeatPickDialog inherits Rectangle {
+    in property <string> title;
+    in property <string> message;
+    in property <[HeatChoice]> choices;
+    callback picked(int);
+    // Type another temperature.
+    callback custom;
+    callback cancelled;
+    accessible-role: none;
+    Backdrop { }
+    Rectangle {
+        width: 560px;
+        height: body.preferred-height;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        border-radius: Tokens.r-xl;
+        background: Tokens.surface-1;
+        body := VerticalLayout {
+            padding: 24px;
+            spacing: 12px;
+            Text { text: root.title; color: Tokens.text; font-size: Tokens.title; font-weight: 800; wrap: word-wrap; }
+            Text { text: root.message; color: Tokens.text-dim; font-size: Tokens.body; wrap: word-wrap; }
+            Rectangle {
+                height: ceil(root.choices.length / 2) * 72px + max(0, ceil(root.choices.length / 2) - 1) * 8px;
+                for c[i] in root.choices: Rectangle {
+                    x: mod(i, 2) * (parent.width + 8px) / 2;
+                    y: floor(i / 2) * 80px;
+                    width: (parent.width - 8px) / 2;
+                    height: 72px;
+                    border-radius: Tokens.r-m;
+                    background: ta.pressed ? Tokens.surface-3 : Tokens.surface-2;
+                    accessible-role: button;
+                    accessible-label: c.label;
+                    accessible-action-default => { root.picked(c.temp); }
+                    VerticalLayout {
+                        padding-left: 16px;
+                        padding-right: 12px;
+                        alignment: center;
+                        HorizontalLayout {
+                            spacing: 8px;
+                            Text { text: c.label; color: Tokens.text; font-size: Tokens.row-title; font-weight: 700; overflow: elide; horizontal-stretch: 1; }
+                            Text { text: c.temp + "°"; color: Tokens.heat-2; font-size: Tokens.row-title; font-weight: 800; }
+                        }
+                        if c.sub != "": Text { text: c.sub; color: Tokens.text-dim; font-size: Tokens.caption; overflow: elide; }
+                    }
+                    ta := TouchArea { clicked => { root.picked(c.temp); } }
+                }
+            }
+            HorizontalLayout {
+                spacing: 8px;
+                SecondaryButton {
+                    text: @tr("Other…");
+                    min-height: Tokens.touch;
+                    clicked => { root.custom(); }
+                }
+                SecondaryButton {
+                    text: @tr("Cancel");
+                    min-height: Tokens.touch;
+                    clicked => { root.cancelled(); }
+                }
+            }
+        }
+    }
+}

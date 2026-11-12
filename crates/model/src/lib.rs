@@ -1601,6 +1601,14 @@ pub struct LastPrint {
     pub material: String,
     /// Grams of filament the slicer planned (`metadata.filament_weight_total`), 0 if not sent.
     pub grams: f64,
+    /// The slicer's filament profile name ("Elegoo Pink Pla"), else empty.
+    pub filament_name: String,
+    /// Its colour ("#FF80FF"), else empty.
+    pub color: String,
+    /// Its nozzle temperature, 0 when not sent.
+    pub nozzle_temp: f64,
+    /// Unix time the job started.
+    pub started: f64,
 }
 
 /// Newest job out of a `server.history.list` result (newest first).
@@ -1624,6 +1632,29 @@ pub fn parse_last_print(result: &Value) -> Option<LastPrint> {
             .pointer("/metadata/filament_weight_total")
             .and_then(Value::as_f64)
             .unwrap_or(0.0),
+        filament_name: job
+            .pointer("/metadata/filament_name")
+            .and_then(Value::as_str)
+            .map(|t| t.split(';').next().unwrap_or(t).trim().to_owned())
+            .unwrap_or_default(),
+        color: ["/metadata/filament_colors/0", "/metadata/extruder_colors/0"]
+            .iter()
+            .find_map(|p| {
+                job.pointer(p)
+                    .and_then(Value::as_str)
+                    .filter(|c| !c.is_empty())
+            })
+            .unwrap_or_default()
+            .to_owned(),
+        nozzle_temp: job
+            .pointer("/metadata/filament_temps/0")
+            .and_then(Value::as_f64)
+            .or_else(|| {
+                job.pointer("/metadata/first_layer_extr_temp")
+                    .and_then(Value::as_f64)
+            })
+            .unwrap_or(0.0),
+        started: job.get("start_time").and_then(Value::as_f64).unwrap_or(0.0),
     })
 }
 

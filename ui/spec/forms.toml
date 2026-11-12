@@ -45,7 +45,8 @@ r5 = "off-after"
 [Extruder]
 component = "ExtruderForm"
 [Extruder.rows]
-r0 = { name = "nozzle", data = ["sub", "value"] }
+# Tap: how hot (presets, the last print's filament, or a number).
+r0 = { name = "nozzle", data = ["sub", "value"], kind = "link" }
 r1 = "length"
 r2 = "rate"
 # Beside Extrude: cool the nozzle down (a snowflake), as GuppyScreen has.

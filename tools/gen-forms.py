@@ -131,6 +131,8 @@ def main():
             e = entries.get(r.get("id"))
             if not e:
                 continue
+            # The spec may make a row tappable where the prototype only shows it.
+            kind = e.get("kind", kind)
             n, data, later = e["name"], set(e.get("data", [])), e.get("later")
             # Another example item of a live list: the list row above stands for it.
             if e.get("example"):

@@ -250,7 +250,7 @@ export component ExtruderForm inherits FormScreen {
     }
     bars: [];
     rows: [
-        { kind: "info", key: "nozzle", title: @tr("Nozzle"), sub: root.nozzle-sub, shown: root.nozzle-shown, value: root.nozzle-value },
+        { kind: "link", key: "nozzle", title: @tr("Nozzle"), sub: root.nozzle-sub, shown: root.nozzle-shown, value: root.nozzle-value },
         { kind: "seg", key: "length", title: @tr("Length"), sub: root.length-sub, shown: root.length-shown, opts: [@tr("5 mm"), @tr("10 mm"), @tr("25 mm"), @tr("50 mm"), @tr("100 mm")], sel: root.length-sel },
         { kind: "seg", key: "rate", title: @tr("Speed"), sub: root.rate-sub, shown: root.rate-shown, opts: ["2", "5", "10", "15"], sel: root.rate-sel },
         { kind: "action", key: "extrude", title: @tr("Extrude"), sub: root.extrude-sub, shown: root.extrude-shown, tone: "accent", on: root.extrude-enabled, value: "cool", icon: "M12 2v20 M4.9 6l14.2 12 M4.9 18l14.2-12 M9 3.5l3 2.5 3-2.5 M9 20.5l3-2.5 3 2.5 M2.6 9.4l3.7.9-1.1 3.6 M21.4 14.6l-3.7-.9 1.1-3.6 M2.6 14.6l3.7-.9-1.1-3.6 M21.4 9.4l-3.7.9 1.1 3.6", changed: root.extrude-side-enabled },

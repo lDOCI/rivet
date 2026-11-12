@@ -2169,3 +2169,21 @@ msgstr "сначала нагреет до {}°"
 
 msgid "heating to {}°…"
 msgstr "грею до {}°…"
+
+msgid "asks how hot first"
+msgstr "сначала спросит температуру"
+
+msgid "Heat the nozzle to"
+msgstr "Нагреть сопло до"
+
+msgid "For the filament that is in now. It heats, then moves the filament."
+msgstr "Для пластика, который сейчас заправлен. Сначала нагреет, потом подаст пруток."
+
+msgid "For the filament that is in now."
+msgstr "Для пластика, который сейчас заправлен."
+
+msgid "from the last print"
+msgstr "из последней печати"
+
+msgid "Other…"
+msgstr "Другая…"

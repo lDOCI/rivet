@@ -83,16 +83,14 @@ export component HomeScreen inherits VerticalLayout {
             VerticalLayout {
                 padding: 14px;
                 spacing: 12px;
-                HorizontalLayout {
-                    alignment: center;
-                    Thumb {
-                        width: 232px;
-                        height: 232px;
-                        border-radius: Tokens.r-m;
-                        icon-size: 88px;
-                        source: root.last-thumb;
-                        has: root.has-last-thumb;
-                    }
+                // The whole width of the card: the preview (prepared for this
+                // place, thumbs::prepare_for) is as large as it fits.
+                Thumb {
+                    height: 232px;
+                    border-radius: Tokens.r-m;
+                    icon-size: 88px;
+                    source: root.last-thumb;
+                    has: root.has-last-thumb;
                 }
                 // What is left under the thumbnail: 64 px on the prototype's 336 px card.
                 // The 76 px button sticks out 6 px above and below, as it does there.

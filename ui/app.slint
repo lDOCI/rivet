@@ -25,13 +25,14 @@ export global Strings {
     out property <string> signal-strong: @tr("strong signal");
     out property <string> signal-fair: @tr("fair signal");
     out property <string> signal-weak: @tr("weak signal");
+    out property <string> last-print-filament: @tr("from the last print");
     out property <string> join-failed: @tr("Could not join “{}”. Check the password and try again.", "{}");
 }
 import { Format } from "kit/format.slint";
 // Rust formats durations for rows it builds (the queue) the same way.
 export { Format }
-import { Dialog, Keypad, StopDialog, PromptDialog, PromptButton } from "kit/dialogs.slint";
-export { PromptButton }
+import { Dialog, Keypad, StopDialog, PromptDialog, PromptButton, HeatPickDialog, HeatChoice } from "kit/dialogs.slint";
+export { PromptButton, HeatChoice }
 import { StatusScreen } from "screens/status.slint";
 import { Toast } from "kit/toast.slint";
 import { HomeScreen } from "screens/home.slint";
@@ -135,9 +136,19 @@ export component AppWindow inherits Window {
     pure callback material-temp(string) -> int;
     // A cold nozzle heats to the loaded material's preset, else the first preset;
     // a nozzle already heating keeps its target.
+    // 0: hot enough; a nozzle already heading for a working target keeps it;
+    // -1: cold, ask how hot (the next filament may need more than the last).
     property <float> extrude-heat: root.can-extrude ? 0
         : root.extruder-target >= max(1, root.min-extrude-temp) ? root.extruder-target
-        : max(root.min-extrude-temp, root.material-temp(root.loaded-material) > 0 ? root.material-temp(root.loaded-material) : root.heat-presets[0].nozzle);
+        : -1;
+    // The extrusion waiting for a temperature pick: mm (negative pulls) and mm/s.
+    property <float> pending-length;
+    property <float> pending-rate;
+    // The temperature pick moves filament after heating (else it only sets the target).
+    property <bool> heat-then-extrude;
+    in property <[HeatChoice]> heat-choices;
+    // Fill heat-choices: the presets and the last print's filament profile.
+    callback build-heat-choices();
     // Toolhead: position and which axes Klipper has a position for.
     in property <float> position-x;
     in property <float> position-y;
@@ -206,6 +217,13 @@ export component AppWindow inherits Window {
     // Home: last print's material, file counts (-1 not known yet), loaded filament
     // (Spoolman's active spool, else what the filament wizard loaded).
     in property <string> last-material;
+    // The last (or current) print's filament profile from the slicer: name,
+    // colour, nozzle temperature, and when that print started (unix seconds).
+    in property <string> last-filament;
+    in property <string> last-color-hex;
+    in property <color> last-color;
+    in property <float> last-nozzle-temp;
+    in property <int> last-started;
     in property <int> last-grams;
     // Wall-clock times, empty when the printer has no timezone set.
     in property <string> last-clock;
@@ -219,6 +237,21 @@ export component AppWindow inherits Window {
     in property <string> spool-material;
     in property <color> spool-color;
     in property <string> loaded-material;
+    // When the filament wizard last set it (unix seconds; 0 never).
+    in-out property <int> loaded-at;
+    // What is in the printer: Spoolman's active spool, else the filament the
+    // slicer profile of the last print named (people print far more than four
+    // types), unless the wizard loaded something since.
+    property <bool> spool-known: root.has-active-spool && root.spool-material != "";
+    property <bool> profile-known: !root.spool-known && root.last-material != "" && root.last-started > root.loaded-at;
+    property <string> material-name: root.spool-known ? root.spool-material
+        : root.profile-known ? (root.last-filament != "" ? root.last-filament : root.last-material)
+        : root.loaded-material;
+    // The type (PLA, PETG…), for comparing with a file's.
+    property <string> material-type: root.spool-known ? root.spool-material : root.profile-known ? root.last-material : root.loaded-material;
+    property <color> material-color: root.spool-known ? root.spool-color
+        : root.profile-known && root.last-color-hex != "" ? root.last-color
+        : root.loaded-color;
     in property <color> loaded-color;
     // Bed dryer: minutes left, -1 when off; chosen material and hours.
     in property <int> dryer-minutes-left: -1;
@@ -644,7 +677,7 @@ export component AppWindow inherits Window {
             nozzle-sub: root.min-extrude-temp > 0 ? @tr("to extrude, needs ≥ {}°", round(root.min-extrude-temp))
                 : root.can-extrude ? @tr("hot enough to extrude") : @tr("too cold to extrude");
             nozzle-value: round(root.extruder-temp) + "° / " + round(root.extruder-target) + "°";
-            load-value: root.loaded-material;
+            load-value: root.material-name;
             unload-shown: root.has-load-macros;
             length-sel: root.extrude-length;
             rate-sel: root.extrude-rate;
@@ -654,9 +687,11 @@ export component AppWindow inherits Window {
             extrude-side-enabled: root.extruder-target > 0;
             retract-enabled: !root.extrude-busy && (root.can-extrude || !root.busy);
             extrude-sub: root.extrude-busy ? @tr("heating to {}°, then extrudes…", round(root.extruder-target))
-                : root.can-extrude ? @tr("the chosen length") : @tr("heats to {}° first", round(root.extrude-heat));
+                : root.can-extrude ? @tr("the chosen length")
+                : root.extrude-heat > 0 ? @tr("heats to {}° first", round(root.extrude-heat)) : @tr("asks how hot first");
             retract-sub: root.extrude-busy ? @tr("heating to {}°…", round(root.extruder-target))
-                : root.can-extrude ? @tr("back into the extruder") : @tr("heats to {}° first", round(root.extrude-heat));
+                : root.can-extrude ? @tr("back into the extruder")
+                : root.extrude-heat > 0 ? @tr("heats to {}° first", round(root.extrude-heat)) : @tr("asks how hot first");
             spools-shown: root.has-spoolman;
             spools-sub: root.has-active-spool ? @tr("active: {}", root.active-spool) : @tr("no active spool");
             retraction-shown: root.has-retraction;
@@ -668,9 +703,23 @@ export component AppWindow inherits Window {
                 if (key == "rate") { root.extrude-rate = i; }
             }
             activate(key) => {
-                if (key == "extrude") { root.extrude(self.length-values[root.extrude-length], self.rate-values[root.extrude-rate], root.extrude-heat); }
                 if (key == "cool") { root.set-nozzle(0); }
-                if (key == "retract") { root.extrude(-self.length-values[root.extrude-length], self.rate-values[root.extrude-rate], root.extrude-heat); }
+                if (key == "extrude" || key == "retract") {
+                    root.pending-length = (key == "extrude" ? 1 : -1) * self.length-values[root.extrude-length];
+                    root.pending-rate = self.rate-values[root.extrude-rate];
+                    if (root.extrude-heat >= 0) {
+                        root.extrude(root.pending-length, root.pending-rate, root.extrude-heat);
+                    } else {
+                        root.heat-then-extrude = true;
+                        root.build-heat-choices();
+                        root.overlay = "heat-pick";
+                    }
+                }
+                if (key == "nozzle") {
+                    root.heat-then-extrude = false;
+                    root.build-heat-choices();
+                    root.overlay = "heat-pick";
+                }
                 if (key == "spools") { root.list-spools(); root.screen = "spools"; }
                 if (key == "retraction") { root.screen = "retraction"; }
                 if (key == "load") { root.filament-step = 1; root.screen = "filament"; }
@@ -1330,8 +1379,8 @@ export component AppWindow inherits Window {
             last-material: root.last-material;
             files-local: root.files-local;
             files-usb: root.files-usb;
-            material: root.has-active-spool && root.spool-material != "" ? root.spool-material : root.loaded-material;
-            material-color: root.has-active-spool && root.spool-material != "" ? root.spool-color : root.loaded-color;
+            material: root.material-name;
+            material-color: root.material-color;
             print-again => { root.start-print(root.last-name); }
             open(target) => {
                 if (target == "files") { root.files-scroll = 0; root.refresh-files(); root.screen = "files"; }
@@ -1372,7 +1421,7 @@ export component AppWindow inherits Window {
             max-z: root.axis-max-z;
             back => { root.screen = "files"; }
             print-file => { root.start-print(root.open-path); root.screen = "home"; }
-            loaded-material: root.has-active-spool && root.spool-material != "" ? root.spool-material : root.loaded-material;
+            loaded-material: root.material-type;
             more => { root.screen = "file-actions"; }
         }
         if root.ready && root.screen == "file-actions": FileActionsForm {
@@ -1561,6 +1610,26 @@ export component AppWindow inherits Window {
         confirmed => { root.overlay = ""; root.run-gcode(root.macro-pending); }
         cancelled => { root.overlay = ""; }
     }
+    if root.overlay == "heat-pick": HeatPickDialog {
+        title: @tr("Heat the nozzle to");
+        message: root.heat-then-extrude ? @tr("For the filament that is in now. It heats, then moves the filament.") : @tr("For the filament that is in now.");
+        choices: root.heat-choices;
+        picked(t) => {
+            root.overlay = "";
+            if (root.heat-then-extrude) { root.extrude(root.pending-length, root.pending-rate, t); } else { root.set-nozzle(t); }
+        }
+        custom => {
+            root.keypad-target = root.heat-then-extrude ? "nozzle-extrude" : "nozzle";
+            root.keypad-negative = false;
+            root.keypad-title = @tr("Nozzle, °C");
+            root.keypad-current = "";
+            root.keypad-min = max(0, root.heat-then-extrude ? root.min-extrude-temp : 0);
+            root.keypad-max = root.nozzle-limit;
+            root.keypad-hint = round(root.keypad-min) + " … " + round(root.nozzle-limit);
+            root.overlay = "keypad";
+        }
+        cancelled => { root.overlay = ""; }
+    }
     if root.overlay == "keypad": Keypad {
         title: root.keypad-title;
         hint: root.keypad-hint;
@@ -1572,6 +1641,7 @@ export component AppWindow inherits Window {
             root.overlay = "";
             root.keypad-done(v);
             if (root.keypad-target == "nozzle") { root.set-nozzle(v); }
+            else if (root.keypad-target == "nozzle-extrude") { root.extrude(root.pending-length, root.pending-rate, v); }
             else if (root.keypad-target == "bed") { root.set-bed(v); }
             else { root.form-set(root.keypad-target, v); }
         }

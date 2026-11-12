@@ -588,6 +588,17 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
                 key: "loaded_material".into(),
                 value: serde_json::Value::String(name.to_string()),
             });
+            // When: a print started later shows its own filament instead.
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(0, |d| d.as_secs());
+            if let Some(ui) = weak.upgrade() {
+                ui.set_loaded_at(now as i32);
+            }
+            let _ = tx.send(Command::SaveSetting {
+                key: "loaded_at".into(),
+                value: serde_json::json!(now),
+            });
         });
     }
     {
@@ -597,6 +608,35 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
         });
     }
     ui.on_mask(|n| "•".repeat(n.clamp(0, 64) as usize).into());
+    // Before a cold extrusion: the last print's filament profile, then the presets.
+    {
+        let weak = ui.as_weak();
+        ui.on_build_heat_choices(move || {
+            let Some(ui) = weak.upgrade() else { return };
+            let mut choices = Vec::new();
+            let name = ui.get_last_filament();
+            let kind = ui.get_last_material();
+            let temp = ui.get_last_nozzle_temp().round() as i32;
+            if temp > 0 && !kind.is_empty() {
+                let words = slint::ComponentHandle::global::<rivet::Strings>(&ui);
+                choices.push(rivet::HeatChoice {
+                    label: if name.is_empty() { kind.clone() } else { name },
+                    sub: words.get_last_print_filament(),
+                    temp,
+                });
+            }
+            for p in slint::Model::iter(&ui.get_heat_presets()) {
+                if p.nozzle > 0 {
+                    choices.push(rivet::HeatChoice {
+                        label: p.name,
+                        sub: "".into(),
+                        temp: p.nozzle,
+                    });
+                }
+            }
+            ui.set_heat_choices(slint::ModelRc::new(slint::VecModel::from(choices)));
+        });
+    }
     // The nozzle temperature of a material's heat preset (0 when it has none).
     {
         let weak = ui.as_weak();

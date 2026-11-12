@@ -30,6 +30,8 @@ type Preview = SharedPixelBuffer<Rgba8Pixel>;
 
 /// Cache limit for decoded previews. The printer has ~38 MB free in total.
 const THUMB_CACHE_BYTES: usize = 3 * 1024 * 1024;
+/// The Home card's preview area, px (the card less its padding, by the thumbnail's height).
+const HOME_THUMB: (u32, u32) = (372, 232);
 
 /// Where previews come from and what is already decoded.
 pub struct Thumbs {
@@ -57,6 +59,52 @@ impl Thumbs {
     }
 }
 
+/// The smallest PNG preview at least `want` wide (else the largest), decoded.
+async fn fetch_png(
+    thumbs: &Thumbs,
+    file: &str,
+    meta: &model::FileMeta,
+    want: u32,
+) -> Option<thumbs::Rgba> {
+    let wanted = model::best_thumbnail(&meta.thumbnails, want)?;
+    let path = format!(
+        "/server/files/gcodes/{}",
+        thumbs::encode_path(&model::thumbnail_path(file, &wanted.relative_path))
+    );
+    let body = thumbs::http_get(&thumbs.host, &path)
+        .await
+        .inspect_err(|err| tracing::debug!(%err, file, "thumbnail fetch failed"))
+        .ok()?;
+    thumbs::decode_png(&body)
+}
+
+/// The Home card's preview: as large as its place (HOME_THUMB), not the grid's.
+async fn home_preview(client: &Client, thumbs: &Thumbs, file: &str) -> Option<Preview> {
+    let key = format!("{file}\u{0}home");
+    if let Some(hit) = thumbs.cache.lock().ok()?.get(&key) {
+        return Some(hit);
+    }
+    let meta = model::parse_file_meta(
+        &client
+            .call_timeout(
+                "server.files.metadata",
+                json!({ "filename": file }),
+                SETUP_TIMEOUT,
+            )
+            .await
+            .ok()?,
+    );
+    let img = thumbs::prepare_for(
+        fetch_png(thumbs, file, &meta, HOME_THUMB.0).await?,
+        HOME_THUMB.0,
+        HOME_THUMB.1,
+    );
+    let size = img.data.len();
+    let buf = Preview::clone_from_slice(&img.data, img.width, img.height);
+    thumbs.cache.lock().ok()?.insert(&key, buf.clone(), size);
+    Some(buf)
+}
+
 /// Preview for a G-code file, from cache or the printer. `None` when the file
 /// has no PNG preview or anything on the way fails: the UI keeps its icon.
 async fn preview(
@@ -81,16 +129,7 @@ async fn preview(
                 .ok()?,
         ),
     };
-    let wanted = model::best_thumbnail(&meta.thumbnails, thumbs::MAX_WIDTH)?;
-    let path = format!(
-        "/server/files/gcodes/{}",
-        thumbs::encode_path(&model::thumbnail_path(file, &wanted.relative_path))
-    );
-    let body = thumbs::http_get(&thumbs.host, &path)
-        .await
-        .inspect_err(|err| tracing::debug!(%err, file, "thumbnail fetch failed"))
-        .ok()?;
-    let img = thumbs::prepare(thumbs::decode_png(&body)?);
+    let img = thumbs::prepare(fetch_png(thumbs, file, &meta, thumbs::MAX_WIDTH).await?);
     let size = img.data.len();
     let buf = Preview::clone_from_slice(&img.data, img.width, img.height);
     thumbs.cache.lock().ok()?.insert(file, buf.clone(), size);
@@ -1199,7 +1238,7 @@ async fn refresh_history(client: &Client, ui: &slint::Weak<AppWindow>, thumbs: &
             l.filename.clone(),
         );
         tokio::spawn(async move {
-            let image = preview(&client, &thumbs, &name, None).await;
+            let image = home_preview(&client, &thumbs, &name).await;
             let _ = ui.upgrade_in_event_loop(move |ui| {
                 let (img, has) = image_of(image);
                 ui.set_last_thumb(img);
@@ -1219,6 +1258,11 @@ async fn refresh_history(client: &Client, ui: &slint::Weak<AppWindow>, thumbs: &
             });
             ui.set_last_completed(l.completed);
             ui.set_last_material(l.material.as_str().into());
+            ui.set_last_filament(l.filament_name.as_str().into());
+            ui.set_last_color_hex(l.color.as_str().into());
+            ui.set_last_color(hex_color(&l.color));
+            ui.set_last_nozzle_temp(l.nozzle_temp as f32);
+            ui.set_last_started(l.started as i32);
             ui.set_last_grams(l.grams.round() as i32);
             ui.set_last_clock(local_clock(l.ended).unwrap_or_default().into());
         }
@@ -2023,9 +2067,11 @@ async fn load_settings(
         .as_str()
         .unwrap_or_default()
         .to_owned();
+    let loaded_at = saved["loaded_at"].as_f64().unwrap_or(0.0);
     let _ = ui.upgrade_in_event_loop(move |ui| {
         ui.set_loaded_material(loaded.into());
         ui.set_loaded_color(hex_color(&loaded_color));
+        ui.set_loaded_at(loaded_at as i32);
     });
     if caps.timelapse {
         if let Ok(t) = client

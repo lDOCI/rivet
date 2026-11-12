@@ -254,6 +254,38 @@ pub fn enlarge(img: Rgba) -> Rgba {
     }
     let width = (img.width * 3 / 2).min(MAX_WIDTH);
     let height = (img.height * width / img.width).max(1);
+    resize(&img, width, height)
+}
+
+/// Scale to fill a `width` × `height` box keeping proportions, at most `max_scale`
+/// times up (bicubic) — for a preview that has a big place of its own, such as
+/// the Home card. Larger images are shrunk with a box filter first.
+pub fn fit(img: Rgba, width: u32, height: u32, max_scale: f32) -> Rgba {
+    if img.width == 0 || img.height == 0 {
+        return img;
+    }
+    let img = downscale(img, width);
+    let k = (width as f32 / img.width as f32)
+        .min(height as f32 / img.height as f32)
+        .min(max_scale);
+    if k <= 1.01 {
+        return img;
+    }
+    let (w, h) = (
+        (img.width as f32 * k).round() as u32,
+        (img.height as f32 * k).round() as u32,
+    );
+    resize(&img, w.max(1), h.max(1))
+}
+
+/// A preview for a box of its own: margins cut, fitted to the box (the shadow
+/// takes the rows below), the shadow under it.
+pub fn prepare_for(img: Rgba, width: u32, height: u32) -> Rgba {
+    shadow(fit(trim(img), width, height * 9 / 10, 2.0))
+}
+
+/// Catmull-Rom bicubic resize.
+fn resize(img: &Rgba, width: u32, height: u32) -> Rgba {
     let (sw, sh) = (img.width as i64, img.height as i64);
     let at = |x: i64, y: i64, c: usize| -> f32 {
         let (x, y) = (x.clamp(0, sw - 1), y.clamp(0, sh - 1));
@@ -539,5 +571,25 @@ mod tests {
         });
         let body = http_get(&addr, "/server/files/gcodes/a.png").await.unwrap();
         assert_eq!(body, b"hi");
+    }
+
+    #[test]
+    fn fit_fills_a_wide_box() {
+        let img = Rgba {
+            width: 100,
+            height: 80,
+            data: vec![200; 100 * 80 * 4],
+        };
+        // Limited by the height: 80 → 160 (2×, the cap is 2).
+        let big = fit(img, 372, 232, 2.0);
+        assert_eq!((big.width, big.height), (200, 160));
+        let wide = Rgba {
+            width: 300,
+            height: 100,
+            data: vec![200; 300 * 100 * 4],
+        };
+        // Limited by the width: 300 → 372.
+        let f = fit(wide, 372, 232, 2.0);
+        assert_eq!(f.width, 372);
     }
 }
