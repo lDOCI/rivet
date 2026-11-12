@@ -115,6 +115,14 @@ if [ -f $conf ] && grep -q '^\[update_manager rivet\]' $conf; then
   rm -f $conf.before-rivet
 fi
 
+# A screen started while Moonraker is still coming up can hang on its first
+# frame (GuppyScreen does): wait for Moonraker to answer, up to a minute.
+i=0
+while [ $i -lt 30 ] && ! python3 -c 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:7125/server/info", timeout=2)' 2>/dev/null; do
+  sleep 2
+  i=$((i + 1))
+done
+
 # Bring back exactly the screens tools/install.sh disabled, nothing else.
 if [ -n "$REPLACED" ]; then
   echo "$REPLACED" | while read -r name st; do
@@ -129,7 +137,7 @@ if [ -n "$REPLACED" ]; then
       continue
     fi
     if [ "$st" = running ]; then
-      "/etc/init.d/$name" start >/dev/null 2>&1 && echo "started /etc/init.d/$name" || echo "/etc/init.d/$name did not start" >&2
+      setsid "/etc/init.d/$name" start </dev/null >/dev/null 2>&1 && echo "started /etc/init.d/$name" || echo "/etc/init.d/$name did not start" >&2
     else
       echo "left /etc/init.d/$name stopped (it was not running before Rivet); it starts at the next boot"
     fi
