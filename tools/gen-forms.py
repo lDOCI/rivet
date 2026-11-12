@@ -120,6 +120,18 @@ def main():
                 errors.append(f"{page}: spec names {rid}, the prototype page has no such row")
 
         props, bars, items = [], [], []
+
+        def extra_row(x):
+            n = x["name"]
+            props.append(f"    // {x['t']} — not on the prototype page")
+            props.append(f"    in property <bool> {n}-shown: true;")
+            props.append(f"    in property <string> {n}-sub: {tr(page, x['sub']) if x.get('sub') else chr(34)*2};")
+            props.append(f"    in property <string> {n}-value;")
+            f = [f'kind: "link"', f'key: "{n}"', f"title: {tr(page, x['t'])}", f"sub: root.{n}-sub",
+                 f"shown: root.{n}-shown", f"value: root.{n}-value"]
+            if x.get("icon"):
+                f.append(f"icon: {s(x['icon'])}")
+            items.append("{ " + ", ".join(f) + " }")
         # Rows in segments: fixed rows (array literals) and live lists (a property).
         segments = []
         steps, edits = [], []
@@ -228,19 +240,20 @@ def main():
                 f.append(f"icon: {s(e['side_icon'])}")
                 f.append(f"changed: root.{n}-side-enabled")
             items.append("{ " + ", ".join(f) + " }")
+            # Rows Rivet adds right after this one (spec `extra` with `after`).
+            for x in conf.get("extra", []):
+                if x.get("after") == n:
+                    extra_row(x)
 
-        # Rows Rivet adds beyond the prototype page (spec `extra`): link rows at the end.
+        # Rows Rivet adds beyond the prototype page (spec `extra`): link rows at the
+        # end, or after the row their `after` names.
         for x in conf.get("extra", []):
-            n = x["name"]
-            props.append(f"    // {x['t']} — not on the prototype page")
-            props.append(f"    in property <bool> {n}-shown: true;")
-            props.append(f"    in property <string> {n}-sub: {tr(page, x['sub']) if x.get('sub') else chr(34)*2};")
-            props.append(f"    in property <string> {n}-value;")
-            f = [f'kind: "link"', f'key: "{n}"', f"title: {tr(page, x['t'])}", f"sub: root.{n}-sub",
-                 f"shown: root.{n}-shown", f"value: root.{n}-value"]
-            if x.get("icon"):
-                f.append(f"icon: {s(x['icon'])}")
-            items.append("{ " + ", ".join(f) + " }")
+            if not x.get("after"):
+                extra_row(x)
+        names = {e["name"] for e in entries.values()}
+        for x in conf.get("extra", []):
+            if x.get("after") and x["after"] not in names:
+                errors.append(f"{page}: extra row {x['name']} comes after {x['after']!r}, which is no row")
 
         out.append(f"// {page}.dc.html")
         out.append(f"export component {conf['component']} inherits FormScreen {{")

@@ -21,6 +21,10 @@ export global Strings {
     // Web interface versions: "{}" is the new one.
     out property <string> up-to-date: @tr("up to date");
     out property <string> update-to: @tr("update to {}", "{}");
+    // Rivet's own update: "{}" is the version.
+    out property <string> rivet-to: @tr("Rivet {}, the screen restarts", "{}");
+    out property <string> rivet-updating: @tr("downloading and installing…");
+    out property <string> rivet-rolled-back: @tr("the new version did not start; the previous one is back");
     // Wi-Fi rows: band, security, joined before, signal.
     out property <string> ghz: @tr("{} GHz", "{}");
     out property <string> open-net: @tr("open");
@@ -58,6 +62,7 @@ import { ToolsScreen, ConsoleScreen, MacrosScreen, ConsoleLine } from "screens/t
 import { FilesScreen, FileScreen, FileItem, FileInfo, FindScreen, RenameScreen, MoveScreen } from "screens/files.slint";
 import { WifiJoinScreen } from "screens/wifi.slint";
 import { TouchCalScreen } from "screens/touchcal.slint";
+import { InstallerScreen } from "screens/installer.slint";
 import { ThemeScreen, Swatch } from "screens/theme.slint";
 import { ColorPicker } from "screens/picker.slint";
 import { TouchTestScreen } from "screens/touchtest.slint";
@@ -535,6 +540,7 @@ export component AppWindow inherits Window {
     callback cal-begin();
     // Touch test: round, point, the point, where the tap landed (to Rivet's log).
     callback touch-test-tap(int, int, float, float, float, float);
+    in property <string> installer-step;
     callback cal-point(int, float, float);
     callback cal-finish();
     callback cal-keep();
@@ -555,6 +561,10 @@ export component AppWindow inherits Window {
     in property <string> ver-klipper;
     in property <string> ver-moonraker;
     in property <string> ver-rivet;
+    in property <string> ver-rivet-sub;
+    // A newer Rivet release Moonraker can install, and what to say about it.
+    in property <bool> rivet-update;
+    in property <string> rivet-update-sub;
     in property <string> ver-mainsail;
     in property <string> ver-mainsail-sub;
     in property <string> ver-fluidd;
@@ -644,7 +654,7 @@ export component AppWindow inherits Window {
     // A layer over the whole glass (screensaver, touch calibration, lock): the
     // screen under it is not drawn at all, else the renderer's partial redraws
     // could let bits of it show through.
-    property <bool> covered: (root.ambient && root.busy) || root.overlay == "touch-cal" || root.overlay == "touch-test" || (root.locked && root.ready);
+    property <bool> covered: (root.ambient && root.busy) || root.overlay == "touch-cal" || root.overlay == "touch-test" || root.overlay == "installer" || (root.locked && root.ready);
 
     HorizontalLayout {
         visible: !root.covered;
@@ -1331,6 +1341,9 @@ export component AppWindow inherits Window {
             klipper-value: root.ver-klipper;
             moonraker-value: root.ver-moonraker;
             rivet-value: root.ver-rivet;
+            rivet-sub: root.ver-rivet-sub;
+            update-rivet-shown: root.rivet-update;
+            update-rivet-sub: root.rivet-update-sub;
             mainsail-shown: root.ver-mainsail != "";
             mainsail-value: root.ver-mainsail;
             mainsail-sub: root.ver-mainsail-sub;
@@ -1339,7 +1352,10 @@ export component AppWindow inherits Window {
             fluidd-sub: root.ver-fluidd-sub;
             web-shown: root.ver-mainsail != "" || root.ver-fluidd != "";
             back => { root.screen = "settings"; }
-            activate(key) => { if (key == "check") { root.system-action("check-updates"); } }
+            activate(key) => {
+                if (key == "check") { root.system-action("check-updates"); }
+                if (key == "update-rivet") { root.system-action("update-rivet"); }
+            }
         }
         if root.ready && root.screen == "fans": FansScreen {
             bars: root.fan-bars;
@@ -1719,6 +1735,12 @@ export component AppWindow inherits Window {
         confirm-text: @tr("Run");
         confirmed => { root.overlay = ""; root.run-gcode(root.macro-pending); }
         cancelled => { root.overlay = ""; }
+    }
+    // The USB installer's pictures (rendered by ui-snapshot only).
+    if root.overlay == "installer": InstallerScreen {
+        width: parent.width;
+        height: parent.height;
+        step: root.installer-step;
     }
     if root.overlay == "touch-test": TouchTestScreen {
         tap(r, i, tx, ty, x, y) => { root.touch-test-tap(r, i, tx, ty, x, y); }

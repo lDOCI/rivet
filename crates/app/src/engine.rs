@@ -652,6 +652,17 @@ async fn handle_event(ev: Event, client: &Client, state: &mut PrinterState) {
                     state.push_console(line.to_owned(), model::line_kind(line));
                 }
             }
+            // An update from anywhere (Mainsail too): when Rivet's is done, start
+            // the new binary.
+            "notify_update_response" => {
+                let r = &params[0];
+                if r["application"].as_str() == Some("rivet")
+                    && r["complete"].as_bool() == Some(true)
+                    && !r["message"].as_str().unwrap_or_default().contains("Error")
+                {
+                    restart_for_update();
+                }
+            }
             "notify_klippy_ready" => {
                 state.klippy = Klippy::Ready;
                 subscribe(client, state).await;
@@ -667,6 +678,22 @@ async fn handle_event(ev: Event, client: &Client, state: &mut PrinterState) {
             _ => {}
         },
     }
+}
+
+/// Moonraker has put a new Rivet into /opt/rivet: exit, and S80rivet starts it
+/// (and rolls back if it does not come up). Only when S80rivet runs this
+/// binary: started by hand, Rivet would just be gone.
+fn restart_for_update() {
+    let installed =
+        std::env::current_exe().is_ok_and(|p| p.to_string_lossy().starts_with("/opt/rivet/"));
+    if !installed {
+        tracing::info!(
+            "a new Rivet is installed; this one is not run by S80rivet, so it keeps running"
+        );
+        return;
+    }
+    tracing::info!("a new Rivet is installed: exiting so S80rivet starts it");
+    std::process::exit(0);
 }
 
 /// Things the engine tells itself from spawned tasks.
@@ -868,6 +895,11 @@ async fn system_info(client: &Client, ui: &slint::Weak<AppWindow>) {
         (version, fresh, remote.to_owned())
     };
     let (mainsail, fluidd) = (web("mainsail"), web("fluidd"));
+    // Rivet itself, when the installer gave Moonraker an [update_manager rivet].
+    let rivet = updates["version_info"]["rivet"]
+        .is_object()
+        .then(|| web("rivet"));
+    let rolled_back = std::path::Path::new("/opt/rivet/rolled-back").exists();
     let zone = std::fs::read_link("/etc/localtime")
         .ok()
         .and_then(|p| {
@@ -921,6 +953,20 @@ async fn system_info(client: &Client, ui: &slint::Weak<AppWindow>) {
         ui.set_ver_klipper(klipper.into());
         ui.set_ver_moonraker(moonraker.into());
         ui.set_ver_rivet(env!("CARGO_PKG_VERSION").into());
+        let (rivet_sub, update) = match &rivet {
+            _ if rolled_back => (words.get_rivet_rolled_back().to_string(), None),
+            Some(r) if !r.1 => (state(r), Some(r.2.clone())),
+            Some(r) => (state(r), None),
+            None => (String::new(), None),
+        };
+        ui.set_ver_rivet_sub(rivet_sub.into());
+        ui.set_rivet_update(update.is_some());
+        ui.set_rivet_update_sub(
+            update
+                .map(|v| words.get_rivet_to().replace("{}", &v))
+                .unwrap_or_default()
+                .into(),
+        );
         ui.set_ver_mainsail_sub(state(&mainsail).into());
         ui.set_ver_mainsail(mainsail.0.into());
         ui.set_ver_fluidd_sub(state(&fluidd).into());
@@ -2668,6 +2714,26 @@ async fn execute(
                 "reboot" => client.call("machine.reboot", json!({})).await.map(drop)?,
                 "shutdown" => client.call("machine.shutdown", json!({})).await.map(drop)?,
                 "stock" => gcode(client, "REBOOT_STOCK_SYSTEM").await?,
+                "update-rivet" => {
+                    let _ = ui.upgrade_in_event_loop(|ui| {
+                        let words = slint::ComponentHandle::global::<crate::Strings>(&ui);
+                        ui.set_rivet_update_sub(words.get_rivet_updating());
+                    });
+                    // Moonraker downloads the release into /opt/rivet; it answers
+                    // when done, and refuses while printing.
+                    let done = client
+                        .call_timeout(
+                            "machine.update.client",
+                            json!({ "name": "rivet" }),
+                            Duration::from_secs(600),
+                        )
+                        .await;
+                    if let Err(err) = done {
+                        system_info(client, ui).await;
+                        return Err(err);
+                    }
+                    restart_for_update();
+                }
                 "check-updates" => {
                     client
                         .call_timeout(

@@ -4,7 +4,8 @@
 #   tools/install.sh [--dry-run] [--force] PRINTER_IP
 #
 # Klipper Mod only: on anything else (stock firmware, ZMOD) it refuses and changes nothing.
-# Run it from the computer where Rivet was built with `cargo printer`. Over ssh
+# Run it from an unpacked release archive (rivet-<version>-installer.tar.gz), or
+# from a checkout where Rivet was built with `cargo printer`. Over ssh
 # (root, no scp: Klipper Mod has no sftp-server) it copies
 #   target/armv7-unknown-linux-musleabihf/release/rivet -> /opt/rivet/rivet
 #   tools/install/S80rivet                              -> /etc/init.d/S80rivet
@@ -15,19 +16,26 @@
 # /etc/init.d/S??*), records that in /opt/rivet/replaced, and starts Rivet.
 # No other screen: nothing is disabled.
 #
+# Updates after that come from GitHub releases through Moonraker's update manager
+# (Mainsail, Fluidd or Rivet's own Settings > Updates): it adds an
+# [update_manager rivet] section to moonraker.conf if there is none, and writes
+# /opt/rivet/release_info.json and rivet.sha256 for it (see S80rivet for the
+# checksum and the roll-back).
+#
 # Running it again upgrades the binary and the init script; an existing rivet.toml
 # is never overwritten. It refuses while a print is running or paused, or when an
 # unknown program holds the screen, unless --force. --dry-run only prints what it
 # would disable. Undo with tools/uninstall.sh PRINTER_IP.
 #
-# Environment: PRINTER_USER (default root), RIVET_BIN (binary to upload).
+# Environment: PRINTER_USER (default root), RIVET_BIN (binary to upload),
+# RIVET_VERSION (version Moonraker sees; default dev-<git commit>).
 
 set -euo pipefail
 
 force=0
 dry=0
 host="${PRINTER_HOST:-}"
-usage() { sed -n '2,23p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,31p' "$0" | sed 's/^# \{0,1\}//'; }
 for arg in "$@"; do
   case "$arg" in
     --force) force=1 ;;
@@ -39,10 +47,16 @@ for arg in "$@"; do
 done
 user="${PRINTER_USER:-root}"
 root="$(cd "$(dirname "$0")/.." && pwd)"
+# From a release archive the binary sits next to tools/; from a checkout, `cargo printer` built it.
+if [ -z "${RIVET_BIN:-}" ] && [ -f "$root/rivet" ]; then RIVET_BIN="$root/rivet"; fi
 bin="${RIVET_BIN:-$root/target/armv7-unknown-linux-musleabihf/release/rivet}"
 init="$root/tools/install/S80rivet"
 funcs="$root/tools/install/screen.sh"
 example="$root/docs/rivet.toml.example"
+if [ -z "${RIVET_VERSION:-}" ] && [ -f "$root/release_info.json" ]; then
+  RIVET_VERSION="$(sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' "$root/release_info.json")"
+fi
+version="${RIVET_VERSION:-dev-$(git -C "$root" rev-parse --short HEAD 2>/dev/null || echo unknown)}"
 
 [ -n "$host" ] || { usage; exit 1; }
 if [ "$dry" = 0 ]; then
@@ -115,7 +129,7 @@ run 'cat > /etc/init.d/.S80rivet.new && chmod 755 /etc/init.d/.S80rivet.new' < "
 run 'f=/root/printer_data/config/rivet.toml; if [ -e $f ]; then cat > /dev/null; echo "kept existing $f"; else cat > $f.new && mv $f.new $f && echo "created $f"; fi' < "$example"
 
 # 3. Switch: stop Rivet and the screens found, disable their scripts, start Rivet.
-{ printf "SCREENS='%s'\n" "$screens"; cat <<'EOF'
+{ printf "SCREENS='%s'\nVERSION='%s'\n" "$screens" "$version"; cat <<'EOF'
 set -e
 [ -x /etc/init.d/S80rivet ] && /etc/init.d/S80rivet stop || true
 if [ -f /tmp/rivet.pid ]; then kill "$(cat /tmp/rivet.pid)" 2>/dev/null || true; rm -f /tmp/rivet.pid; fi
@@ -139,11 +153,37 @@ done
 
 if [ -f /opt/rivet/rivet ]; then what=upgraded; else what=installed; fi
 mv -f /opt/rivet/rivet.new /opt/rivet/rivet
-echo "$what /opt/rivet/rivet"
+echo "$what /opt/rivet/rivet ($VERSION)"
+# What Moonraker's update manager reads, and what S80rivet checks the binary against.
+sha256sum /opt/rivet/rivet | sed 's| .*|  rivet|' > /opt/rivet/rivet.sha256
+printf '{"project_name": "rivet", "project_owner": "lDOCI", "version": "%s"}\n' "$VERSION" > /opt/rivet/release_info.json
+rm -f /opt/rivet/rolled-back
+conf=/root/printer_data/config/moonraker.conf
+if [ -f $conf ] && ! grep -q '^\[update_manager rivet\]' $conf; then
+  cp $conf $conf.before-rivet
+  cat >> $conf <<'CONF'
+
+[update_manager rivet]
+# Rivet, the touch screen: releases from GitHub (added by Rivet's tools/install.sh)
+type: web
+channel: beta
+repo: lDOCI/rivet
+path: /opt/rivet
+persistent_files:
+    rivet.good
+    replaced
+    rolled-back
+CONF
+  echo "added [update_manager rivet] to $conf (copy before: $conf.before-rivet)"
+  restart_moonraker=1
+fi
 if [ -f /etc/init.d/S80rivet ]; then what=updated; else what=installed; fi
 mv -f /etc/init.d/.S80rivet.new /etc/init.d/S80rivet
 echo "$what /etc/init.d/S80rivet"
 
+if [ -n "${restart_moonraker:-}" ]; then
+  setsid /etc/init.d/S65moonraker restart </dev/null >/dev/null 2>&1 && echo "restarted Moonraker for its new update_manager section"
+fi
 /etc/init.d/S80rivet start >/dev/null
 sleep 3
 pid="$(cat /run/rivet.child.pid 2>/dev/null || true)"

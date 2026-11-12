@@ -2295,3 +2295,15 @@ msgstr "коснуться 9 точек пальцем"
 
 msgid "Touch the centre of the cross with your finger, as you usually tap. {} of 9."
 msgstr "Коснитесь центра крестика пальцем — как обычно нажимаете. {} из 9."
+
+msgid "Rivet {}, the screen restarts"
+msgstr "Rivet {}, экран перезапустится"
+
+msgid "downloading and installing…"
+msgstr "скачивается и устанавливается…"
+
+msgid "the new version did not start; the previous one is back"
+msgstr "новая версия не запустилась, вернулась прежняя"
+
+msgid "Update the screen"
+msgstr "Обновить экран"

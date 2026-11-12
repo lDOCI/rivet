@@ -1,0 +1,63 @@
+name: Release
+
+# A tag v<version>[-alpha|-beta…] builds the printer binary and publishes a GitHub
+# release (a pre-release while the version has a suffix) with:
+#   rivet.zip                         first asset: what Moonraker's update manager
+#                                     ([update_manager rivet], type web) unpacks
+#                                     into /opt/rivet: rivet, rivet.sha256,
+#                                     release_info.json
+#   rivet-<tag>-usb.zip               install from a USB stick (tools/usb)
+#   rivet-<tag>-usb-remove.zip        remove from a USB stick
+#   rivet-<tag>-installer.tar.gz      install over ssh from a computer
+# (tools/package-release.sh makes them).
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: armv7-unknown-linux-musleabihf
+      - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: false
+
+      - name: the tag matches Cargo.toml
+        run: |
+          TAG=${GITHUB_REF_NAME}
+          VER=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          case "$TAG" in
+            "v$VER"|"v$VER"-*) ;;
+            *) echo "tag $TAG does not match Cargo.toml version $VER" >&2; exit 1 ;;
+          esac
+
+      - name: build
+        run: cargo printer
+
+      - name: package
+        run: tools/package-release.sh "${GITHUB_REF_NAME}" dist
+
+      - name: publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG=${GITHUB_REF_NAME}
+          PRE=
+          case "$TAG" in *-*) PRE=--prerelease ;; esac
+          NOTES=$(awk -v t="$TAG" '$0 ~ "^## " t {p=1; next} /^## /{p=0} p' CHANGELOG.md 2>/dev/null || true)
+          [ -n "$NOTES" ] || NOTES="Rivet $TAG"
+          # rivet.zip goes up first: Moonraker installs a release's first asset.
+          gh release create "$TAG" dist/rivet.zip --title "$TAG" --notes "$NOTES" $PRE
+          gh release upload "$TAG" "dist/rivet-$TAG-usb.zip" "dist/rivet-$TAG-usb-remove.zip" \
+            "dist/rivet-$TAG-installer.tar.gz"

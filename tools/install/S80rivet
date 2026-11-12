@@ -6,11 +6,21 @@
 # loop starts Rivet and starts it again if it exits, waiting longer after each
 # quick crash (1, 2, 4 ... 60 s) so a crash loop does not eat the CPU.
 #
+# Updates (Moonraker's update manager unpacks a release into /opt/rivet, see
+# tools/install.sh) are checked before each start: the binary must match
+# rivet.sha256. A binary that has run $HEALTHY_SECONDS is kept as rivet.good; a new
+# one that fails to come up twice, or fails its checksum, is replaced by
+# rivet.good, and its checksum is written to rolled-back for the screen to say so.
+#
 # Rivet logs to $LOG_FILE (rotated by Rivet itself). Its stderr (panics) and the
 # restarts go to $CONSOLE_LOG, cut to one old copy when it passes 256 KB.
 #
 
-RIVET=/opt/rivet/rivet
+DIR=/opt/rivet
+RIVET=$DIR/rivet
+GOOD=$DIR/rivet.good
+SUM=$DIR/rivet.sha256
+ROLLED=$DIR/rolled-back
 CONFIG=/root/printer_data/config/rivet.toml
 LOG_FILE=/root/printer_data/logs/rivet.log
 CONSOLE_LOG=/root/printer_data/logs/rivet-console.log
@@ -31,17 +41,57 @@ cut_console_log() {
     fi
 }
 
+# The binary's checksum, as sha256sum prints it (first word only).
+sum_of() {
+    sha256sum "$1" 2>/dev/null | cut -d' ' -f1
+}
+
+# Back to the last binary that worked, if there is one; say why.
+roll_back() {
+    if [ -f $GOOD ] && ! cmp -s $GOOD $RIVET; then
+        sum_of $RIVET > $ROLLED
+        cp -f $GOOD $RIVET.tmp && chmod 755 $RIVET.tmp && mv -f $RIVET.tmp $RIVET
+        say "$1; rolled back to the last binary that worked"
+    else
+        say "$1; no other binary to roll back to"
+    fi
+}
+
+# Before a start: a binary that does not match its checksum is not run.
+check_binary() {
+    if [ -f $SUM ] && [ "$(sum_of $RIVET)" != "$(cut -d' ' -f1 $SUM)" ]; then
+        roll_back "rivet does not match rivet.sha256 (broken download?)"
+    fi
+}
+
 supervise() {
     child=
+    fails=0
     trap 'say "stop"; [ -n "$child" ] && kill $child 2>/dev/null; wait $child 2>/dev/null; rm -f $CHILD_PID_FILE; exit 0' TERM INT
     delay=1
     while :; do
         cut_console_log
+        check_binary
         started=$(cut -d. -f1 /proc/uptime)
         $RIVET --config $CONFIG --log-file $LOG_FILE >> $CONSOLE_LOG 2>&1 < /dev/null &
         child=$!
         echo $child > $CHILD_PID_FILE
         say "started rivet (pid $child)"
+        # Once it has run long enough, keep it as the binary to come back to.
+        kept=
+        # (A child that has exited stays a zombie until waited for: not "alive".)
+        while [ -d /proc/$child ] && ! grep -q '^State:[[:space:]]*Z' /proc/$child/status 2>/dev/null; do
+            sleep 5 &
+            wait $!
+            if [ -z "$kept" ] && [ $(( $(cut -d. -f1 /proc/uptime) - started )) -ge $HEALTHY_SECONDS ]; then
+                kept=1
+                fails=0
+                if ! cmp -s $RIVET $GOOD; then
+                    cp -f $RIVET $GOOD.tmp && mv -f $GOOD.tmp $GOOD && rm -f $ROLLED
+                    say "rivet ran ${HEALTHY_SECONDS}s: kept as rivet.good"
+                fi
+            fi
+        done
         wait $child
         code=$?
         child=
@@ -49,6 +99,13 @@ supervise() {
         ran=$(( $(cut -d. -f1 /proc/uptime) - started ))
         if [ $ran -ge $HEALTHY_SECONDS ]; then
             delay=1
+        elif [ -f $GOOD ] && ! cmp -s $RIVET $GOOD; then
+            # A new binary that does not come up: two tries, then the old one.
+            fails=$((fails + 1))
+            if [ $fails -ge 2 ]; then
+                roll_back "new rivet exited twice within ${HEALTHY_SECONDS}s"
+                fails=0
+            fi
         fi
         say "rivet exited with code $code after ${ran}s, restarting in ${delay}s"
         sleep $delay &

@@ -14,6 +14,9 @@
 # /opt/rivet/replaced (e.g. _S80guppyscreen -> S80guppyscreen), and starts those
 # that were running. No record: nothing is re-enabled.
 #
+# The [update_manager rivet] section install.sh added to moonraker.conf is removed
+# too (Moonraker is restarted to forget it).
+#
 # --keep-config keeps rivet.toml, rivet-touch.json and the database settings,
 # for reinstalling later. Nothing else is touched: Wi-Fi networks, Klipper and
 # Moonraker config, other database namespaces and the replaced screen's files stay.
@@ -27,13 +30,13 @@ host="${PRINTER_HOST:-}"
 for arg in "$@"; do
   case "$arg" in
     --keep-config) keep=1 ;;
-    -h|--help) sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,24p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     -*) echo "unknown option $arg" >&2; exit 1 ;;
     *) host="$arg" ;;
   esac
 done
 user="${PRINTER_USER:-root}"
-[ -n "$host" ] || { sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
+[ -n "$host" ] || { sed -n '2,24p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
 
 ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new "$user@$host" "KEEP=$keep sh -s" <<'EOF'
 set -e
@@ -98,6 +101,18 @@ for k in keys:
 if "rivet" in call("/list")["namespaces"]:
     print("Moonraker still lists the empty namespace \"rivet\" (it has no call to drop one)")
 PY
+fi
+
+# The update manager section: from its header to the next section or the end.
+conf=/root/printer_data/config/moonraker.conf
+if [ -f $conf ] && grep -q '^\[update_manager rivet\]' $conf; then
+  awk '/^\[update_manager rivet\]/{skip=1; next} /^\[/{skip=0} !skip' $conf > $conf.tmp
+  # Drop the blank line install.sh put before it, when it is the last line now.
+  sed -i -e :a -e '/^\n*$/{$d;N;ba' -e '}' $conf.tmp
+  mv -f $conf.tmp $conf
+  echo "removed [update_manager rivet] from $conf"
+  setsid /etc/init.d/S65moonraker restart </dev/null >/dev/null 2>&1 && echo "restarted Moonraker"
+  rm -f $conf.before-rivet
 fi
 
 # Bring back exactly the screens tools/install.sh disabled, nothing else.

@@ -159,6 +159,15 @@ fn main() -> anyhow::Result<()> {
         let path = out.join(format!("{screen}.png"));
         write_png(&path, &buf).with_context(|| format!("write {}", path.display()))?;
         println!("{}", path.display());
+        // RIVET_FB_RAW=1: also the AD5M's framebuffer image (BGRX, both pages of
+        // its 800×960 virtual screen), for the USB installer's pictures.
+        if std::env::var_os("RIVET_FB_RAW").is_some() {
+            let page: Vec<u8> = buf.iter().flat_map(|p| [p.b, p.g, p.r, 0xff]).collect();
+            let path = out.join(format!("{screen}.fb"));
+            std::fs::write(&path, [page.as_slice(), page.as_slice()].concat())
+                .with_context(|| format!("write {}", path.display()))?;
+            println!("{}", path.display());
+        }
     }
     Ok(())
 }
@@ -601,6 +610,10 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_screen("macro-params".into());
         }
         "touch-test" => ui.set_overlay("touch-test".into()),
+        "usb-installing" | "usb-done" | "usb-removed" | "usb-error" => {
+            ui.set_installer_step(name.trim_start_matches("usb-").into());
+            ui.set_overlay("installer".into());
+        }
         "theme-light" => {
             // A white background picked: dark text, cards a little darker.
             rivet::theme::set_own(None, Some(0xffffff));
@@ -669,6 +682,10 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_ver_klipper("v0.13.0-285".into());
             ui.set_ver_moonraker("v0.9.3".into());
             ui.set_ver_rivet(env!("CARGO_PKG_VERSION").into());
+            // A newer release waiting, as Moonraker reports it.
+            ui.set_ver_rivet_sub("обновить до v0.1.1-alpha".into());
+            ui.set_rivet_update(true);
+            ui.set_rivet_update_sub("Rivet v0.1.1-alpha, экран перезапустится".into());
             ui.set_ver_mainsail("v2.19.0".into());
             ui.set_ver_mainsail_sub("актуально".into());
             ui.set_ver_fluidd("v1.37.7".into());

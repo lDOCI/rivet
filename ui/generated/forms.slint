@@ -1439,8 +1439,12 @@ export component UpdatesForm inherits FormScreen {
     in property <string> moonraker-value;
     // Rivet
     in property <bool> rivet-shown: true;
-    in property <string> rivet-sub: "";
+    in property <string> rivet-sub;
     in property <string> rivet-value;
+    // Обновить экран — not on the prototype page
+    in property <bool> update-rivet-shown: true;
+    in property <string> update-rivet-sub: "";
+    in property <string> update-rivet-value;
     // ВЕБ-ИНТЕРФЕЙСЫ
     in property <bool> web-shown: true;
     in property <string> web-sub: "";
@@ -1471,6 +1475,7 @@ export component UpdatesForm inherits FormScreen {
         { kind: "info", key: "klipper", title: "Klipper", sub: root.klipper-sub, shown: root.klipper-shown, value: root.klipper-value },
         { kind: "info", key: "moonraker", title: "Moonraker", sub: root.moonraker-sub, shown: root.moonraker-shown, value: root.moonraker-value },
         { kind: "info", key: "rivet", title: "Rivet", sub: root.rivet-sub, shown: root.rivet-shown, value: root.rivet-value },
+        { kind: "link", key: "update-rivet", title: @tr("Update the screen"), sub: root.update-rivet-sub, shown: root.update-rivet-shown, value: root.update-rivet-value, icon: "M12 4v11 M7 10l5 5 5-5 M5 20h14" },
         { kind: "section", key: "web", title: @tr("WEB INTERFACES"), sub: root.web-sub, shown: root.web-shown },
         { kind: "info", key: "mainsail", title: "Mainsail", sub: root.mainsail-sub, shown: root.mainsail-shown, value: root.mainsail-value },
         { kind: "info", key: "fluidd", title: "Fluidd", sub: root.fluidd-sub, shown: root.fluidd-shown, value: root.fluidd-value },
