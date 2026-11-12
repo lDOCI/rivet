@@ -3,9 +3,9 @@
 
     tools/proto-reference.py --runtime /path/to/dc-runtime.js [Page ...]
 
-For every page of docs/ux/style/*.dc.html (or the ones named) it writes
-  docs/ux/reference/<Page>.png    the page at 800x480, as the canvas shows it
-  docs/ux/measure/<Page>.json     every visible element: box, text, font, colours, radius
+For every page of docs/design/style/*.dc.html (or the ones named) it writes
+  docs/design/reference/<Page>.png    the page at 800x480, as the canvas shows it
+  docs/design/measure/<Page>.json     every visible element: box, text, font, colours, radius
 
 The pages need the canvas runtime (the Design artifact's `artifact-type/dc-runtime.js`;
 the pages load it as ./support.js). It is not kept in the repository: pass its path.
@@ -17,9 +17,9 @@ import argparse, glob, json, os, pathlib, shutil, sys, tempfile, threading
 import http.server, socketserver, functools
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-STYLE = ROOT / "docs/ux/style"
-REF = ROOT / "docs/ux/reference"
-MEASURE = ROOT / "docs/ux/measure"
+STYLE = ROOT / "docs/design/style"
+REF = ROOT / "docs/design/reference"
+MEASURE = ROOT / "docs/design/measure"
 
 # Runs in the page: every element that is drawn, in document order.
 MEASURE_JS = r"""

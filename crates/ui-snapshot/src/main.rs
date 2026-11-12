@@ -213,7 +213,7 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_loaded_color(slint::Color::from_rgb_u8(0x44, 0x66, 0xcc));
             ui.set_last_thumb(fake_preview());
             ui.set_has_last_thumb(true);
-            ui.set_last_name("Корпус вентилятора №2".into());
+            ui.set_last_name(sample("Корпус вентилятора №2").into());
             ui.set_last_minutes(83);
             ui.set_last_days_ago(1);
         }
@@ -224,7 +224,7 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_layer(76);
             ui.set_total_layers(180);
             // The prototype page's values.
-            ui.set_filename("Корпус вентилятора №2".into());
+            ui.set_filename(sample("Корпус вентилятора №2").into());
             ui.set_extruder_temp(240.0);
             ui.set_eta_clock("15:20".into());
             ui.set_has_light(true);
@@ -256,12 +256,12 @@ fn show(ui: &AppWindow, name: &str) {
         | "file-move" => {
             // The prototype page's files: names, print time and filament from metadata.
             let names = [
-                ("Корпус вентилятора №2", 83, "PETG"),
+                (sample("Корпус вентилятора №2"), 83, "PETG"),
                 ("Benchy", 52, "PLA"),
-                ("Держатель катушки v3", 185, "PETG"),
-                ("Крышка электроники", 41, "PLA"),
-                ("Калибровочный куб", 18, "PLA"),
-                ("Органайзер для отвёрток", 130, "PLA"),
+                (sample("Держатель катушки v3"), 185, "PETG"),
+                (sample("Крышка электроники"), 41, "PLA"),
+                (sample("Калибровочный куб"), 18, "PLA"),
+                (sample("Органайзер для отвёрток"), 130, "PLA"),
                 ("Ваза", 95, "PETG"),
             ];
             let items: Vec<rivet::FileItem> = if name == "files-empty" {
@@ -310,15 +310,15 @@ fn show(ui: &AppWindow, name: &str) {
             }
             if name == "files-find" || name == "file-rename" || name == "file-move" {
                 ui.set_screen(name.into());
-                ui.set_open_path("Корпус вентилятора №2.gcode".into());
-                ui.set_open_name("Корпус вентилятора №2".into());
-                ui.set_rename_text("Корпус вентилятора №3".into());
+                ui.set_open_path(format!("{}.gcode", sample("Корпус вентилятора №2")).into());
+                ui.set_open_name(sample("Корпус вентилятора №2").into());
+                ui.set_rename_text(sample("Корпус вентилятора №3").into());
             } else if name == "file" {
                 ui.set_screen("file".into());
-                ui.set_open_path("Корпус вентилятора №2.gcode".into());
-                ui.set_open_name("Корпус вентилятора №2".into());
+                ui.set_open_path(format!("{}.gcode", sample("Корпус вентилятора №2")).into());
+                ui.set_open_name(sample("Корпус вентилятора №2").into());
                 ui.set_file_info(rivet::FileInfo {
-                    path: "Корпус вентилятора №2.gcode".into(),
+                    path: format!("{}.gcode", sample("Корпус вентилятора №2")).into(),
                     color: slint::Color::from_rgb_u8(0x44, 0x66, 0xcc),
                     has_color: true,
                     minutes: 83,
@@ -464,7 +464,7 @@ fn show(ui: &AppWindow, name: &str) {
         }
         "file-actions" => {
             ui.set_screen("file-actions".into());
-            ui.set_open_name("Корпус вентилятора №2".into());
+            ui.set_open_name(sample("Корпус вентилятора №2").into());
             ui.set_queue_count(2);
             let folders: Vec<slint::SharedString> = vec!["".into(), "Детали".into()];
             ui.set_move_folders(slint::ModelRc::new(slint::VecModel::from(folders)));
@@ -581,8 +581,8 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_bed_temp(61.0);
             ui.set_bed_target(0.0);
             // The prototype page's values, as the history entry gives them.
-            ui.set_filename("Корпус вентилятора №2".into());
-            ui.set_last_name("Корпус вентилятора №2".into());
+            ui.set_filename(sample("Корпус вентилятора №2").into());
+            ui.set_last_name(sample("Корпус вентилятора №2").into());
             ui.set_last_clock("14:02".into());
             ui.set_last_material("PETG".into());
             ui.set_last_grams(18);
@@ -590,7 +590,7 @@ fn show(ui: &AppWindow, name: &str) {
         "dialog" => {
             ui.set_screen("home".into());
             ui.set_print_state("printing".into());
-            ui.set_filename("Корпус вентилятора №2.gcode".into());
+            ui.set_filename(format!("{}.gcode", sample("Корпус вентилятора №2")).into());
             ui.set_progress(0.42);
             ui.set_overlay("cancel-print".into());
         }
@@ -754,9 +754,17 @@ fn show(ui: &AppWindow, name: &str) {
                 ..Default::default()
             };
             let rows = vec![
-                r("Корпус вентилятора №2", "вчера · 1 ч 23 мин · PETG", "✓"),
+                r(
+                    sample("Корпус вентилятора №2"),
+                    "вчера · 1 ч 23 мин · PETG",
+                    "✓",
+                ),
                 r("Benchy", "вчера · 31 мин · PLA", "■"),
-                r("Держатель катушки v3", "3 дня назад · 3 ч 05 мин", "✓"),
+                r(
+                    sample("Держатель катушки v3"),
+                    "3 дня назад · 3 ч 05 мин",
+                    "✓",
+                ),
             ];
             ui.set_history_rows(slint::ModelRc::new(slint::VecModel::from(rows)));
         }
@@ -828,7 +836,14 @@ fn show(ui: &AppWindow, name: &str) {
                 }
             };
             let rows = vec![
-                m("done", "Корпус вентилятора №2", "", 0, "14:02", true),
+                m(
+                    "done",
+                    sample("Корпус вентилятора №2"),
+                    "",
+                    0,
+                    "14:02",
+                    true,
+                ),
                 m(
                     "klipper",
                     "",
@@ -1062,6 +1077,22 @@ fn fake_preview() -> slint::Image {
     let buf =
         slint::SharedPixelBuffer::<Rgba8Pixel>::clone_from_slice(&img.data, img.width, img.height);
     slint::Image::from_rgba8(buf)
+}
+
+/// Sample file names in the scene's language (README pictures are English).
+fn sample(ru: &'static str) -> &'static str {
+    if std::env::var("RIVET_LANG").as_deref() != Ok("en") {
+        return ru;
+    }
+    match ru {
+        "Корпус вентилятора №2" => "Fan duct v2",
+        "Держатель катушки v3" => "Spool holder v3",
+        "Крышка электроники" => "Electronics cover",
+        "Калибровочный куб" => "Calibration cube",
+        "Органайзер для отвёрток" => "Screwdriver organiser",
+        "Корпус вентилятора №3" => "Fan duct v3",
+        other => other,
+    }
 }
 
 fn write_png(path: &PathBuf, buf: &[Rgb8Pixel]) -> anyhow::Result<()> {

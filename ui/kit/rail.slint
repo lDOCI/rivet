@@ -60,7 +60,7 @@ export component Rail inherits Rectangle {
     // Stop needs a 1-second hold (Settings › Safety).
     in property <bool> hold-stop;
     callback navigate(string);
-    // One tap, no confirm (D-012).
+    // One tap, no confirm: an emergency stop must not wait.
     callback emergency-stop;
     width: Tokens.rail-width;
     background: Tokens.rail;

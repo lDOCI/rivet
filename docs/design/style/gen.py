@@ -766,7 +766,7 @@ if __name__ == '__main__':
     if doc:
         with open(doc, 'w') as f:
             f.write('# Data sources (generated)\n\nEvery value shown on generated screens and where Rivet reads it. '
-                    'Produced by `docs/ux/style/gen.py`.\n\n| Screen | Item | Source |\n|---|---|---|\n')
+                    'Produced by `docs/design/style/gen.py`.\n\n| Screen | Item | Source |\n|---|---|---|\n')
             for sc, lab, src in SOURCES:
                 f.write('| %s | %s | `%s` |\n' % (sc, lab.replace('|', '/'), src.replace('|', '/')))
     print('ok', len(SOURCES))

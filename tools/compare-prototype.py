@@ -4,7 +4,7 @@
     tools/compare-prototype.py [--out DIR] [--max PCT] [scene ...]
 
 For each scene it renders our screen (ui-snapshot, Russian) and takes the
-reference picture of its prototype page (docs/ux/reference/<Page>.png, made by
+reference picture of its prototype page (docs/design/reference/<Page>.png, made by
 tools/proto-reference.py), writes <out>/<scene>.png as
 "ours | prototype | difference" and prints the share of pixels that differ.
 With --max it exits non-zero when any scene differs more than PCT percent.
@@ -46,7 +46,7 @@ def main():
                    cwd=ROOT, env=env, check=True, stdout=subprocess.DEVNULL)
     rows = []
     for s in scenes:
-        proto_png = ROOT / "docs/ux/reference" / f"{PAIRS[s]}.png"
+        proto_png = ROOT / "docs/design/reference" / f"{PAIRS[s]}.png"
         a = Image.open(out / "ours" / f"{s}.png").convert("RGB")
         b = Image.open(proto_png).convert("RGB").resize(a.size)
         d = np.abs(np.asarray(a, int) - np.asarray(b, int)).max(axis=2)

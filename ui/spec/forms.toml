@@ -1,5 +1,5 @@
 # List pages of the prototype that Rivet builds with FormScreen, and a name for each row.
-# tools/gen-forms.py reads the rows from docs/ux/style/<Page>.dc.html; a row without an
+# tools/gen-forms.py reads the rows from docs/design/style/<Page>.dc.html; a row without an
 # entry here fails the build. The name becomes the row's properties in app.slint
 # (`<name>-shown`, `-on`, `-num`, `-value`, ...) and the key of its callbacks.
 #   name                               static row: everything from the prototype

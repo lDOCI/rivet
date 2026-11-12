@@ -10,7 +10,7 @@ rust-version.workspace = true
 default = ["desktop"]
 # Window on macOS / Linux desktop. Software renderer, same fonts: pixel-for-pixel like the device.
 desktop = ["slint/backend-winit", "slint/renderer-winit-software", "slint/software-renderer-systemfonts"]
-# Printer: draw into /dev/fb0, touch from evdev. Pure Rust, no system libraries (see D-009).
+# Printer: draw into /dev/fb0, touch from evdev. Pure Rust, no system libraries.
 fbdev = ["dep:fbdev-platform"]
 
 [dependencies]

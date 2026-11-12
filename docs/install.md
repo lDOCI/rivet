@@ -1,84 +1,111 @@
-# Install on the printer
+# Install, update, remove
 
-For a Flashforge Adventurer 5M / 5M Pro running [Klipper Mod](https://github.com/xblax/flashforge_ad5m_klipper_mod).
-Klipper Mod only: on the stock firmware or ZMOD the installer refuses and changes nothing
-(it checks `/etc/os-release` and Klipper Mod's chroot in `/mnt/data/.klipper_mod`).
-Everything runs from your computer over ssh as `root`; nothing else is needed on the printer.
+For the Flashforge Adventurer 5M / 5M Pro with [Klipper Mod](https://github.com/xblax/flashforge_ad5m_klipper_mod).
+[Русская версия](install.ru.md).
 
-## Install or upgrade
+On **Z-Mod**, Rivet is installed by Z-Mod itself once it lists it as one of its screens (the way it
+offers HelixScreen); these installers refuse to run there. **Forge-X** and the stock firmware are
+not supported.
+
+## From a USB stick
+
+This is the way Klipper Mod itself is installed and updated.
+
+1. Download `rivet-<version>-usb.zip` from the [latest release](https://github.com/lDOCI/rivet/releases/latest).
+2. Unpack it onto a USB stick formatted as FAT32. At the top of the stick there must be
+   `flashforge_init.sh` and the `rivet` folder. Nothing else needs to be removed from the stick.
+3. Switch the printer off, insert the stick, switch it on.
+4. Klipper Mod sees `flashforge_init.sh` and hands it to the printer's own start-up script, which
+   runs it. The screen shows *Installing Rivet…* (about a minute), then *Rivet is installed —
+   remove the USB stick*.
+5. Remove the stick. The printer restarts into Klipper Mod with Rivet.
+
+If something stops the install, the screen says *Rivet was not installed* and the reason is in
+`rivet-install.log` on the stick. Nothing on the printer was changed unless the log says
+"partly installed" (then run the stick again, or remove Rivet with the remove stick). Remove the
+stick and the printer starts as it did before.
+
+If the screen never shows a result, remove the stick and switch the printer off and on: without
+the stick Klipper Mod starts as usual.
+
+**Remove Rivet** the same way with `rivet-<version>-usb-remove.zip`: the screen says *Rivet is
+removed*, and GuppyScreen (or whatever screen Rivet replaced) is back after the restart.
+
+## Over ssh, from a computer
+
+For people who build Rivet themselves, or prefer a terminal. Needs ssh access as `root`
+(Klipper Mod's default). From the unpacked `rivet-<version>-installer.tar.gz`, or from a source
+checkout after `cargo printer`:
 
 ```bash
-cargo printer
-tools/install.sh PRINTER_IP
+tools/install.sh PRINTER_IP           # install or upgrade
+tools/install.sh --dry-run PRINTER_IP # only say what it would do
+tools/uninstall.sh PRINTER_IP         # remove everything, give the old screen back
+tools/uninstall.sh --keep-config PRINTER_IP
 ```
 
-What it does on the printer:
+`install.sh` refuses while a print is running or paused, and when an unknown program holds the
+screen; `--force` overrides both. `--keep-config` keeps the settings and the touch calibration for
+a later install. Files go over `ssh … cat`: Klipper Mod has no sftp server, so `scp` does not work.
+
+`tools/swap-screen.sh rivet PRINTER_IP` runs Rivet from `/tmp` until the next reboot without
+installing anything; `tools/swap-screen.sh guppy PRINTER_IP` goes back.
+
+## What changes on the printer
 
 | Path | What |
 |---|---|
-| `/opt/rivet/rivet` | the binary |
-| `/etc/init.d/S80rivet` | starts Rivet at boot, restarts it if it crashes |
-| `/etc/init.d/_S80guppyscreen` | the replaced screen's init script, renamed so it no longer starts (`rcS` runs only `/etc/init.d/S??*`) |
-| `/opt/rivet/replaced` | which screen scripts were disabled and whether they were running |
-| `/root/printer_data/config/rivet.toml` | settings, written from `docs/rivet.toml.example` only if missing |
-| `/root/printer_data/logs/rivet.log` | Rivet's log, rotated (512 KB × 3) |
-| `/root/printer_data/logs/rivet-console.log` | crashes (panics) and restarts, one old copy kept |
+| `/opt/rivet/rivet` | the program |
+| `/opt/rivet/rivet.sha256`, `release_info.json` | its checksum and version, for updates |
+| `/opt/rivet/rivet.good` | a copy of the last version that ran for 30 seconds, to come back to |
+| `/opt/rivet/replaced` | which screen was switched off and whether it was running |
+| `/etc/init.d/S80rivet` | starts Rivet at boot and keeps it running |
+| `/etc/init.d/_S80guppyscreen` | the old screen's start script, renamed so it no longer starts |
+| `/root/printer_data/config/moonraker.conf` | gets an `[update_manager rivet]` section (a copy of the file before is kept as `moonraker.conf.before-rivet`) |
+| `/root/printer_data/config/rivet.toml` | settings file, created only if missing ([example](rivet.toml.example)) |
+| `/root/printer_data/config/rivet-touch.json` | the touch calibration, after you run it |
+| `/root/printer_data/logs/rivet.log`, `rivet-console.log` | the log, and crashes and restarts |
+| Moonraker's database, namespace `rivet` | settings changed on the screen: theme, brightness, sleep, lock, presets… |
 
-The screen it replaces is whatever is there: the program holding `/dev/fb0` (not tslib's
-`ts_uinput`) and the init script that starts it, or a GuppyScreen, KlipperScreen or HelixScreen
-script that is installed but stopped. No screen (headless): nothing is disabled.
-`tools/install.sh --dry-run PRINTER_IP` prints what it would disable and changes nothing.
-If an unknown program holds the screen, it refuses unless `--force`.
+Nothing else is touched. Removing Rivet takes all of this away and renames the old screen's script
+back. The USB remover cannot reach Moonraker's database (Moonraker is not running at that point), so
+it leaves the `rivet` namespace: harmless without Rivet, and it brings your settings back if you
+install again. `tools/uninstall.sh` removes it too.
 
-Running it again replaces the binary and the init script; an existing `rivet.toml` is never
-overwritten. Nothing else on the printer is changed, and the script prints each change.
-It refuses while a print is running or paused (it asks Moonraker); `--force` installs anyway.
+## Updates
 
-Files are copied with `ssh … 'cat > file'`: Klipper Mod has no `sftp-server`, so `scp` does not work.
+Moonraker checks GitHub for new releases, like it does for Fluidd and Mainsail. To update:
 
-## Crashes
+- on the screen: **Settings › Updates**. The Rivet row says whether a newer version exists, and
+  **Update the screen** installs it; the screen restarts by itself;
+- or in Fluidd/Mainsail, in the list of updates (*rivet*).
 
-`S80rivet` runs Rivet under a small supervisor loop. If Rivet exits, it is started again after 1 s;
-each run shorter than 30 s doubles the wait (2, 4 … 60 s), so a crash loop does not load the CPU.
-A run of 30 s or more resets the wait to 1 s.
+Moonraker refuses updates during a print.
 
-On the printer:
+When the new version starts, it runs under a watchdog (`S80rivet`):
+
+- a version that does not match its checksum is not run;
+- a version that exits twice within 30 seconds of starting is replaced by the last version that ran
+  for 30 seconds;
+- either way Settings › Updates then says *the new version did not start; the previous one is back*.
+
+If Rivet ever crashes, it is started again after 1 s; repeated quick crashes wait longer (up to a
+minute), so a crash loop does not load the processor.
+
+## Logs
+
+In Fluidd or Mainsail, next to `klipper.log`: `rivet.log` (what Rivet did) and `rivet-console.log`
+(crashes, restarts, roll-backs). On the printer:
 
 ```bash
 /etc/init.d/S80rivet stop | start | restart
 tail -f /root/printer_data/logs/rivet.log
 ```
 
-Both logs are also visible in Fluidd/Mainsail next to `klipper.log`.
+More detail: `log_level = "debug"` in `rivet.toml`, then restart the screen.
 
-## Uninstall
+## When touches miss
 
-```bash
-tools/uninstall.sh PRINTER_IP
-```
-
-Leaves no trace of Rivet. It stops Rivet and deletes, printing each item:
-
-- `/etc/init.d/S80rivet`, `/opt/rivet`;
-- `rivet.toml` and `rivet-touch.json` (touch calibration) in `/root/printer_data/config`;
-- `rivet.log*` and `rivet-console.log*` in `/root/printer_data/logs`;
-- `/run/rivet*.pid`; in `/tmp` what `tools/swap-screen.sh` and Rivet left (`rivet`, `rivet.log`,
-  `rivet.pid`, `rivet-wpa-*` sockets);
-- every key of the `rivet` namespace in Moonraker's database (Rivet's settings).
-  Moonraker drops a namespace once its last key is gone (checked on Moonraker v0.9.3), so
-  `rivet` disappears from `/server/database/list`.
-
-Then it renames back exactly the scripts listed in `/opt/rivet/replaced` and starts those that
-were running. Without that record nothing is re-enabled.
-
-`--keep-config` keeps `rivet.toml`, `rivet-touch.json` and the database settings, for installing
-again later.
-
-Nothing that is not Rivet's is touched: Wi-Fi networks joined from Rivet, Klipper's config and
-`SAVE_CONFIG` results, Moonraker's config and other database namespaces, the replaced screen's files.
-The only trace left is the modification time of `/opt` and `/etc/init.d`.
-
-## Try without installing
-
-`tools/swap-screen.sh rivet PRINTER_IP` runs Rivet from `/tmp` until the next reboot
-(it stops an installed Rivet too); `tools/swap-screen.sh guppy PRINTER_IP` goes back.
+Settings › Screen › **Touch calibration**: touch nine crosses with the finger you normally use.
+**Touch test** (same menu) shows where your taps land. The calibration is kept in
+`rivet-touch.json`; delete the file to go back to the panel's own calibration.
