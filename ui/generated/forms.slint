@@ -1073,6 +1073,10 @@ export component ScreenForm inherits FormScreen {
     in property <bool> theme-shown: true;
     in property <string> theme-sub: @tr("accent and background colours");
     in property <string> theme-value;
+    // Тест касаний — not on the prototype page
+    in property <bool> touch-test-shown: true;
+    in property <string> touch-test-sub: @tr("stylus, index finger and thumb — for tuning");
+    in property <string> touch-test-value;
     title: @tr("Screen");
     // A stepper's new value, clamped to its range and rounded to its decimals.
     callback set-value(string, float);
@@ -1088,7 +1092,8 @@ export component ScreenForm inherits FormScreen {
         { kind: "toggle", key: "awake", title: @tr("Stay on while printing"), sub: root.awake-sub, shown: root.awake-shown, on: root.awake-on },
         { kind: "seg", key: "rotate", title: @tr("Rotation"), sub: root.rotate-sub, shown: root.rotate-shown, opts: ["0°", "90°", "180°", "270°"], sel: root.rotate-sel },
         { kind: "action", key: "touch-cal", title: @tr("Touch calibration"), sub: root.touch-cal-sub, shown: root.touch-cal-shown, on: root.touch-cal-enabled },
-        { kind: "link", key: "theme", title: @tr("Appearance"), sub: root.theme-sub, shown: root.theme-shown, value: root.theme-value, icon: "M12 3a9 9 0 1 0 0 18c1 0 1.6-.8 1.6-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-.9.8-1.7 1.7-1.7H16a5 5 0 0 0 5-5c0-4-4-7.2-9-7.2 M7.5 11.5h.01 M10.5 7.5h.01 M15.5 8h.01" }
+        { kind: "link", key: "theme", title: @tr("Appearance"), sub: root.theme-sub, shown: root.theme-shown, value: root.theme-value, icon: "M12 3a9 9 0 1 0 0 18c1 0 1.6-.8 1.6-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-.9.8-1.7 1.7-1.7H16a5 5 0 0 0 5-5c0-4-4-7.2-9-7.2 M7.5 11.5h.01 M10.5 7.5h.01 M15.5 8h.01" },
+        { kind: "link", key: "touch-test", title: @tr("Touch test"), sub: root.touch-test-sub, shown: root.touch-test-shown, value: root.touch-test-value, icon: "M9 11V5a2 2 0 1 1 4 0v6 M13 9a2 2 0 1 1 4 0v3 M17 11a2 2 0 1 1 4 0v4a7 7 0 0 1-7 7h-1a7 7 0 0 1-6-3.4L4 14.5a2 2 0 0 1 3.4-2L9 15" }
     ];
 }
 

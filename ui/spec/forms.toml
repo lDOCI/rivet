@@ -244,9 +244,9 @@ r3 = { name = "drivers", example = true }
 
 [Screen]
 component = "ScreenForm"
-en = { "Экран" = "Screen", "Яркость" = "Brightness", "подсветка экрана" = "the screen's backlight", "Гасить через, мин" = "Sleep after, min", "без касаний" = "without a touch", "Не гасить во время печати" = "Stay on while printing", "показывать заставку с прогрессом" = "show the progress screensaver", "Поворот" = "Rotation", "Калибровка тача" = "Touch calibration", "коснуться 4 точек" = "touch 4 points", "Оформление" = "Appearance", "цвет акцента и фона" = "accent and background colours" }
+en = { "Экран" = "Screen", "Яркость" = "Brightness", "подсветка экрана" = "the screen's backlight", "Гасить через, мин" = "Sleep after, min", "без касаний" = "without a touch", "Не гасить во время печати" = "Stay on while printing", "показывать заставку с прогрессом" = "show the progress screensaver", "Поворот" = "Rotation", "Калибровка тача" = "Touch calibration", "коснуться 4 точек" = "touch 4 points", "Оформление" = "Appearance", "цвет акцента и фона" = "accent and background colours", "Тест касаний" = "Touch test", "стилус, указательный и большой палец — для настройки" = "stylus, index finger and thumb — for tuning" }
 # Not on the prototype page: the colours (themes were planned after 1.0; the owner asked for them before the alpha).
-extra = [{ name = "theme", t = "Оформление", sub = "цвет акцента и фона", icon = "M12 3a9 9 0 1 0 0 18c1 0 1.6-.8 1.6-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-.9.8-1.7 1.7-1.7H16a5 5 0 0 0 5-5c0-4-4-7.2-9-7.2 M7.5 11.5h.01 M10.5 7.5h.01 M15.5 8h.01" }]
+extra = [{ name = "theme", t = "Оформление", sub = "цвет акцента и фона", icon = "M12 3a9 9 0 1 0 0 18c1 0 1.6-.8 1.6-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-.9.8-1.7 1.7-1.7H16a5 5 0 0 0 5-5c0-4-4-7.2-9-7.2 M7.5 11.5h.01 M10.5 7.5h.01 M15.5 8h.01" }, { name = "touch-test", t = "Тест касаний", sub = "стилус, указательный и большой палец — для настройки", icon = "M9 11V5a2 2 0 1 1 4 0v6 M13 9a2 2 0 1 1 4 0v3 M17 11a2 2 0 1 1 4 0v4a7 7 0 0 1-7 7h-1a7 7 0 0 1-6-3.4L4 14.5a2 2 0 0 1 3.4-2L9 15" }]
 [Screen.rows]
 r0 = "brightness"
 r1 = "sleep"

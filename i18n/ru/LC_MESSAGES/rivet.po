@@ -2262,3 +2262,30 @@ msgstr "Цвет фона"
 
 msgid "Default colours"
 msgstr "Цвета по умолчанию"
+
+msgid "a stylus"
+msgstr "стилусом"
+
+msgid "your index finger"
+msgstr "указательным пальцем"
+
+msgid "your thumb"
+msgstr "большим пальцем"
+
+msgid "Touch the dot with {} — {} of 12"
+msgstr "Коснитесь точки {} — {} из 12"
+
+msgid "Done, thank you. The taps are in Rivet's log."
+msgstr "Готово, спасибо! Касания записаны в лог Rivet."
+
+msgid "Round {} of 3: touch each dot with {}, as you would tap a button."
+msgstr "Раунд {} из 3: касайтесь каждой точки {}, как будто нажимаете кнопку."
+
+msgid "stylus, index finger and thumb — for tuning"
+msgstr "стилус, указательный и большой палец — для настройки"
+
+msgid "Touch test"
+msgstr "Тест касаний"
+
+msgid "Begin"
+msgstr "Начать"

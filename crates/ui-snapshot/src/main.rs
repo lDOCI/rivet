@@ -85,6 +85,7 @@ const ALL: &[&str] = &[
     "set-network",
     "set-theme",
     "theme-picker",
+    "touch-test",
     "macro-params",
     "wifi-join",
     "set-printers",
@@ -598,6 +599,7 @@ fn show(ui: &AppWindow, name: &str) {
             ])));
             ui.set_screen("macro-params".into());
         }
+        "touch-test" => ui.set_overlay("touch-test".into()),
         "heat-presets" => ui.set_screen("heat-presets".into()),
         "calibrate" | "bed-mesh" | "screws" | "probe" | "shaper" | "pid" | "pa" | "tmc"
         | "shaper-result" | "belts" => {

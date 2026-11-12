@@ -763,6 +763,12 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
             }
         });
     }
+    ui.on_touch_test_tap(|round, point, tx, ty, x, y| {
+        let unix_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_millis());
+        tracing::info!(target: "touchtest", round, point, tx, ty, x, y, unix_ms, "tap");
+    });
     // Touch calibration.
     ui.on_cal_begin(rivet::touchcal::begin);
     ui.on_cal_point(|i, x, y| rivet::touchcal::tap(i.max(0) as usize, x, y));

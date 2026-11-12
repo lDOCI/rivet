@@ -60,6 +60,7 @@ import { WifiJoinScreen } from "screens/wifi.slint";
 import { TouchCalScreen } from "screens/touchcal.slint";
 import { ThemeScreen, Swatch } from "screens/theme.slint";
 import { ColorPicker } from "screens/picker.slint";
+import { TouchTestScreen } from "screens/touchtest.slint";
 import { MacroParamsScreen, MacroParam } from "screens/macro.slint";
 export { MacroParam }
 export { Swatch }
@@ -532,6 +533,8 @@ export component AppWindow inherits Window {
     in property <float> cal-miss-before: -1;
     in property <float> cal-miss-after: -1;
     callback cal-begin();
+    // Touch test: round, point, the point, where the tap landed (to Rivet's log).
+    callback touch-test-tap(int, int, float, float, float, float);
     callback cal-point(int, float, float);
     callback cal-finish();
     callback cal-keep();
@@ -641,7 +644,7 @@ export component AppWindow inherits Window {
     // A layer over the whole glass (screensaver, touch calibration, lock): the
     // screen under it is not drawn at all, else the renderer's partial redraws
     // could let bits of it show through.
-    property <bool> covered: (root.ambient && root.busy) || root.overlay == "touch-cal" || (root.locked && root.ready);
+    property <bool> covered: (root.ambient && root.busy) || root.overlay == "touch-cal" || root.overlay == "touch-test" || (root.locked && root.ready);
 
     HorizontalLayout {
         visible: !root.covered;
@@ -1171,6 +1174,7 @@ export component AppWindow inherits Window {
             init => { root.theme-open(); }
             activate(key) => {
                 if (key == "touch-cal") { root.overlay = "touch-cal"; }
+                if (key == "touch-test") { root.overlay = "touch-test"; }
                 if (key == "theme") { root.theme-open(); root.screen = "set-theme"; }
             }
             picked(key, i) => { if (key == "sleep") { root.set-sleep = i; root.setting-changed("screen_sleep_min", ["1", "5", "10", "30", "0"][i]); } }
@@ -1715,6 +1719,10 @@ export component AppWindow inherits Window {
         confirm-text: @tr("Run");
         confirmed => { root.overlay = ""; root.run-gcode(root.macro-pending); }
         cancelled => { root.overlay = ""; }
+    }
+    if root.overlay == "touch-test": TouchTestScreen {
+        tap(r, i, tx, ty, x, y) => { root.touch-test-tap(r, i, tx, ty, x, y); }
+        close => { root.overlay = ""; }
     }
     if root.overlay == "touch-cal": TouchCalScreen {
         miss-before: root.cal-miss-before;
