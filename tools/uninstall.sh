@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Remove Rivet from the printer without a trace and give the screen back to GuppyScreen.
+# Remove Rivet from the printer without a trace and give the screen back to the one it replaced.
 #
 #   tools/uninstall.sh [--keep-config] PRINTER_IP
 #
@@ -10,11 +10,13 @@
 #     (rivet, rivet.log, rivet.pid, rivet-wpa-* sockets, rivet-measure.sh)
 #   /root/printer_data/config/rivet.toml and rivet-touch.json
 #   the "rivet" namespace in Moonraker's database (Rivet's settings)
-# then renames /etc/init.d/_S80guppyscreen back to S80guppyscreen and starts it.
+# then renames back exactly the screen scripts install.sh disabled, as recorded in
+# /opt/rivet/replaced (e.g. _S80guppyscreen -> S80guppyscreen), and starts those
+# that were running. No record: nothing is re-enabled.
 #
 # --keep-config keeps rivet.toml, rivet-touch.json and the database settings,
 # for reinstalling later. Nothing else is touched: Wi-Fi networks, Klipper and
-# Moonraker config, other database namespaces and GuppyScreen's files stay.
+# Moonraker config, other database namespaces and the replaced screen's files stay.
 #
 # Environment: PRINTER_USER (default root).
 
@@ -25,13 +27,13 @@ host="${PRINTER_HOST:-}"
 for arg in "$@"; do
   case "$arg" in
     --keep-config) keep=1 ;;
-    -h|--help) sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     -*) echo "unknown option $arg" >&2; exit 1 ;;
     *) host="$arg" ;;
   esac
 done
 user="${PRINTER_USER:-root}"
-[ -n "$host" ] || { sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
+[ -n "$host" ] || { sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
 
 ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new "$user@$host" "KEEP=$keep sh -s" <<'EOF'
 set -e
@@ -47,6 +49,9 @@ gone() {
 
 # Stop every Rivet: the installed one (its supervisor first, or it restarts it)
 # and one started from /tmp by tools/swap-screen.sh.
+# What tools/install.sh disabled, read before /opt/rivet goes.
+REPLACED="$(cat /opt/rivet/replaced 2>/dev/null || true)"
+
 if [ -x /etc/init.d/S80rivet ]; then
   /etc/init.d/S80rivet stop
   echo "stopped /etc/init.d/S80rivet"
@@ -95,21 +100,27 @@ if "rivet" in call("/list")["namespaces"]:
 PY
 fi
 
-if [ -f /etc/init.d/_S80guppyscreen ]; then
-  if [ -f /etc/init.d/S80guppyscreen ]; then
-    echo "both S80guppyscreen and _S80guppyscreen exist; keeping S80guppyscreen" >&2
-  else
-    mv /etc/init.d/_S80guppyscreen /etc/init.d/S80guppyscreen
-    echo "renamed /etc/init.d/_S80guppyscreen back to S80guppyscreen"
-  fi
-fi
-if [ -x /etc/init.d/S80guppyscreen ]; then
-  pidof guppyscreen >/dev/null || /etc/init.d/S80guppyscreen start
-  sleep 2
-  pidof guppyscreen >/dev/null && echo "GuppyScreen is running" || { echo "GuppyScreen did not start" >&2; status=1; }
+# Bring back exactly the screens tools/install.sh disabled, nothing else.
+if [ -n "$REPLACED" ]; then
+  echo "$REPLACED" | while read -r name st; do
+    [ -n "$name" ] || continue
+    if [ -f "/etc/init.d/$name" ]; then
+      echo "/etc/init.d/$name exists again (reinstalled?); leaving it and _$name as they are" >&2
+    elif [ -f "/etc/init.d/_$name" ]; then
+      mv "/etc/init.d/_$name" "/etc/init.d/$name"
+      echo "renamed /etc/init.d/_$name back to $name"
+    else
+      echo "/etc/init.d/_$name is gone; cannot restore $name" >&2
+      continue
+    fi
+    if [ "$st" = running ]; then
+      "/etc/init.d/$name" start >/dev/null 2>&1 && echo "started /etc/init.d/$name" || echo "/etc/init.d/$name did not start" >&2
+    else
+      echo "left /etc/init.d/$name stopped (it was not running before Rivet); it starts at the next boot"
+    fi
+  done
 else
-  echo "no /etc/init.d/S80guppyscreen to start" >&2
-  status=1
+  echo "nothing to restore: /opt/rivet/replaced records no screen, the printer had no other screen"
 fi
 exit $status
 EOF

@@ -1,6 +1,8 @@
 # Install on the printer
 
 For a Flashforge Adventurer 5M / 5M Pro running [Klipper Mod](https://github.com/xblax/flashforge_ad5m_klipper_mod).
+Klipper Mod only: on the stock firmware or ZMOD the installer refuses and changes nothing
+(it checks `/etc/os-release` and Klipper Mod's chroot in `/mnt/data/.klipper_mod`).
 Everything runs from your computer over ssh as `root`; nothing else is needed on the printer.
 
 ## Install or upgrade
@@ -16,10 +18,17 @@ What it does on the printer:
 |---|---|
 | `/opt/rivet/rivet` | the binary |
 | `/etc/init.d/S80rivet` | starts Rivet at boot, restarts it if it crashes |
-| `/etc/init.d/_S80guppyscreen` | GuppyScreen's init script, renamed so it no longer starts (`rcS` runs only `/etc/init.d/S??*`) |
+| `/etc/init.d/_S80guppyscreen` | the replaced screen's init script, renamed so it no longer starts (`rcS` runs only `/etc/init.d/S??*`) |
+| `/opt/rivet/replaced` | which screen scripts were disabled and whether they were running |
 | `/root/printer_data/config/rivet.toml` | settings, written from `docs/rivet.toml.example` only if missing |
 | `/root/printer_data/logs/rivet.log` | Rivet's log, rotated (512 KB × 3) |
 | `/root/printer_data/logs/rivet-console.log` | crashes (panics) and restarts, one old copy kept |
+
+The screen it replaces is whatever is there: the program holding `/dev/fb0` (not tslib's
+`ts_uinput`) and the init script that starts it, or a GuppyScreen, KlipperScreen or HelixScreen
+script that is installed but stopped. No screen (headless): nothing is disabled.
+`tools/install.sh --dry-run PRINTER_IP` prints what it would disable and changes nothing.
+If an unknown program holds the screen, it refuses unless `--force`.
 
 Running it again replaces the binary and the init script; an existing `rivet.toml` is never
 overwritten. Nothing else on the printer is changed, and the script prints each change.
@@ -59,13 +68,15 @@ Leaves no trace of Rivet. It stops Rivet and deletes, printing each item:
   Moonraker drops a namespace once its last key is gone (checked on Moonraker v0.9.3), so
   `rivet` disappears from `/server/database/list`.
 
-Then it renames `_S80guppyscreen` back and starts GuppyScreen.
+Then it renames back exactly the scripts listed in `/opt/rivet/replaced` and starts those that
+were running. Without that record nothing is re-enabled.
 
 `--keep-config` keeps `rivet.toml`, `rivet-touch.json` and the database settings, for installing
 again later.
 
 Nothing that is not Rivet's is touched: Wi-Fi networks joined from Rivet, Klipper's config and
-`SAVE_CONFIG` results, Moonraker's config and other database namespaces, GuppyScreen's files.
+`SAVE_CONFIG` results, Moonraker's config and other database namespaces, the replaced screen's files.
+The only trace left is the modification time of `/opt` and `/etc/init.d`.
 
 ## Try without installing
 
