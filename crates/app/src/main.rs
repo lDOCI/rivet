@@ -34,11 +34,28 @@ fn main() -> anyhow::Result<()> {
     ui.set_russian(lang == "ru");
     // --screen <name>: open on that screen (proof shots on the printer); the rail
     // and back buttons work as usual from there.
-    if let Some(screen) = flag_value("--screen") {
-        ui.set_screen(screen.into());
+    let start_screen = flag_value("--screen");
+    if let Some(screen) = &start_screen {
+        ui.set_screen(screen.as_str().into());
     }
     let (cmd_tx, cmd_rx) = mpsc::unbounded_channel();
     wire_callbacks(&ui, &cmd_tx);
+    // Load what the tile that leads there would load, once Moonraker answers.
+    let start_refresh = slint::Timer::default();
+    let weak = ui.as_weak();
+    let mut pending = start_screen.is_some();
+    start_refresh.start(
+        slint::TimerMode::Repeated,
+        std::time::Duration::from_millis(500),
+        move || {
+            let Some(ui) = weak.upgrade() else { return };
+            // Only once: later screens load through their tiles.
+            if pending && ui.get_link_state() == "ready" {
+                pending = false;
+                refresh_for(&ui, start_screen.as_deref());
+            }
+        },
+    );
 
     // While printing, the screensaver takes the place of screen sleep.
     #[cfg(feature = "fbdev")]
@@ -620,4 +637,22 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
     }
     ui.on_emergency_stop(send(Command::EmergencyStop));
     ui.on_firmware_restart(send(Command::FirmwareRestart));
+}
+
+/// What opening a screen from its tile loads, for `--screen`.
+fn refresh_for(ui: &AppWindow, screen: Option<&str>) {
+    match screen {
+        Some("files") => ui.invoke_refresh_files(),
+        Some("history") => ui.invoke_refresh_history(),
+        Some("service") => ui.invoke_refresh_service(),
+        Some("camera") => ui.invoke_refresh_cameras(),
+        Some("messages") => ui.invoke_refresh_messages(),
+        Some("queue") => ui.invoke_refresh_queue(),
+        Some(s) if s.starts_with("set-") => ui.invoke_refresh_system(),
+        Some(
+            "calibrate" | "bed-mesh" | "mesh-profiles" | "screws" | "probe" | "shaper"
+            | "shaper-result" | "belts" | "pid" | "pa" | "tmc",
+        ) => ui.invoke_refresh_calib(),
+        _ => {}
+    }
 }

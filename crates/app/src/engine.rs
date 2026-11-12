@@ -2335,22 +2335,7 @@ async fn execute(
                     .map(drop)?,
                 "moonraker" => client.call("server.restart", json!({})).await.map(drop)?,
                 "reboot" => client.call("machine.reboot", json!({})).await.map(drop)?,
-                "shutdown" => {
-                    // KlipperMod: Moonraker has no machine provider there; its own
-                    // macro syncs the disks, cuts the power and powers off.
-                    let objects = client
-                        .call("printer.objects.list", json!({}))
-                        .await
-                        .unwrap_or_default();
-                    let mod_off = objects["objects"]
-                        .as_array()
-                        .is_some_and(|o| o.iter().any(|n| n == "gcode_macro _SHUTDOWN_STAGE"));
-                    if mod_off {
-                        gcode(client, "_SHUTDOWN_STAGE").await?
-                    } else {
-                        client.call("machine.shutdown", json!({})).await.map(drop)?
-                    }
-                }
+                "shutdown" => client.call("machine.shutdown", json!({})).await.map(drop)?,
                 "stock" => gcode(client, "REBOOT_STOCK_SYSTEM").await?,
                 "check-updates" => {
                     client
