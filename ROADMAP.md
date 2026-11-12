@@ -152,7 +152,7 @@ D1 идёт параллельно с M0 и должна закрыться **д
 - [~] Управление: нагрев (кольцо, ввод числом, пресеты, график температур), движение, экструдер и мастер заправки в три шага, выгрузка, вентиляторы, свет, скорость и поток, Z-offset — L
 - [~] Подписка Moonraker под эти экраны (`toolhead`, `fan_generic`, `led`, `exclude_object`, `configfile`, датчики филамента, температуры платы, `flashforge_tvoc`, `flashforge_loadcell`) — S
 - [x] i18n RU/EN: `@tr`, каталог `i18n/ru/LC_MESSAGES/rivet.po` вшит в бинарь, язык: `--lang`, `RIVET_LANG`, `LANG`, иначе английский; CI проверяет, что все строки переведены (`tools/extract-tr.py --check`) — M
-- [x] Конфиг `rivet.toml` (язык, адрес Moonraker; `/data/printer_data/config` или рядом с бинарём; флаги и переменные главнее; опечатка в ключе — ошибка, битый файл не мешает запуску) — [пример](docs/rivet.toml.example) — S
+- [x] Конфиг `rivet.toml` (язык, адрес Moonraker; `/root/printer_data/config` на KlipperMod, иначе рабочая папка; флаги и переменные главнее; опечатка в ключе — ошибка, битый файл не мешает запуску) — [пример](docs/rivet.toml.example) — S
 - [~] Пресеты нагрева в Moonraker database, редактируются с экрана — S
 - [~] Снапшот-тесты экранов (`ui-snapshot`, 76 сцен) и сравнение с прототипом (`tools/compare-prototype.py`) — M
 - [~] Списки настроек генерируются из прототипа (`tools/gen-forms.py`, `ui/spec/forms.toml`, CI `--check`) — M
