@@ -26,6 +26,16 @@ tokio-tungstenite = { version = "0.30", default-features = false, features = ["c
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt", "env-filter", "ansi"] }
 
+# Dev builds stay small: incremental caches and full debug info grew target/ to
+# ~20 GB over a day of rebuilds. Line tables keep panics' file:line.
+[profile.dev]
+incremental = false
+debug = "line-tables-only"
+
+[profile.test]
+incremental = false
+debug = "line-tables-only"
+
 [profile.release]
 opt-level = "s"
 lto = true

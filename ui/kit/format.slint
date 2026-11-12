@@ -1,8 +1,16 @@
 // Text for values the screens share.
 export global Format {
+
+    // "20 000": thousands apart, as the prototype writes big numbers.
+    pure callback grouped(float) -> string;
+    grouped(v) => {
+        return v >= 1000 ? floor(round(v) / 1000) + " " + (mod(round(v), 1000) < 100 ? "0" : "") + (mod(round(v), 1000) < 10 ? "0" : "") + mod(round(v), 1000) : "" + round(v);
+    }
+
     pure callback duration(int) -> string;
     duration(minutes) => {
-        return minutes >= 60 ? @tr("{} h {} min", floor(minutes / 60), mod(minutes, 60)) : @tr("{} min", minutes);
+        // "3 h 05 min": minutes in two digits once there are hours (the prototype's way).
+        return minutes >= 60 ? @tr("{} h {} min", floor(minutes / 60), (mod(minutes, 60) < 10 ? "0" : "") + mod(minutes, 60)) : @tr("{} min", minutes);
     }
 
     // Signed number with fixed decimals; "−" is the real minus sign, and a
@@ -21,5 +29,18 @@ export global Format {
     pure callback size(int) -> string;
     size(kb) => {
         return kb < 1024 ? @tr("{} KB", max(1, kb)) : @tr("{} MB", round(kb / 102.4) / 10);
+    }
+
+    // Fixed decimals, padded ("0.10", "−0.005"); "−" is the real minus sign and a
+    // value that rounds to zero has no sign. Up to 3 decimals.
+    pure callback fixed(float, int) -> string;
+    fixed(v, digits) => {
+        return (round(abs(v) * pow(10, digits)) == 0 ? "" : v < 0 ? "−" : "")
+            + floor(round(abs(v) * pow(10, digits)) / pow(10, digits))
+            + (digits <= 0 ? "" : "." + (
+                digits >= 3 && mod(round(abs(v) * pow(10, digits)), pow(10, digits)) < 10 ? "00"
+                : digits >= 3 && mod(round(abs(v) * pow(10, digits)), pow(10, digits)) < 100 ? "0"
+                : digits == 2 && mod(round(abs(v) * pow(10, digits)), pow(10, digits)) < 10 ? "0"
+                : "") + mod(round(abs(v) * pow(10, digits)), pow(10, digits)));
     }
 }

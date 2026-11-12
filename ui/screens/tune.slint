@@ -2,212 +2,231 @@
 import { Tokens } from "../kit/tokens.slint";
 import { Header, SectionLabel } from "../kit/controls.slint";
 import { InfoRow, SegmentedRow, ActionRow, LinkRow, ToggleRow } from "../kit/rows.slint";
-import { VBar, FineStepper, Stepper } from "../kit/values.slint";
+import { VBar, SliderRow, FineStepper, Stepper } from "../kit/values.slint";
 import { ScrollList } from "../kit/scroll.slint";
 import { Format } from "../kit/format.slint";
 
+// One fan of the printer. `kind`: 0 part fan, 1 settable, 2 runs by itself.
+// `trigger`: 0 none, 1 above a temperature, 2 while the motors are on, 3 holds a temperature.
+export struct FanRow {
+    object: string,
+    key: string,
+    title: string,
+    kind: int,
+    percent: float,
+    trigger: int,
+    trigger-value: float,
+}
+
 export component FansScreen inherits VerticalLayout {
     horizontal-stretch: 1;
-    // Part fan from Klipper; other fans appear when the printer reports them.
-    in-out property <float> part-fan;
+    // The printer's fans, split by how they are shown: bars (the part fan and
+    // the first settable one), further settable fans as rows, automatic ones.
+    // Changes come back from Moonraker.
+    in property <[FanRow]> bars;
+    in property <[FanRow]> extras;
+    in property <[FanRow]> autos;
+    // Chamber air mode: 0 off, 1 filter, 2 exhaust; -1 when the printer has no such macros.
+    in-out property <int> air-mode: -1;
     callback back;
     callback set-fan(string, float);
+    callback set-air(int);
     padding: Tokens.pad;
     padding-bottom: 0;
     spacing: 10px;
+
+    pure function name-of(f: FanRow) -> string {
+        return f.kind == 0 ? @tr("Part fan")
+            : f.key == "chamber_fan" ? @tr("Chamber")
+            : f.key == "internal_fan" ? @tr("Inside air")
+            : f.key == "external_fan" ? @tr("Outside air")
+            : f.key == "hotend_fan" ? @tr("Hotend")
+            : f.key == "stepper_driver_fan" ? @tr("Drivers")
+            : f.title;
+    }
+    pure function why(f: FanRow) -> string {
+        return f.trigger == 1 ? (f.trigger-value > 0 ? @tr("turns on by itself from {}°", round(f.trigger-value)) : @tr("turns on by itself"))
+            : f.trigger == 2 ? @tr("runs while the motors are on")
+            : f.trigger == 3 ? @tr("holds {}°", round(f.trigger-value))
+            : "";
+    }
+
     Header { title: @tr("Fans"); back-clicked => { root.back(); } }
     Text { text: @tr("The slicer may change the part fan on the next layer."); color: Tokens.text-dim; font-size: 15px; }
     HorizontalLayout {
         vertical-stretch: 1;
-        padding-bottom: Tokens.pad;
-        alignment: start;
-        VBar { label: @tr("Part fan"); value <=> root.part-fan; off-at-zero: true; committed(v) => { root.set-fan("fan", v); } }
+        spacing: 16px;
+        HorizontalLayout {
+            spacing: 10px;
+            padding-bottom: Tokens.pad;
+            alignment: start;
+            for f in root.bars: VBar {
+                label: root.name-of(f);
+                source: f.percent;
+                off-at-zero: true;
+                committed(v) => { root.set-fan(f.object, v); }
+            }
+        }
+        ScrollList {
+            horizontal-stretch: 1;
+            spacing: 8px;
+            if root.air-mode >= 0: SegmentedRow {
+                title: @tr("Chamber air");
+                options: [@tr("Off"), @tr("Filter"), @tr("Exhaust")];
+                selected <=> root.air-mode;
+                picked(i) => { root.set-air(i); }
+            }
+            for f in root.extras: SliderRow {
+                title: root.name-of(f);
+                source: f.percent;
+                off-at-zero: true;
+                committed(v) => { root.set-fan(f.object, v); }
+            }
+            if root.autos.length > 0: Rectangle {
+                height: 28px;
+                SectionLabel { x: 4px; y: 8px; text: @tr("AUTOMATIC"); }
+            }
+            for f in root.autos: InfoRow {
+                title: root.name-of(f);
+                sub: root.why(f);
+                value: round(f.percent) + "%";
+            }
+        }
     }
 }
 
-export component PrintTuneScreen inherits VerticalLayout {
+// Live Z offset, laid out as the prototype: value and advice on the left, a grid
+// of raise/lower buttons on the right (columns 1fr / 1.15fr, gap 20).
+component ZButton inherits Rectangle {
+    in property <string> text;
+    in property <bool> big;
+    callback clicked;
+    preferred-width: 0px;
+    min-width: 0px;
     horizontal-stretch: 1;
-    // Live values from Klipper: a tap sends a command, the new value comes back.
-    in property <float> speed: 100;
-    in property <float> flow: 100;
-    in property <float> z-offset;
-    // The Z offset when this screen was opened, for the «was» chip.
-    in property <float> z-start;
-    in property <float> pressure-advance;
-    in property <int> fan-percent;
-    callback back;
-    callback edit(string);
-    callback set-speed(float);
-    callback set-flow(float);
-    callback adjust-z(float);
-    callback set-pressure-advance(float);
-    callback open-fans;
-    padding: Tokens.pad;
-    padding-bottom: 0;
-    spacing: 10px;
-
-    pure function signed(v: float, digits: int) -> string {
-        return (round(abs(v) * pow(10, digits)) == 0 ? "" : v < 0 ? "−" : "") + round(abs(v) * pow(10, digits)) / pow(10, digits);
+    border-radius: 22px;
+    background: ta.pressed ? Tokens.surface-3.brighter(10%) : root.big ? Tokens.surface-3 : Tokens.surface-1;
+    accessible-role: button;
+    accessible-label: root.text;
+    accessible-action-default => { root.clicked(); }
+    Text {
+        text: root.text;
+        color: root.big ? Tokens.text : Tokens.text-2;
+        font-size: root.big ? 26px : 24px;
+        font-weight: root.big ? 800 : 700;
+        horizontal-alignment: center;
+        vertical-alignment: center;
     }
-
-    Header { title: @tr("Print tuning"); back-clicked => { root.back(); } }
-    ScrollList {
-        vertical-stretch: 1;
-        FineStepper {
-            title: @tr("Speed");
-            sub: @tr("of the slicer speed");
-            label: round(root.speed) + "%";
-            changed: round(root.speed) != 100;
-            was: "100%";
-            big: "10"; small: "1"; big-step: 10; small-step: 1;
-            step(d) => { root.set-speed(max(10, min(300, round(root.speed) + d))); }
-            edit => { root.edit("speed"); }
-        }
-        FineStepper {
-            title: @tr("Flow");
-            sub: @tr("how much plastic");
-            label: round(root.flow) + "%";
-            changed: round(root.flow) != 100;
-            was: "100%";
-            big: "5"; small: "1"; big-step: 5; small-step: 1;
-            step(d) => { root.set-flow(max(50, min(150, round(root.flow) + d))); }
-            edit => { root.edit("flow"); }
-        }
-        FineStepper {
-            title: @tr("Z-offset, mm");
-            sub: @tr("applies at once");
-            label: root.signed(root.z-offset, 2);
-            changed: round(root.z-offset * 100) != round(root.z-start * 100);
-            was: root.signed(root.z-start, 2);
-            big: "0.05"; small: "0.01"; big-step: 0.05; small-step: 0.01;
-            step(d) => { root.adjust-z(d); }
-            edit => { root.edit("z"); }
-        }
-        Stepper {
-            title: @tr("Pressure advance");
-            sub: @tr("sharper corners, less bulging");
-            label: root.signed(root.pressure-advance, 3);
-            decrement => { root.set-pressure-advance(max(0, round((root.pressure-advance - 0.005) * 1000) / 1000)); }
-            increment => { root.set-pressure-advance(min(1, round((root.pressure-advance + 0.005) * 1000) / 1000)); }
-            edit => { root.edit("pa"); }
-        }
-        LinkRow { title: @tr("Fans"); sub: @tr("part fan {}%", root.fan-percent); clicked => { root.open-fans(); } }
-        ActionRow {
-            title: @tr("Reset speed and flow");
-            sub: @tr("back to 100%");
-            clicked => { root.set-speed(100); root.set-flow(100); }
-        }
-    }
+    ta := TouchArea { clicked => { root.clicked(); } }
 }
 
-export component PrintMoreScreen inherits VerticalLayout {
-    horizontal-stretch: 1;
-    in property <bool> has-light;
-    in-out property <bool> light-on;
-    callback back;
-    callback set-light(bool);
-    padding: Tokens.pad;
-    padding-bottom: 0;
-    spacing: 10px;
-    Header { title: @tr("During print"); back-clicked => { root.back(); } }
-    ScrollList {
-        vertical-stretch: 1;
-        if root.has-light: ToggleRow {
-            title: @tr("Light");
-            checked <=> root.light-on;
-            toggled(on) => { root.set-light(on); }
-        }
-    }
-}
-
-export component LightScreen inherits VerticalLayout {
-    horizontal-stretch: 1;
-    in property <bool> has-light;
-    in property <float> level;
-    callback back;
-    callback set-level(float);
-    padding: Tokens.pad;
-    padding-bottom: 0;
-    spacing: 10px;
-    Header { title: @tr("Light"); back-clicked => { root.back(); } }
-    HorizontalLayout {
-        vertical-stretch: 1;
-        padding-bottom: Tokens.pad;
-        alignment: start;
-        if root.has-light: VBar {
-            label: @tr("Light");
-            value: root.level;
-            off-at-zero: true;
-            step: 5;
-            committed(v) => { root.set-level(v); }
-        }
-    }
-}
-
-export component SpeedScreen inherits VerticalLayout {
-    horizontal-stretch: 1;
-    in property <float> speed: 100;
-    in property <float> flow: 100;
-    callback back;
-    callback set-speed(float);
-    callback set-flow(float);
-    callback edit(string);
-    padding: Tokens.pad;
-    padding-bottom: 0;
-    spacing: 10px;
-    Header { title: @tr("Speed and flow"); back-clicked => { root.back(); } }
-    ScrollList {
-        vertical-stretch: 1;
-        FineStepper {
-            title: @tr("Speed");
-            sub: @tr("of the slicer speed");
-            label: round(root.speed) + "%";
-            changed: round(root.speed) != 100;
-            was: "100%";
-            big: "10"; small: "1"; big-step: 10; small-step: 1;
-            step(d) => { root.set-speed(max(10, min(300, round(root.speed) + d))); }
-            edit => { root.edit("speed"); }
-        }
-        FineStepper {
-            title: @tr("Flow");
-            sub: @tr("how much plastic");
-            label: round(root.flow) + "%";
-            changed: round(root.flow) != 100;
-            was: "100%";
-            big: "5"; small: "1"; big-step: 5; small-step: 1;
-            step(d) => { root.set-flow(max(50, min(150, round(root.flow) + d))); }
-            edit => { root.edit("flow"); }
-        }
-        ActionRow {
-            title: @tr("Reset speed and flow");
-            sub: @tr("back to 100%");
-            clicked => { root.set-speed(100); root.set-flow(100); }
-        }
-    }
-}
-
-export component ZOffsetScreen inherits VerticalLayout {
+export component ZOffsetScreen inherits HorizontalLayout {
     horizontal-stretch: 1;
     in property <float> z-offset;
     in property <float> z-start;
+    // The paper-test wizard exists (Calibrations); until then no «Fine tune» button.
+    in property <bool> has-wizard;
     callback back;
     callback adjust-z(float);
     callback edit(string);
+    callback save;
+    callback wizard;
     padding: Tokens.pad;
-    padding-bottom: 0;
-    spacing: 10px;
-    Header { title: @tr("Z-offset"); back-clicked => { root.back(); } }
-    ScrollList {
-        vertical-stretch: 1;
-        FineStepper {
-            title: @tr("Z-offset, mm");
-            sub: @tr("applies at once");
-            label: Format.signed(root.z-offset, 2);
-            changed: round(root.z-offset * 100) != round(root.z-start * 100);
-            was: Format.signed(root.z-start, 2);
-            big: "0.05"; small: "0.01"; big-step: 0.05; small-step: 0.01;
-            step(d) => { root.adjust-z(d); }
-            edit => { root.edit("z"); }
+    padding-right: 20px;
+    spacing: 20px;
+
+    VerticalLayout {
+        preferred-width: 0px;
+        min-width: 0px;
+        horizontal-stretch: 1;
+        spacing: 14px;
+        alignment: start;
+        Header { title: @tr("Z-offset"); back-clicked => { root.back(); } }
+        HorizontalLayout {
+            padding-top: 14px;
+            alignment: start;
+            spacing: 6px;
+            Text {
+                text: Format.fixed(root.z-offset, 2);
+                color: Tokens.text;
+                font-size: 72px;
+                font-weight: 800;
+                letter-spacing: -2.88px; // -0.04em
+                height: 72px;
+                vertical-alignment: center;
+                TouchArea { clicked => { root.edit("z"); } }
+            }
+            Text { text: @tr("mm"); color: Tokens.text-dim; font-size: 26px; font-weight: 800; vertical-alignment: bottom; height: 66px; }
+        }
+        Text {
+            text: @tr("Not sticking: lower the nozzle.\nScraping or the layer is see-through: raise it.");
+            color: Tokens.text-2;
+            font-size: 16px;
+            wrap: word-wrap;
+        }
+    }
+    VerticalLayout {
+        preferred-width: 0px;
+        min-width: 0px;
+        horizontal-stretch: 1.15;
+        spacing: 10px;
+        HorizontalLayout {
+            spacing: 10px;
+            Text { horizontal-stretch: 1; preferred-width: 0px; text: @tr("Raise nozzle"); color: Tokens.text-dim; font-size: 15px; font-weight: 600; horizontal-alignment: center; }
+            Text { horizontal-stretch: 1; preferred-width: 0px; text: @tr("Lower nozzle"); color: Tokens.text-dim; font-size: 15px; font-weight: 600; horizontal-alignment: center; }
+        }
+        HorizontalLayout {
+            vertical-stretch: 1;
+            spacing: 10px;
+            ZButton { big: true; text: "+0.05"; clicked => { root.adjust-z(0.05); } }
+            ZButton { big: true; text: "−0.05"; clicked => { root.adjust-z(-0.05); } }
+        }
+        HorizontalLayout {
+            vertical-stretch: 1;
+            spacing: 10px;
+            ZButton { text: "+0.01"; clicked => { root.adjust-z(0.01); } }
+            ZButton { text: "−0.01"; clicked => { root.adjust-z(-0.01); } }
+        }
+        HorizontalLayout {
+            height: 64px;
+            spacing: 10px;
+            Rectangle {
+                preferred-width: 0px;
+                min-width: 0px;
+                horizontal-stretch: 1;
+                border-radius: Tokens.r-m;
+                border-width: 1px;
+                border-color: Tokens.surface-3;
+                background: reset.pressed ? Tokens.surface-1 : transparent;
+                accessible-role: button;
+                Text {
+                    text: @tr("Back to {}", Format.fixed(root.z-start, 2));
+                    color: Tokens.text-2;
+                    font-size: 16px;
+                    font-weight: 600;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+                reset := TouchArea { clicked => { root.adjust-z(root.z-start - root.z-offset); } }
+            }
+            if root.has-wizard: Rectangle {
+                preferred-width: 0px;
+                min-width: 0px;
+                horizontal-stretch: 1;
+                border-radius: Tokens.r-m;
+                background: fine.pressed ? Tokens.surface-2 : Tokens.surface-1;
+                Text { text: @tr("Fine tune"); color: Tokens.text-2; font-size: 15px; font-weight: 600; horizontal-alignment: center; vertical-alignment: center; }
+                fine := TouchArea { clicked => { root.wizard(); } }
+            }
+        }
+        Rectangle {
+            height: 64px;
+            border-radius: Tokens.r-m;
+            background: save.pressed ? Tokens.accent.darker(15%) : Tokens.accent;
+            accessible-role: button;
+            accessible-label: @tr("Save");
+            Text { text: @tr("Save"); color: Tokens.accent-ink; font-size: 17px; font-weight: 800; horizontal-alignment: center; vertical-alignment: center; }
+            save := TouchArea { clicked => { root.save(); } }
         }
     }
 }

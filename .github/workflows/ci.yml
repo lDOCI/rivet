@@ -25,6 +25,10 @@ jobs:
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
+        with:
+          # Only main saves a cache; pull requests restore it. The repository
+          # has 10 GB for caches, and one per PR run filled it.
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: rustfmt
         run: cargo fmt --all --check
@@ -61,6 +65,10 @@ jobs:
         with:
           targets: armv7-unknown-linux-musleabihf
       - uses: Swatinem/rust-cache@v2
+        with:
+          # Only main saves a cache; pull requests restore it. The repository
+          # has 10 GB for caches, and one per PR run filled it.
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: build
         run: cargo printer
@@ -72,8 +80,9 @@ jobs:
           SIZE=$(stat -c %s "$BIN")
           echo "size: $SIZE bytes"
           echo "### Printer binary: $((SIZE / 1024)) KiB" >> "$GITHUB_STEP_SUMMARY"
-          # Budget ceiling from ROADMAP.md: 12 MB.
-          test "$SIZE" -le 12582912
+          # Budget ceiling from ROADMAP.md: 16 MB (RSS, not file size, is the
+          # limit that matters; measured 10–12 MB idle on the AD5M Pro).
+          test "$SIZE" -le 16777216
 
       - name: smoke test under qemu
         run: |

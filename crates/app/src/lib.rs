@@ -3,10 +3,16 @@
 
 slint::include_modules!();
 
+pub mod calib;
 pub mod config;
 pub mod engine;
+pub mod files;
 pub mod logfile;
+pub mod resonance;
+pub mod theme;
 pub mod thumbs;
+pub mod touchcal;
+pub mod wifi;
 
 /// Interface language: `--lang ru`, else `RIVET_LANG`, else the `LANG` of the
 /// system (`ru_RU.UTF-8` -> `ru`), else English.

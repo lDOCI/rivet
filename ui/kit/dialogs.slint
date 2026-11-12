@@ -63,6 +63,141 @@ export component Dialog inherits Rectangle {
     }
 }
 
+// "Stop the print?": the prototype's ConfirmStop, a red stop mark over the
+// question, keep printing on the left.
+export component StopDialog inherits Rectangle {
+    in property <string> title;
+    in property <string> message;
+    in property <string> confirm-text;
+    in property <string> cancel-text;
+    callback confirmed;
+    callback cancelled;
+    Backdrop { background: #0506078c; }
+    Rectangle {
+        width: 540px;
+        height: body.preferred-height;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        border-radius: 28px;
+        background: Tokens.surface-1;
+        body := VerticalLayout {
+            padding: 28px;
+            spacing: 0;
+            HorizontalLayout {
+                alignment: start;
+                Rectangle {
+                    width: 56px;
+                    height: 56px;
+                    border-radius: 18px;
+                    background: #fb4b5e21;
+                    Rectangle { width: 20px; height: 20px; border-radius: 5px; background: #fb4b5e; }
+                }
+            }
+            Rectangle { height: 18px; }
+            Text { text: root.title; color: Tokens.text; font-size: 28px; font-weight: 800; wrap: word-wrap; }
+            Rectangle { height: 12px; }
+            Text { text: root.message; color: Tokens.text-2; font-size: 17px; wrap: word-wrap; }
+            Rectangle { height: 22px; }
+            HorizontalLayout {
+                spacing: 12px;
+                height: 80px;
+                Rectangle {
+                    horizontal-stretch: 1;
+                    border-radius: 20px;
+                    background: keep.pressed ? Tokens.surface-3 : Tokens.surface-2;
+                    accessible-role: button;
+                    accessible-label: root.cancel-text;
+                    accessible-action-default => { root.cancelled(); }
+                    Text { text: root.cancel-text; color: Tokens.text; font-size: 18px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+                    keep := TouchArea { clicked => { root.cancelled(); } }
+                }
+                Rectangle {
+                    horizontal-stretch: 1;
+                    border-radius: 20px;
+                    background: stop.pressed ? #fb4b5e.darker(15%) : #fb4b5e;
+                    accessible-role: button;
+                    accessible-label: root.confirm-text;
+                    accessible-action-default => { root.confirmed(); }
+                    Text { text: root.confirm-text; color: #ffffff; font-size: 19px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+                    stop := TouchArea { clicked => { root.confirmed(); } }
+                }
+            }
+        }
+    }
+}
+
+export struct PromptButton { label: string, gcode: string, style: string }
+
+// A macro asks: its title, text and buttons (Klipper's action:prompt). The
+// prototype's Prompt page; the close mark ends the prompt without an answer.
+export component PromptDialog inherits Rectangle {
+    in property <string> title;
+    in property <string> text;
+    in property <[PromptButton]> buttons;
+    callback pressed(string);
+    callback closed;
+    Backdrop { }
+    Rectangle {
+        width: 608px;
+        height: body.preferred-height;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        border-radius: 28px;
+        background: Tokens.surface-1;
+        body := VerticalLayout {
+            padding: 24px;
+            spacing: 0;
+            HorizontalLayout {
+                Text { text: @tr("FROM A MACRO"); color: Tokens.text-faint; font-size: 13px; font-weight: 700; letter-spacing: 0.5px; vertical-alignment: center; horizontal-stretch: 1; }
+                Rectangle {
+                    width: 40px;
+                    height: 40px;
+                    border-radius: 14px;
+                    background: close-ta.pressed ? Tokens.surface-3 : Tokens.surface-2;
+                    accessible-role: button;
+                    accessible-label: @tr("Close");
+                    accessible-action-default => { root.closed(); }
+                    Icon { d: "M6 6l12 12M18 6 6 18"; size: 18px; weight: 2; }
+                    close-ta := TouchArea { clicked => { root.closed(); } }
+                }
+            }
+            Rectangle { height: 4px; }
+            Text { text: root.title; color: Tokens.text; font-size: 26px; font-weight: 800; wrap: word-wrap; }
+            if root.text != "": VerticalLayout {
+                padding-top: 12px;
+                Text { text: root.text; color: Tokens.text-2; font-size: 17px; wrap: word-wrap; }
+            }
+            Rectangle { height: 18px; }
+            HorizontalLayout {
+                spacing: 10px;
+                height: 76px;
+                for b in root.buttons: Rectangle {
+                    horizontal-stretch: 1;
+                    preferred-width: 0px;
+                    min-width: 0px;
+                    border-radius: 20px;
+                    background: b.style == "primary" ? (ta.pressed ? Tokens.accent.darker(15%) : Tokens.accent)
+                        : b.style == "error" ? (ta.pressed ? #fb4b5e.darker(15%) : #fb4b5e)
+                        : ta.pressed ? Tokens.surface-3 : Tokens.surface-2;
+                    accessible-role: button;
+                    accessible-label: b.label;
+                    accessible-action-default => { root.pressed(b.gcode); }
+                    Text {
+                        text: b.label;
+                        color: b.style == "primary" ? Tokens.accent-ink : b.style == "error" ? #ffffff : b.style == "warning" ? Tokens.warn : Tokens.text;
+                        font-size: 17px;
+                        font-weight: b.style == "primary" ? 800 : 700;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                        overflow: elide;
+                    }
+                    ta := TouchArea { clicked => { root.pressed(b.gcode); } }
+                }
+            }
+        }
+    }
+}
+
 component Key inherits Rectangle {
     in property <string> text;
     in property <bool> enabled: true;
@@ -221,6 +356,76 @@ export component Keypad inherits Rectangle {
                     Key { text: "−"; enabled: root.allow-negative; clicked => { root.sign(); } }
                     Key { text: "0"; clicked => { root.digit(0); } }
                     Key { text: "."; clicked => { root.point(); } }
+                }
+            }
+        }
+    }
+}
+
+// One choice of a heat dialog: what it is and how hot.
+export struct HeatChoice { label: string, sub: string, temp: int }
+
+// A cold nozzle before Extrude or Retract: how hot it should get. Nothing is
+// guessed: switching from PLA to ABS needs the new filament's heat.
+export component HeatPickDialog inherits Rectangle {
+    in property <string> title;
+    in property <string> message;
+    in property <[HeatChoice]> choices;
+    callback picked(int);
+    // Type another temperature.
+    callback custom;
+    callback cancelled;
+    accessible-role: none;
+    Backdrop { }
+    Rectangle {
+        width: 560px;
+        height: body.preferred-height;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        border-radius: Tokens.r-xl;
+        background: Tokens.surface-1;
+        body := VerticalLayout {
+            padding: 24px;
+            spacing: 12px;
+            Text { text: root.title; color: Tokens.text; font-size: Tokens.title; font-weight: 800; wrap: word-wrap; }
+            Text { text: root.message; color: Tokens.text-dim; font-size: Tokens.body; wrap: word-wrap; }
+            Rectangle {
+                height: ceil(root.choices.length / 2) * 72px + max(0, ceil(root.choices.length / 2) - 1) * 8px;
+                for c[i] in root.choices: Rectangle {
+                    x: mod(i, 2) * (parent.width + 8px) / 2;
+                    y: floor(i / 2) * 80px;
+                    width: (parent.width - 8px) / 2;
+                    height: 72px;
+                    border-radius: Tokens.r-m;
+                    background: ta.pressed ? Tokens.surface-3 : Tokens.surface-2;
+                    accessible-role: button;
+                    accessible-label: c.label;
+                    accessible-action-default => { root.picked(c.temp); }
+                    VerticalLayout {
+                        padding-left: 16px;
+                        padding-right: 12px;
+                        alignment: center;
+                        HorizontalLayout {
+                            spacing: 8px;
+                            Text { text: c.label; color: Tokens.text; font-size: Tokens.row-title; font-weight: 700; overflow: elide; horizontal-stretch: 1; }
+                            Text { text: c.temp + "°"; color: Tokens.heat-2; font-size: Tokens.row-title; font-weight: 800; }
+                        }
+                        if c.sub != "": Text { text: c.sub; color: Tokens.text-dim; font-size: Tokens.caption; overflow: elide; }
+                    }
+                    ta := TouchArea { clicked => { root.picked(c.temp); } }
+                }
+            }
+            HorizontalLayout {
+                spacing: 8px;
+                SecondaryButton {
+                    text: @tr("Other…");
+                    min-height: Tokens.touch;
+                    clicked => { root.custom(); }
+                }
+                SecondaryButton {
+                    text: @tr("Cancel");
+                    min-height: Tokens.touch;
+                    clicked => { root.cancelled(); }
                 }
             }
         }

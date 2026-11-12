@@ -1,0 +1,150 @@
+// Fills inside a rounded track (volume-style bars).
+//
+// The printer's software renderer does not clip children to a rounded
+// rectangle, so a plain filled Rectangle sticks out of the track's corners.
+// These draw the fill as a path that already follows the track's rounding:
+// round where it touches a track corner, flat where it is mid-track.
+// Lengths are plain numbers in the path's own units (1 unit = 1 px).
+import { Tokens } from "tokens.slint";
+
+// Fill rising from the bottom of a track `track-w` x `track-h` with corner
+// radius `radius`; `fraction` 0..1 of the height.
+export component BarFill inherits Rectangle {
+    in property <float> fraction;
+    in property <length> radius: 24px;
+    in property <brush> fill: @linear-gradient(180deg, Tokens.accent-hi 0%, Tokens.accent 100%);
+    // Track size in px, as plain numbers.
+    property <float> w: root.width / 1px;
+    property <float> t: root.height / 1px;
+    property <float> r: min(root.radius / 1px, root.w / 2);
+    property <float> f: max(0, min(1, root.fraction)) * root.t;
+    // Distance of the fill's top edge from the track's top.
+    property <float> d: root.t - root.f;
+    // Nearly full: how far in from the side the flat top starts.
+    property <float> inset: root.r - sqrt(max(0, root.r * root.r - (root.r - root.d) * (root.r - root.d)));
+    // Lower than a corner: where the top edge cuts the bottom corner circles.
+    property <float> cut: root.r - sqrt(max(0, root.r * root.r - (root.r - root.f) * (root.r - root.f)));
+    // From the corner radius up. The printer's renderer (line by line) draws a
+    // gradient only in square rectangles: a rounded rectangle with a gradient comes
+    // out square there. So the rounded corners are solid: the gradient's end colour
+    // at the bottom, its start colour at the top when the fill reaches the track's
+    // top corners; the gradient runs in a square rectangle between them.
+    property <color> top-c: Tokens.accent-hi;
+    property <color> bottom-c: Tokens.accent;
+    // Where the square gradient part starts and ends, in px from the track's top.
+    property <float> g-top: max(root.d, root.r);
+    property <float> g-bottom: root.t - root.r;
+    if root.f >= root.r: Rectangle {
+        // Bottom cap: solid, rounded, 2r high; the gradient covers its upper half.
+        x: 0px;
+        y: max(root.d, root.t - 2 * root.r) * 1px;
+        width: root.w * 1px;
+        height: min(root.f, 2 * root.r) * 1px;
+        border-radius: root.r * 1px;
+        background: root.bottom-c;
+    }
+    if root.d < root.r: Rectangle {
+        // Top cap, when the fill reaches the track's rounded top corners.
+        x: 0px;
+        y: root.d * 1px;
+        width: root.w * 1px;
+        height: 2 * root.r * 1px;
+        border-radius: root.r * 1px;
+        background: root.top-c;
+    }
+    if root.g-bottom > root.g-top: Rectangle {
+        x: 0px;
+        y: root.g-top * 1px;
+        width: root.w * 1px;
+        height: (root.g-bottom - root.g-top) * 1px;
+        // Ends exactly in the bottom cap's colour, so there is no seam.
+        background: @linear-gradient(180deg,
+            root.bottom-c.mix(root.top-c, (root.g-top - root.d) / max(1, root.g-bottom - root.d)) 0%,
+            root.bottom-c 100%);
+    }
+    // Lower than the corner radius: a cap of the bottom corners.
+    if root.f > 0.5 && root.f < root.r: Path {
+        x: 0px;
+        y: root.d * 1px;
+        width: root.w * 1px;
+        height: root.f * 1px;
+        viewbox-width: root.w;
+        viewbox-height: root.f;
+        fill: root.fill;
+        MoveTo { x: root.cut; y: 0; }
+        LineTo { x: root.w - root.cut; y: 0; }
+        ArcTo { radius-x: root.r; radius-y: root.r; x: root.w - root.r; y: root.f; sweep: true; }
+        LineTo { x: root.r; y: root.f; }
+        ArcTo { radius-x: root.r; radius-y: root.r; x: root.cut; y: 0; sweep: true; }
+        Close {}
+    }
+}
+
+// Fill growing from the left of a track (width x height) with corner radius.
+export component HBarFill inherits Rectangle {
+    in property <float> fraction;
+    in property <length> radius: 18px;
+    in property <brush> fill: @linear-gradient(90deg, Tokens.accent 0%, Tokens.accent-hi 100%);
+    property <float> w: root.width / 1px;
+    property <float> h: root.height / 1px;
+    property <float> r: min(root.radius / 1px, root.h / 2);
+    property <float> f: max(0, min(1, root.fraction)) * root.w;
+    // Distance of the fill's right edge from the track's right end.
+    property <float> e: root.w - root.f;
+    property <float> inset: root.r - sqrt(max(0, root.r * root.r - (root.r - root.e) * (root.r - root.e)));
+    property <float> cut: root.r - sqrt(max(0, root.r * root.r - (root.r - root.f) * (root.r - root.f)));
+    // Mid-track: round on the left, flat on the right.
+    if root.f >= root.r && root.e >= root.r: Path {
+        x: 0px;
+        y: 0px;
+        width: root.f * 1px;
+        height: root.h * 1px;
+        viewbox-width: root.f;
+        viewbox-height: root.h;
+        fill: root.fill;
+        MoveTo { x: root.r; y: 0; }
+        LineTo { x: root.f; y: 0; }
+        LineTo { x: root.f; y: root.h; }
+        LineTo { x: root.r; y: root.h; }
+        ArcTo { radius-x: root.r; radius-y: root.r; x: 0; y: root.h - root.r; sweep: true; }
+        LineTo { x: 0; y: root.r; }
+        ArcTo { radius-x: root.r; radius-y: root.r; x: root.r; y: 0; sweep: true; }
+        Close {}
+    }
+    // Nearly full: the right end follows the track's corners.
+    if root.f >= root.r && root.e < root.r: Path {
+        x: 0px;
+        y: 0px;
+        width: root.f * 1px;
+        height: root.h * 1px;
+        viewbox-width: root.f;
+        viewbox-height: root.h;
+        fill: root.fill;
+        MoveTo { x: root.r; y: 0; }
+        LineTo { x: root.w - root.r; y: 0; }
+        ArcTo { radius-x: root.r; radius-y: root.r; x: root.f; y: root.inset; sweep: true; }
+        LineTo { x: root.f; y: root.h - root.inset; }
+        ArcTo { radius-x: root.r; radius-y: root.r; x: root.w - root.r; y: root.h; sweep: true; }
+        LineTo { x: root.r; y: root.h; }
+        ArcTo { radius-x: root.r; radius-y: root.r; x: 0; y: root.h - root.r; sweep: true; }
+        LineTo { x: 0; y: root.r; }
+        ArcTo { radius-x: root.r; radius-y: root.r; x: root.r; y: 0; sweep: true; }
+        Close {}
+    }
+    // Shorter than the corner radius: a cap of the left corners.
+    if root.f > 0.5 && root.f < root.r: Path {
+        x: 0px;
+        y: 0px;
+        width: root.f * 1px;
+        height: root.h * 1px;
+        viewbox-width: root.f;
+        viewbox-height: root.h;
+        fill: root.fill;
+        MoveTo { x: root.f; y: root.cut; }
+        LineTo { x: root.f; y: root.h - root.cut; }
+        ArcTo { radius-x: root.r; radius-y: root.r; x: 0; y: root.h - root.r; sweep: true; }
+        LineTo { x: 0; y: root.r; }
+        ArcTo { radius-x: root.r; radius-y: root.r; x: root.f; y: root.cut; sweep: true; }
+        Close {}
+    }
+}

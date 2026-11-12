@@ -61,3 +61,38 @@ fn select_several_and_delete() {
     assert_eq!(ui.get_overlay(), "");
     assert_eq!(ui.get_selected_count(), 0);
 }
+
+#[test]
+fn previews_follow_the_scroll() {
+    i_slint_backend_testing::init_no_event_loop();
+    let ui = AppWindow::new().unwrap();
+    // 86 files, as on the AD5M Pro, every one with a preview already.
+    let items: Vec<FileItem> = (0..86)
+        .map(|i| FileItem {
+            path: format!("f{i}.gcode").as_str().into(),
+            name: format!("f{i}").as_str().into(),
+            rank: i,
+            has_thumb: true,
+            ..Default::default()
+        })
+        .collect();
+    rivet::files::set_all(&ui, items);
+    // Scrolled down to card 60: far previews go, the near ones stay.
+    let wanted = rivet::files::window(&ui, 60);
+    assert!(wanted.is_empty(), "all near ones were loaded: {wanted:?}");
+    let files = ui.get_files();
+    let kept: Vec<usize> = (0..files.row_count())
+        .filter(|&i| files.row_data(i).unwrap().has_thumb)
+        .collect();
+    assert_eq!(kept, (54..78).collect::<Vec<_>>());
+    // Back at the top: the first screen is asked for first, nearest first.
+    let wanted = rivet::files::window(&ui, 0);
+    assert_eq!(wanted.first().map(String::as_str), Some("f0.gcode"));
+    assert_eq!(wanted.len(), 15);
+    // The end of the list: the last cards, then the row above them.
+    let wanted = rivet::files::window(&ui, 84);
+    assert_eq!(
+        wanted,
+        ["f84", "f85", "f83", "f82", "f81"].map(|n| format!("{n}.gcode"))
+    );
+}

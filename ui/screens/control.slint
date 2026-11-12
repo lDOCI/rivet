@@ -18,13 +18,18 @@ export component ControlScreen inherits VerticalLayout {
     in property <string> light-text;
     in property <int> speed-percent: 100;
     in property <float> z-offset;
+    // Moonraker power devices or user output pins exist (the Devices screen has rows).
+    in property <bool> has-devices;
     callback open(string);
     padding: Tokens.pad;
     spacing: Tokens.gap;
     Header { title: @tr("Control"); back: false; }
-    GridLayout {
+    // The prototype centres the grid in the height left under the header.
+    VerticalLayout {
+      vertical-stretch: 1;
+      alignment: center;
+      GridLayout {
         spacing: Tokens.gap;
-        vertical-stretch: 1;
         Row {
             Tile {
                 label: @tr("Heating");
@@ -45,7 +50,8 @@ export component ControlScreen inherits VerticalLayout {
             Tile { icon: Icons.bulb; value: root.light-text != "" ? root.light-text : "—"; label: @tr("Light"); clicked => { root.open("light"); } }
             Tile { icon: Icons.gauge; value: root.speed-percent + "%"; label: @tr("Speed"); clicked => { root.open("speed"); } }
             Tile { icon: Icons.zoff; value: Format.signed(root.z-offset, 2) + " " + @tr("mm"); label: @tr("Z-offset"); clicked => { root.open("zoffset"); } }
-            Tile { icon: Icons.plug; label: @tr("Devices"); sub: @tr("power, outputs"); clicked => { root.open("devices"); } }
+            if root.has-devices: Tile { icon: Icons.plug; label: @tr("Devices"); sub: @tr("power, outputs"); clicked => { root.open("devices"); } }
         }
+    }
     }
 }

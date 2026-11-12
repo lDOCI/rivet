@@ -12,19 +12,43 @@ component KeyCap inherits Rectangle {
     height: 50px;
     border-radius: 12px;
     background: root.primary ? (ta.pressed ? Tokens.accent.darker(15%) : Tokens.accent)
-        : ta.pressed ? #3a414a
-        : root.active ? #3a414a
+        : ta.pressed ? Tokens.control
+        : root.active ? Tokens.control
         : root.special ? Tokens.surface-2 : Tokens.surface-3;
     accessible-role: button;
     accessible-label: root.accessible-name != "" ? root.accessible-name : root.label;
     accessible-action-default => { root.pressed(); }
-    Text {
+    // ⌫ and ⏎ are drawn: the embedded font has neither glyph.
+    property <bool> drawn: root.label == "⌫" || root.label == "⏎";
+    if !root.drawn: Text {
         text: root.label;
         color: root.primary ? Tokens.accent-ink : Tokens.text;
         font-size: 19px;
         font-weight: 600;
         horizontal-alignment: center;
         vertical-alignment: center;
+    }
+    if root.label == "⌫": Path {
+        width: 24px;
+        height: 24px;
+        viewbox-width: 24;
+        viewbox-height: 24;
+        commands: "M9 5 H20 A1 1 0 0 1 21 6 V18 A1 1 0 0 1 20 19 H9 L3 12 Z M12 9 L17 14 M17 9 L12 14";
+        stroke: Tokens.text;
+        stroke-width: 2px;
+        fill: transparent;
+        stroke-line-cap: round;
+    }
+    if root.label == "⏎": Path {
+        width: 24px;
+        height: 24px;
+        viewbox-width: 24;
+        viewbox-height: 24;
+        commands: "M20 5 V12 A2 2 0 0 1 18 14 H5 M9 10 L5 14 L9 18";
+        stroke: root.primary ? Tokens.accent-ink : Tokens.text;
+        stroke-width: 2.2px;
+        fill: transparent;
+        stroke-line-cap: round;
     }
     ta := TouchArea { clicked => { root.pressed(); } }
 }
@@ -34,6 +58,8 @@ export component Keyboard inherits VerticalLayout {
     callback key(string);
     in-out property <bool> upper: true;
     in-out property <bool> symbols;
+    // Russian letters instead of Latin (file names are often Russian).
+    in-out property <bool> cyrillic;
     spacing: 6px;
 
     property <[[string]]> letters: [
@@ -42,6 +68,12 @@ export component Keyboard inherits VerticalLayout {
         ["a", "s", "d", "f", "g", "h", "j", "k", "l", "⌫"],
         ["⇧", "z", "x", "c", "v", "b", "n", "m", "=", "."],
     ];
+    property <[[string]]> russian: [
+        ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
+        ["й", "ц", "у", "к", "е", "н", "г", "ш", "щ", "з", "х"],
+        ["ф", "ы", "в", "а", "п", "р", "о", "л", "д", "ж", "э"],
+        ["⇧", "я", "ч", "с", "м", "и", "т", "ь", "б", "ю", "⌫"],
+    ];
     property <[[string]]> marks: [
         ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
         ["!", "@", "#", "$", "%", "&", "*", "(", ")", "/"],
@@ -49,7 +81,7 @@ export component Keyboard inherits VerticalLayout {
         ["⇧", ">", "{", "}", "|", "~", "^", "`", "=", "."],
     ];
 
-    for row in root.symbols ? root.marks : root.letters: HorizontalLayout {
+    for row in root.symbols ? root.marks : root.cyrillic ? root.russian : root.letters: HorizontalLayout {
         spacing: 6px;
         for k in row: KeyCap {
             horizontal-stretch: 1;
@@ -77,9 +109,16 @@ export component Keyboard inherits VerticalLayout {
             special: true;
             pressed => { root.symbols = !root.symbols; }
         }
+        KeyCap {
+            horizontal-stretch: 2;
+            label: root.cyrillic ? "abc" : "абв";
+            accessible-name: root.cyrillic ? @tr("Latin letters") : @tr("Russian letters");
+            special: true;
+            pressed => { root.cyrillic = !root.cyrillic; root.symbols = false; }
+        }
         KeyCap { horizontal-stretch: 2; label: "_"; pressed => { root.key("_"); } }
         KeyCap { horizontal-stretch: 2; label: "-"; pressed => { root.key("-"); } }
-        KeyCap { horizontal-stretch: 8; label: @tr("space"); accessible-name: @tr("Space"); pressed => { root.key(" "); } }
+        KeyCap { horizontal-stretch: 6; label: @tr("space"); accessible-name: @tr("Space"); pressed => { root.key(" "); } }
         KeyCap { horizontal-stretch: 4; label: "⏎"; accessible-name: @tr("Done"); primary: true; pressed => { root.key("⏎"); } }
     }
 }

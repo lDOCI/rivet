@@ -1,18 +1,31 @@
 // Vertical list that shows a scrollbar whenever it can scroll (design-code §4).
 import { Tokens } from "tokens.slint";
 
+// When a list last moved (animation time): the touch filter asks it whether a
+// press lands on a gliding list (then it only stops it) or on a still one.
+export global Glide {
+    callback moved();
+}
+
 export component ScrollList inherits Rectangle {
     in property <length> spacing: Tokens.gap-s;
+    // Where the list is scrolled to (0 or negative); bind it to keep the place
+    // when the screen is left and opened again.
+    in-out property <length> scroll-y <=> flick.content-y;
+    changed scroll-y => { Glide.moved(); }
     // Jump to the newest content, for logs that grow at the bottom.
     public function scroll-to-end() {
         flick.content-y = min(0px, flick.height - flick.content-height);
     }
     flick := Flickable {
-        width: root.width - 14px;
+        // The prototype's list keeps 10 px on the right for its scrollbar.
+        width: root.width - 10px;
         x: 0;
         height: root.height;
         interactive: true;
         VerticalLayout {
+            // A list never stretches its rows to fill the height.
+            alignment: start;
             spacing: root.spacing;
             padding-bottom: Tokens.pad;
             @children
@@ -28,7 +41,7 @@ export component ScrollList inherits Rectangle {
         Rectangle {
             width: parent.width;
             border-radius: 4px;
-            background: #4a525c;
+            background: Tokens.line;
             height: max(32px, parent.height * flick.height / flick.content-height);
             y: (parent.height - self.height) * (-flick.content-y) / max(1px, flick.content-height - flick.height);
         }

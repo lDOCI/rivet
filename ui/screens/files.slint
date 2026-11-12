@@ -5,16 +5,24 @@ import { Icon, Header, IconButton, PrimaryButton, SecondaryButton, DangerButton 
 import { Format } from "../kit/format.slint";
 import { ScrollList } from "../kit/scroll.slint";
 import { Thumb } from "../kit/thumb.slint";
+import { Keyboard } from "../kit/keyboard.slint";
+import { ActionRow, LinkRow, Segmented } from "../kit/rows.slint";
 
 export struct FileItem {
     // Path under gcodes, what Moonraker takes back.
     path: string,
     name: string,
+    // Place in the newest-first order Moonraker's list gives.
+    rank: int,
     days-ago: int,
     size-kb: int,
     selected: bool,
     thumb: image,
     has-thumb: bool,
+    // From the file's metadata once read: print time (min) and filament type.
+    has-meta: bool,
+    minutes: int,
+    material: string,
 }
 
 // Slicer data and checks for the opened file. -1 = not in the file.
@@ -27,6 +35,11 @@ export struct FileInfo {
     nozzle: float,
     // 1 same as the printer, 0 differs, -1 unknown.
     nozzle-check: int,
+    // Model height, mm; -1 when the slicer did not write it.
+    height: float,
+    // The slicer's filament colour, when it wrote one.
+    color: color,
+    has-color: bool,
     thumb: image,
     has-thumb: bool,
 }
@@ -55,7 +68,10 @@ component FileCard inherits Rectangle {
         }
         Text { text: root.item.name; color: Tokens.text; font-size: 15px; font-weight: 700; overflow: elide; }
         Text {
-            text: Format.age(root.item.days-ago) + " · " + Format.size(root.item.size-kb);
+            // The prototype's "1 h 23 min · PETG"; until the metadata is read, age and size.
+            text: root.item.has-meta && root.item.minutes > 0
+                ? Format.duration(root.item.minutes) + (root.item.material != "" ? " · " + root.item.material : "")
+                : Format.age(root.item.days-ago) + " · " + Format.size(root.item.size-kb);
             color: Tokens.text-dim;
             font-size: 13px;
             overflow: elide;
@@ -80,21 +96,107 @@ export component FilesScreen inherits VerticalLayout {
     in-out property <[FileItem]> files;
     in-out property <bool> select-mode;
     in-out property <int> selected-count;
+    // Files on the printer and on a USB stick; with USB, a switch replaces the title.
+    in property <int> local-count;
+    in property <int> usb-count;
+    in-out property <bool> on-usb;
+    // Scroll position, kept by the app: back from a file lands where it was.
+    in-out property <length> scroll-y;
+    // Moonraker's print queue: jobs in it, -1 when the printer has none.
+    in property <int> queue-count: -1;
+    // A search is on: the grid shows what matches.
+    in property <string> query;
+    // The list for this storage came in at least once.
+    in property <bool> loaded: true;
+    callback storage-changed(bool);
+    callback queue;
+    callback find;
+    callback queue-selected;
     callback back;
     callback open(string);
     callback select-all(bool);
     callback ask-delete;
+    // The index of the first card on the glass: previews load around it.
+    callback window(int);
     padding: Tokens.pad;
-    padding-bottom: 0;
+    padding-right: 20px;
     spacing: 12px;
 
     property <length> gap: 12px;
     property <length> card-height: 180px;
     property <int> rows: ceil(root.files.length / 3);
+    property <int> first-row: floor(max(0px, -root.scroll-y) / (root.card-height + root.gap));
+    init => { root.window(root.first-row * 3); }
+    changed first-row => { root.window(root.first-row * 3); }
+    changed files => { root.window(root.first-row * 3); }
 
     if !root.select-mode: Header {
-        title: @tr("Files");
+        title: root.usb-count > 0 ? "" : @tr("Files");
         back-clicked => { root.back(); }
+        if root.usb-count > 0: Rectangle {
+            horizontal-stretch: 1;
+            height: Tokens.header;
+            border-radius: Tokens.r-m;
+            background: Tokens.surface-1;
+            accessible-role: groupbox;
+            accessible-label: @tr("Where the files are");
+            HorizontalLayout {
+                padding: 5px;
+                spacing: 4px;
+                for name[i] in [@tr("On the printer · {}", root.local-count), @tr("USB · {}", root.usb-count)]: Rectangle {
+                    preferred-width: 0px;
+                    min-width: 0px;
+                    horizontal-stretch: 1;
+                    border-radius: 15px;
+                    background: (i == 1) == root.on-usb ? Tokens.accent : transparent;
+                    accessible-role: tab;
+                    accessible-label: name;
+                    Text {
+                        text: name;
+                        color: (i == 1) == root.on-usb ? Tokens.accent-ink : Tokens.text-2;
+                        font-size: 17px;
+                        font-weight: 700;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                    TouchArea { clicked => { if ((i == 1) != root.on-usb) { root.on-usb = i == 1; root.storage-changed(root.on-usb); } } }
+                }
+            }
+        }
+        if root.queue-count >= 0: Rectangle {
+            width: Tokens.touch;
+            height: Tokens.touch;
+            border-radius: Tokens.r-m;
+            background: queue-ta.pressed ? Tokens.surface-2 : Tokens.surface-1;
+            accessible-role: button;
+            accessible-label: @tr("Print queue, {}", root.queue-count);
+            accessible-action-default => { root.queue(); }
+            Icon { d: Icons.queue; size: 24px; weight: 1.9; }
+            if root.queue-count > 0: Rectangle {
+                x: parent.width - self.width - 8px;
+                y: 8px;
+                width: max(18px, badge.preferred-width + 8px);
+                height: 18px;
+                border-radius: 9px;
+                background: Tokens.accent;
+                badge := Text { text: root.queue-count; color: Tokens.accent-ink; font-size: 11px; font-weight: 800; horizontal-alignment: center; vertical-alignment: center; }
+            }
+            queue-ta := TouchArea { clicked => { root.queue(); } }
+        }
+        Rectangle {
+            width: Tokens.touch;
+            height: Tokens.touch;
+            border-radius: Tokens.r-m;
+            background: find-ta.pressed ? Tokens.surface-2 : Tokens.surface-1;
+            // A search is on: the button says so.
+            border-width: root.query != "" ? 2px : 0;
+            border-color: Tokens.accent;
+            accessible-role: button;
+            accessible-label: @tr("Search and sort");
+            accessible-action-default => { root.find(); }
+            Icon { d: "M11 4.5a6.5 6.5 0 1 0 0 13a6.5 6.5 0 1 0 0-13 M16 16l4.5 4.5"; size: 24px; weight: 2; color: root.query != "" ? Tokens.accent : Tokens.text; }
+            find-ta := TouchArea { clicked => { root.find(); } }
+        }
         IconButton {
             icon: "M3.5 3.5h17v17h-17z M8 12l3 3 5-6";
             label: @tr("Select several");
@@ -117,15 +219,22 @@ export component FilesScreen inherits VerticalLayout {
         }
     }
 
-    if root.files.length == 0: VerticalLayout {
+    // Until Moonraker's list came in (it takes a second here), no "no files".
+    if root.files.length == 0 && !root.loaded: VerticalLayout {
+        vertical-stretch: 1;
+        alignment: center;
+        Text { text: @tr("Loading…"); color: Tokens.text-dim; font-size: Tokens.body; horizontal-alignment: center; }
+    }
+    if root.files.length == 0 && root.loaded: VerticalLayout {
         vertical-stretch: 1;
         alignment: center;
         spacing: 8px;
-        Text { text: @tr("No G-code files yet"); color: Tokens.text; font-size: Tokens.title; font-weight: 800; horizontal-alignment: center; }
-        Text { text: @tr("Send a model from your slicer."); color: Tokens.text-dim; font-size: Tokens.body; horizontal-alignment: center; }
+        Text { text: root.query != "" ? @tr("Nothing found") : @tr("No G-code files yet"); color: Tokens.text; font-size: Tokens.title; font-weight: 800; horizontal-alignment: center; }
+        Text { text: root.query != "" ? @tr("No file name has “{}”.", root.query) : @tr("Send a model from your slicer."); color: Tokens.text-dim; font-size: Tokens.body; horizontal-alignment: center; }
     }
     if root.files.length > 0: ScrollList {
         vertical-stretch: 1;
+        scroll-y <=> root.scroll-y;
         Rectangle {
             height: root.rows * root.card-height + max(0, root.rows - 1) * root.gap;
             for item[i] in root.files: FileCard {
@@ -148,16 +257,185 @@ export component FilesScreen inherits VerticalLayout {
             }
         }
     }
-    if root.select-mode: Rectangle {
+    // Two halves, as the prototype: to the queue, delete.
+    if root.select-mode: HorizontalLayout {
         height: 76px;
-        if root.selected-count > 0: DangerButton {
-            text: @tr("Delete {}", root.selected-count);
-            clicked => { root.ask-delete(); }
-        }
-        if root.selected-count == 0: Rectangle {
+        spacing: 10px;
+        if root.queue-count >= 0: Rectangle {
+            horizontal-stretch: 1;
             border-radius: Tokens.r-m;
-            background: Tokens.surface-2;
-            Text { text: @tr("Delete"); color: Tokens.text-faint; font-size: Tokens.row-title; font-weight: 800; horizontal-alignment: center; vertical-alignment: center; }
+            background: to-queue.pressed && root.selected-count > 0 ? Tokens.surface-2 : Tokens.surface-1;
+            accessible-role: button;
+            accessible-label: root.selected-count > 0 ? @tr("To queue {}", root.selected-count) : @tr("To queue");
+            accessible-action-default => { if (root.selected-count > 0) { root.queue-selected(); } }
+            Text {
+                text: root.selected-count > 0 ? @tr("To queue {}", root.selected-count) : @tr("To queue");
+                color: root.selected-count > 0 ? Tokens.text : Tokens.text-faint;
+                font-size: 17px;
+                font-weight: 700;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+            to-queue := TouchArea { clicked => { if (root.selected-count > 0) { root.queue-selected(); } } }
+        }
+        Rectangle {
+            horizontal-stretch: 1;
+            border-radius: Tokens.r-m;
+            background: root.selected-count == 0 ? Tokens.surface-2 : del.pressed ? Tokens.danger-solid.darker(15%) : Tokens.danger-solid;
+            accessible-role: button;
+            accessible-label: root.selected-count > 0 ? @tr("Delete {}", root.selected-count) : @tr("Delete");
+            accessible-action-default => { if (root.selected-count > 0) { root.ask-delete(); } }
+            Text {
+                text: root.selected-count > 0 ? @tr("Delete {}", root.selected-count) : @tr("Delete");
+                color: root.selected-count > 0 ? #ffffff : Tokens.text-faint;
+                font-size: 17px;
+                font-weight: 800;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+            del := TouchArea { clicked => { if (root.selected-count > 0) { root.ask-delete(); } } }
+        }
+    }
+}
+
+// A line of text typed on the on-screen keyboard.
+export component TextLine inherits Rectangle {
+    in property <string> text;
+    in property <string> placeholder;
+    height: 64px;
+    border-radius: 18px;
+    background: Tokens.surface-1;
+    border-width: 2px;
+    border-color: Tokens.accent;
+    HorizontalLayout {
+        x: 18px;
+        width: parent.width - 36px;
+        Text {
+            horizontal-stretch: 0;
+            text: root.text;
+            color: Tokens.text;
+            font-size: 19px;
+            font-weight: 600;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+        // The caret: drawn, the font has no thin bar.
+        VerticalLayout {
+            alignment: center;
+            padding-left: 1px;
+            Rectangle { width: 2px; height: 24px; background: Tokens.accent; }
+        }
+        Rectangle { horizontal-stretch: 1; }
+    }
+    if root.text == "": Text {
+        x: 30px;
+        width: parent.width - 48px;
+        text: root.placeholder;
+        color: Tokens.text-faint;
+        font-size: 19px;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+}
+
+// Search the file names and pick the order of the grid. The grid follows as
+// the user types; back shows it.
+export component FindScreen inherits VerticalLayout {
+    horizontal-stretch: 1;
+    in-out property <string> query;
+    // "new" | "name" | "time" | "size"
+    in-out property <string> sort;
+    in property <bool> cyrillic;
+    callback changed;
+    callback back;
+    callback apply-key(string, string) -> string;
+    padding: Tokens.pad;
+    padding-right: 20px;
+    spacing: 10px;
+    property <[string]> keys: ["new", "name", "time", "size"];
+    HorizontalLayout {
+        height: 64px;
+        spacing: 10px;
+        IconButton { icon: "m15 18-6-6 6-6"; label: @tr("Back"); clicked => { root.back(); } }
+        TextLine { horizontal-stretch: 1; text: root.query; placeholder: @tr("Part of the file name"); }
+        if root.query != "": IconButton {
+            icon: "M6 6l12 12M18 6 6 18";
+            label: @tr("Clear search");
+            clicked => { root.query = ""; root.changed(); }
+        }
+    }
+    Segmented {
+        height: 56px;
+        options: [@tr("Newest"), @tr("Name"), @tr("Print time"), @tr("Size")];
+        selected: root.sort == "name" ? 1 : root.sort == "time" ? 2 : root.sort == "size" ? 3 : 0;
+        picked(i) => { root.sort = root.keys[i]; root.changed(); }
+    }
+    Rectangle { vertical-stretch: 1; }
+    Keyboard {
+        cyrillic: root.cyrillic;
+        upper: false;
+        key(k) => {
+            if (k == "⏎") { root.back(); } else { root.query = root.apply-key(root.query, k); root.changed(); }
+        }
+    }
+}
+
+// A new name for a file: the old one to edit, then Done.
+export component RenameScreen inherits VerticalLayout {
+    horizontal-stretch: 1;
+    in-out property <string> text;
+    in property <bool> cyrillic;
+    // The new name can be a file name (Rust checks).
+    in property <bool> valid;
+    callback done;
+    callback back;
+    callback apply-key(string, string) -> string;
+    padding: Tokens.pad;
+    padding-right: 20px;
+    spacing: 10px;
+    Header { title: @tr("Rename"); back-clicked => { root.back(); } }
+    HorizontalLayout {
+        spacing: 10px;
+        TextLine { horizontal-stretch: 1; text: root.text; placeholder: @tr("File name"); }
+        PrimaryButton {
+            width: 150px;
+            min-height: 64px;
+            text: @tr("Done");
+            enabled: root.valid;
+            clicked => { root.done(); }
+        }
+    }
+    Rectangle { vertical-stretch: 1; }
+    Keyboard {
+        cyrillic: root.cyrillic;
+        upper: false;
+        key(k) => {
+            if (k == "⏎") { if (root.valid) { root.done(); } } else { root.text = root.apply-key(root.text, k); }
+        }
+    }
+}
+
+// Where to move a file: the top of the storage or one of its folders.
+export component MoveScreen inherits VerticalLayout {
+    horizontal-stretch: 1;
+    in property <string> name;
+    // Folder paths; "" is the top.
+    in property <[string]> folders;
+    // The folder the file is in now.
+    in property <string> current;
+    callback picked(string);
+    callback back;
+    padding: Tokens.pad;
+    padding-bottom: 0;
+    spacing: Tokens.gap-s;
+    Header { title: @tr("Move to folder"); back-clicked => { root.back(); } }
+    ScrollList {
+        vertical-stretch: 1;
+        for folder in root.folders: LinkRow {
+            icon: Icons.folder;
+            title: folder == "" ? @tr("Files (top level)") : folder;
+            value: folder == root.current ? @tr("here now") : "";
+            clicked => { if (folder != root.current) { root.picked(folder); } }
         }
     }
 }
@@ -165,7 +443,7 @@ export component FilesScreen inherits VerticalLayout {
 component CheckRow inherits Rectangle {
     in property <string> text;
     in property <bool> ok;
-    height: 48px;
+    height: 49px;
     HorizontalLayout {
         spacing: 12px;
         VerticalLayout {
@@ -185,12 +463,19 @@ component CheckRow inherits Rectangle {
 
 component Chip inherits Rectangle {
     in property <string> text;
+    in property <color> dot;
+    in property <bool> has-dot;
     height: 36px;
     border-radius: 18px;
     background: Tokens.surface-1;
     HorizontalLayout {
         padding-left: 14px;
         padding-right: 14px;
+        spacing: 8px;
+        if root.has-dot: VerticalLayout {
+            alignment: center;
+            Rectangle { width: 10px; height: 10px; border-radius: 5px; background: root.dot; }
+        }
         Text { text: root.text; color: Tokens.text; font-size: 15px; font-weight: 600; vertical-alignment: center; }
     }
 }
@@ -201,10 +486,17 @@ export component FileScreen inherits Rectangle {
     in property <string> name;
     // May still be loading: shown only when it is about this file.
     in property <FileInfo> info;
+    // What is loaded now (Spoolman or the filament wizard); empty when unknown.
+    in property <string> loaded-material;
+    // The printer's Z travel, mm; 0 until known.
+    in property <float> max-z;
     callback back;
     callback print-file;
-    callback delete;
+    callback more;
     property <bool> loaded: root.info.path == root.path;
+    // Only a model that does not fit gets a row: a passing check is noise.
+    property <bool> too-tall: root.loaded && root.max-z > 0 && root.info.height > root.max-z;
+    property <bool> material-known: root.loaded && root.info.filament != "" && root.loaded-material != "";
     HorizontalLayout {
         padding: Tokens.pad;
         padding-right: 20px;
@@ -224,47 +516,90 @@ export component FileScreen inherits Rectangle {
         }
         VerticalLayout {
             horizontal-stretch: 1;
-            spacing: 12px;
-            Text { text: root.name; color: Tokens.text; font-size: Tokens.title; font-weight: 800; wrap: word-wrap; overflow: elide; }
+            padding-top: 8px;
+            Text { text: root.name; color: Tokens.text; font-size: Tokens.title; font-weight: 800; letter-spacing: -0.52px; overflow: elide; }
+            Rectangle { height: 12px; }
             // Only what the slicer put in the file.
             HorizontalLayout {
                 spacing: 8px;
                 alignment: start;
                 if root.loaded && root.info.minutes >= 0: Chip { text: Format.duration(root.info.minutes); }
                 if root.loaded && (root.info.filament != "" || root.info.grams >= 0): Chip {
+                    has-dot: root.info.has-color;
+                    dot: root.info.color;
                     text: root.info.filament + (root.info.filament != "" && root.info.grams >= 0 ? " · " : "") + (root.info.grams >= 0 ? @tr("{} g", root.info.grams) : "");
                 }
                 if root.loaded && root.info.layers >= 0: Chip { text: @tr("{n} layer" | "{n} layers" % root.info.layers); }
             }
-            if root.loaded && root.info.nozzle-check >= 0: Rectangle {
-                border-radius: Tokens.r-m;
+            Rectangle { height: 12px; }
+            // Checks before printing: the nozzle and the filament when both sides are
+            // known, and always the bed (Rivet cannot see it).
+            Rectangle {
+                border-radius: 22px;
                 background: Tokens.surface-1;
                 VerticalLayout {
                     padding-left: 16px;
                     padding-right: 16px;
                     padding-top: 6px;
                     padding-bottom: 6px;
-                    CheckRow {
-                        ok: root.info.nozzle-check == 1;
-                        text: root.info.nozzle-check == 1 ? @tr("Nozzle {} mm: same as the printer", root.info.nozzle) : @tr("Sliced for a {} mm nozzle: not the printer's", root.info.nozzle);
+                    if root.loaded && root.info.nozzle-check >= 0: VerticalLayout {
+                        CheckRow {
+                            ok: root.info.nozzle-check == 1;
+                            text: root.info.nozzle-check == 1 ? @tr("Nozzle {} mm: same as the printer", Format.fixed(root.info.nozzle, 1)) : @tr("Sliced for a {} mm nozzle: not the printer's", Format.fixed(root.info.nozzle, 1));
+                        }
+                        Rectangle { height: 1px; background: Tokens.surface-2; }
                     }
+                    if root.material-known: VerticalLayout {
+                        CheckRow {
+                            ok: root.info.filament == root.loaded-material;
+                            text: root.info.filament == root.loaded-material
+                                ? @tr("{}: just what is loaded", root.info.filament)
+                                : @tr("Sliced for {}, {} is loaded", root.info.filament, root.loaded-material);
+                        }
+                        Rectangle { height: 1px; background: Tokens.surface-2; }
+                    }
+                    if root.too-tall: VerticalLayout {
+                        CheckRow {
+                            ok: false;
+                            text: @tr("{} mm tall: higher than Z travel ({} mm)", round(root.info.height), round(root.max-z));
+                        }
+                        Rectangle { height: 1px; background: Tokens.surface-2; }
+                    }
+                    CheckRow { ok: false; text: @tr("Is the bed empty and clean?"); }
                 }
             }
             Rectangle { vertical-stretch: 1; }
             HorizontalLayout {
                 spacing: 10px;
+                height: 80px;
                 Rectangle {
                     width: 80px;
-                    height: 80px;
-                    border-radius: Tokens.r-m;
-                    background: del.pressed ? #fb4b5e40 : Tokens.danger-soft;
+                    border-radius: 22px;
+                    background: dots.pressed ? Tokens.surface-2 : Tokens.surface-1;
                     accessible-role: button;
-                    accessible-label: @tr("Delete file");
-                    accessible-action-default => { root.delete(); }
-                    Icon { d: "M4 7h16 M9 7V4.5h6V7 M6.5 7l1 13h9l1-13 M10 11v5 M14 11v5"; size: 26px; color: Tokens.danger; }
-                    del := TouchArea { clicked => { root.delete(); } }
+                    accessible-label: @tr("File actions");
+                    accessible-action-default => { root.more(); }
+                    Icon { d: Icons.more; filled: true; size: 26px; weight: 0.5; color: Tokens.text; }
+                    dots := TouchArea { clicked => { root.more(); } }
                 }
-                PrimaryButton { text: @tr("Print"); min-height: 80px; clicked => { root.print-file(); } }
+                Rectangle {
+                    horizontal-stretch: 1;
+                    border-radius: 22px;
+                    background: go.pressed ? Tokens.accent.darker(15%) : Tokens.accent;
+                    accessible-role: button;
+                    accessible-label: @tr("Print");
+                    accessible-action-default => { root.print-file(); }
+                    HorizontalLayout {
+                        alignment: center;
+                        spacing: 10px;
+                        VerticalLayout {
+                            alignment: center;
+                            Icon { d: "M7.5 4.8v14.4a1 1 0 0 0 1.5.86l11.6-7.2a1 1 0 0 0 0-1.72L9 3.94a1 1 0 0 0-1.5.86z"; size: 24px; filled: true; weight: 0; color: Tokens.accent-ink; }
+                        }
+                        Text { text: @tr("Print"); color: Tokens.accent-ink; font-size: 20px; font-weight: 800; vertical-alignment: center; }
+                    }
+                    go := TouchArea { clicked => { root.print-file(); } }
+                }
             }
         }
     }

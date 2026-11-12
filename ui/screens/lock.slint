@@ -1,0 +1,119 @@
+// The screen locked during a print: progress, a PIN pad when a PIN is set,
+// else a long press to unlock; Stop stays reachable. The prototype's Lock page.
+import { Tokens } from "../kit/tokens.slint";
+import { Icon } from "../kit/controls.slint";
+import { Format } from "../kit/format.slint";
+
+export component LockScreen inherits Rectangle {
+    in property <float> progress;
+    in property <int> remaining-minutes: -1;
+    in property <bool> busy;
+    // The PIN to type; "" unlocks with a long press.
+    in property <string> pin;
+    property <string> typed;
+    // Kept by hand: Slint cannot loop over an inline character count.
+    property <int> pin-len;
+    init => { root.pin-len = root.pin.character-count; }
+    changed pin => { root.pin-len = root.pin.character-count; }
+    property <int> typed-len: root.typed.character-count;
+    property <bool> wrong;
+    callback unlocked;
+    callback emergency-stop;
+    background: Tokens.bg;
+    TouchArea { }
+    HorizontalLayout {
+        padding: 28px;
+        spacing: 24px;
+        VerticalLayout {
+            horizontal-stretch: 1;
+            spacing: 10px;
+            Icon { d: "M7 11h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2z M8.5 11V8a3.5 3.5 0 0 1 7 0v3"; size: 30px; weight: 1.9; color: Tokens.text-2; }
+            Text { text: @tr("Screen locked"); color: Tokens.text; font-size: 28px; font-weight: 800; }
+            Text {
+                text: root.busy ? @tr("Printing: {}%", round(root.progress * 100)) + (root.remaining-minutes > 0 ? " · " + @tr("{} left", Format.duration(root.remaining-minutes)) : "") : "";
+                color: Tokens.text-2;
+                font-size: 17px;
+            }
+            if root.pin != "": HorizontalLayout {
+                spacing: 12px;
+                alignment: start;
+                padding-top: 12px;
+                for i in root.pin-len: Rectangle {
+                    width: 18px;
+                    height: 18px;
+                    border-radius: 9px;
+                    background: root.wrong ? Tokens.danger : i < root.typed-len ? Tokens.accent : Tokens.surface-3;
+                }
+            }
+            if root.pin == "": Text { text: @tr("Hold the lock to open."); color: Tokens.text-dim; font-size: 15px; }
+            Rectangle { vertical-stretch: 1; }
+            HorizontalLayout {
+                alignment: start;
+                Rectangle {
+                    width: 254px;
+                    height: 72px;
+                    border-radius: 20px;
+                    background: estop.pressed ? #fb4b5e40 : #3b1218;
+                    accessible-role: button;
+                    accessible-label: @tr("Emergency stop");
+                    HorizontalLayout {
+                        alignment: center;
+                        spacing: 10px;
+                        VerticalLayout { alignment: center; Icon { d: "M8 2.5h8l5.5 5.5v8L16 21.5H8L2.5 16V8z M12 7.5v5.5 M12 16.5v.5"; size: 22px; weight: 2; color: Tokens.danger; } }
+                        Text { text: @tr("Emergency stop"); color: Tokens.danger; font-size: 16px; font-weight: 700; vertical-alignment: center; }
+                    }
+                    estop := TouchArea { clicked => { root.emergency-stop(); } }
+                }
+            }
+        }
+        if root.pin != "": VerticalLayout {
+            width: 300px;
+            spacing: 8px;
+            for row in [["1", "2", "3"], ["4", "5", "6"], ["7", "8", "9"], ["", "0", "⌫"]]: HorizontalLayout {
+                spacing: 8px;
+                vertical-stretch: 1;
+                for k in row: Rectangle {
+                    horizontal-stretch: 1;
+                    border-radius: 18px;
+                    background: k == "" ? transparent : ta.pressed ? Tokens.surface-2 : Tokens.surface-1;
+                    accessible-role: button;
+                    accessible-label: k == "⌫" ? @tr("Erase") : k;
+                    Text { text: k; color: Tokens.text; font-size: 26px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+                    ta := TouchArea {
+                        enabled: k != "";
+                        clicked => {
+                            root.wrong = false;
+                            if (k == "⌫") {
+                                root.typed = "";
+                            } else if (root.typed-len < root.pin-len) {
+                                root.typed += k;
+                                if (root.typed-len == root.pin-len) {
+                                    if (root.typed == root.pin) { root.typed = ""; root.unlocked(); } else { root.typed = ""; root.wrong = true; }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if root.pin == "": VerticalLayout {
+            width: 300px;
+            alignment: center;
+            Rectangle {
+                height: 160px;
+                border-radius: 28px;
+                background: hold.pressed ? Tokens.surface-2 : Tokens.surface-1;
+                accessible-role: button;
+                accessible-label: @tr("Hold to unlock");
+                VerticalLayout {
+                    alignment: center;
+                    spacing: 8px;
+                    HorizontalLayout { alignment: center; Icon { d: "M7 11h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2z M8.5 11V8a3.5 3.5 0 0 1 7 0"; size: 40px; weight: 1.9; color: Tokens.accent; } }
+                    Text { text: @tr("Hold to unlock"); color: Tokens.text; font-size: 17px; font-weight: 700; horizontal-alignment: center; }
+                }
+                hold := TouchArea { }
+                Timer { interval: 1s; running: hold.pressed; triggered => { root.unlocked(); } }
+            }
+        }
+    }
+}

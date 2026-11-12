@@ -1,12 +1,18 @@
-# Copy to /data/printer_data/config/rivet.toml (KlipperMod) or next to the binary.
-# Command line (--lang, --moonraker) and environment (RIVET_LANG, RIVET_MOONRAKER) win over this file.
+# Rivet's settings file. Every line is optional; a missing file is fine.
+# Where it lives: /root/printer_data/config/rivet.toml on Klipper Mod (the
+# installers put this copy there), /opt/config/mod_data/rivet.toml on Z-Mod.
+# You can edit it from Fluidd or Mainsail; restart the screen afterwards.
+# The command line (--lang, --moonraker) and the environment (RIVET_LANG,
+# RIVET_MOONRAKER) win over this file.
 
-# Interface language: "en" or "ru". Without it Rivet follows the system LANG, then English.
-language = "ru"
+# Interface language: "en" or "ru". Without it Rivet follows the system
+# language (on Z-Mod, Z-Mod's own language setting), else English.
+# language = "ru"
 
-# Moonraker websocket. The default is the printer itself.
+# Moonraker's websocket. The default is the printer itself.
 # moonraker = "ws://127.0.0.1:7125/websocket"
 
 # Log to a file (rotated: 512 KB, 3 old copies) instead of the terminal.
-# log_file = "/data/printer_data/logs/rivet.log"
+# S80rivet passes --log-file, which wins over this line.
+# log_file = "/root/printer_data/logs/rivet.log"
 # log_level = "info"   # error, warn, info, debug

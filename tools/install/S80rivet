@@ -1,0 +1,220 @@
+#!/bin/sh
+#
+# Start Rivet, the touch screen (replaces S80guppyscreen, see tools/install.sh)
+#
+# Where it lives decides where it works: run from a folder that holds the rivet
+# binary (Z-Mod: /srv/rivet/S80rivet), that folder; else /opt/rivet (Klipper Mod,
+# /etc/init.d/S80rivet). RIVET_DIR overrides it. Config and logs go to Klipper
+# Mod's printer_data, or to Z-Mod's /opt/config/mod_data.
+#
+# start-stop-daemon runs this script's "supervise" loop in the background; the
+# loop starts Rivet and starts it again if it exits, waiting longer after each
+# quick crash (1, 2, 4 ... 60 s) so a crash loop does not eat the CPU.
+#
+# Updates (Moonraker's update manager unpacks a release into /opt/rivet, see
+# tools/install.sh) are checked before each start: the binary must match
+# rivet.sha256. A binary that has run $HEALTHY_SECONDS is kept as rivet.good; a new
+# one that fails to come up twice, or fails its checksum, is replaced by
+# rivet.good, and its checksum is written to rolled-back for the screen to say so.
+#
+# Rivet logs to $LOG_FILE (rotated by Rivet itself). Its stderr (panics) and the
+# restarts go to $CONSOLE_LOG, cut to one old copy when it passes 256 KB.
+#
+
+SELF=$(readlink -f "$0")
+if [ -n "$RIVET_DIR" ]; then
+    DIR=$RIVET_DIR
+elif [ -x "$(dirname "$SELF")/rivet" ]; then
+    DIR=$(dirname "$SELF")
+else
+    DIR=/opt/rivet
+fi
+# Z-Mod first: it has a printer_data too, but keeps its screens' files in mod_data.
+if [ -d /opt/config/mod_data ]; then
+    CONFIG_DIR=/opt/config/mod_data
+    LOG_DIR=/opt/config/mod_data/log
+elif [ -d /root/printer_data/config ]; then
+    CONFIG_DIR=/root/printer_data/config
+    LOG_DIR=/root/printer_data/logs
+else
+    CONFIG_DIR=$DIR
+    LOG_DIR=$DIR
+fi
+RIVET=$DIR/rivet
+# Z-Mod's language (language: ru in mod_data/lang.cfg) as the system's; a
+# language set in rivet.toml still wins.
+LANGUAGE=$LANG
+if [ -f /opt/config/mod_data/lang.cfg ]; then
+    l=$(sed -n 's/^language: *\([a-z][a-z]\).*/\1/p' /opt/config/mod_data/lang.cfg | head -n1)
+    [ -n "$l" ] && LANGUAGE=$l
+fi
+GOOD=$DIR/rivet.good
+SUM=$DIR/rivet.sha256
+ROLLED=$DIR/rolled-back
+CONFIG=$CONFIG_DIR/rivet.toml
+LOG_FILE=$LOG_DIR/rivet.log
+CONSOLE_LOG=$LOG_DIR/rivet-console.log
+PID_FILE=/run/rivet.pid
+CHILD_PID_FILE=/run/rivet.child.pid
+NICENESS=10
+# A run shorter than this counts as a crash and doubles the wait before the next start.
+HEALTHY_SECONDS=30
+MAX_DELAY=60
+
+say() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') supervisor: $*" >> $CONSOLE_LOG
+}
+
+cut_console_log() {
+    if [ -f $CONSOLE_LOG ] && [ "$(wc -c < $CONSOLE_LOG)" -gt 262144 ]; then
+        mv -f $CONSOLE_LOG $CONSOLE_LOG.1
+    fi
+}
+
+# The binary's checksum, as sha256sum prints it (first word only).
+sum_of() {
+    sha256sum "$1" 2>/dev/null | cut -d' ' -f1
+}
+
+# Back to the last binary that worked, if there is one; say why.
+roll_back() {
+    if [ -f $GOOD ] && ! cmp -s $GOOD $RIVET; then
+        sum_of $RIVET > $ROLLED
+        cp -f $GOOD $RIVET.tmp && chmod 755 $RIVET.tmp && mv -f $RIVET.tmp $RIVET
+        say "$1; rolled back to the last binary that worked"
+    else
+        say "$1; no other binary to roll back to"
+    fi
+}
+
+# Before a start: a binary that does not match its checksum is not run.
+check_binary() {
+    # The binary that worked (after a roll-back the checksum is the bad one's).
+    [ -f $GOOD ] && cmp -s $RIVET $GOOD && return 0
+    if [ -f $SUM ] && [ "$(sum_of $RIVET)" != "$(cut -d' ' -f1 $SUM)" ]; then
+        roll_back "rivet does not match rivet.sha256 (broken download?)"
+    fi
+}
+
+supervise() {
+    child=
+    fails=0
+    trap 'say "stop"; [ -n "$child" ] && kill $child 2>/dev/null; wait $child 2>/dev/null; rm -f $CHILD_PID_FILE; exit 0' TERM INT
+    delay=1
+    while :; do
+        cut_console_log
+        check_binary
+        started=$(cut -d. -f1 /proc/uptime)
+        LANG=$LANGUAGE RIVET_SUPERVISED=1 RIVET_CONFIG_DIR=$CONFIG_DIR $RIVET --config $CONFIG --log-file $LOG_FILE >> $CONSOLE_LOG 2>&1 < /dev/null &
+        child=$!
+        echo $child > $CHILD_PID_FILE
+        say "started rivet (pid $child)"
+        # Once it has run long enough, keep it as the binary to come back to.
+        kept=
+        # (A child that has exited stays a zombie until waited for: not "alive".)
+        while [ -d /proc/$child ] && ! grep -q '^State:[[:space:]]*Z' /proc/$child/status 2>/dev/null; do
+            sleep 5 &
+            wait $!
+            if [ -z "$kept" ] && [ $(( $(cut -d. -f1 /proc/uptime) - started )) -ge $HEALTHY_SECONDS ]; then
+                kept=1
+                fails=0
+                if ! cmp -s $RIVET $GOOD; then
+                    cp -f $RIVET $GOOD.tmp && mv -f $GOOD.tmp $GOOD && rm -f $ROLLED
+                    say "rivet ran ${HEALTHY_SECONDS}s: kept as rivet.good"
+                fi
+            fi
+        done
+        wait $child
+        code=$?
+        child=
+        rm -f $CHILD_PID_FILE
+        ran=$(( $(cut -d. -f1 /proc/uptime) - started ))
+        if [ $ran -ge $HEALTHY_SECONDS ] || [ $code -eq 0 ]; then
+            # Ran long enough, or exited on purpose (a new binary to start).
+            delay=1
+        elif [ -f $GOOD ] && ! cmp -s $RIVET $GOOD; then
+            # A new binary that does not come up: two tries, then the old one.
+            fails=$((fails + 1))
+            if [ $fails -ge 2 ]; then
+                roll_back "new rivet exited twice within ${HEALTHY_SECONDS}s"
+                fails=0
+            fi
+        fi
+        say "rivet exited with code $code after ${ran}s, restarting in ${delay}s"
+        sleep $delay &
+        wait $!
+        if [ $ran -lt $HEALTHY_SECONDS ] && [ $code -ne 0 ]; then
+            delay=$(( delay * 2 ))
+            [ $delay -gt $MAX_DELAY ] && delay=$MAX_DELAY
+        fi
+    done
+}
+
+start() {
+    if start-stop-daemon -K -t -q -p $PID_FILE; then
+        echo "rivet is already running"
+        return 0
+    fi
+    # set backlight to 0% first, the LCD values are not initialized properly
+    # which is done when disable/enable is triggered. Otherwise
+    # 1% would be 100% and 100% would be 1%
+    # Klipper Mod's tool only (Z-Mod's takes other values; Rivet sets the
+    # backlight itself there).
+    if [ -x /usr/bin/backlight ] && /usr/bin/backlight 2>/dev/null | grep -q 'Current brightness'; then
+        backlight 0%
+        backlight 75%
+    fi
+    mkdir -p $LOG_DIR
+
+    start-stop-daemon -S -b -m -p $PID_FILE -N $NICENESS --exec /bin/sh -- "$SELF" supervise
+}
+
+stop() {
+    start-stop-daemon -K -q -p $PID_FILE
+    # The supervisor stops Rivet on TERM; wait for the screen to be free.
+    i=0
+    while [ -f $CHILD_PID_FILE ] && [ $i -lt 50 ]; do
+        # (Z-Mod's busybox sleeps whole seconds only.)
+        sleep 0.1 2>/dev/null || usleep 100000 2>/dev/null || { sleep 1; i=$((i + 9)); }
+        i=$((i + 1))
+    done
+    if [ -f $CHILD_PID_FILE ]; then
+        kill -9 "$(cat $CHILD_PID_FILE)" 2>/dev/null
+        rm -f $CHILD_PID_FILE
+    fi
+    rm -f $PID_FILE
+    show_first_page
+}
+
+# Rivet flips between two pages of video memory and may stop on the second.
+# A screen started next (GuppyScreen's LVGL) takes that offset for good and
+# draws where nothing is shown: point the display back at the first page.
+show_first_page() {
+    [ -w /sys/class/graphics/fb0/pan ] && echo 0,0 > /sys/class/graphics/fb0/pan || true
+}
+
+restart() {
+    stop
+    sleep 2
+    start
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    restart|reload)
+        restart
+        ;;
+    supervise)
+        supervise
+        ;;
+  *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+esac
+
+exit $?

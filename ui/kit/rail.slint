@@ -9,26 +9,36 @@ component RailItem inherits Rectangle {
     in property <bool> active;
     in property <bool> badge;
     callback clicked;
-    height: 74px;
+    // 74 like the prototype; the five shrink evenly to fit 480 (there: 73.2 each).
+    preferred-height: 74px;
+    min-height: 64px;
     border-radius: 18px;
     background: root.active ? Tokens.accent-soft : ta.pressed ? Tokens.surface-1 : transparent;
     accessible-role: tab;
     accessible-label: root.label;
     accessible-checked: root.active;
-    VerticalLayout {
-        alignment: center;
-        spacing: 4px;
-        HorizontalLayout {
-            alignment: center;
-            Icon { d: root.icon; size: 28px; color: root.active ? Tokens.accent : #7d8792; }
-        }
-        Text {
-            text: root.label;
-            color: root.active ? Tokens.accent : #7d8792;
-            font-size: 11px;
-            font-weight: 600;
-            horizontal-alignment: center;
-        }
+    // Icon and label centred together, 4 px apart, as in the prototype. The label
+    // may run wider than the 72 px item into the rail's padding («Инструменты»).
+    property <length> label-h: 14px;
+    property <length> top: (root.height - 28px - 4px - root.label-h) / 2;
+    Icon {
+        x: (root.width - 28px) / 2;
+        y: root.top;
+        d: root.icon;
+        size: 28px;
+        color: root.active ? Tokens.accent : Tokens.text-mute;
+    }
+    Text {
+        x: -8px;
+        y: root.top + 32px;
+        width: root.width + 16px;
+        height: root.label-h;
+        text: root.label;
+        color: root.active ? Tokens.accent : Tokens.text-mute;
+        font-size: 11px;
+        font-weight: 600;
+        horizontal-alignment: center;
+        vertical-alignment: center;
     }
     if root.badge: Rectangle {
         x: parent.width - 26px;
@@ -47,16 +57,15 @@ export component Rail inherits Rectangle {
     // "home" | "control" | "tools" | "settings" | "messages"
     in property <string> active: "home";
     in property <bool> unread;
+    // Stop needs a 1-second hold (Settings › Safety).
+    in property <bool> hold-stop;
     callback navigate(string);
-    // One tap, no confirm (D-012).
+    // One tap, no confirm: an emergency stop must not wait.
     callback emergency-stop;
     width: Tokens.rail-width;
     background: Tokens.rail;
     VerticalLayout {
-        // 4 px at the sides: «Инструменты» needs the width.
         padding: 8px;
-        padding-left: 4px;
-        padding-right: 4px;
         spacing: 4px;
         RailItem { label: @tr("Home"); icon: Icons.home; active: root.active == "home"; clicked => { root.navigate("home"); } }
         RailItem { label: @tr("Control"); icon: Icons.control; active: root.active == "control"; clicked => { root.navigate("control"); } }
@@ -79,7 +88,9 @@ export component Rail inherits Rectangle {
                 }
                 Text { text: @tr("Stop"); color: Tokens.danger; font-size: 11px; font-weight: 700; horizontal-alignment: center; }
             }
-            stop := TouchArea { clicked => { root.emergency-stop(); } }
+            stop := TouchArea { clicked => { if (!root.hold-stop) { root.emergency-stop(); } } }
+            // Held for a second: stop, even before the finger lifts.
+            Timer { interval: 1s; running: root.hold-stop && stop.pressed; triggered => { root.emergency-stop(); } }
         }
     }
 }

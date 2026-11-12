@@ -145,6 +145,232 @@ pub fn decode_png(bytes: &[u8]) -> Option<Rgba> {
 
 /// Shrink by a whole factor with a box filter so the image is at most
 /// `max_width` wide. Smaller images are kept as they are.
+/// Everything a fetched preview goes through before the screen shows it: fitted to
+/// MAX_WIDTH, its empty margins cut, small ones enlarged, a shadow put under it.
+pub fn prepare(img: Rgba) -> Rgba {
+    shadow(enlarge(trim(downscale(img, MAX_WIDTH))))
+}
+
+/// A soft oval shadow under the model, as the prototype's renders have. It is
+/// painted into the bitmap (behind the model, in a few extra rows below it): the
+/// printer's renderer has no blur, but draws alpha bitmaps fine. A preview with an
+/// opaque background (no transparent corners) has nowhere to show it and stays as is.
+pub fn shadow(img: Rgba) -> Rgba {
+    let (w, h) = (img.width as usize, img.height as usize);
+    if w < 8 || h < 8 {
+        return img;
+    }
+    let alpha = |x: usize, y: usize| img.data[(y * w + x) * 4 + 3];
+    let corners = [(0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1)];
+    if corners.iter().any(|&(x, y)| alpha(x, y) > 16) {
+        return img;
+    }
+    // The oval: as wide as most of the model, flat, a little below its lowest edge
+    // so its lower half shows, as a render's contact shadow.
+    let rx = w as f32 * 0.44;
+    let ry = (rx * 0.2).max(3.0);
+    let cx = w as f32 / 2.0;
+    let cy = h as f32 - 4.0 + ry * 0.35;
+    let extra = (cy + ry + 1.0).ceil() as usize - h.min((cy + ry + 1.0).ceil() as usize);
+    let nh = h + extra;
+    const DARK: f32 = 0.7;
+    let mut data = vec![0u8; w * nh * 4];
+    for y in 0..nh {
+        for x in 0..w {
+            let (dx, dy) = ((x as f32 + 0.5 - cx) / rx, (y as f32 + 0.5 - cy) / ry);
+            let d2 = dx * dx + dy * dy;
+            // Densest in the middle, fading to nothing at the oval's edge.
+            let sa = if d2 < 1.0 {
+                DARK * (1.0 - d2).powf(1.4)
+            } else {
+                0.0
+            };
+            let o = (y * w + x) * 4;
+            let (r, g, b, a) = if y < h {
+                let i = &img.data[o..o + 4];
+                (
+                    f32::from(i[0]),
+                    f32::from(i[1]),
+                    f32::from(i[2]),
+                    f32::from(i[3]) / 255.0,
+                )
+            } else {
+                (0.0, 0.0, 0.0, 0.0)
+            };
+            // The model over the (black) shadow, straight alpha.
+            let oa = a + sa * (1.0 - a);
+            if oa > 0.0 {
+                data[o] = (r * a / oa).round() as u8;
+                data[o + 1] = (g * a / oa).round() as u8;
+                data[o + 2] = (b * a / oa).round() as u8;
+                data[o + 3] = (oa * 255.0).round() as u8;
+            }
+        }
+    }
+    Rgba {
+        width: w as u32,
+        height: nh as u32,
+        data,
+    }
+}
+
+/// Cut the transparent margins around the model (slicer previews leave wide ones),
+/// keeping a few pixels: the model then fills its place and a shadow can sit under
+/// it. An opaque image stays as it is.
+pub fn trim(img: Rgba) -> Rgba {
+    let (w, h) = (img.width as usize, img.height as usize);
+    let solid = |x: usize, y: usize| img.data[(y * w + x) * 4 + 3] > 16;
+    let rows: Vec<usize> = (0..h).filter(|&y| (0..w).any(|x| solid(x, y))).collect();
+    let cols: Vec<usize> = (0..w).filter(|&x| (0..h).any(|y| solid(x, y))).collect();
+    let (Some(&top), Some(&bottom), Some(&left), Some(&right)) =
+        (rows.first(), rows.last(), cols.first(), cols.last())
+    else {
+        return img;
+    };
+    const PAD: usize = 3;
+    let (x0, y0) = (left.saturating_sub(PAD), top.saturating_sub(PAD));
+    let (x1, y1) = ((right + PAD).min(w - 1), (bottom + PAD).min(h - 1));
+    if x0 == 0 && y0 == 0 && x1 == w - 1 && y1 == h - 1 {
+        return img;
+    }
+    let (nw, nh) = (x1 - x0 + 1, y1 - y0 + 1);
+    let mut data = Vec::with_capacity(nw * nh * 4);
+    for y in y0..=y1 {
+        data.extend_from_slice(&img.data[(y * w + x0) * 4..(y * w + x1 + 1) * 4]);
+    }
+    Rgba {
+        width: nw as u32,
+        height: nh as u32,
+        data,
+    }
+}
+
+/// Slicer previews are small (often 140×110). Scaled up 1.5× with Catmull-Rom
+/// bicubic filtering they keep their edges; bilinear blurs them and the screen's
+/// own scaling (nearest pixel) makes blocks. Larger previews stay as they are.
+pub fn enlarge(img: Rgba) -> Rgba {
+    if img.width == 0 || img.height == 0 || img.width >= 200 {
+        return img;
+    }
+    let width = (img.width * 3 / 2).min(MAX_WIDTH);
+    let height = (img.height * width / img.width).max(1);
+    resize(&img, width, height)
+}
+
+/// Scale to fill a `width` × `height` box keeping proportions, at most `max_scale`
+/// times up (bicubic) — for a preview that has a big place of its own, such as
+/// the Home card. Larger images are shrunk with a box filter first.
+pub fn fit(img: Rgba, width: u32, height: u32, max_scale: f32) -> Rgba {
+    if img.width == 0 || img.height == 0 {
+        return img;
+    }
+    let img = downscale(img, width);
+    let k = (width as f32 / img.width as f32)
+        .min(height as f32 / img.height as f32)
+        .min(max_scale);
+    if k <= 1.01 {
+        return img;
+    }
+    let (w, h) = (
+        (img.width as f32 * k).round() as u32,
+        (img.height as f32 * k).round() as u32,
+    );
+    let big = resize(&img, w.max(1), h.max(1));
+    // Scaled up this much, edges go soft: an unsharp mask brings them back.
+    if k >= 1.5 {
+        sharpen(big, 0.6)
+    } else {
+        big
+    }
+}
+
+/// Unsharp mask: each colour pushed away from its 3×3 neighbourhood mean by
+/// `amount`. Alpha stays, so the model's outline and the shadow keep their shape.
+fn sharpen(img: Rgba, amount: f32) -> Rgba {
+    let (w, h) = (img.width as usize, img.height as usize);
+    if w < 3 || h < 3 {
+        return img;
+    }
+    let src = &img.data;
+    let mut out = src.clone();
+    for y in 1..h - 1 {
+        for x in 1..w - 1 {
+            let i = (y * w + x) * 4;
+            if src[i + 3] == 0 {
+                continue;
+            }
+            for c in 0..3 {
+                let mut sum = 0.0;
+                for dy in [-1i64, 0, 1] {
+                    for dx in [-1i64, 0, 1] {
+                        let j = (((y as i64 + dy) as usize) * w + (x as i64 + dx) as usize) * 4;
+                        sum += f32::from(src[j + c]);
+                    }
+                }
+                let v = f32::from(src[i + c]);
+                out[i + c] = (v + amount * (v - sum / 9.0)).round().clamp(0.0, 255.0) as u8;
+            }
+        }
+    }
+    Rgba {
+        width: img.width,
+        height: img.height,
+        data: out,
+    }
+}
+
+/// A preview for a box of its own: margins cut, fitted to the box (the shadow
+/// takes the rows below), the shadow under it.
+pub fn prepare_for(img: Rgba, width: u32, height: u32) -> Rgba {
+    shadow(fit(trim(img), width, height * 9 / 10, 3.0))
+}
+
+/// Catmull-Rom bicubic resize.
+fn resize(img: &Rgba, width: u32, height: u32) -> Rgba {
+    let (sw, sh) = (img.width as i64, img.height as i64);
+    let at = |x: i64, y: i64, c: usize| -> f32 {
+        let (x, y) = (x.clamp(0, sw - 1), y.clamp(0, sh - 1));
+        f32::from(img.data[((y * sw + x) * 4) as usize + c])
+    };
+    // Catmull-Rom weights for the four taps around t in 0..1.
+    let weights = |t: f32| {
+        let (t2, t3) = (t * t, t * t * t);
+        [
+            0.5 * (-t3 + 2.0 * t2 - t),
+            0.5 * (3.0 * t3 - 5.0 * t2 + 2.0),
+            0.5 * (-3.0 * t3 + 4.0 * t2 + t),
+            0.5 * (t3 - t2),
+        ]
+    };
+    let (kx, ky) = (
+        img.width as f32 / width as f32,
+        img.height as f32 / height as f32,
+    );
+    let mut data = Vec::with_capacity((width * height * 4) as usize);
+    for y in 0..height {
+        let fy = (y as f32 + 0.5) * ky - 0.5;
+        let (y0, wy) = (fy.floor() as i64, weights(fy - fy.floor()));
+        for x in 0..width {
+            let fx = (x as f32 + 0.5) * kx - 0.5;
+            let (x0, wx) = (fx.floor() as i64, weights(fx - fx.floor()));
+            for c in 0..4 {
+                let mut v = 0.0;
+                for (j, wyj) in wy.iter().enumerate() {
+                    for (i, wxi) in wx.iter().enumerate() {
+                        v += wyj * wxi * at(x0 - 1 + i as i64, y0 - 1 + j as i64, c);
+                    }
+                }
+                data.push(v.round().clamp(0.0, 255.0) as u8);
+            }
+        }
+    }
+    Rgba {
+        width,
+        height,
+        data,
+    }
+}
+
 pub fn downscale(img: Rgba, max_width: u32) -> Rgba {
     let f = img.width.div_ceil(max_width).max(1);
     if f == 1 {
@@ -252,6 +478,67 @@ mod tests {
     }
 
     #[test]
+    fn shadow_only_under_transparent_previews() {
+        let opaque = Rgba {
+            width: 40,
+            height: 20,
+            data: vec![255; 40 * 20 * 4],
+        };
+        assert_eq!(shadow(opaque).height, 20);
+        let clear = Rgba {
+            width: 100,
+            height: 20,
+            data: vec![0; 100 * 20 * 4],
+        };
+        let s = shadow(clear);
+        assert!(s.height > 20);
+        let a = |x: usize, y: usize| s.data[(y * 100 + x) * 4 + 3];
+        // Dark under the middle, nothing at the sides.
+        assert!(a(50, 18) > 100);
+        assert_eq!(a(0, 18), 0);
+        assert!(s.data.chunks(4).all(|p| p[..3] == [0, 0, 0]));
+    }
+
+    #[test]
+    fn trim_cuts_transparent_margins() {
+        // 6×4, one solid pixel at (3, 2).
+        let mut data = vec![0u8; 6 * 4 * 4];
+        data[(2 * 6 + 3) * 4 + 3] = 255;
+        let t = trim(Rgba {
+            width: 6,
+            height: 4,
+            data,
+        });
+        assert_eq!((t.width, t.height), (6, 4));
+        let mut data = vec![0u8; 20 * 20 * 4];
+        data[(10 * 20 + 10) * 4 + 3] = 255;
+        let t = trim(Rgba {
+            width: 20,
+            height: 20,
+            data,
+        });
+        assert_eq!((t.width, t.height), (7, 7));
+    }
+
+    #[test]
+    fn enlarge_small_previews_only() {
+        let small = Rgba {
+            width: 2,
+            height: 2,
+            data: vec![255; 16],
+        };
+        let big = enlarge(small);
+        assert_eq!((big.width, big.height), (3, 3));
+        assert!(big.data.iter().all(|&v| v == 255));
+        let large = Rgba {
+            width: 300,
+            height: 1,
+            data: vec![0; 1200],
+        };
+        assert_eq!(enlarge(large).width, 300);
+    }
+
+    #[test]
     fn downscale_averages_blocks() {
         let img = Rgba {
             width: 4,
@@ -325,5 +612,25 @@ mod tests {
         });
         let body = http_get(&addr, "/server/files/gcodes/a.png").await.unwrap();
         assert_eq!(body, b"hi");
+    }
+
+    #[test]
+    fn fit_fills_a_wide_box() {
+        let img = Rgba {
+            width: 100,
+            height: 80,
+            data: vec![200; 100 * 80 * 4],
+        };
+        // Limited by the height: 80 → 160 (2×, the cap is 2).
+        let big = fit(img, 372, 232, 2.0);
+        assert_eq!((big.width, big.height), (200, 160));
+        let wide = Rgba {
+            width: 300,
+            height: 100,
+            data: vec![200; 300 * 100 * 4],
+        };
+        // Limited by the width: 300 → 372.
+        let f = fit(wide, 372, 232, 2.0);
+        assert_eq!(f.width, 372);
     }
 }

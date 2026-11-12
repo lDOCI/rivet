@@ -1,0 +1,296 @@
+// The one layout of every list page of the prototype (docs/design/style, pages with `ROWS`):
+// header, then sliders as vertical bars on the left and the other rows in a scrolling
+// column on the right. Pages fill it from ui/generated/forms.slint, which
+// tools/gen-forms.py writes from the prototype itself: order, kinds, titles, steps.
+import { Tokens } from "tokens.slint";
+import { Header, PrimaryButton, SectionLabel, Icon } from "controls.slint";
+import { LinkRow, InfoRow, ActionRow, ToggleRow, SegmentedRow } from "rows.slint";
+import { VBar, Stepper, FineStepper } from "values.slint";
+import { ScrollList } from "scroll.slint";
+
+// One row of the right column. `kind` is the prototype's: section, link, info, toggle,
+// stepper, fine, seg, action. Fields a kind does not use stay empty.
+export struct FormRow {
+    kind: string,
+    key: string,
+    title: string,
+    sub: string,
+    // link / info: text on the right; stepper / fine: the formatted value.
+    value: string,
+    // info: "danger" | "ok" | ""; action: "accent" (filled) | "danger" | "".
+    tone: string,
+    // toggle: on; action: enabled
+    on: bool,
+    // seg
+    opts: [string],
+    sel: int,
+    // link: icon path
+    icon: string,
+    // stepper: one step; fine: big and small steps, labels, and the starting value.
+    big: float,
+    small: float,
+    // fine: step labels as the prototype writes them ("0.05"): a number turned into
+    // text here would follow the locale ("0,05").
+    big-label: string,
+    small-label: string,
+    changed: bool,
+    was: string,
+    // false when this printer has nothing behind the row: then it takes no room.
+    shown: bool,
+}
+
+// A slider of the prototype: drawn as a vertical bar left of the rows.
+export struct FormBar {
+    key: string,
+    title: string,
+    // The bar's own value, and the printer's live one (-1: none).
+    value: float,
+    source: float,
+    min: float,
+    max: float,
+    step: float,
+    big-step: float,
+    unit: string,
+    off-at-zero: bool,
+    shown: bool,
+}
+
+// One row of a form, any kind. The gap below lives in the row, so a hidden row
+// leaves none.
+component FormItem inherits VerticalLayout {
+    in property <FormRow> r;
+    callback activate(string);
+    callback toggled(string, bool);
+    callback stepped(string, float);
+    callback edit(string);
+    callback picked(string, int);
+    padding-bottom: root.r.shown ? 8px : 0px;
+    if root.r.shown && root.r.kind == "section": HorizontalLayout {
+        padding-top: 8px;
+        padding-left: 4px;
+        SectionLabel { text: root.r.title; }
+    }
+    if root.r.shown && root.r.kind == "link": LinkRow {
+        title: root.r.title;
+        sub: root.r.sub;
+        value: root.r.value;
+        icon: root.r.icon;
+        clicked => { root.activate(root.r.key); }
+    }
+    if root.r.shown && root.r.kind == "info": InfoRow {
+        title: root.r.title;
+        sub: root.r.sub;
+        value: root.r.value;
+        value-color: root.r.tone == "danger" ? Tokens.danger : root.r.tone == "ok" ? Tokens.accent : Tokens.text;
+    }
+    if root.r.shown && root.r.kind == "toggle": ToggleRow {
+        title: root.r.title;
+        sub: root.r.sub;
+        checked: root.r.on;
+        toggled(v) => { root.toggled(root.r.key, v); }
+    }
+    if root.r.shown && root.r.kind == "stepper": Stepper {
+        title: root.r.title;
+        sub: root.r.sub;
+        label: root.r.value;
+        decrement => { root.stepped(root.r.key, -r.big); }
+        increment => { root.stepped(root.r.key, root.r.big); }
+        edit => { root.edit(root.r.key); }
+    }
+    if root.r.shown && root.r.kind == "fine": FineStepper {
+        title: root.r.title;
+        sub: root.r.sub;
+        label: root.r.value;
+        changed: root.r.changed;
+        was: root.r.was;
+        big: root.r.big-label;
+        small: root.r.small-label;
+        big-step: root.r.big;
+        small-step: root.r.small;
+        step(d) => { root.stepped(root.r.key, d); }
+        edit => { root.edit(root.r.key); }
+    }
+    if root.r.shown && root.r.kind == "seg": SegmentedRow {
+        title: root.r.title;
+        sub: root.r.sub;
+        options: root.r.opts;
+        selected: root.r.sel;
+        picked(i) => { root.picked(root.r.key, i); }
+    }
+    if root.r.shown && root.r.kind == "action" && root.r.tone == "accent" && root.r.value == "": PrimaryButton {
+        text: root.r.title;
+        sub: root.r.sub;
+        enabled: root.r.on;
+        clicked => { root.activate(root.r.key); }
+    }
+    // With a square icon button beside it (its key in `value`, enabled by `changed`).
+    if root.r.shown && root.r.kind == "action" && root.r.tone == "accent" && root.r.value != "": HorizontalLayout {
+        spacing: 8px;
+        PrimaryButton {
+            horizontal-stretch: 1;
+            text: root.r.title;
+            sub: root.r.sub;
+            enabled: root.r.on;
+            clicked => { root.activate(root.r.key); }
+        }
+        Rectangle {
+            width: Tokens.touch-primary;
+            border-radius: Tokens.r-m;
+            background: side-ta.pressed ? Tokens.surface-3 : Tokens.surface-1;
+            opacity: root.r.changed ? 1 : 0.4;
+            accessible-role: button;
+            accessible-label: root.r.value;
+            accessible-action-default => { if (root.r.changed) { root.activate(root.r.value); } }
+            Icon { d: root.r.icon; color: Tokens.text; size: 28px; x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2; }
+            side-ta := TouchArea { enabled: root.r.changed; clicked => { root.activate(root.r.value); } }
+        }
+    }
+    if root.r.shown && root.r.kind == "action" && root.r.tone != "accent": ActionRow {
+        title: root.r.title;
+        sub: root.r.sub;
+        danger: root.r.tone == "danger";
+        enabled: root.r.on;
+        clicked => { root.activate(root.r.key); }
+    }}
+
+// The whole page of a list form. Kept apart from FormScreen: every generated form
+// inherits FormScreen, and Slint copies an inherited component's elements into
+// each form. As a child component this body is generated once and shared, which
+// keeps the printer binary small (31 forms used to carry 31 copies).
+component FormBody inherits VerticalLayout {
+    in property <string> title;
+    in property <bool> has-back: true;
+    // One line under the header, as some prototype pages have.
+    in property <string> intro;
+    in property <[FormBar]> bars;
+    // The rows in order: fixed rows from the prototype and live lists (spools, power
+    // devices, ...) come in up to five segments, shown one after another.
+    in property <[FormRow]> rows;
+    in property <[FormRow]> rows-1;
+    in property <[FormRow]> rows-2;
+    in property <[FormRow]> rows-3;
+    in property <[FormRow]> rows-4;
+    callback back;
+    // link and action rows
+    callback activate(string);
+    callback toggled(string, bool);
+    callback bar-committed(string, float);
+    // stepper and fine rows: by how much, in the value's units
+    callback stepped(string, float);
+    // tap on a stepper's value: type the number
+    callback edit(string);
+    callback picked(string, int);
+
+    horizontal-stretch: 1;
+    padding: Tokens.pad;
+    padding-bottom: 0;
+    spacing: 10px;
+    Header { title: root.title; back: root.has-back; back-clicked => { root.back(); } }
+    // line-height 1.45 in the prototype: 15 px text on a 21.75 px line.
+    if root.intro != "": Text { text: root.intro; color: Tokens.text-dim; font-size: 15px; min-height: 21.75px; vertical-alignment: center; wrap: word-wrap; }
+    HorizontalLayout {
+        vertical-stretch: 1;
+        // 16 between bars and rows; each bar carries its own 10 on the right.
+        spacing: 6px;
+        if root.bars.length > 0: HorizontalLayout {
+            padding-bottom: Tokens.pad;
+            for b in root.bars: HorizontalLayout {
+                padding-right: b.shown ? 10px : 0px;
+                if b.shown: VBar {
+                    label: b.title;
+                    minimum: b.min;
+                    maximum: b.max;
+                    step: b.step;
+                    big-step: b.big-step;
+                    unit: b.unit;
+                    off-at-zero: b.off-at-zero;
+                    value: b.value;
+                    source: b.source;
+                    committed(v) => { root.bar-committed(b.key, v); }
+                }
+            }
+        }
+        ScrollList {
+            horizontal-stretch: 1;
+            spacing: 0px;
+            for r in root.rows: FormItem {
+                r: r;
+                activate(k) => { root.activate(k); }
+                toggled(k, v) => { root.toggled(k, v); }
+                stepped(k, d) => { root.stepped(k, d); }
+                edit(k) => { root.edit(k); }
+                picked(k, i) => { root.picked(k, i); }
+            }
+            for r in root.rows-1: FormItem {
+                r: r;
+                activate(k) => { root.activate(k); }
+                toggled(k, v) => { root.toggled(k, v); }
+                stepped(k, d) => { root.stepped(k, d); }
+                edit(k) => { root.edit(k); }
+                picked(k, i) => { root.picked(k, i); }
+            }
+            for r in root.rows-2: FormItem {
+                r: r;
+                activate(k) => { root.activate(k); }
+                toggled(k, v) => { root.toggled(k, v); }
+                stepped(k, d) => { root.stepped(k, d); }
+                edit(k) => { root.edit(k); }
+                picked(k, i) => { root.picked(k, i); }
+            }
+            for r in root.rows-3: FormItem {
+                r: r;
+                activate(k) => { root.activate(k); }
+                toggled(k, v) => { root.toggled(k, v); }
+                stepped(k, d) => { root.stepped(k, d); }
+                edit(k) => { root.edit(k); }
+                picked(k, i) => { root.picked(k, i); }
+            }
+            for r in root.rows-4: FormItem {
+                r: r;
+                activate(k) => { root.activate(k); }
+                toggled(k, v) => { root.toggled(k, v); }
+                stepped(k, d) => { root.stepped(k, d); }
+                edit(k) => { root.edit(k); }
+                picked(k, i) => { root.picked(k, i); }
+            }
+        }
+    }
+}
+
+export component FormScreen inherits VerticalLayout {
+    in property <string> title;
+    in property <bool> has-back: true;
+    in property <string> intro;
+    in property <[FormBar]> bars;
+    in property <[FormRow]> rows;
+    in property <[FormRow]> rows-1;
+    in property <[FormRow]> rows-2;
+    in property <[FormRow]> rows-3;
+    in property <[FormRow]> rows-4;
+    callback back;
+    callback activate(string);
+    callback toggled(string, bool);
+    callback bar-committed(string, float);
+    callback stepped(string, float);
+    callback edit(string);
+    callback picked(string, int);
+    horizontal-stretch: 1;
+    FormBody {
+        title: root.title;
+        has-back: root.has-back;
+        intro: root.intro;
+        bars: root.bars;
+        rows: root.rows;
+        rows-1: root.rows-1;
+        rows-2: root.rows-2;
+        rows-3: root.rows-3;
+        rows-4: root.rows-4;
+        back => { root.back(); }
+        activate(k) => { root.activate(k); }
+        toggled(k, v) => { root.toggled(k, v); }
+        bar-committed(k, v) => { root.bar-committed(k, v); }
+        stepped(k, d) => { root.stepped(k, d); }
+        edit(k) => { root.edit(k); }
+        picked(k, i) => { root.picked(k, i); }
+    }
+}

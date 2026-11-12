@@ -15,23 +15,40 @@ export struct ConsoleLine {
 export component ToolsScreen inherits VerticalLayout {
     horizontal-stretch: 1;
     in property <int> macro-count;
+    // Prints in the history; -1 until known.
+    in property <int> history-total: -1;
     callback open(string);
     padding: Tokens.pad;
     spacing: Tokens.gap;
     Header { title: @tr("Tools"); back: false; }
-    GridLayout {
-        spacing: Tokens.gap;
+    // The prototype's 4 × 2 grid.
+    VerticalLayout {
         vertical-stretch: 1;
-        Row {
-            Tile { icon: Icons.console; label: @tr("Console"); sub: @tr("G-code by hand"); clicked => { root.open("console"); } }
-            Tile {
-                icon: Icons.macro;
-                label: @tr("Macros");
-                sub: @tr("{n} macro" | "{n} macros" % root.macro-count);
-                clicked => { root.open("macros"); }
+        alignment: center;
+        GridLayout {
+            spacing: Tokens.gap;
+            Row {
+                Tile { icon: Icons.calib; label: @tr("Calibrations"); sub: @tr("bed, probe, vibrations"); clicked => { root.open("calibrate"); } }
+                Tile {
+                    icon: Icons.macro;
+                    label: @tr("Macros");
+                    sub: @tr("{n} macro" | "{n} macros" % root.macro-count);
+                    clicked => { root.open("macros"); }
+                }
+                Tile { icon: Icons.console; label: @tr("Console"); sub: @tr("G-code by hand"); clicked => { root.open("console"); } }
+                Tile {
+                    icon: Icons.history;
+                    label: @tr("History");
+                    sub: root.history-total >= 0 ? @tr("{n} print" | "{n} prints" % root.history-total) : "";
+                    clicked => { root.open("history"); }
+                }
             }
-            Rectangle { horizontal-stretch: 1; }
-            Rectangle { horizontal-stretch: 1; }
+            Row {
+                Tile { icon: Icons.limits; label: @tr("Limits"); sub: @tr("speed, acceleration"); clicked => { root.open("limits"); } }
+                Tile { icon: Icons.sensor; label: @tr("Sensors"); sub: @tr("runout, temperatures"); clicked => { root.open("sensors"); } }
+                Tile { icon: Icons.service; label: @tr("Service"); sub: @tr("filter, nozzle, rails"); clicked => { root.open("service"); } }
+                Tile { icon: Icons.camera; label: @tr("Camera"); sub: @tr("and timelapse"); clicked => { root.open("camera"); } }
+            }
         }
     }
 }
@@ -95,14 +112,24 @@ export component ConsoleScreen inherits VerticalLayout {
             accessible-role: button;
             accessible-label: @tr("Command, tap to type");
             accessible-action-default => { root.keyboard-open = true; }
-            Text {
+            HorizontalLayout {
                 x: 18px;
                 width: parent.width - 36px;
-                text: root.text != "" ? root.text + (root.keyboard-open ? "▏" : "") : (root.keyboard-open ? "▏" : @tr("G-code or macro"));
-                color: root.text != "" ? Tokens.text : Tokens.text-faint;
-                font-size: 17px;
-                vertical-alignment: center;
-                overflow: elide;
+                Text {
+                    horizontal-stretch: 0;
+                    text: root.text != "" ? root.text : root.keyboard-open ? "" : @tr("G-code or macro");
+                    color: root.text != "" ? Tokens.text : Tokens.text-faint;
+                    font-size: 17px;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+                // The caret: drawn, the font has no thin bar.
+                if root.keyboard-open: VerticalLayout {
+                    alignment: center;
+                    padding-left: 1px;
+                    Rectangle { width: 2px; height: 22px; background: Tokens.accent; }
+                }
+                Rectangle { horizontal-stretch: 1; }
             }
             TouchArea { clicked => { root.keyboard-open = true; } }
         }

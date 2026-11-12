@@ -7,7 +7,8 @@
 #   tools/swap-screen.sh status [PRINTER_IP]   show what is running
 #   tools/swap-screen.sh log    [PRINTER_IP]   tail the Rivet log
 #
-# Rivet lives in /tmp (RAM): a reboot always brings the printer back to Guppy.
+# Rivet lives in /tmp (RAM): a reboot brings the printer back to Guppy, or to the
+# installed Rivet if tools/install.sh was used (this script stops it until then).
 #
 # Environment:
 #   PRINTER_HOST   printer address (or pass it as the 2nd argument)
@@ -15,6 +16,7 @@
 #   GUPPY_INIT     init.d script of the screen to restore; autodetected when empty
 #   RIVET_BIN      binary to upload, default target/armv7-unknown-linux-musleabihf/release/rivet
 #   RIVET_ARGS     extra arguments for rivet
+#   RIVET_ENV      environment for rivet, e.g. "RUST_LOG=debug RIVET_LANG=ru"
 
 set -euo pipefail
 
@@ -48,7 +50,11 @@ find_guppy() {
 }
 
 stop_rivet() {
+  # Rivet installed by tools/install.sh: stop its supervisor too, or it would restart it.
+  run "if [ -x /etc/init.d/S80rivet ]; then /etc/init.d/S80rivet stop; fi"
   run "if [ -f $pidfile ] && kill -0 \$(cat $pidfile) 2>/dev/null; then kill \$(cat $pidfile); sleep 1; fi; rm -f $pidfile"
+  # Back to the first page of video memory, or the next screen draws off screen.
+  run "[ -w /sys/class/graphics/fb0/pan ] && echo 0,0 > /sys/class/graphics/fb0/pan || true"
 }
 
 case "$cmd" in
@@ -60,9 +66,13 @@ case "$cmd" in
     stop_rivet
     echo "stopping Guppy ($guppy)"
     run "$guppy stop" || true
+    # The init script kills by pid file; make sure no Guppy process still owns the screen.
+    # (pidof, not ps|grep: the grep would match this very command line)
+    run "sleep 1; killall guppyscreen 2>/dev/null; sleep 1; if pidof guppyscreen >/dev/null; then echo 'Guppy still running' >&2; exit 1; fi" \
+      || { echo "could not stop Guppy, not starting Rivet" >&2; exit 1; }
     echo "starting Rivet"
     # shellcheck disable=SC2029
-    run "nohup $remote_bin ${RIVET_ARGS:-} >$logfile 2>&1 </dev/null & echo \$! >$pidfile"
+    run "nohup env ${RIVET_ENV:-} $remote_bin ${RIVET_ARGS:-} >$logfile 2>&1 </dev/null & echo \$! >$pidfile"
     sleep 2
     run "kill -0 \$(cat $pidfile) 2>/dev/null" \
       && echo "Rivet is running. Back to Guppy: $0 guppy $host" \
@@ -76,7 +86,7 @@ case "$cmd" in
     ;;
   status)
     run "if [ -f $pidfile ] && kill -0 \$(cat $pidfile) 2>/dev/null; then echo 'Rivet: running (pid '\$(cat $pidfile)')'; else echo 'Rivet: not running'; fi"
-    run "ps | grep -i '[g]uppy' || echo 'Guppy: not running'"
+    run "ps | grep '[g]uppyscreen' || echo 'Guppy: not running'"
     ;;
   log)
     run "tail -n 100 $logfile"

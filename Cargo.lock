@@ -1039,6 +1039,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "fontique",
+ "i-slint-core",
  "libc",
  "slint",
  "tracing",
@@ -3574,6 +3575,7 @@ dependencies = [
  "anyhow",
  "fbdev-platform",
  "i-slint-backend-testing",
+ "libc",
  "model",
  "moonraker",
  "png 0.17.16",
@@ -4610,8 +4612,10 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "fontique",
+ "model",
  "png 0.17.16",
  "rivet",
+ "serde_json",
  "slint",
 ]
 

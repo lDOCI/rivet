@@ -1,0 +1,96 @@
+// A touch test: three rounds (stylus, index finger, thumb) of twelve points
+// over the whole glass. Each tap is logged with its point (to tune the touch
+// filter on real hands) and shows where it landed for a moment.
+import { Tokens } from "../kit/tokens.slint";
+import { PrimaryButton, SecondaryButton } from "../kit/controls.slint";
+
+export component TouchTestScreen inherits Rectangle {
+    // round (0..2), point (0..11), the point, where the tap landed.
+    callback tap(int, int, float, float, float, float);
+    callback close;
+    property <[{ x: float, y: float }]> points: [
+        { x: 50, y: 50 }, { x: 283, y: 50 }, { x: 516, y: 50 }, { x: 750, y: 50 },
+        { x: 50, y: 240 }, { x: 283, y: 240 }, { x: 516, y: 240 }, { x: 750, y: 240 },
+        { x: 50, y: 430 }, { x: 283, y: 430 }, { x: 516, y: 430 }, { x: 750, y: 430 },
+    ];
+    property <[string]> rounds: [@tr("a stylus"), @tr("your index finger"), @tr("your thumb")];
+    property <int> round: 0;
+    // -1: the round's intro; 0..11: the point; 12: done.
+    property <int> step: -1;
+    property <length> hit-x: -100px;
+    property <length> hit-y: -100px;
+    property <bool> showing-hit;
+    background: Tokens.bg;
+    TouchArea {
+        enabled: root.step >= 0 && root.step < 12 && !root.showing-hit;
+        pointer-event(ev) => {
+            if (ev.kind == PointerEventKind.up) {
+                root.tap(root.round, root.step, root.points[root.step].x, root.points[root.step].y, self.mouse-x / 1px, self.mouse-y / 1px);
+                root.hit-x = self.mouse-x;
+                root.hit-y = self.mouse-y;
+                root.showing-hit = true;
+                pause.running = true;
+            }
+        }
+    }
+    pause := Timer {
+        interval: 400ms;
+        running: false;
+        triggered => {
+            self.running = false;
+            root.showing-hit = false;
+            root.step += 1;
+            if (root.step == 12 && root.round < 2) { root.round += 1; root.step = -1; }
+        }
+    }
+    if root.step >= 0 && root.step < 12: Rectangle {
+        x: root.points[root.step].x * 1px - 30px;
+        y: root.points[root.step].y * 1px - 30px;
+        width: 60px;
+        height: 60px;
+        Rectangle { x: 29px; width: 2px; background: Tokens.accent; }
+        Rectangle { y: 29px; height: 2px; background: Tokens.accent; }
+        Rectangle { x: 24px; y: 24px; width: 12px; height: 12px; border-radius: 6px; background: Tokens.accent; }
+    }
+    if root.showing-hit: Rectangle {
+        x: root.hit-x - 7px;
+        y: root.hit-y - 7px;
+        width: 14px;
+        height: 14px;
+        border-radius: 7px;
+        background: Tokens.heat-2;
+    }
+    if root.step >= 0 && root.step < 12: Text {
+        x: 160px;
+        y: 150px;
+        width: parent.width - 320px;
+        text: @tr("Touch the dot with {} — {} of 12", root.rounds[root.round], root.step + 1);
+        color: Tokens.text-dim;
+        font-size: Tokens.body;
+        horizontal-alignment: center;
+        wrap: word-wrap;
+    }
+    if root.step == -1 || root.step == 12: VerticalLayout {
+        x: 160px;
+        width: parent.width - 320px;
+        alignment: center;
+        spacing: 16px;
+        Text {
+            text: root.step == 12 ? @tr("Done, thank you. The taps are in Rivet's log.")
+                : @tr("Round {} of 3: touch each dot with {}, as you would tap a button.", root.round + 1, root.rounds[root.round]);
+            color: Tokens.text;
+            font-size: Tokens.row-title;
+            horizontal-alignment: center;
+            wrap: word-wrap;
+        }
+        if root.step == -1: PrimaryButton {
+            text: @tr("Begin");
+            clicked => { root.step = 0; }
+        }
+        SecondaryButton {
+            text: root.step == 12 ? @tr("Close") : @tr("Cancel");
+            min-height: Tokens.touch;
+            clicked => { root.close(); }
+        }
+    }
+}

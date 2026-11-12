@@ -1,29 +1,37 @@
-// Design tokens. Source of truth: docs/ux/design-code.md §1–3.
+// Design tokens. Source of truth: docs/design/design-code.md §1–3.
 // Nothing outside ui/kit picks colours or sizes by hand.
 
 export global Tokens {
-    // Colour
-    out property <color> bg: #0b0d10;
-    out property <color> rail: #0f1215;
-    out property <color> surface-1: #15181d;
-    out property <color> surface-2: #1f242b;
-    out property <color> surface-3: #252a31;
-    out property <color> well: #0b0d10;
-    out property <color> text: #f4f6f8;
-    out property <color> text-2: #c7cdd4;
-    out property <color> text-dim: #98a1ac;
-    out property <color> text-faint: #66707b;
-    out property <color> accent: #2dd4bf;
-    out property <color> accent-hi: #5eead4;
-    out property <color> accent-ink: #042f2a;
-    out property <color> accent-soft: #2dd4bf21; // 13 %
-    out property <color> heat-1: #fbbf24;
-    out property <color> heat-2: #f97316;
-    out property <color> danger: #fb7185;
-    out property <color> danger-soft: #fb4b5e24; // 14 %
-    out property <color> danger-solid: #e11d48;
-    out property <color> warn: #fbbf24;
-    out property <color> warn-text: #fcd34d;
+    // Colour. In-out: a theme (Settings › Screen › Appearance) sets them from
+    // Rust at start; the values here are the default theme.
+    in-out property <color> bg: #0b0d10;
+    in-out property <color> rail: #0f1215;
+    in-out property <color> surface-1: #15181d;
+    in-out property <color> surface-2: #1f242b;
+    in-out property <color> surface-3: #252a31;
+    in-out property <color> well: #0b0d10;
+    in-out property <color> text: #f4f6f8;
+    in-out property <color> text-2: #c7cdd4;
+    in-out property <color> text-dim: #98a1ac;
+    in-out property <color> text-faint: #66707b;
+    in-out property <color> accent: #2dd4bf;
+    in-out property <color> accent-hi: #5eead4;
+    in-out property <color> accent-ink: #042f2a;
+    in-out property <color> accent-soft: #2dd4bf21; // 13 %
+    in-out property <color> heat-1: #fbbf24;
+    in-out property <color> heat-2: #f97316;
+    in-out property <color> danger: #fb7185;
+    in-out property <color> danger-soft: #fb4b5e24; // 14 %
+    in-out property <color> danger-solid: #e11d48;
+    in-out property <color> warn: #fbbf24;
+    in-out property <color> warn-text: #fcd34d;
+    // Shades that follow the background (dark here; a light theme sets them
+    // darker than its background): a dial's track, an off switch or pressed
+    // key, thin lines and idle gauges, quieter labels.
+    in-out property <color> track: #171b21;
+    in-out property <color> control: #3a414a;
+    in-out property <color> line: #4a525c;
+    in-out property <color> text-mute: #7d8792;
 
     // Type (Inter, embedded)
     out property <length> title: 26px;

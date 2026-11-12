@@ -39,6 +39,9 @@ pub enum Event {
     Connected,
     /// Socket closed; the client keeps retrying in the background.
     Disconnected,
+    /// A connection attempt failed; the next one comes after `next_in`
+    /// (or at once after [`Client::retry_now`]). `attempt` counts from 1.
+    Retrying { attempt: u32, next_in: Duration },
     /// A server notification such as `notify_status_update`.
     Notification { method: String, params: Value },
 }
@@ -53,6 +56,7 @@ pub struct Client {
     pending: Pending,
     next_id: Arc<AtomicU64>,
     connected: Arc<AtomicBool>,
+    retry: Arc<tokio::sync::Notify>,
 }
 
 impl Client {
@@ -65,6 +69,7 @@ impl Client {
             pending: Arc::default(),
             next_id: Arc::new(AtomicU64::new(1)),
             connected: Arc::default(),
+            retry: Arc::default(),
         };
         tokio::spawn(run(
             url.into(),
@@ -72,8 +77,14 @@ impl Client {
             ev_tx,
             client.pending.clone(),
             client.connected.clone(),
+            client.retry.clone(),
         ));
         (client, ev_rx)
+    }
+
+    /// Skip the wait before the next connection attempt.
+    pub fn retry_now(&self) {
+        self.retry.notify_one();
     }
 
     pub fn is_connected(&self) -> bool {
@@ -153,16 +164,19 @@ async fn run(
     ev_tx: mpsc::UnboundedSender<Event>,
     pending: Pending,
     connected: Arc<AtomicBool>,
+    retry: Arc<tokio::sync::Notify>,
 ) {
     const MIN_BACKOFF: Duration = Duration::from_millis(500);
     const MAX_BACKOFF: Duration = Duration::from_secs(5);
     let mut backoff = MIN_BACKOFF;
+    let mut attempt = 0u32;
 
     loop {
         match connect_async(url.as_str()).await {
             Ok((ws, _)) => {
                 tracing::info!(%url, "connected to Moonraker");
                 backoff = MIN_BACKOFF;
+                attempt = 0;
                 let (mut sink, mut stream) = ws.split();
 
                 // Requests queued while offline already failed with NotConnected
@@ -212,7 +226,15 @@ async fn run(
         if ev_tx.is_closed() {
             return;
         }
-        tokio::time::sleep(backoff).await;
+        attempt += 1;
+        let _ = ev_tx.send(Event::Retrying {
+            attempt,
+            next_in: backoff,
+        });
+        tokio::select! {
+            () = tokio::time::sleep(backoff) => {}
+            () = retry.notified() => {}
+        }
         backoff = (backoff * 2).min(MAX_BACKOFF);
     }
 }

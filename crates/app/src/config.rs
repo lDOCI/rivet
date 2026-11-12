@@ -5,9 +5,17 @@ use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 
-/// Where KlipperMod keeps printer configs; a copy next to the binary is read
-/// when that folder does not exist (development on a computer).
-const PRINTER_CONFIG_DIR: &str = "/data/printer_data/config";
+/// Where printer configs live: Z-Mod's mod_data first (it has a printer_data
+/// too, linked to /opt/config, but keeps its screens' files in mod_data), then
+/// KlipperMod's (seen on an AD5M Pro) and the usual Klipper install's. A copy in
+/// the working directory is read when none exists (development on a computer).
+/// `RIVET_CONFIG_DIR` overrides them all.
+const PRINTER_CONFIG_DIRS: [&str; 4] = [
+    "/opt/config/mod_data",
+    "/root/printer_data/config",
+    "/home/pi/printer_data/config",
+    "/data/printer_data/config",
+];
 
 #[derive(Debug, Default, Clone, PartialEq, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -46,12 +54,20 @@ pub fn config_path(arg: Option<&str>) -> PathBuf {
     if let Some(p) = arg {
         return PathBuf::from(p);
     }
-    let printer = Path::new(PRINTER_CONFIG_DIR);
-    if printer.is_dir() {
-        printer.join("rivet.toml")
-    } else {
-        PathBuf::from("rivet.toml")
+    config_dir().join("rivet.toml")
+}
+
+/// The printer config folder Rivet keeps its files in (rivet.toml, the touch
+/// calibration), else the working directory.
+pub fn config_dir() -> PathBuf {
+    if let Some(dir) = std::env::var_os("RIVET_CONFIG_DIR").filter(|d| !d.is_empty()) {
+        return PathBuf::from(dir);
     }
+    PRINTER_CONFIG_DIRS
+        .iter()
+        .map(Path::new)
+        .find(|p| p.is_dir())
+        .map_or_else(|| PathBuf::from("."), Path::to_path_buf)
 }
 
 #[cfg(test)]

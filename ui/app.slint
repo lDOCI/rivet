@@ -1,23 +1,96 @@
 import { Tokens } from "kit/tokens.slint";
+export { Tokens }
+import { Glide } from "kit/scroll.slint";
+export { Glide }
 import { Rail } from "kit/rail.slint";
 import { ControlScreen } from "screens/control.slint";
-import { SettingsScreen } from "screens/settings.slint";
-import { FansScreen, PrintTuneScreen, PrintMoreScreen, LightScreen, SpeedScreen, ZOffsetScreen } from "screens/tune.slint";
-import { Dialog, Keypad } from "kit/dialogs.slint";
+import { FansScreen, FanRow, ZOffsetScreen } from "screens/tune.slint";
+import { ScreenForm, LockForm, SoundForm, LangTimeForm, SafetyForm, SystemForm, NetworkForm, PrintersForm, UpdatesForm, CalibrateForm, ProbeForm, ShaperForm, PidForm, PaForm, TmcForm, HistoryForm, SensorsForm, LightForm, SpeedForm, TuneForm, MoreForm, ExtruderForm, SettingsForm, FileActionsForm, JobQueueForm, MotionMoreForm, LayerPauseForm, RetractionForm, DryerForm, SpoolsForm, DevicesForm } from "generated/forms.slint";
+import { FormRow } from "kit/form.slint";
+
+export { FormRow }
+
+// Words the engine puts into rows it builds (spools): translated here, read from Rust.
+export global Strings {
+    out property <string> active: @tr("active");
+    // "{}" stays in for the engine to fill.
+    out property <string> grams: @tr("{} g", "{}");
+    // Graph legend: "{} {}° / {}°" filled by the engine.
+    out property <string> nozzle: @tr("Nozzle");
+    out property <string> bed: @tr("Bed");
+    // Web interface versions: "{}" is the new one.
+    out property <string> up-to-date: @tr("up to date");
+    out property <string> update-to: @tr("update to {}", "{}");
+    // Rivet's own update: "{}" is the version.
+    out property <string> rivet-to: @tr("Rivet {}, the screen restarts", "{}");
+    out property <string> rivet-updating: @tr("downloading and installing…");
+    out property <string> rivet-rolled-back: @tr("the new version did not start; the previous one is back");
+    // Wi-Fi rows: band, security, joined before, signal.
+    out property <string> ghz: @tr("{} GHz", "{}");
+    out property <string> open-net: @tr("open");
+    out property <string> saved-net: @tr("joined before");
+    out property <string> signal-strong: @tr("strong signal");
+    out property <string> signal-fair: @tr("fair signal");
+    out property <string> signal-weak: @tr("weak signal");
+    out property <string> last-print-filament: @tr("from the last print");
+    // Theme swatch names.
+    out property <string> theme-teal: @tr("Teal");
+    out property <string> theme-orange: @tr("Orange");
+    out property <string> theme-blue: @tr("Blue");
+    out property <string> theme-violet: @tr("Violet");
+    out property <string> theme-pink: @tr("Pink");
+    out property <string> theme-lime: @tr("Lime");
+    out property <string> theme-amber: @tr("Amber");
+    out property <string> theme-cyan: @tr("Cyan");
+    out property <string> theme-graphite: @tr("Graphite");
+    out property <string> theme-black: @tr("Black");
+    out property <string> theme-navy: @tr("Navy");
+    out property <string> theme-own: @tr("Your own");
+    out property <string> join-failed: @tr("Could not join “{}”. Check the password and try again.", "{}");
+}
+import { Format } from "kit/format.slint";
+// Rust formats durations for rows it builds (the queue) the same way.
+export { Format }
+import { Dialog, Keypad, StopDialog, PromptDialog, PromptButton, HeatPickDialog, HeatChoice } from "kit/dialogs.slint";
+export { PromptButton, HeatChoice }
 import { StatusScreen } from "screens/status.slint";
 import { Toast } from "kit/toast.slint";
 import { HomeScreen } from "screens/home.slint";
 import { HeatingScreen } from "screens/heating.slint";
-import { MotionScreen, ExtruderScreen } from "screens/motion.slint";
+import { MotionScreen } from "screens/motion.slint";
 import { ToolsScreen, ConsoleScreen, MacrosScreen, ConsoleLine } from "screens/tools.slint";
-import { FilesScreen, FileScreen, FileItem, FileInfo } from "screens/files.slint";
-export { FileItem, FileInfo, ConsoleLine }
-import { PrintingScreen, PrintDoneScreen } from "screens/print.slint";
+import { FilesScreen, FileScreen, FileItem, FileInfo, FindScreen, RenameScreen, MoveScreen } from "screens/files.slint";
+import { WifiJoinScreen } from "screens/wifi.slint";
+import { TouchCalScreen } from "screens/touchcal.slint";
+import { InstallerScreen } from "screens/installer.slint";
+import { ThemeScreen, Swatch } from "screens/theme.slint";
+import { ColorPicker } from "screens/picker.slint";
+import { TouchTestScreen } from "screens/touchtest.slint";
+import { MacroParamsScreen, MacroParam } from "screens/macro.slint";
+export { MacroParam }
+export { Swatch }
+export { FileItem, FileInfo, ConsoleLine, FanRow }
+import { MessagesScreen, MessageRow } from "screens/messages.slint";
+import { FilamentScreen } from "screens/filament.slint";
+import { LockScreen } from "screens/lock.slint";
+import { BedMeshScreen, MeshProfilesScreen, ScrewsScreen, MeshCell, ScrewRow, ShaperResultScreen, BeltsScreen, ShaperAxis, ShaperRow, BeltsResult } from "screens/calib.slint";
+export { ShaperAxis, ShaperRow, BeltsResult }
+export { MeshCell, ScrewRow }
+import { LimitsScreen, ServiceScreen, ServiceItem, CameraScreen } from "screens/tools-extra.slint";
+export { ServiceItem }
+import { HeatPresetsScreen, HeatPreset, TempGraphScreen, GraphLine } from "screens/heat-extra.slint";
+export { HeatPreset, GraphLine }
+export { MessageRow }
+import { PrintingScreen, PrintDoneScreen, AmbientScreen, RunoutScreen, ExcludeScreen, PlateObject } from "screens/print.slint";
+export { PlateObject }
 
 // Embedded into the binary (see build.rs): the printer has no system fonts.
 import "../assets/fonts/Inter-Regular.ttf";
+import "../assets/fonts/Inter-Medium.ttf";
 import "../assets/fonts/Inter-SemiBold.ttf";
 import "../assets/fonts/Inter-Bold.ttf";
+// 800: titles and big numbers in the prototype.
+import "../assets/fonts/Inter-ExtraBold.ttf";
 
 export component AppWindow inherits Window {
     width: 800px;
@@ -57,6 +130,9 @@ export component AppWindow inherits Window {
     property <bool> done-dismissed;
     changed print-state => {
         if (self.print-state != "complete") { self.done-dismissed = false; }
+        if (self.print-state != "paused") { self.runout = false; } else if (self.filament-out) { self.runout = true; }
+        // Lock while printing: from the start of a print.
+        if (self.print-state == "printing" && self.set-lock-print) { self.locked = true; }
     }
 
     callback home-all();
@@ -78,9 +154,35 @@ export component AppWindow inherits Window {
     in-out property <string> console-text;
     in-out property <bool> console-keyboard;
     in-out property <string> macro-pending;
+    // The picked macro's parameters (from its template) and what was typed.
+    in property <[MacroParam]> macro-params;
+    callback macro-open(string);
+    callback macro-param-set(int, string);
+    // "NAME P=v ..." from the typed values.
+    pure callback macro-script() -> string;
     callback move-axis(int, float);
     callback motors-off();
-    callback extrude(float, float);
+    // Length (mm, negative pulls back), speed (mm/s), and the temperature to
+    // heat a cold nozzle to first (0: hot enough).
+    callback extrude(float, float, float);
+    // Heating before an extrusion is under way.
+    in property <bool> extrude-busy;
+    pure callback material-temp(string) -> int;
+    // A cold nozzle heats to the loaded material's preset, else the first preset;
+    // a nozzle already heating keeps its target.
+    // 0: hot enough; a nozzle already heading for a working target keeps it;
+    // -1: cold, ask how hot (the next filament may need more than the last).
+    property <float> extrude-heat: root.can-extrude ? 0
+        : root.extruder-target >= max(1, root.min-extrude-temp) ? root.extruder-target
+        : -1;
+    // The extrusion waiting for a temperature pick: mm (negative pulls) and mm/s.
+    property <float> pending-length;
+    property <float> pending-rate;
+    // The temperature pick moves filament after heating (else it only sets the target).
+    property <bool> heat-then-extrude;
+    in property <[HeatChoice]> heat-choices;
+    // Fill heat-choices: the presets and the last print's filament profile.
+    callback build-heat-choices();
     // Toolhead: position and which axes Klipper has a position for.
     in property <float> position-x;
     in property <float> position-y;
@@ -88,9 +190,119 @@ export component AppWindow inherits Window {
     in property <bool> homed-x;
     in property <bool> homed-y;
     in property <bool> homed-z;
+    // Axis travel from the printer's config, mm.
+    in property <float> axis-min-x;
+    in property <float> axis-min-y;
+    in property <float> axis-min-z;
+    in property <float> axis-max-x;
+    in property <float> axis-max-y;
+    in property <float> axis-max-z;
+    // Motion · more: where to go, jog speeds (mm/s), screen-only axis inversion.
+    in-out property <float> goto-x;
+    in-out property <float> goto-y;
+    in-out property <float> goto-z: 10;
+    in-out property <float> jog-xy-speed: 100;
+    in-out property <float> jog-z-speed: 10;
+    in-out property <bool> invert-x;
+    in-out property <bool> invert-y;
+    in-out property <bool> invert-z;
+    callback go-to(float, float, float);
+    // Real toolhead speed, mm/s.
+    in property <float> live-velocity;
+    // Extruder: chosen length and speed (indexes into the prototype's options).
+    in-out property <int> extrude-length: 2;
+    in-out property <int> extrude-rate: 1;
+    // What this printer can do (its config, macros and Moonraker components), and the
+    // live values behind those rows.
+    in property <bool> has-pause-layer;
+    in property <int> pause-at-layer;
+    in property <bool> pause-next;
+    in-out property <float> pause-layer-pick;
+    callback pause-at(int);
+    callback pause-next-layer(bool);
+    in property <bool> has-retraction;
+    in property <float> retract-length;
+    in property <float> retract-speed;
+    in property <float> unretract-extra;
+    in property <float> unretract-speed;
+    callback set-retraction(string, float);
+    in property <bool> has-auto-shutdown;
+    in-out property <bool> off-after-print;
+    callback off-after(bool);
+    in property <bool> has-timelapse;
+    in-out property <bool> timelapse-on;
+    callback set-timelapse(bool);
+    callback save-z-offset();
+    // No link: the attempt that failed last and seconds to the next (-1: none).
+    in property <int> retry-attempt;
+    in property <int> retry-in: -1;
+    callback retry-now();
+    // What the Klipper shutdown is about ("timer", "lost", ...), for plain words.
+    in property <string> error-kind;
+    in property <bool> has-spoolman;
+    in property <[FormRow]> spool-rows;
+    in property <string> active-spool;
+    in property <bool> has-active-spool;
+    callback list-spools();
+    callback pick-spool(string);
+    in property <[FormRow]> power-rows;
+    in property <[FormRow]> pin-rows;
+    callback device-toggled(string, bool);
+    // Home: last print's material, file counts (-1 not known yet), loaded filament
+    // (Spoolman's active spool, else what the filament wizard loaded).
+    in property <string> last-material;
+    // The last (or current) print's filament profile from the slicer: name,
+    // colour, nozzle temperature, and when that print started (unix seconds).
+    in property <string> last-filament;
+    in property <string> last-color-hex;
+    in property <color> last-color;
+    in property <float> last-nozzle-temp;
+    in property <int> last-started;
+    in property <int> last-grams;
+    // Wall-clock times, empty when the printer has no timezone set.
+    in property <string> last-clock;
+    in property <string> eta-clock;
+    in property <int> files-local: -1;
+    in property <int> files-usb;
+    // The Files screen shows the USB stick instead of the printer's storage.
+    in-out property <bool> files-on-usb;
+    // Where the file list was scrolled to.
+    in-out property <length> files-scroll;
+    // Files: the list came in at least once (Moonraker takes a second).
+    in-out property <bool> files-loaded;
+    in property <string> spool-material;
+    in property <color> spool-color;
+    in property <string> loaded-material;
+    // When the filament wizard last set it (unix seconds; 0 never).
+    in-out property <int> loaded-at;
+    // What is in the printer: Spoolman's active spool, else the filament the
+    // slicer profile of the last print named (people print far more than four
+    // types), unless the wizard loaded something since.
+    property <bool> spool-known: root.has-active-spool && root.spool-material != "";
+    property <bool> profile-known: !root.spool-known && root.last-material != "" && root.last-started > root.loaded-at;
+    property <string> material-name: root.spool-known ? root.spool-material
+        : root.profile-known ? (root.last-filament != "" ? root.last-filament : root.last-material)
+        : root.loaded-material;
+    // The type (PLA, PETG…), for comparing with a file's.
+    property <string> material-type: root.spool-known ? root.spool-material : root.profile-known ? root.last-material : root.loaded-material;
+    property <color> material-color: root.spool-known ? root.spool-color
+        : root.profile-known && root.last-color-hex != "" ? root.last-color
+        : root.loaded-color;
+    in property <color> loaded-color;
+    // Bed dryer: minutes left, -1 when off; chosen material and hours.
+    in property <int> dryer-minutes-left: -1;
+    in-out property <int> dry-material: 1;
+    in-out property <float> dry-hours: 4;
+    callback dry(float, int);
+    // The print screensaver is up (set after idle time while printing).
+    in-out property <bool> ambient;
+    // Rivet's own settings, saved in Moonraker's database.
+    callback save-flag(string, bool);
+    callback save-number(string, float);
     in property <bool> can-extrude;
     in property <float> min-extrude-temp;
-    callback set-fan(float);
+    callback set-fan(string, float);
+    callback set-air(int);
     callback set-nozzle(float);
     callback set-bed(float);
     // Heater limits from the printer config; 0 until known.
@@ -105,13 +317,46 @@ export component AppWindow inherits Window {
     callback delete-file(string);
     callback select-all(bool);
 
+    // Search and order of the file grid; Rust rebuilds the grid on files-view-changed.
+    in-out property <string> files-query;
+    in-out property <string> files-sort: "new";
+    callback files-view-changed();
+    // Load previews around this card of the grid, free the far ones.
+    callback files-window(int);
+    // Russian interface: the keyboard starts with Russian letters for file names.
+    in property <bool> russian;
+    // Moonraker's print queue: rows, count (-1: the printer has no queue), state
+    // ("ready" prints on, "paused" waits for a start) and the jobs' total time.
+    in property <[FormRow]> queue-rows;
+    in property <int> queue-count: -1;
+    in property <string> queue-state;
+    in property <int> queue-minutes;
+    callback queue-files([string]);
+    callback queue-selected();
+    callback queue-run(bool);
+    callback queue-clear();
+    callback refresh-queue();
+    // Rename and move the open file.
+    in-out property <string> rename-text;
+    pure callback name-ok(string, string) -> bool;
+    callback rename-file(string, string);
+    // Where files of this storage can go: "" (the top) and its folders.
+    in property <[string]> move-folders;
+    callback move-file(string, string);
+    callback copy-to-printer(string);
+
     // G-code files; the selection lives in the rows.
     in-out property <[FileItem]> files;
     in property <FileInfo> file-info;
     in-out property <int> selected-count;
-    property <bool> select-mode;
+    in-out property <bool> select-mode;
     in-out property <string> open-path;
     in-out property <string> open-name;
+    // The folder of the open file ("" for the top).
+    pure callback folder-of(string) -> string;
+    property <string> open-folder: root.folder-of(root.open-path);
+    // A file's name to show: no folder, no .gcode.
+    pure callback file-title(string) -> string;
 
     // Live values for tuning and the light, straight from Klipper.
     in property <float> speed-percent: 100;
@@ -119,12 +364,37 @@ export component AppWindow inherits Window {
     in property <float> z-offset;
     in property <float> pressure-advance;
     in property <int> fan-percent;
+    in property <[FanRow]> fan-bars;
+    in property <[FanRow]> fan-extras;
+    in property <[FanRow]> fan-autos;
+    in-out property <int> air-mode: -1;
     in property <bool> has-light;
     in-out property <bool> light-on;
     in property <float> light-level;
     in property <string> light-name;
     in property <bool> light-white;
-    property <float> tune-z-start;
+    // Seconds until each heater reaches its target; -1 when not known.
+    in property <int> nozzle-eta: -1;
+    in property <int> bed-eta: -1;
+    // Heat presets and the temperature graph.
+    in property <bool> has-heat-links: true;
+    in property <[HeatPreset]> heat-presets: [
+        { name: "PLA", nozzle: 210, bed: 60 },
+        { name: "PETG", nozzle: 240, bed: 80 },
+        { name: "ABS", nozzle: 250, bed: 100 },
+        { name: "TPU", nozzle: 225, bed: 50 },
+    ];
+    callback preset-changed(int, int, int);
+    // Filament wizard: its step, and what it loaded (saved, shown on Home).
+    in-out property <int> filament-step: 1;
+    callback set-loaded(string);
+    in property <[GraphLine]> graph-lines;
+    in property <[{ y: float, label: string }]> graph-grid;
+    callback refresh-graph(float);
+    // Rivet's own setting, read from Moonraker's database.
+    in-out property <bool> light-on-start;
+    // Z offset when the tuning screen opened: the «was» of its stepper.
+    in-out property <float> tune-z-start;
     // Which value the keypad is editing: "speed" | "flow" | "z" | "pa".
     property <string> keypad-target;
     callback firmware-restart();
@@ -159,16 +429,247 @@ export component AppWindow inherits Window {
         root.overlay = "keypad";
     }
 
+    // Keypad for a row of a generated screen: key, title, range, current value, decimals.
+    function open-number(key: string, title: string, lo: float, hi: float, current: float, digits: int) {
+        root.keypad-target = key;
+        root.keypad-negative = lo < 0;
+        root.keypad-title = title;
+        root.keypad-current = "" + round(current * pow(10, digits)) / pow(10, digits);
+        root.keypad-min = lo;
+        root.keypad-max = hi;
+        root.keypad-hint = Format.fixed(lo, digits) + " … " + Format.fixed(hi, digits);
+        root.overlay = "keypad";
+    }
+    // A new value for a row of a generated screen, by the row's key.
+    function form-set(key: string, v: float) {
+        if (key == "pin") {
+            if (v >= 1000) { root.set-pin = "" + round(v); root.setting-changed("pin", root.set-pin); }
+        }
+        else if (key == "pa-smooth") { root.run-gcode("SET_PRESSURE_ADVANCE SMOOTH_TIME=" + Format.fixed(v, 3)); }
+        else if (key == "limit:cruise") { root.set-limit("cruise", v / 100); }
+        else if (key == "limit:velocity" || key == "limit:accel" || key == "limit:corner") { root.set-limit(key == "limit:velocity" ? "velocity" : key == "limit:accel" ? "accel" : "corner", v); }
+        else if (key == "speed") { root.set-speed(v); }
+        else if (key == "flow") { root.set-flow(v); }
+        else if (key == "z") { root.adjust-z(v - root.z-offset); }
+        else if (key == "pa") { root.set-pressure-advance(v); }
+        else if (key == "goto-x") { root.goto-x = v; }
+        else if (key == "goto-y") { root.goto-y = v; }
+        else if (key == "goto-z") { root.goto-z = v; }
+        else if (key == "jog-xy") { root.jog-xy-speed = v; root.save-number("jog_xy_speed", v); }
+        else if (key == "jog-z") { root.jog-z-speed = v; root.save-number("jog_z_speed", v); }
+        else if (key == "pause-layer") { root.pause-layer-pick = v; }
+        else if (key == "dry-hours") { root.dry-hours = v; }
+        else if (key == "retract-length" || key == "retract-speed" || key == "unretract-extra" || key == "unretract-speed") { root.set-retraction(key, v); }
+    }
+
+    // Runout: the sensor sees no filament; the printer has load/unload macros.
+    in property <bool> filament-out;
+    in property <bool> has-load-macros;
+    // The runout screen stays up from the pause it caused until the print goes on
+    // or ends, also once new filament is in.
+    in-out property <bool> runout;
+    changed filament-out => { if (root.filament-out && root.print-state == "paused") { root.runout = true; } }
+
+    // Labelled objects of the print (exclude_object); the one to skip, asked.
+    in property <[PlateObject]> plate-objects;
+    in-out property <string> skip-name;
+    in-out property <string> skip-title;
+    in-out property <string> exclude-picked;
+
+    // Motion limits (toolhead); cruise -1 when Klipper has none.
+    in property <float> limit-velocity;
+    in property <float> limit-accel;
+    in property <float> limit-corner;
+    in property <float> limit-cruise: -1;
+    callback set-limit(string, float);
+    // Sensors: the runout sensor (name "" when none), air quality, load cell, boards.
+    in property <string> runout-name;
+    in property <bool> runout-enabled;
+    in property <bool> runout-sees;
+    callback set-runout(bool);
+    in property <bool> has-air;
+    in property <string> air-text;
+    in property <bool> has-load-cell;
+    in property <int> load-g;
+    in property <string> board-temps;
+    // History: totals and the latest jobs.
+    in property <int> history-total: -1;
+    in property <int> history-minutes;
+    in property <float> history-km;
+    in property <[FormRow]> history-rows;
+    callback refresh-history();
+    callback clear-history();
+    // Service intervals and webcams.
+    in property <[ServiceItem]> service-items;
+    callback refresh-service();
+    callback service-done(string);
+    in property <[string]> cameras;
+    callback refresh-cameras();
+
+    // Rivet's settings (saved in Moonraker's database by setting-changed).
+    in-out property <int> set-sleep: 2;
+    in-out property <bool> set-awake: true;
+    in-out property <bool> set-lock-print;
+    in-out property <string> set-pin;
+    property <int> pin-digits: root.set-pin.character-count;
+    in-out property <int> set-autolock;
+    in-out property <bool> set-sounds: true;
+    in-out property <bool> set-tune: true;
+    in-out property <int> set-clock;
+    in-out property <bool> set-hold-stop;
+    in-out property <bool> set-confirm-macros: true;
+    callback setting-changed(string, string);
+    // Screen settings: backlight percent, and whether it can be set here.
+    in-out property <float> set-brightness: 75;
+    in property <bool> backlight-available;
+    // Appearance (theme.rs): the swatches and the picks.
+    in property <[Swatch]> theme-accents;
+    in property <[Swatch]> theme-bases;
+    in property <int> theme-accent;
+    in property <int> theme-base;
+    callback theme-open();
+    callback theme-pick(int, int);
+    // Your own colour (the last swatch of each row): "accent" or "base", and the colour.
+    callback theme-custom(string, color);
+    // Which colour the picker is choosing, and where it starts.
+    property <string> picking: "accent";
+    property <color> picking-from;
+    // Touch calibration (touchcal.rs): mean miss before / after, -1 when the taps made no sense.
+    in property <float> cal-miss-before: -1;
+    in property <float> cal-miss-after: -1;
+    callback cal-begin();
+    // Touch test: round, point, the point, where the tap landed (to Rivet's log).
+    callback touch-test-tap(int, int, float, float, float, float);
+    in property <string> installer-step;
+    callback cal-point(int, float, float);
+    callback cal-finish();
+    callback cal-keep();
+    callback cal-undo();
+    callback cal-reset();
+    callback set-language(int);
+    // The screen is locked (print lock or the idle timer).
+    in-out property <bool> locked;
+    // System, network and versions, read when Settings opens.
+    in property <string> sys-cpu;
+    in property <string> sys-memory;
+    in property <string> sys-disk;
+    in property <string> net-wifi;
+    in property <string> net-ip;
+    in property <string> net-mac;
+    in property <string> net-eth;
+    in property <string> host-name;
+    in property <string> ver-klipper;
+    in property <string> ver-moonraker;
+    in property <string> ver-rivet;
+    in property <string> ver-rivet-sub;
+    // A newer Rivet release Moonraker can install, and what to say about it.
+    in property <bool> rivet-update;
+    in property <string> rivet-update-sub;
+    in property <string> ver-mainsail;
+    in property <string> ver-mainsail-sub;
+    in property <string> ver-fluidd;
+    in property <string> ver-fluidd-sub;
+    in property <bool> has-stock-macro;
+    in property <string> time-zone;
+    callback refresh-system();
+    // Wi-Fi through wpa_supplicant (on the printer only).
+    in property <bool> wifi-available;
+    in property <bool> wifi-scanning;
+    // The joined network's name (wpa_supplicant).
+    in property <string> wifi-current;
+    in property <[FormRow]> wifi-rows;
+    // Per row of wifi-rows: name, "open"/"psk"/"sae", joined before.
+    in property <[string]> wifi-ssids;
+    in property <[string]> wifi-auths;
+    in property <[bool]> wifi-saved;
+    in-out property <string> join-ssid;
+    in-out property <string> join-auth;
+    in-out property <string> join-password;
+    in property <bool> join-busy;
+    in-out property <string> join-error;
+    callback wifi-scan();
+    callback wifi-join(string, string, string);
+    pure callback mask(int) -> string;
+    callback system-action(string);
+    in-out property <string> system-pending;
+
+    // Calibrations: what the printer has, saved values, the mesh and screws.
+    in property <bool> calib-has-probe;
+    in property <bool> calib-has-mesh;
+    in property <bool> calib-has-screws;
+    in property <bool> calib-has-accel;
+    in property <bool> calib-has-tare;
+    in property <bool> calib-busy;
+    in property <float> probe-z-saved: -999;
+    in property <string> probe-offset;
+    in property <int> probe-samples: 1;
+    in property <float> probe-range: -1;
+    in property <int> mesh-cols;
+    in property <[MeshCell]> mesh-cells;
+    in property <float> mesh-range: -1;
+    in property <string> mesh-profile;
+    in property <string> mesh-profiles-text;
+    in property <[string]> mesh-profiles;
+    in property <[ScrewRow]> screws;
+    in property <string> pid-nozzle;
+    in property <string> pid-bed;
+    in property <string> shaper-x;
+    in property <string> shaper-y;
+    in property <[FormRow]> tmc-rows;
+    in property <float> pa-smooth;
+    in-out property <int> pid-heater;
+    in-out property <float> pid-temp: 220;
+    in-out property <int> pid-fan: 1;
+    in-out property <int> shaper-axes;
+    // Vibrations: the last SHAPER_CALIBRATE (X, Y) and the belt check.
+    in property <bool> calib-corexy;
+    in property <[ShaperAxis]> shaper-result: [{ shown: false }, { shown: false }];
+    in-out property <int> shaper-pick-x;
+    in-out property <int> shaper-pick-y;
+    in-out property <int> shaper-axis;
+    in property <BeltsResult> belts;
+    // When the shown vibration measurement was taken.
+    in property <string> shaper-taken;
+    // One resonance sweep, minutes (from resonance_tester).
+    in property <int> sweep-minutes: 2;
+    // Curves for a plot of these proportions.
+    callback draw-resonance(float);
+    callback refresh-calib();
+    callback calibrate(string);
+
+    // Messages and whether any is new (the dot on the rail).
+    in property <[MessageRow]> messages;
+    in property <bool> unread;
+    callback refresh-messages();
+    callback read-messages();
+
+    // A macro's prompt (action:prompt), shown over everything.
+    in property <bool> prompt-shown;
+    in property <string> prompt-title;
+    in property <string> prompt-text;
+    in property <[PromptButton]> prompt-buttons;
+
     property <bool> ready: root.link-state == "ready";
     property <bool> busy: root.ready && (root.print-state == "printing" || root.print-state == "paused");
+    // A layer over the whole glass (screensaver, touch calibration, lock): the
+    // screen under it is not drawn at all, else the renderer's partial redraws
+    // could let bits of it show through.
+    property <bool> covered: (root.ambient && root.busy) || root.overlay == "touch-cal" || root.overlay == "touch-test" || root.overlay == "installer" || (root.locked && root.ready);
 
     HorizontalLayout {
+        visible: !root.covered;
         Rail {
-            active: !root.ready ? "" : (root.screen == "fans" || root.screen == "heating" || root.screen == "motion" || root.screen == "extruder" || root.screen == "light" || root.screen == "speed" || root.screen == "zoffset") ? "control"
+            active: !root.ready ? "" : (root.screen == "fans" || root.screen == "filament" || root.screen == "heating" || root.screen == "heat-presets" || root.screen == "temp-graph" || root.screen == "motion" || root.screen == "extruder" || root.screen == "light" || root.screen == "speed" || root.screen == "zoffset" || root.screen == "motion-more" || root.screen == "retraction" || root.screen == "dryer" || root.screen == "spools" || root.screen == "devices") ? "control"
                 : (root.screen == "control" || root.screen == "tools" || root.screen == "settings" || root.screen == "messages") ? root.screen
-                : (root.screen == "console" || root.screen == "macros") ? "tools"
+                : (root.screen == "set-screen" || root.screen == "set-theme" || root.screen == "theme-picker" || root.screen == "set-lock" || root.screen == "set-sound" || root.screen == "set-language" || root.screen == "set-safety" || root.screen == "set-system" || root.screen == "set-network" || root.screen == "wifi-join" || root.screen == "set-printers" || root.screen == "set-updates") ? "settings"
+                : (root.screen == "console" || root.screen == "macros" || root.screen == "macro-params" || root.screen == "calibrate" || root.screen == "bed-mesh" || root.screen == "mesh-profiles" || root.screen == "screws" || root.screen == "probe" || root.screen == "shaper" || root.screen == "shaper-result" || root.screen == "belts" || root.screen == "pid" || root.screen == "pa" || root.screen == "tmc" || root.screen == "limits" || root.screen == "sensors" || root.screen == "history" || root.screen == "service" || root.screen == "camera") ? "tools"
                 : "home";
-            navigate(section) => { root.screen = section; }
+            unread: root.unread;
+            hold-stop: root.set-hold-stop;
+            navigate(section) => {
+                if (section == "messages") { root.refresh-messages(); }
+                root.screen = section;
+            }
             emergency-stop => { root.emergency-stop(); }
         }
 
@@ -183,24 +684,37 @@ export component AppWindow inherits Window {
             light-text: root.has-light ? (root.light-on ? round(root.light-level) + "%" : @tr("off")) : "";
             speed-percent: round(root.speed-percent);
             z-offset: root.z-offset;
+            has-devices: root.power-rows.length > 0 || root.pin-rows.length > 0;
             open(target) => {
                 if (target == "zoffset") { root.tune-z-start = root.z-offset; }
-                if (target == "fans" || target == "heating" || target == "motion" || target == "extruder" || target == "light" || target == "speed" || target == "zoffset") { root.screen = target; }
+                if (target == "fans" || target == "heating" || target == "motion" || target == "extruder" || target == "light" || target == "speed" || target == "zoffset" || target == "devices") { root.screen = target; }
             }
         }
-        if root.ready && root.screen == "light": LightScreen {
-            has-light: root.has-light;
-            level: root.light-level;
+        if root.ready && root.screen == "light": LightForm {
+            light-shown: root.has-light;
+            light-on: root.light-on;
+            brightness-shown: root.has-light;
+            brightness-source: root.light-level;
+            on-start-shown: root.has-light;
+            on-start-on: root.light-on-start;
             back => { root.screen = "control"; }
-            set-level(v) => { root.set-light-level(v); }
+            toggled(key, on) => {
+                if (key == "light") { root.set-light-level(on ? 100 : 0); }
+                if (key == "on-start") {
+                    root.light-on-start = on;
+                    root.save-flag("light_on_start", on);
+                }
+            }
+            bar-committed(key, v) => { root.set-light-level(v); }
         }
-        if root.ready && root.screen == "speed": SpeedScreen {
-            speed: root.speed-percent;
-            flow: root.flow-percent;
+        if root.ready && root.screen == "speed": SpeedForm {
+            speed-num: root.speed-percent;
+            flow-num: root.flow-percent;
+            now-value: round(root.live-velocity) + " " + @tr("mm/s");
             back => { root.screen = "control"; }
-            set-speed(p) => { root.set-speed(p); }
-            set-flow(p) => { root.set-flow(p); }
-            edit(what) => { root.open-tune-keypad(what); }
+            set-value(key, v) => { root.form-set(key, v); }
+            edit-number(key, t, lo, hi, v, d) => { root.open-number(key, t, lo, hi, v, d); }
+            activate(key) => { if (key == "reset-speed") { root.set-speed(100); root.set-flow(100); } }
         }
         if root.ready && root.screen == "zoffset": ZOffsetScreen {
             z-offset: root.z-offset;
@@ -208,6 +722,7 @@ export component AppWindow inherits Window {
             back => { root.screen = "control"; }
             adjust-z(d) => { root.adjust-z(d); }
             edit(what) => { root.open-tune-keypad(what); }
+            save => { root.save-z-offset(); }
         }
         if root.ready && root.screen == "motion": MotionScreen {
             pos-x: root.position-x;
@@ -217,17 +732,145 @@ export component AppWindow inherits Window {
             homed-y: root.homed-y;
             homed-z: root.homed-z;
             back => { root.screen = "control"; }
-            move-axis(axis, d) => { root.move-axis(axis, d); }
+            // Inversion is for this screen's buttons only (Motion · more).
+            move-axis(axis, d) => {
+                root.move-axis(axis, (axis == 0 && root.invert-x) || (axis == 1 && root.invert-y) || (axis == 2 && root.invert-z) ? -d : d);
+            }
+            more => {
+                root.goto-x = root.position-x;
+                root.goto-y = root.position-y;
+                root.goto-z = root.position-z;
+                root.screen = "motion-more";
+            }
             home-all => { root.home-all(); }
             motors-off => { root.motors-off(); }
         }
-        if root.ready && root.screen == "extruder": ExtruderScreen {
-            nozzle: root.extruder-temp;
-            nozzle-target: root.extruder-target;
-            min-temp: root.min-extrude-temp;
-            can-extrude: root.can-extrude;
+        if root.ready && root.screen == "extruder": ExtruderForm {
+            nozzle-sub: root.min-extrude-temp > 0 ? @tr("to extrude, needs ≥ {}°", round(root.min-extrude-temp))
+                : root.can-extrude ? @tr("hot enough to extrude") : @tr("too cold to extrude");
+            nozzle-value: round(root.extruder-temp) + "° / " + round(root.extruder-target) + "°";
+            load-value: root.material-name;
+            unload-shown: root.has-load-macros;
+            length-sel: root.extrude-length;
+            rate-sel: root.extrude-rate;
+            // Cold: the button heats first. While printing only when Klipper lets it.
+            extrude-enabled: !root.extrude-busy && (root.can-extrude || !root.busy);
+            // The snowflake beside Extrude: nozzle heater off.
+            extrude-side-enabled: root.extruder-target > 0;
+            retract-enabled: !root.extrude-busy && (root.can-extrude || !root.busy);
+            extrude-sub: root.extrude-busy ? @tr("heating to {}°, then extrudes…", round(root.extruder-target))
+                : root.can-extrude ? @tr("the chosen length")
+                : root.extrude-heat > 0 ? @tr("heats to {}° first", round(root.extrude-heat)) : @tr("asks how hot first");
+            retract-sub: root.extrude-busy ? @tr("heating to {}°…", round(root.extruder-target))
+                : root.can-extrude ? @tr("back into the extruder")
+                : root.extrude-heat > 0 ? @tr("heats to {}° first", round(root.extrude-heat)) : @tr("asks how hot first");
+            spools-shown: root.has-spoolman;
+            spools-sub: root.has-active-spool ? @tr("active: {}", root.active-spool) : @tr("no active spool");
+            retraction-shown: root.has-retraction;
+            retraction-sub: @tr("length {} mm", Format.fixed(root.retract-length, 1));
+            dryer-sub: root.dryer-minutes-left >= 0 ? @tr("drying: {} left", Format.duration(root.dryer-minutes-left)) : @tr("the bed as a dryer");
             back => { root.screen = "control"; }
-            extrude(len, speed) => { root.extrude(len, speed); }
+            picked(key, i) => {
+                if (key == "length") { root.extrude-length = i; }
+                if (key == "rate") { root.extrude-rate = i; }
+            }
+            activate(key) => {
+                if (key == "cool") { root.set-nozzle(0); }
+                if (key == "extrude" || key == "retract") {
+                    root.pending-length = (key == "extrude" ? 1 : -1) * self.length-values[root.extrude-length];
+                    root.pending-rate = self.rate-values[root.extrude-rate];
+                    if (root.extrude-heat >= 0) {
+                        root.extrude(root.pending-length, root.pending-rate, root.extrude-heat);
+                    } else {
+                        root.heat-then-extrude = true;
+                        root.build-heat-choices();
+                        root.overlay = "heat-pick";
+                    }
+                }
+                if (key == "nozzle") {
+                    root.heat-then-extrude = false;
+                    root.build-heat-choices();
+                    root.overlay = "heat-pick";
+                }
+                if (key == "spools") { root.list-spools(); root.screen = "spools"; }
+                if (key == "retraction") { root.screen = "retraction"; }
+                if (key == "load") { root.filament-step = 1; root.screen = "filament"; }
+                if (key == "unload") { root.run-gcode("UNLOAD_FILAMENT"); }
+                if (key == "dryer") { root.screen = "dryer"; }
+            }
+        }
+        if root.ready && root.screen == "retraction": RetractionForm {
+            retract-length-num: root.retract-length;
+            retract-speed-num: root.retract-speed;
+            unretract-extra-num: root.unretract-extra;
+            unretract-speed-num: root.unretract-speed;
+            back => { root.screen = "extruder"; }
+            set-value(key, v) => { root.form-set(key, v); }
+            edit-number(key, t, lo, hi, v, d) => { root.open-number(key, t, lo, hi, v, d); }
+        }
+        if root.ready && root.screen == "dryer": DryerForm {
+            dry-material-sel: root.dry-material;
+            dry-hours-num: root.dry-hours;
+            dry-start-title: root.dryer-minutes-left >= 0 ? @tr("Stop drying") : @tr("Start drying");
+            dry-start-sub: root.dryer-minutes-left >= 0 ? @tr("drying · {} left", Format.duration(root.dryer-minutes-left)) : @tr("the bed switches off by itself on time");
+            back => { root.screen = "extruder"; }
+            picked(key, i) => { if (key == "dry-material") { root.dry-material = i; } }
+            set-value(key, v) => { root.form-set(key, v); }
+            edit-number(key, t, lo, hi, v, d) => { root.open-number(key, t, lo, hi, v, d); }
+            activate(key) => {
+                if (key == "dry-start") {
+                    if (root.dryer-minutes-left >= 0) { root.dry(0, 0); }
+                    else { root.dry(self.dry-material-values[root.dry-material], round(root.dry-hours * 60)); }
+                }
+            }
+        }
+        if root.ready && root.screen == "spools": SpoolsForm {
+            spools-items: root.spool-rows;
+            spool-clear-enabled: root.has-active-spool;
+            back => { root.screen = "extruder"; }
+            activate(key) => { root.pick-spool(key); }
+        }
+        if root.ready && root.screen == "devices": DevicesForm {
+            power-section-shown: root.power-rows.length > 0;
+            power-items: root.power-rows;
+            pins-section-shown: root.pin-rows.length > 0;
+            pins-items: root.pin-rows;
+            back => { root.screen = "control"; }
+            toggled(key, on) => { root.device-toggled(key, on); }
+        }
+        if root.ready && root.screen == "motion-more": MotionMoreForm {
+            goto-x-num: root.goto-x;
+            goto-y-num: root.goto-y;
+            goto-z-num: root.goto-z;
+            goto-x-min: root.axis-min-x;
+            goto-y-min: root.axis-min-y;
+            goto-z-min: root.axis-min-z;
+            goto-x-max: root.axis-max-x;
+            goto-y-max: root.axis-max-y;
+            goto-z-max: root.axis-max-z;
+            goto-x-sub: Format.fixed(root.axis-min-x, 0) + " … " + Format.fixed(root.axis-max-x, 0);
+            goto-y-sub: Format.fixed(root.axis-min-y, 0) + " … " + Format.fixed(root.axis-max-y, 0);
+            goto-z-sub: Format.fixed(root.axis-min-z, 0) + " … " + Format.fixed(root.axis-max-z, 0);
+            go-enabled: root.homed-x && root.homed-y && root.homed-z;
+            jog-xy-num: root.jog-xy-speed;
+            jog-z-num: root.jog-z-speed;
+            invert-x-on: root.invert-x;
+            invert-y-on: root.invert-y;
+            invert-z-on: root.invert-z;
+            back => { root.screen = "motion"; }
+            set-value(key, v) => { root.form-set(key, v); }
+            edit-number(key, t, lo, hi, v, d) => { root.open-number(key, t, lo, hi, v, d); }
+            activate(key) => {
+                if (key == "home-all") { root.run-gcode("G28"); }
+                if (key == "home-xy") { root.run-gcode("G28 X Y"); }
+                if (key == "home-z") { root.run-gcode("G28 Z"); }
+                if (key == "go") { root.go-to(root.goto-x, root.goto-y, root.goto-z); }
+            }
+            toggled(key, on) => {
+                if (key == "invert-x") { root.invert-x = on; root.save-flag("invert_x", on); }
+                if (key == "invert-y") { root.invert-y = on; root.save-flag("invert_y", on); }
+                if (key == "invert-z") { root.invert-z = on; root.save-flag("invert_z", on); }
+            }
         }
         if root.ready && root.screen == "heating": HeatingScreen {
             nozzle: root.extruder-temp;
@@ -237,6 +880,14 @@ export component AppWindow inherits Window {
             max-nozzle: root.nozzle-limit;
             max-bed: root.bed-limit;
             heater <=> root.heating-heater;
+            nozzle-eta: root.nozzle-eta;
+            bed-eta: root.bed-eta;
+            has-heat-links: root.has-heat-links;
+            presets: root.heat-presets;
+            open(key) => {
+                if (key == "heat-presets") { root.screen = "heat-presets"; }
+                if (key == "temp-graph") { root.screen = "temp-graph"; }
+            }
             back => { root.screen = "control"; }
             set-target(which, t) => { if (which == 0) { root.set-nozzle(t); } else { root.set-bed(t); } }
             edit(which) => {
@@ -250,15 +901,243 @@ export component AppWindow inherits Window {
                 root.overlay = "keypad";
             }
         }
+        if root.ready && root.screen == "filament": FilamentScreen {
+            presets: root.heat-presets;
+            nozzle: root.extruder-temp;
+            nozzle-target: root.extruder-target;
+            can-extrude: root.can-extrude;
+            step <=> root.filament-step;
+            heat(t) => { root.set-nozzle(t); }
+            extrude(mm) => { root.extrude(mm, 5, 0); }
+            done(name) => { root.set-loaded(name); root.screen = "extruder"; }
+            cancel => { root.screen = "extruder"; }
+        }
+        if root.ready && root.screen == "heat-presets": HeatPresetsScreen {
+            presets: root.heat-presets;
+            max-nozzle: root.nozzle-limit;
+            max-bed: root.bed-limit;
+            changed(i, n, b) => { root.preset-changed(i, n, b); }
+            back => { root.screen = "heating"; }
+        }
+        if root.ready && root.screen == "temp-graph": TempGraphScreen {
+            lines: root.graph-lines;
+            grid: root.graph-grid;
+            back => { root.screen = "heating"; }
+            refresh(aspect) => { root.refresh-graph(aspect); }
+        }
         if root.ready && root.screen == "tools": ToolsScreen {
             macro-count: root.macros.length;
-            open(target) => { root.screen = target; }
+            history-total: root.history-total;
+            open(target) => {
+                if (target == "history") { root.refresh-history(); }
+                if (target == "calibrate") { root.refresh-calib(); }
+                if (target == "service") { root.refresh-service(); }
+                if (target == "camera") { root.refresh-cameras(); }
+                root.screen = target;
+            }
         }
-        if root.ready && root.screen == "console": ConsoleScreen {
+        if root.ready && root.screen == "calibrate": CalibrateForm {
+            mesh-shown: root.calib-has-mesh;
+            mesh-sub: root.mesh-profile != "" ? @tr("profile “{}”", root.mesh-profile) : root.mesh-profiles.length > 0 ? @tr("profiles: {} · none loaded", root.mesh-profiles-text) : @tr("not probed yet");
+            screws-shown: root.calib-has-screws;
+            probe-shown: root.calib-has-probe;
+            shaper-sub: root.shaper-x != "" ? "X: " + root.shaper-x + " " + @tr("Hz") + " · Y: " + root.shaper-y + " " + @tr("Hz") : @tr("not set up");
+            pa-sub: Format.fixed(root.pressure-advance, 3);
+            tare-shown: root.calib-has-tare;
+            belts-shown: root.calib-has-accel && root.calib-corexy;
+            back => { root.screen = "tools"; }
+            activate(key) => {
+                if (key == "mesh") { root.screen = "bed-mesh"; }
+                if (key == "screws") { root.screen = "screws"; }
+                if (key == "probe") { root.screen = "probe"; }
+                if (key == "shaper") { root.screen = "shaper"; }
+                if (key == "belts") { root.screen = "belts"; }
+                if (key == "pid") { root.pid-temp = root.pid-heater == 0 ? 220 : 60; root.screen = "pid"; }
+                if (key == "pa") { root.screen = "pa"; }
+                if (key == "tmc") { root.screen = "tmc"; }
+                if (key == "tare") { root.calibrate("LOAD_CELL_TARE"); }
+            }
+        }
+        if root.ready && root.screen == "bed-mesh": BedMeshScreen {
+            cells: root.mesh-cells;
+            cols: root.mesh-cols;
+            range: root.mesh-range;
+            profile: root.mesh-profile;
+            profiles: root.mesh-profiles;
+            profiles-text: root.mesh-profiles-text;
+            busy: root.calib-busy;
+            printing: root.busy;
+            probe => { root.calibrate("BED_MESH_CALIBRATE"); }
+            open-profiles => { root.screen = "mesh-profiles"; }
+            back => { root.screen = "calibrate"; }
+        }
+        if root.ready && root.screen == "mesh-profiles": MeshProfilesScreen {
+            profiles: root.mesh-profiles;
+            current: root.mesh-profile;
+            load(name) => { root.calibrate("BED_MESH_PROFILE LOAD=" + name); root.screen = "bed-mesh"; }
+            back => { root.screen = "bed-mesh"; }
+        }
+        if root.ready && root.screen == "screws": ScrewsScreen {
+            screws: root.screws;
+            busy: root.calib-busy;
+            printing: root.busy;
+            check => { root.calibrate("SCREWS_TILT_CALCULATE"); }
+            back => { root.screen = "calibrate"; }
+        }
+        if root.ready && root.screen == "probe": ProbeForm {
+            now-value: root.probe-z-saved > -999 ? Format.fixed(root.probe-z-saved, 3) + " " + @tr("mm") : "—";
+            tune-sub: @tr("live, while printing");
+            accuracy-enabled: !root.calib-busy && !root.busy;
+            accuracy-sub: root.calib-busy ? @tr("measuring…") : @tr("10 touches at one spot");
+            last-shown: root.probe-range >= 0;
+            last-value: @tr("spread {} mm", Format.fixed(root.probe-range, 3));
+            offset-value: root.probe-offset + " " + @tr("mm");
+            samples-value: "" + root.probe-samples;
+            back => { root.screen = "calibrate"; }
+            activate(key) => {
+                if (key == "tune") { root.tune-z-start = root.z-offset; root.screen = "zoffset"; }
+                if (key == "accuracy") { root.calibrate("G28\nPROBE_ACCURACY SAMPLES=10"); }
+            }
+        }
+        if root.ready && root.screen == "shaper": ShaperForm {
+            x-value: root.shaper-x != "" ? root.shaper-x + " " + @tr("Hz") : "—";
+            y-value: root.shaper-y != "" ? root.shaper-y + " " + @tr("Hz") : "—";
+            // Measuring needs an accelerometer.
+            axes-shown: root.calib-has-accel;
+            axes-sel: root.shaper-axes;
+            measure-shown: root.calib-has-accel;
+            measure-enabled: !root.calib-busy && !root.busy;
+            noise-shown: root.calib-has-accel;
+            measure-sub: root.calib-busy ? @tr("measuring… don't touch the printer") : @tr("~{} min · don't touch the printer", (root.shaper-axes == 0 ? 2 : 1) * root.sweep-minutes);
+            last-shown: root.shaper-result[0].shown || root.shaper-result[1].shown;
+            last-value: root.shaper-taken;
+            back => { root.screen = "calibrate"; }
+            picked(key, i) => { if (key == "axes") { root.shaper-axes = i; } }
+            activate(key) => {
+                if (key == "measure") { root.calibrate(root.shaper-axes == 1 ? "G28\nSHAPER_CALIBRATE AXIS=X" : root.shaper-axes == 2 ? "G28\nSHAPER_CALIBRATE AXIS=Y" : "G28\nSHAPER_CALIBRATE"); }
+                if (key == "noise") { root.calibrate("MEASURE_AXES_NOISE"); }
+                if (key == "last") { root.screen = "shaper-result"; }
+            }
+        }
+        if root.ready && root.screen == "shaper-result": ShaperResultScreen {
+            axes: root.shaper-result;
+            axis <=> root.shaper-axis;
+            pick-x <=> root.shaper-pick-x;
+            pick-y <=> root.shaper-pick-y;
+            back => { root.screen = "shaper"; }
+            draw(aspect) => { root.draw-resonance(aspect); }
+            save(script) => { root.calibrate(script); root.screen = "shaper"; }
+        }
+        if root.ready && root.screen == "belts": BeltsScreen {
+            result: root.belts;
+            busy: root.calib-busy;
+            printing: root.busy;
+            minutes: 2 * root.sweep-minutes;
+            back => { root.screen = "calibrate"; }
+            draw(aspect) => { root.draw-resonance(aspect); }
+            check => { root.calibrate("G28\nTEST_RESONANCES AXIS=1,1 OUTPUT=resonances NAME=belt_a\nTEST_RESONANCES AXIS=1,-1 OUTPUT=resonances NAME=belt_b"); }
+        }
+        if root.ready && root.screen == "pid": PidForm {
+            heater-sel: root.pid-heater;
+            temp-num: root.pid-temp;
+            fan-sel: root.pid-fan;
+            fan-shown: root.pid-heater == 0;
+            now-value: root.pid-heater == 0 ? root.pid-nozzle : root.pid-bed;
+            run-enabled: !root.calib-busy && !root.busy;
+            run-sub: root.calib-busy ? @tr("running: the heater cycles, about 5 minutes") : @tr("the heater switches on and off several times");
+            back => { root.screen = "calibrate"; }
+            picked(key, i) => {
+                if (key == "heater") { root.pid-heater = i; root.pid-temp = i == 0 ? 220 : 60; }
+                if (key == "fan") { root.pid-fan = i; }
+            }
+            set-value(key, v) => { if (key == "temp") { root.pid-temp = v; } }
+            activate(key) => {
+                if (key == "run") {
+                    root.calibrate((root.pid-heater == 0 ? "M106 S" + (root.pid-fan == 0 ? 0 : root.pid-fan == 1 ? 128 : 255) + "\n" : "")
+                        + "PID_CALIBRATE HEATER=" + (root.pid-heater == 0 ? "extruder" : "heater_bed") + " TARGET=" + round(root.pid-temp)
+                        + (root.pid-heater == 0 ? "\nM107" : ""));
+                }
+            }
+        }
+        if root.ready && root.screen == "pa": PaForm {
+            pa-num: root.pressure-advance;
+            smooth-num: root.pa-smooth;
+            // Each step applies at once: no separate Apply.
+            apply-shown: false;
+            back => { root.screen = "calibrate"; }
+            set-value(key, v) => {
+                if (key == "pa") { root.set-pressure-advance(v); }
+                if (key == "smooth") { root.run-gcode("SET_PRESSURE_ADVANCE SMOOTH_TIME=" + Format.fixed(v, 3)); }
+            }
+            edit-number(key, t, lo, hi, v, d) => { root.open-number(key == "pa" ? "pa" : "pa-smooth", t, lo, hi, v, d); }
+        }
+        if root.ready && root.screen == "tmc": TmcForm {
+            drivers-items: root.tmc-rows;
+            back => { root.screen = "calibrate"; }
+        }
+        if root.ready && root.screen == "limits": LimitsScreen {
+            velocity: root.limit-velocity;
+            accel: root.limit-accel;
+            corner: root.limit-corner;
+            cruise: root.limit-cruise;
+            set(key, v) => { root.set-limit(key, v); }
+            edit(key) => {
+                if (key == "velocity") { root.open-number("limit:velocity", @tr("Speed, mm/s"), 10, 1000, root.limit-velocity, 0); }
+                if (key == "accel") { root.open-number("limit:accel", @tr("Acceleration, mm/s²"), 100, 50000, root.limit-accel, 0); }
+                if (key == "corner") { root.open-number("limit:corner", @tr("Corner speed, mm/s"), 1, 50, root.limit-corner, 0); }
+                if (key == "cruise") { root.open-number("limit:cruise", @tr("Smooth cruising, %"), 0, 100, root.limit-cruise * 100, 0); }
+            }
+            back => { root.screen = "tools"; }
+        }
+        if root.ready && root.screen == "sensors": SensorsForm {
+            filament-shown: root.runout-name != "";
+            runout-shown: root.runout-name != "";
+            runout-on: root.runout-enabled;
+            runout-sub: !root.runout-enabled ? @tr("off: a print goes on without filament") : root.runout-sees ? @tr("now: filament is in") : @tr("now: no filament");
+            air-shown: root.has-air;
+            air-value: root.air-text != "" ? root.air-text : @tr("no data");
+            air-sub: "TVOC, CO₂, " + @tr("formaldehyde");
+            loadcell-shown: root.has-load-cell;
+            loadcell-value: @tr("{} g", root.load-g);
+            mcu-value: root.board-temps != "" ? root.board-temps : @tr("no sensors");
+            mcu-sub: root.board-temps != "" ? "" : @tr("not set up on this printer");
+            others-shown: true;
+            back => { root.screen = "tools"; }
+            toggled(key, on) => { if (key == "runout") { root.set-runout(on); } }
+        }
+        if root.ready && root.screen == "history": HistoryForm {
+            total-value: root.history-total >= 0 ? "" + root.history-total : "";
+            time-value: Format.duration(root.history-minutes);
+            time-sub: @tr("filament {} km", round(root.history-km * 10) / 10);
+            jobs-items: root.history-rows;
+            clear-shown: root.history-rows.length > 0;
+            latest-shown: root.history-rows.length > 0;
+            back => { root.screen = "tools"; }
+            activate(key) => {
+                if (key == "clear") { root.overlay = "clear-history"; }
+                else {
+                    root.open-path = key;
+                    root.open-name = root.file-title(key);
+                    root.open-file(key);
+                    root.screen = "file";
+                }
+            }
+        }
+        if root.ready && root.screen == "service": ServiceScreen {
+            items: root.service-items;
+            replaced(key) => { root.service-done(key); }
+            back => { root.screen = "tools"; }
+        }
+        if root.ready && root.screen == "camera": CameraScreen {
+            cameras: root.cameras;
+            back => { root.screen = "tools"; }
+        }
+        // The log is also open while Klipper is stopped («Log» on the error screen).
+        if (root.ready || root.link-state == "error") && root.screen == "console": ConsoleScreen {
             lines: root.console-lines;
             text <=> root.console-text;
             keyboard-open <=> root.console-keyboard;
-            back => { root.screen = "tools"; }
+            back => { root.screen = root.ready ? "tools" : "home"; }
             run(script) => { root.run-gcode(script); }
             clear => { root.clear-console(); }
             apply-key(t, k) => { return root.apply-key(t, k); }
@@ -266,37 +1145,315 @@ export component AppWindow inherits Window {
         if root.ready && root.screen == "macros": MacrosScreen {
             macros: root.macros;
             back => { root.screen = "tools"; }
-            pick(name) => { root.macro-pending = name; root.overlay = "run-macro"; }
+            // Rust looks for parameters first: with some, their screen; else as before.
+            pick(name) => { root.macro-pending = name; root.macro-open(name); }
         }
-        if root.ready && root.screen == "settings": SettingsScreen { }
+        if root.ready && root.screen == "macro-params": MacroParamsScreen {
+            macro-name: root.macro-pending;
+            params: root.macro-params;
+            set(i, v) => { root.macro-param-set(i, v); }
+            run => { root.run-gcode(root.macro-script()); root.screen = "macros"; }
+            back => { root.screen = "macros"; }
+            apply-key(t, k) => { return root.apply-key(t, k); }
+        }
+        // The rows open M2 screens; until those exist they do nothing.
+        if root.ready && root.screen == "settings": SettingsForm {
+            network-sub: root.net-ip != "" ? (root.net-wifi != "" ? "Wi-Fi " : "") + root.net-ip : @tr("no network address");
+            screen-sub: @tr("sleep: {}", root.set-sleep == 4 ? @tr("never") : @tr("{} min", [1, 5, 10, 30][root.set-sleep]));
+            lock-sub: root.set-pin != "" ? @tr("PIN on") : root.set-lock-print ? @tr("while printing") : @tr("off");
+            language-sub: (root.russian ? "Русский" : "English") + " · " + (root.set-clock == 0 ? @tr("24 h") : @tr("12 h"));
+            printers-sub: @tr("1 connected");
+            updates-sub: root.ver-klipper != "" ? "Klipper " + root.ver-klipper : "";
+            activate(key) => {
+                root.refresh-system();
+                if (key == "screen" || key == "lock" || key == "sound" || key == "safety" || key == "system" || key == "network" || key == "printers" || key == "updates") { root.screen = "set-" + key; }
+                if (key == "language") { root.screen = "set-language"; }
+            }
+        }
+        if root.ready && root.screen == "set-screen": ScreenForm {
+            // Only where Rivet can set the backlight (the printer's tool or sysfs).
+            brightness-shown: root.backlight-available;
+            brightness-value: root.set-brightness;
+            bar-committed(key, v) => {
+                if (key == "brightness") { root.set-brightness = v; root.setting-changed("brightness", "" + round(v)); }
+            }
+            sleep-sel: root.set-sleep;
+            awake-on: root.set-awake;
+            back => { root.screen = "settings"; }
+            theme-value: root.theme-accents.length > 0 ? root.theme-accents[root.theme-accent].name + " · " + root.theme-bases[root.theme-base].name : "";
+            init => { root.theme-open(); }
+            touch-cal-sub: @tr("touch 9 points with a finger");
+            activate(key) => {
+                if (key == "touch-cal") { root.overlay = "touch-cal"; }
+                if (key == "touch-test") { root.overlay = "touch-test"; }
+                if (key == "theme") { root.theme-open(); root.screen = "set-theme"; }
+            }
+            picked(key, i) => { if (key == "sleep") { root.set-sleep = i; root.setting-changed("screen_sleep_min", ["1", "5", "10", "30", "0"][i]); } }
+            toggled(key, on) => { if (key == "awake") { root.set-awake = on; root.setting-changed("awake_print", on ? "1" : "0"); } }
+        }
+        if root.ready && root.screen == "set-theme": ThemeScreen {
+            accents: root.theme-accents;
+            bases: root.theme-bases;
+            accent-sel: root.theme-accent;
+            base-sel: root.theme-base;
+            // The last swatch of each row is "your own": the colour picker.
+            pick-accent(i) => {
+                if (i == root.theme-accents.length - 1) { root.picking = "accent"; root.picking-from = root.theme-accents[i].color; root.screen = "theme-picker"; }
+                else { root.theme-pick(i, root.theme-base); }
+            }
+            pick-base(i) => {
+                if (i == root.theme-bases.length - 1) { root.picking = "base"; root.picking-from = root.theme-bases[i].under; root.screen = "theme-picker"; }
+                else { root.theme-pick(root.theme-accent, i); }
+            }
+            reset => { root.theme-pick(0, 0); }
+            back => { root.screen = "set-screen"; }
+        }
+        if root.ready && root.screen == "theme-picker": ColorPicker {
+            title: root.picking == "accent" ? @tr("Accent colour") : @tr("Background colour");
+            hue: root.picking-from.to-hsv().hue;
+            sat: root.picking-from.to-hsv().saturation;
+            val: root.picking-from.to-hsv().value;
+            done(c) => { root.theme-custom(root.picking, c); root.theme-open(); root.screen = "set-theme"; }
+            back => { root.screen = "set-theme"; }
+        }
+        if root.ready && root.screen == "set-lock": LockForm {
+            lock-print-on: root.set-lock-print;
+            pin-on: root.set-pin != "";
+            pin-sub: root.set-pin != "" ? @tr("{} digits", root.pin-digits) : @tr("4–6 digits");
+            autolock-sel: root.set-autolock;
+            back => { root.screen = "settings"; }
+            toggled(key, on) => {
+                if (key == "lock-print") { root.set-lock-print = on; root.setting-changed("lock_print", on ? "1" : "0"); }
+                if (key == "pin") {
+                    if (on) { root.open-number("pin", @tr("New PIN, 4–6 digits"), 1000, 999999, 0, 0); }
+                    else { root.set-pin = ""; root.setting-changed("pin", ""); }
+                }
+            }
+            picked(key, i) => { if (key == "autolock") { root.set-autolock = i; root.setting-changed("autolock_min", ["0", "5", "15", "30"][i]); } }
+        }
+        if root.ready && root.screen == "set-sound": SoundForm {
+            sounds-on: root.set-sounds;
+            tune-on: root.set-tune;
+            tune-shown: root.set-sounds;
+            test-enabled: root.set-sounds;
+            back => { root.screen = "settings"; }
+            toggled(key, on) => {
+                if (key == "sounds") { root.set-sounds = on; root.setting-changed("sounds", on ? "1" : "0"); }
+                if (key == "tune") { root.set-tune = on; root.setting-changed("end_tune", on ? "1" : "0"); }
+            }
+            activate(key) => { if (key == "test") { root.run-gcode("M300 S1000 P200"); } }
+        }
+        if root.ready && root.screen == "set-language": LangTimeForm {
+            lang-sel: root.russian ? 0 : 1;
+            clock-sel: root.set-clock;
+            zone-value: root.time-zone != "" ? root.time-zone : @tr("not set");
+            zone-sub: root.time-zone != "" ? @tr("for “done at 15:20”") : @tr("set it in KlipperMod: the clock stays hidden until then");
+            back => { root.screen = "settings"; }
+            picked(key, i) => {
+                if (key == "lang") { root.set-language(i); }
+                if (key == "clock") { root.set-clock = i; root.setting-changed("clock_12h", i == 1 ? "1" : "0"); }
+            }
+        }
+        if root.ready && root.screen == "set-safety": SafetyForm {
+            hold-stop-on: root.set-hold-stop;
+            confirm-macros-on: root.set-confirm-macros;
+            back => { root.screen = "settings"; }
+            toggled(key, on) => {
+                if (key == "hold-stop") { root.set-hold-stop = on; root.setting-changed("hold_stop", on ? "1" : "0"); }
+                if (key == "confirm-macros") { root.set-confirm-macros = on; root.setting-changed("confirm_macros", on ? "1" : "0"); }
+            }
+        }
+        if root.ready && root.screen == "set-system": SystemForm {
+            off-after-on: root.off-after-print;
+            off-after-shown: root.busy;
+            stock-shown: root.has-stock-macro;
+            stock-sub: @tr("Flashforge's firmware until the next reboot");
+            cpu-value: root.sys-cpu;
+            memory-value: root.sys-memory;
+            disk-value: root.sys-disk;
+            klipper-enabled: !root.busy;
+            firmware-enabled: !root.busy;
+            moonraker-enabled: !root.busy;
+            reboot-enabled: !root.busy;
+            shutdown-enabled: !root.busy;
+            stock-enabled: !root.busy;
+            back => { root.screen = "settings"; }
+            toggled(key, on) => { if (key == "off-after") { root.off-after-print = on; root.off-after(on); } }
+            activate(key) => { root.system-pending = key; root.overlay = "system"; }
+        }
+        if root.ready && root.screen == "set-network": NetworkForm {
+            connected-title: root.wifi-current != "" ? "Wi-Fi · " + root.wifi-current : root.net-wifi != "" ? "Wi-Fi · " + root.net-wifi : @tr("Connected");
+            connected-value: root.net-ip;
+            connected-sub: root.join-busy ? @tr("joining “{}”…", root.join-ssid) : root.net-mac;
+            connected-shown: root.net-ip != "" || root.join-busy;
+            host-value: root.host-name;
+            ethernet-value: root.net-eth != "" ? root.net-eth : @tr("not connected");
+            // Joining needs wpa_supplicant on this machine (Rivet on the printer).
+            around-shown: root.wifi-available;
+            around-sub: root.wifi-scanning ? @tr("looking…") : "";
+            nets-items: root.wifi-rows;
+            hidden-shown: root.wifi-available;
+            init => { root.wifi-scan(); }
+            back => { root.screen = "settings"; }
+            activate(key) => {
+                if (key == "hidden") {
+                    root.join-ssid = "";
+                    root.join-auth = "psk";
+                    root.join-password = "";
+                    root.join-error = "";
+                    root.screen = "wifi-join";
+                } else if (key.is-float()) {
+                    root.join-ssid = root.wifi-ssids[key.to-float()];
+                    root.join-auth = root.wifi-auths[key.to-float()];
+                    root.join-password = "";
+                    root.join-error = "";
+                    // Saved and open networks join at a tap; others ask for the password.
+                    if (root.wifi-saved[key.to-float()] || root.join-auth == "open") {
+                        root.wifi-join(root.join-ssid, root.join-auth, "");
+                    } else {
+                        root.screen = "wifi-join";
+                    }
+                }
+            }
+            // Look around again now and then while the screen is open.
+            Timer { interval: 20s; running: root.wifi-available && !root.join-busy; triggered => { root.wifi-scan(); } }
+        }
+        if root.ready && root.screen == "wifi-join": WifiJoinScreen {
+            ssid <=> root.join-ssid;
+            password <=> root.join-password;
+            auth: root.join-auth;
+            busy: root.join-busy;
+            error: root.join-error;
+            // Passwords and network names are mostly Latin.
+            cyrillic: false;
+            back => { root.screen = "set-network"; }
+            join => { root.wifi-join(root.join-ssid, root.join-auth, root.join-password); }
+            apply-key(t, k) => { return root.apply-key(t, k); }
+            mask(n) => { return root.mask(n); }
+        }
+        if root.ready && root.screen == "set-printers": PrintersForm {
+            this-title: root.host-name != "" ? root.host-name : @tr("This printer");
+            this-sub: @tr("this printer · connected");
+            this-value: "✓";
+            back => { root.screen = "settings"; }
+        }
+        if root.ready && root.screen == "set-updates": UpdatesForm {
+            klipper-value: root.ver-klipper;
+            moonraker-value: root.ver-moonraker;
+            rivet-value: root.ver-rivet;
+            rivet-sub: root.ver-rivet-sub;
+            update-rivet-shown: root.rivet-update;
+            update-rivet-sub: root.rivet-update-sub;
+            mainsail-shown: root.ver-mainsail != "";
+            mainsail-value: root.ver-mainsail;
+            mainsail-sub: root.ver-mainsail-sub;
+            fluidd-shown: root.ver-fluidd != "";
+            fluidd-value: root.ver-fluidd;
+            fluidd-sub: root.ver-fluidd-sub;
+            web-shown: root.ver-mainsail != "" || root.ver-fluidd != "";
+            back => { root.screen = "settings"; }
+            activate(key) => {
+                if (key == "check") { root.system-action("check-updates"); }
+                if (key == "update-rivet") { root.system-action("update-rivet"); }
+            }
+        }
         if root.ready && root.screen == "fans": FansScreen {
-            part-fan: root.fan-percent;
+            bars: root.fan-bars;
+            extras: root.fan-extras;
+            autos: root.fan-autos;
+            air-mode <=> root.air-mode;
             back => { root.screen = "control"; }
-            set-fan(name, v) => { root.set-fan(v); }
+            set-fan(object, v) => { root.set-fan(object, v); }
+            set-air(mode) => { root.set-air(mode); }
         }
-        if root.ready && root.screen == "more": PrintMoreScreen {
-            has-light: root.has-light;
-            light-on <=> root.light-on;
-            back => { root.screen = "home"; }
-            set-light(on) => { root.set-light-level(on ? 100 : 0); }
+        if root.ready && root.screen == "messages": MessagesScreen {
+            messages: root.messages;
+            unread: root.unread;
+            read-all => { root.read-messages(); }
+            save-config => { root.overlay = "save-config"; }
         }
-        if root.ready && root.screen == "tune": PrintTuneScreen {
-            speed: root.speed-percent;
-            flow: root.flow-percent;
-            z-offset: root.z-offset;
-            z-start: root.tune-z-start;
-            pressure-advance: root.pressure-advance;
-            fan-percent: root.fan-percent;
+        if root.ready && root.screen == "exclude": ExcludeScreen {
+            objects: root.plate-objects;
+            picked <=> root.exclude-picked;
+            back => { root.exclude-picked = ""; root.screen = "more"; }
+            skip(name, title) => { root.skip-name = name; root.skip-title = title; root.overlay = "skip-object"; }
+        }
+        if root.ready && root.screen == "more": MoreForm {
+            layer-pause-shown: root.has-pause-layer;
+            exclude-shown: root.plate-objects.length > 1;
+            exclude-sub: @tr("{n} part" | "{n} parts" % root.plate-objects.length);
+            layer-pause-sub: root.pause-next ? @tr("At the next layer")
+                : root.pause-at-layer > 0 ? @tr("pause at layer {}", root.pause-at-layer)
+                : @tr("next or chosen");
+            light-shown: root.has-light;
+            light-on: root.light-on;
+            timelapse-shown: root.has-timelapse;
+            timelapse-on: root.timelapse-on;
+            timelapse-sub: root.timelapse-on && root.busy ? @tr("recording") : "";
+            off-after-shown: root.has-auto-shutdown;
+            off-after-on: root.off-after-print;
             back => { root.screen = "home"; }
-            open-fans => { root.screen = "fans"; }
-            set-speed(p) => { root.set-speed(p); }
-            set-flow(p) => { root.set-flow(p); }
-            adjust-z(d) => { root.adjust-z(d); }
-            set-pressure-advance(v) => { root.set-pressure-advance(v); }
-            edit(what) => { root.open-tune-keypad(what); }
+            activate(key) => {
+                if (key == "layer-pause") {
+                    root.pause-layer-pick = root.pause-at-layer > root.layer ? root.pause-at-layer : root.layer + 1;
+                    root.screen = "layer-pause";
+                }
+                if (key == "exclude") { root.screen = "exclude"; }
+            }
+            toggled(key, on) => {
+                if (key == "light") { root.set-light-level(on ? 100 : 0); }
+                if (key == "timelapse") { root.timelapse-on = on; root.set-timelapse(on); }
+                if (key == "off-after") { root.off-after-print = on; root.off-after(on); }
+            }
+        }
+        if root.ready && root.screen == "layer-pause": LayerPauseForm {
+            layer-now-value: root.total-layers > 0 ? @tr("layer {} of {}", root.layer, root.total-layers) : "—";
+            pause-layer-num: root.pause-layer-pick;
+            pause-layer-min: root.layer + 1;
+            pause-layer-max: max(root.layer + 1, root.total-layers);
+            pause-at-sub: root.pause-at-layer > 0 ? @tr("set for layer {}", root.pause-at-layer) : "";
+            pause-next-sub: root.pause-next ? @tr("set") : "";
+            back => { root.screen = "more"; }
+            set-value(key, v) => { root.form-set(key, v); }
+            edit-number(key, t, lo, hi, v, d) => { root.open-number(key, t, lo, hi, v, d); }
+            activate(key) => {
+                if (key == "pause-at") { root.pause-at(round(root.pause-layer-pick)); }
+                if (key == "pause-next") { root.pause-next-layer(!root.pause-next); }
+            }
+        }
+        if root.ready && root.screen == "tune": TuneForm {
+            speed-num: root.speed-percent;
+            flow-num: root.flow-percent;
+            z-num: root.z-offset;
+            z-was-num: root.tune-z-start;
+            pa-num: root.pressure-advance;
+            temps-sub: @tr("nozzle {}° · bed {}°", round(root.extruder-temp), round(root.bed-temp));
+            fans-sub: @tr("part fan {}%", root.fan-percent);
+            back => { root.screen = "home"; }
+            set-value(key, v) => { root.form-set(key, v); }
+            edit-number(key, t, lo, hi, v, d) => { root.open-number(key, t, lo, hi, v, d); }
+            activate(key) => {
+                if (key == "save-z") { root.save-z-offset(); }
+                if (key == "temps") { root.screen = "heating"; }
+                if (key == "fans") { root.screen = "fans"; }
+                if (key == "reset-speed") { root.set-speed(100); root.set-flow(100); }
+            }
         }
 
-        if root.ready && root.screen == "home" && root.busy: PrintingScreen {
+        if root.ready && root.screen == "home" && root.busy && root.runout: RunoutScreen {
+            layer: root.layer;
+            total-layers: root.total-layers;
+            progress: root.progress;
+            has-load-macros: root.has-load-macros;
+            can-extrude: root.can-extrude;
+            filament-back: !root.filament-out;
+            unload => { root.run-gcode("UNLOAD_FILAMENT"); }
+            load => { root.run-gcode("LOAD_FILAMENT"); }
+            purge => { root.extrude(25, 5, 0); }
+            cancel => { root.overlay = "cancel-print"; }
+            resume => { root.resume-print(); }
+        }
+        if root.ready && root.screen == "home" && root.busy && !root.runout: PrintingScreen {
             filename: root.filename;
             thumb: root.print-thumb;
             has-thumb: root.has-print-thumb;
@@ -313,7 +1470,8 @@ export component AppWindow inherits Window {
             pause => { root.pause-print(); }
             resume => { root.resume-print(); }
             tune => { root.tune-z-start = root.z-offset; root.screen = "tune"; }
-            has-more: root.has-light;
+            has-more: root.has-light || root.has-pause-layer || root.has-timelapse || root.has-auto-shutdown;
+            eta-clock: root.eta-clock;
             more => { root.screen = "more"; }
             cancel => { root.overlay = "cancel-print"; }
         }
@@ -323,6 +1481,9 @@ export component AppWindow inherits Window {
             has-thumb: root.has-print-thumb;
             elapsed-minutes: root.elapsed-minutes;
             bed: root.bed-temp;
+            clock: root.last-name == root.filename ? root.last-clock : "";
+            material: root.last-name == root.filename ? root.last-material : "";
+            grams: root.last-name == root.filename ? root.last-grams : 0;
             dismiss => { root.done-dismissed = true; }
             again => { root.start-print(root.filename); root.done-dismissed = true; }
         }
@@ -339,17 +1500,40 @@ export component AppWindow inherits Window {
             max-bed: root.bed-limit;
             last-thumb: root.last-thumb;
             has-last-thumb: root.has-last-thumb;
+            last-material: root.last-material;
+            files-local: root.files-local;
+            files-usb: root.files-usb;
+            material: root.material-name;
+            material-color: root.material-color;
             print-again => { root.start-print(root.last-name); }
-            open(target) => { root.refresh-files(); root.screen = target; }
+            open(target) => {
+                if (target == "files") { root.files-scroll = 0; root.refresh-files(); root.screen = "files"; }
+                if (target == "heating" || target == "heating-bed") { root.heating-heater = target == "heating-bed" ? 1 : 0; root.screen = "heating"; }
+                // The filament wizard comes later in this wave; until then, the Extruder.
+                if (target == "filament") { root.filament-step = 1; root.screen = "filament"; }
+            }
         }
         if root.ready && root.screen == "files": FilesScreen {
             files <=> root.files;
+            local-count: root.files-local;
+            usb-count: root.files-usb;
+            on-usb <=> root.files-on-usb;
+            scroll-y <=> root.files-scroll;
+            loaded: root.files-loaded;
+            // The other storage's list is not here yet: show it loading, not empty.
+            storage-changed(usb) => { root.files-scroll = 0; root.files-loaded = false; root.files = []; root.refresh-files(); }
+            window(first) => { root.files-window(first); }
             select-mode <=> root.select-mode;
             selected-count <=> root.selected-count;
+            queue-count: root.queue-count;
+            query: root.files-query;
+            queue => { root.refresh-queue(); root.screen = "queue"; }
+            find => { root.screen = "files-find"; }
+            queue-selected => { root.queue-selected(); root.select-mode = false; }
             back => { root.screen = "home"; }
             open(path) => {
                 root.open-path = path;
-                root.open-name = path;
+                root.open-name = root.file-title(path);
                 root.open-file(path);
                 root.screen = "file";
             }
@@ -360,14 +1544,89 @@ export component AppWindow inherits Window {
             path: root.open-path;
             name: root.open-name;
             info: root.file-info;
+            max-z: root.axis-max-z;
             back => { root.screen = "files"; }
             print-file => { root.start-print(root.open-path); root.screen = "home"; }
-            delete => { root.overlay = "delete-file"; }
+            loaded-material: root.material-type;
+            more => { root.screen = "file-actions"; }
         }
-        if !root.ready: StatusScreen {
+        if root.ready && root.screen == "file-actions": FileActionsForm {
+            page-title: root.open-name;
+            queue-shown: root.queue-count >= 0;
+            move-shown: root.move-folders.length > 1;
+            // A file on the USB stick can be copied to the printer's storage.
+            copy-shown: root.files-on-usb;
+            back => { root.screen = "file"; }
+            activate(key) => {
+                if (key == "delete") { root.overlay = "delete-file"; }
+                if (key == "queue") { root.queue-files([root.open-path]); root.screen = "queue"; }
+                if (key == "rename") { root.rename-text = root.open-name; root.screen = "file-rename"; }
+                if (key == "move") { root.screen = "file-move"; }
+                if (key == "copy") { root.copy-to-printer(root.open-path); root.screen = "files"; }
+            }
+        }
+        if root.ready && root.screen == "files-find": FindScreen {
+            query <=> root.files-query;
+            sort <=> root.files-sort;
+            cyrillic: root.russian;
+            changed => { root.files-scroll = 0; root.files-view-changed(); }
+            apply-key(t, k) => { return root.apply-key(t, k); }
+            back => { root.screen = "files"; }
+        }
+        if root.ready && root.screen == "file-rename": RenameScreen {
+            text <=> root.rename-text;
+            cyrillic: root.russian;
+            valid: root.name-ok(root.open-path, root.rename-text);
+            apply-key(t, k) => { return root.apply-key(t, k); }
+            done => { root.rename-file(root.open-path, root.rename-text); root.screen = "files"; }
+            back => { root.screen = "file-actions"; }
+        }
+        if root.ready && root.screen == "file-move": MoveScreen {
+            folders: root.move-folders;
+            current: root.open-folder;
+            picked(folder) => { root.move-file(root.open-path, folder); root.screen = "files"; }
+            back => { root.screen = "file-actions"; }
+        }
+        if root.ready && root.screen == "queue": Rectangle {
+            horizontal-stretch: 1;
+            JobQueueForm {
+                width: parent.width;
+                height: parent.height;
+                jobs-items: root.queue-rows;
+                queue-run-shown: root.queue-count > 0;
+                queue-run-title: root.queue-state == "paused" ? @tr("Start the queue") : @tr("Pause the queue");
+                queue-run-sub: root.queue-state == "paused" ? @tr("total {}", Format.duration(root.queue-minutes))
+                    : root.busy ? @tr("the next job starts when this print ends") : @tr("the next job starts when the printer is free");
+                queue-clear-shown: root.queue-count > 0;
+                back => { root.screen = "files"; }
+                activate(key) => {
+                    if (key == "queue-run") { root.queue-run(root.queue-state == "paused"); }
+                    if (key == "queue-clear") { root.overlay = "clear-queue"; }
+                    if (key != "queue-run" && key != "queue-clear") {
+                        root.open-path = key;
+                        root.open-name = root.file-title(key);
+                        root.open-file(key);
+                        root.screen = "file";
+                    }
+                }
+            }
+            if root.queue-count == 0: VerticalLayout {
+                alignment: center;
+                spacing: 8px;
+                Text { text: @tr("The queue is empty"); color: Tokens.text; font-size: Tokens.title; font-weight: 800; horizontal-alignment: center; }
+                Text { text: @tr("Add a file from its menu, or several at once with Select."); color: Tokens.text-dim; font-size: Tokens.body; horizontal-alignment: center; }
+            }
+        }
+        if !root.ready && root.screen != "console": StatusScreen {
             state: root.link-state;
             message: root.klippy-message;
+            kind: root.error-kind;
+            progress: root.print-state == "error" || root.print-state == "printing" ? root.progress : 0;
+            attempt: root.retry-attempt;
+            retry-in: root.retry-in;
             restart-firmware => { root.firmware-restart(); }
+            retry => { root.retry-now(); }
+            log => { root.screen = "console"; }
         }
     }
 
@@ -380,12 +1639,19 @@ export component AppWindow inherits Window {
             : root.toast-detail;
         dismissed => { root.toast-kind = ""; }
     }
-    if root.overlay == "cancel-print": Dialog {
-        title: @tr("Cancel print?");
-        message: root.filename + "\n" + @tr("The heaters turn off. The job cannot be resumed.");
-        confirm-text: @tr("Cancel print");
-        cancel-text: @tr("Keep printing");
-        danger: true;
+    if root.prompt-shown && root.ready: PromptDialog {
+        title: root.prompt-title;
+        text: root.prompt-text;
+        buttons: root.prompt-buttons;
+        pressed(gcode) => { root.run-gcode(gcode); }
+        // Closing without an answer ends the prompt for every screen, as Mainsail does.
+        closed => { root.run-gcode("RESPOND TYPE=command MSG=action:prompt_end"); }
+    }
+    if root.overlay == "cancel-print": StopDialog {
+        title: @tr("Stop the print?");
+        message: @tr("{}% of “{}” is done. This print cannot be resumed later.", round(root.progress * 100), root.file-title(root.filename));
+        confirm-text: @tr("Stop printing");
+        cancel-text: @tr("Don't stop");
         confirmed => { root.overlay = ""; root.cancel-print(); }
         cancelled => { root.overlay = ""; }
     }
@@ -402,6 +1668,42 @@ export component AppWindow inherits Window {
         }
         cancelled => { root.overlay = ""; }
     }
+    if root.overlay == "clear-queue": Dialog {
+        title: @tr("Clear the queue?");
+        message: @tr("{n} job is removed from the queue. The files stay." | "{n} jobs are removed from the queue. The files stay." % root.queue-count);
+        confirm-text: @tr("Clear");
+        danger: true;
+        confirmed => { root.overlay = ""; root.queue-clear(); }
+        cancelled => { root.overlay = ""; }
+    }
+    if root.overlay == "save-config": Dialog {
+        title: @tr("Save the config?");
+        // Saving restarts Klipper: never during a print.
+        message: root.busy ? @tr("Klipper restarts to save it: save once the print is over.") : @tr("Klipper restarts to save it: about 10 seconds.");
+        confirm-text: root.busy ? @tr("OK") : @tr("Save");
+        confirmed => { root.overlay = ""; if (!root.busy) { root.run-gcode("SAVE_CONFIG"); } }
+        cancelled => { root.overlay = ""; }
+    }
+    if root.overlay == "clear-history": Dialog {
+        title: @tr("Clear the history?");
+        message: @tr("The list of past prints and its totals are removed. The files stay.");
+        confirm-text: @tr("Clear");
+        danger: true;
+        confirmed => { root.overlay = ""; root.clear-history(); }
+        cancelled => { root.overlay = ""; }
+    }
+    if root.overlay == "skip-object": Dialog {
+        title: @tr("Skip “{}”?", root.skip-title);
+        message: @tr("The printer stops printing this part until the end. It cannot be brought back.");
+        confirm-text: @tr("Skip");
+        danger: true;
+        confirmed => {
+            root.overlay = "";
+            root.exclude-picked = "";
+            root.run-gcode("EXCLUDE_OBJECT NAME=" + root.skip-name);
+        }
+        cancelled => { root.overlay = ""; }
+    }
     if root.overlay == "delete-file": Dialog {
         title: @tr("Delete this file?");
         message: root.open-name + "\n" + @tr("It is removed from the printer. This cannot be undone.");
@@ -410,11 +1712,69 @@ export component AppWindow inherits Window {
         confirmed => { root.overlay = ""; root.delete-file(root.open-path); root.screen = "files"; }
         cancelled => { root.overlay = ""; }
     }
+    if root.overlay == "system": Dialog {
+        title: root.system-pending == "klipper" ? @tr("Restart Klipper?")
+            : root.system-pending == "firmware" ? @tr("Restart the firmware?")
+            : root.system-pending == "moonraker" ? @tr("Restart Moonraker?")
+            : root.system-pending == "reboot" ? @tr("Reboot the printer?")
+            : root.system-pending == "shutdown" ? @tr("Power off the printer?")
+            : root.system-pending == "stock" ? @tr("Boot the stock firmware?")
+            : @tr("Reset Rivet's settings?");
+        message: root.system-pending == "reset" ? @tr("Presets, lock, sounds and the rest go back to how they came. Klipper's config is not touched.")
+            : root.system-pending == "stock" ? @tr("The printer restarts into Flashforge's firmware; the next reboot brings KlipperMod back.")
+            : root.system-pending == "shutdown" ? @tr("Turn it on again with its power switch.")
+            : @tr("The screen loses the printer for a few seconds.");
+        confirm-text: root.system-pending == "reset" ? @tr("Reset") : root.system-pending == "shutdown" ? @tr("Power off") : @tr("Restart");
+        danger: root.system-pending == "reset" || root.system-pending == "shutdown" || root.system-pending == "stock";
+        confirmed => { root.overlay = ""; root.system-action(root.system-pending); }
+        cancelled => { root.overlay = ""; }
+    }
     if root.overlay == "run-macro": Dialog {
         title: @tr("Run {}?", root.macro-pending);
         message: @tr("The macro starts at once on the printer.");
         confirm-text: @tr("Run");
         confirmed => { root.overlay = ""; root.run-gcode(root.macro-pending); }
+        cancelled => { root.overlay = ""; }
+    }
+    // The USB installer's pictures (rendered by ui-snapshot only).
+    if root.overlay == "installer": InstallerScreen {
+        width: parent.width;
+        height: parent.height;
+        step: root.installer-step;
+    }
+    if root.overlay == "touch-test": TouchTestScreen {
+        tap(r, i, tx, ty, x, y) => { root.touch-test-tap(r, i, tx, ty, x, y); }
+        close => { root.overlay = ""; }
+    }
+    if root.overlay == "touch-cal": TouchCalScreen {
+        miss-before: root.cal-miss-before;
+        miss-after: root.cal-miss-after;
+        begin => { root.cal-begin(); }
+        point(i, x, y) => { root.cal-point(i, x, y); }
+        finish => { root.cal-finish(); }
+        keep => { root.cal-keep(); }
+        undo => { root.cal-undo(); }
+        reset => { root.cal-reset(); }
+        close => { root.overlay = ""; }
+    }
+    if root.overlay == "heat-pick": HeatPickDialog {
+        title: @tr("Heat the nozzle to");
+        message: root.heat-then-extrude ? @tr("For the filament that is in now. It heats, then moves the filament.") : @tr("For the filament that is in now.");
+        choices: root.heat-choices;
+        picked(t) => {
+            root.overlay = "";
+            if (root.heat-then-extrude) { root.extrude(root.pending-length, root.pending-rate, t); } else { root.set-nozzle(t); }
+        }
+        custom => {
+            root.keypad-target = root.heat-then-extrude ? "nozzle-extrude" : "nozzle";
+            root.keypad-negative = false;
+            root.keypad-title = @tr("Nozzle, °C");
+            root.keypad-current = "";
+            root.keypad-min = max(0, root.heat-then-extrude ? root.min-extrude-temp : 0);
+            root.keypad-max = root.nozzle-limit;
+            root.keypad-hint = round(root.keypad-min) + " … " + round(root.nozzle-limit);
+            root.overlay = "keypad";
+        }
         cancelled => { root.overlay = ""; }
     }
     if root.overlay == "keypad": Keypad {
@@ -427,13 +1787,31 @@ export component AppWindow inherits Window {
         done(v) => {
             root.overlay = "";
             root.keypad-done(v);
-            if (root.keypad-target == "speed") { root.set-speed(v); }
-            else if (root.keypad-target == "flow") { root.set-flow(v); }
-            else if (root.keypad-target == "z") { root.adjust-z(v - root.z-offset); }
-            else if (root.keypad-target == "pa") { root.set-pressure-advance(v); }
-            else if (root.keypad-target == "nozzle") { root.set-nozzle(v); }
+            if (root.keypad-target == "nozzle") { root.set-nozzle(v); }
+            else if (root.keypad-target == "nozzle-extrude") { root.extrude(root.pending-length, root.pending-rate, v); }
             else if (root.keypad-target == "bed") { root.set-bed(v); }
+            else { root.form-set(root.keypad-target, v); }
         }
         cancelled => { root.overlay = ""; }
+    }
+    // Locked: over everything; only the PIN (or a long press) or Stop get through.
+    if root.locked && root.ready: LockScreen {
+        progress: root.progress;
+        remaining-minutes: root.remaining-minutes;
+        busy: root.busy;
+        pin: root.set-pin;
+        unlocked => { root.locked = false; }
+        emergency-stop => { root.emergency-stop(); }
+    }
+    // Above everything, rail included; a touch closes it and presses nothing below.
+    if root.ambient && root.busy: AmbientScreen {
+        progress: root.progress;
+        remaining-minutes: root.remaining-minutes;
+        eta-clock: root.eta-clock;
+        layer: root.layer;
+        total-layers: root.total-layers;
+        nozzle: root.extruder-temp;
+        bed: root.bed-temp;
+        dismiss => { root.ambient = false; root.screen = "home"; }
     }
 }

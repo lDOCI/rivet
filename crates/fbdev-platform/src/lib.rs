@@ -5,6 +5,9 @@
 //! Configuration comes from environment variables, see [`Config::from_env`].
 
 pub mod pixel;
+pub mod reconnect;
+pub mod screen;
+mod snap;
 pub mod touch_state;
 
 #[cfg(target_os = "linux")]

@@ -53,6 +53,8 @@ export component PrintingScreen inherits Rectangle {
     callback more;
     // «More» only when this printer has something to put there.
     in property <bool> has-more;
+    // "15:20" when the print should end; empty without a timezone or an estimate.
+    in property <string> eta-clock;
 
     property <color> tone: root.paused ? Tokens.warn : Tokens.accent;
     property <float> p: max(0.0001, min(0.9999, root.progress));
@@ -80,7 +82,7 @@ export component PrintingScreen inherits Rectangle {
                     height: 300px;
                     viewbox-width: 300;
                     viewbox-height: 300;
-                    stroke: #171b21;
+                    stroke: Tokens.track;
                     stroke-width: 12px;
                     commands: "M150 12 A138 138 0 1 1 149.99 12";
                 }
@@ -92,7 +94,16 @@ export component PrintingScreen inherits Rectangle {
                     stroke: root.tone;
                     stroke-width: 12px;
                     stroke-line-cap: round;
-                    commands: "M150 12 A138 138 0 " + (root.p > 0.5 ? "1" : "0") + " 1 " + (150 + 138 * cos(root.sweep)) + " " + (150 + 138 * sin(root.sweep));
+                    // Path elements, not a command string: no locale in the numbers.
+                    MoveTo { x: 150; y: 12; }
+                    ArcTo {
+                        radius-x: 138;
+                        radius-y: 138;
+                        x: 150 + 138 * cos(root.sweep);
+                        y: 150 + 138 * sin(root.sweep);
+                        large-arc: root.p > 0.5;
+                        sweep: true;
+                    }
                 }
                 Rectangle {
                     x: 26px;
@@ -156,7 +167,6 @@ export component PrintingScreen inherits Rectangle {
             HorizontalLayout {
                 alignment: start;
                 spacing: 2px;
-                padding-top: 10px;
                 Text { text: round(root.progress * 100); color: Tokens.text; font-size: 92px; font-weight: 800; vertical-alignment: bottom; }
                 Text { text: "%"; color: Tokens.text-dim; font-size: 44px; font-weight: 700; vertical-alignment: bottom; }
             }
@@ -167,9 +177,11 @@ export component PrintingScreen inherits Rectangle {
                 font-size: 22px;
                 font-weight: 700;
             }
-            // Layers only when the slicer reports them.
-            if root.layer >= 0 && root.total-layers > 0: Text {
-                text: @tr("layer {} of {}", root.layer, root.total-layers);
+            // When it ends (wall clock) and the layer, each only when known.
+            if root.eta-clock != "" || (root.layer >= 0 && root.total-layers > 0): Text {
+                text: (root.eta-clock != "" ? @tr("done at {}", root.eta-clock) : "")
+                    + (root.eta-clock != "" && root.layer >= 0 && root.total-layers > 0 ? " · " : "")
+                    + (root.layer >= 0 && root.total-layers > 0 ? @tr("layer {} of {}", root.layer, root.total-layers) : "");
                 color: Tokens.text-dim;
                 font-size: 15px;
             }
@@ -180,13 +192,15 @@ export component PrintingScreen inherits Rectangle {
                 HeaterChip { name: @tr("Bed"); current: root.bed; target: root.bed-target; }
             }
             Rectangle { vertical-stretch: 1; }
+            // Four equal tiles, 84 px high, at the bottom (the prototype's grid).
             HorizontalLayout {
                 spacing: 10px;
-                if !root.paused: ActionTile { icon: "M10 4.5v15 M16 4.5v15"; text: @tr("Pause"); clicked => { root.pause(); } }
-                if root.paused: ActionTile { icon: "M7.5 4.8v14.4a1 1 0 0 0 1.5.86l11.6-7.2a1 1 0 0 0 0-1.72L9 3.94a1 1 0 0 0-1.5.86z"; filled: true; text: @tr("Resume"); clicked => { root.resume(); } }
-                ActionTile { icon: Icons.control; text: @tr("Tune"); clicked => { root.tune(); } }
-                if root.has-more: ActionTile { icon: "M5 12h.01 M12 12h.01 M19 12h.01"; text: @tr("More"); clicked => { root.more(); } }
-                ActionTile { icon: "M5 5h14v14H5z"; filled: true; danger: true; text: @tr("Cancel"); clicked => { root.cancel(); } }
+                height: 84px;
+                if !root.paused: ActionTile { preferred-width: 0px; min-width: 0px; horizontal-stretch: 1; icon: "M10 4.5v15 M16 4.5v15"; text: @tr("Pause"); clicked => { root.pause(); } }
+                if root.paused: ActionTile { preferred-width: 0px; min-width: 0px; horizontal-stretch: 1; icon: "M7.5 4.8v14.4a1 1 0 0 0 1.5.86l11.6-7.2a1 1 0 0 0 0-1.72L9 3.94a1 1 0 0 0-1.5.86z"; filled: true; text: @tr("Resume"); clicked => { root.resume(); } }
+                ActionTile { preferred-width: 0px; min-width: 0px; horizontal-stretch: 1; icon: Icons.control; text: @tr("Tune"); clicked => { root.tune(); } }
+                if root.has-more: ActionTile { preferred-width: 0px; min-width: 0px; horizontal-stretch: 1; icon: Icons.more; filled: true; text: @tr("More"); clicked => { root.more(); } }
+                ActionTile { preferred-width: 0px; min-width: 0px; horizontal-stretch: 1; icon: "M5 5h14v14H5z"; filled: true; danger: true; text: @tr("Stop print"); clicked => { root.cancel(); } }
             }
         }
     }
@@ -199,6 +213,11 @@ export component PrintDoneScreen inherits Rectangle {
     in property <bool> has-thumb;
     in property <int> elapsed-minutes;
     in property <float> bed;
+    // From the history entry of this print: wall-clock end (needs a timezone),
+    // filament type and planned grams from the slicer. Empty / 0 when not known.
+    in property <string> clock;
+    in property <string> material;
+    in property <int> grams;
     callback dismiss;
     callback again;
     HorizontalLayout {
@@ -232,23 +251,51 @@ export component PrintDoneScreen inherits Rectangle {
         }
         VerticalLayout {
             horizontal-stretch: 1;
-            spacing: 10px;
-            Text { text: @tr("Done"); color: Tokens.accent-hi; font-size: 15px; font-weight: 700; }
-            Text { text: root.filename; color: Tokens.text; font-size: 32px; font-weight: 800; wrap: word-wrap; overflow: elide; }
-            Rectangle {
-                height: 66px;
-                border-radius: 18px;
-                background: Tokens.surface-1;
-                VerticalLayout {
-                    padding-left: 14px;
-                    alignment: center;
-                    spacing: 2px;
-                    Text { text: @tr("Time"); color: Tokens.text-dim; font-size: 13px; }
-                    Text { text: Format.duration(root.elapsed-minutes); color: Tokens.text; font-size: 22px; font-weight: 800; }
+            Text {
+                text: root.clock != "" ? @tr("Done") + " · " + root.clock : @tr("Done");
+                color: Tokens.accent-hi;
+                font-size: 15px;
+                font-weight: 700;
+            }
+            Rectangle { height: 10px; }
+            Text { text: root.filename; color: Tokens.text; font-size: 32px; font-weight: 800; letter-spacing: -0.64px; overflow: elide; }
+            Rectangle { height: 16px; }
+            HorizontalLayout {
+                spacing: 10px;
+                height: 68px;
+                Rectangle {
+                    preferred-width: 0px;
+                    min-width: 0px;
+                    horizontal-stretch: 1;
+                    border-radius: 18px;
+                    background: Tokens.surface-1;
+                    VerticalLayout {
+                        padding-left: 14px;
+                        alignment: center;
+                        spacing: 2px;
+                        Text { text: @tr("Time"); color: Tokens.text-dim; font-size: 13px; }
+                        Text { text: Format.duration(root.elapsed-minutes); color: Tokens.text; font-size: 22px; font-weight: 800; }
+                    }
+                }
+                // Filament: only when the slicer said how much and what.
+                Rectangle {
+                    preferred-width: 0px;
+                    min-width: 0px;
+                    horizontal-stretch: 1;
+                    border-radius: 18px;
+                    background: root.grams > 0 ? Tokens.surface-1 : transparent;
+                    if root.grams > 0: VerticalLayout {
+                        padding-left: 14px;
+                        alignment: center;
+                        spacing: 2px;
+                        Text { text: @tr("Filament"); color: Tokens.text-dim; font-size: 13px; }
+                        Text { text: @tr("{} g", root.grams) + (root.material != "" ? " " + root.material : ""); color: Tokens.text; font-size: 22px; font-weight: 800; }
+                    }
                 }
             }
+            Rectangle { height: 14px; }
             if root.bed > 45: Text {
-                text: @tr("Bed is still {}°: let it cool before taking the part off.", round(root.bed));
+                text: @tr("Bed {}° — {} comes off easier once it cools.", round(root.bed), root.material != "" ? root.material : @tr("the part"));
                 color: Tokens.text-dim;
                 font-size: 15px;
                 wrap: word-wrap;
@@ -256,8 +303,362 @@ export component PrintDoneScreen inherits Rectangle {
             Rectangle { vertical-stretch: 1; }
             HorizontalLayout {
                 spacing: 10px;
-                SecondaryButton { horizontal-stretch: 10; text: @tr("Done"); font-size: 18px; min-height: 80px; clicked => { root.dismiss(); } }
-                PrimaryButton { horizontal-stretch: 14; text: @tr("Print again"); min-height: 80px; clicked => { root.again(); } }
+                height: 80px;
+                SecondaryButton { preferred-width: 0px; min-width: 0px; horizontal-stretch: 10; text: @tr("Done"); font-size: 18px; radius: 22px; clicked => { root.dismiss(); } }
+                PrimaryButton { preferred-width: 0px; min-width: 0px; horizontal-stretch: 14; text: @tr("Print it again"); clicked => { root.again(); } }
+            }
+        }
+    }
+}
+
+// The print screensaver (prototype: Ambient): full screen, no rail, big progress.
+export component AmbientScreen inherits Rectangle {
+    in property <float> progress;
+    in property <int> remaining-minutes: -1;
+    in property <string> eta-clock;
+    in property <int> layer: -1;
+    in property <int> total-layers: -1;
+    in property <float> nozzle;
+    in property <float> bed;
+    callback dismiss;
+    x: 0;
+    y: 0;
+    width: 800px;
+    height: 480px;
+    background: #050607;
+    accessible-role: button;
+    accessible-label: @tr("Print {}%, tap to open", round(root.progress * 100));
+    property <float> p: max(0.0001, min(0.9999, root.progress));
+    property <angle> sweep: -90deg + root.p * 360deg;
+    HorizontalLayout {
+        padding-top: 40px;
+        padding-bottom: 40px;
+        padding-left: 48px;
+        padding-right: 48px;
+        spacing: 48px;
+        alignment: start;
+        Rectangle {
+            width: 360px;
+            height: 360px;
+            y: (parent.height - self.height) / 2;
+            // Band r 158–174 (the prototype's r 166, width 16): this renderer strokes
+            // inside the line, so the line runs at the outer edge.
+            Path {
+                width: 360px;
+                height: 360px;
+                viewbox-width: 360;
+                viewbox-height: 360;
+                stroke: #111418;
+                stroke-width: 16px;
+                commands: "M180 6 A174 174 0 1 1 179.99 6";
+            }
+            Path {
+                width: 360px;
+                height: 360px;
+                viewbox-width: 360;
+                viewbox-height: 360;
+                stroke: Tokens.accent-hi;
+                stroke-width: 16px;
+                stroke-line-cap: round;
+                MoveTo { x: 180; y: 6; }
+                ArcTo {
+                    radius-x: 174;
+                    radius-y: 174;
+                    x: 180 + 174 * cos(root.sweep);
+                    y: 180 + 174 * sin(root.sweep);
+                    large-arc: root.p > 0.5;
+                    sweep: true;
+                }
+            }
+            HorizontalLayout {
+                alignment: center;
+                Text { text: round(root.progress * 100); color: Tokens.text; font-size: 132px; font-weight: 800; letter-spacing: -6.6px; vertical-alignment: center; }
+                Text { text: "%"; color: Tokens.text-mute; font-size: 56px; font-weight: 800; vertical-alignment: center; y: 18px; }
+            }
+        }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            alignment: center;
+            spacing: 6px;
+            if root.remaining-minutes >= 0: Text { text: @tr("Left"); color: Tokens.text-mute; font-size: 18px; font-weight: 600; }
+            if root.remaining-minutes >= 0: Text { text: Format.duration(root.remaining-minutes); color: Tokens.text; font-size: 84px; font-weight: 800; letter-spacing: -2.52px; height: 84px; vertical-alignment: center; }
+            if root.eta-clock != "": Text { text: @tr("done at {}", root.eta-clock); color: Tokens.text-2; font-size: 24px; }
+            Rectangle { height: 31px; Rectangle { y: 18px; height: 1px; background: Tokens.surface-1; } }
+            if root.layer >= 0 && root.total-layers > 0: Text { text: @tr("layer {} of {}", root.layer, root.total-layers); color: Tokens.text-dim; font-size: 18px; }
+            Text { text: @tr("nozzle {}° · bed {}°", round(root.nozzle), round(root.bed)); color: Tokens.text-dim; font-size: 18px; }
+        }
+    }
+    Text {
+        x: parent.width - self.width - 48px;
+        y: parent.height - self.height - 22px;
+        text: @tr("Tap to open");
+        color: Tokens.line;
+        font-size: 14px;
+    }
+    TouchArea { clicked => { root.dismiss(); } }
+}
+
+component RunoutStep inherits Rectangle {
+    in property <string> number;
+    in property <string> title;
+    in property <string> sub;
+    in property <bool> enabled: true;
+    callback clicked;
+    height: 72px;
+    border-radius: 20px;
+    background: ta.pressed && root.enabled ? Tokens.surface-2 : Tokens.surface-1;
+    opacity: root.enabled ? 1 : 0.45;
+    accessible-role: button;
+    accessible-label: root.title;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+    HorizontalLayout {
+        padding-left: 18px;
+        padding-right: 18px;
+        spacing: 14px;
+        VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: 40px;
+                height: 40px;
+                border-radius: 20px;
+                background: Tokens.surface-2;
+                Text { text: root.number; color: Tokens.accent-hi; font-size: 17px; font-weight: 800; horizontal-alignment: center; vertical-alignment: center; }
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            spacing: 2px;
+            Text { text: root.title; color: Tokens.text; font-size: 17px; font-weight: 700; overflow: elide; }
+            Text { text: root.sub; color: Tokens.text-dim; font-size: 14px; overflow: elide; }
+        }
+    }
+    ta := TouchArea { clicked => { if (root.enabled) { root.clicked(); } } }
+}
+
+// The runout sensor paused the print: what happened on the left, the way back
+// on the right. The prototype's Runout page.
+export component RunoutScreen inherits Rectangle {
+    horizontal-stretch: 1;
+    in property <int> layer: -1;
+    in property <int> total-layers: -1;
+    in property <float> progress;
+    // The printer has LOAD_FILAMENT / UNLOAD_FILAMENT.
+    in property <bool> has-load-macros;
+    // Klipper lets the extruder move (hot enough).
+    in property <bool> can-extrude;
+    // The sensor sees filament again.
+    in property <bool> filament-back;
+    callback unload;
+    callback load;
+    callback purge;
+    callback cancel;
+    callback resume;
+    HorizontalLayout {
+        padding: Tokens.pad;
+        spacing: 16px;
+        Rectangle {
+            width: 240px;
+            border-radius: 24px;
+            background: #fbbf2414;
+            VerticalLayout {
+                padding: 20px;
+                spacing: 0;
+                HorizontalLayout {
+                    alignment: start;
+                    Rectangle {
+                        width: 52px;
+                        height: 52px;
+                        border-radius: 18px;
+                        background: #fbbf2429;
+                        Icon { d: Icons.pause; size: 28px; weight: 2.4; color: Tokens.warn; }
+                    }
+                }
+                Rectangle { height: 14px; }
+                Text { text: @tr("Out of filament"); color: Tokens.text; font-size: 24px; font-weight: 800; wrap: word-wrap; }
+                Rectangle { height: 10px; }
+                Text {
+                    text: root.layer > 0 && root.total-layers > 0
+                        ? @tr("Paused at layer {} of {}. The nozzle stays hot.", root.layer, root.total-layers)
+                        : @tr("Paused at {}%. The nozzle stays hot.", round(root.progress * 100));
+                    color: Tokens.text-2;
+                    font-size: 15px;
+                    wrap: word-wrap;
+                }
+                Rectangle { vertical-stretch: 1; }
+                Rectangle {
+                    height: 64px;
+                    border-radius: 18px;
+                    background: cancel-ta.pressed ? #fb4b5e33 : Tokens.danger-soft;
+                    accessible-role: button;
+                    accessible-label: @tr("Cancel print");
+                    accessible-action-default => { root.cancel(); }
+                    Text { text: @tr("Cancel print"); color: Tokens.danger; font-size: 16px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+                    cancel-ta := TouchArea { clicked => { root.cancel(); } }
+                }
+            }
+        }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            spacing: 8px;
+            if root.has-load-macros: RunoutStep {
+                number: "1";
+                title: @tr("Unload what is left");
+                sub: @tr("heat and pull the broken end out");
+                clicked => { root.unload(); }
+            }
+            if root.has-load-macros: RunoutStep {
+                number: "2";
+                title: @tr("Load a new strand");
+                sub: @tr("heat and feed it to the nozzle");
+                clicked => { root.load(); }
+            }
+            RunoutStep {
+                number: root.has-load-macros ? "3" : "1";
+                title: @tr("Purge the nozzle");
+                sub: root.can-extrude ? @tr("25 mm, until the colour runs clean") : @tr("the nozzle is not hot enough yet");
+                enabled: root.can-extrude;
+                clicked => { root.purge(); }
+            }
+            Rectangle { vertical-stretch: 1; }
+            PrimaryButton {
+                min-height: 80px;
+                text: @tr("Resume print");
+                sub: root.filament-back ? "" : @tr("the sensor sees no filament yet");
+                enabled: root.filament-back;
+                clicked => { root.resume(); }
+            }
+        }
+    }
+}
+
+// One labelled object of the print on the plate map; position and size are
+// fractions of the bed (0..1, y from the back).
+export struct PlateObject {
+    name: string,
+    title: string,
+    // The slicer's outline as path commands over the whole bed (1000×1000 box).
+    shape: string,
+    // Centre, fractions of the bed.
+    cx: float,
+    cy: float,
+    x: float,
+    y: float,
+    w: float,
+    h: float,
+    excluded: bool,
+    current: bool,
+}
+
+// Skip objects: the plate seen from above, tap a part, then Skip. The
+// prototype's Exclude page.
+export component ExcludeScreen inherits Rectangle {
+    horizontal-stretch: 1;
+    in property <[PlateObject]> objects;
+    in-out property <string> picked;
+    property <string> picked-title;
+    callback skip(string, string);
+    callback back;
+    HorizontalLayout {
+        padding: Tokens.pad;
+        spacing: 16px;
+        Rectangle {
+            width: 448px;
+            border-radius: 24px;
+            background: Tokens.surface-1;
+            accessible-role: groupbox;
+            accessible-label: @tr("The bed from above");
+            plate := Rectangle {
+                x: 12px;
+                y: 12px;
+                width: parent.width - 24px;
+                height: parent.height - 24px;
+                border-radius: 16px;
+                background: #1b1f25;
+                clip: true;
+                // A 20 mm-ish grid, as the prototype's plate.
+                for i in 11: Rectangle { x: (i + 1) * parent.width / 12; width: 1px; height: parent.height; background: Tokens.text.with-alpha(0.04); }
+                for i in 11: Rectangle { y: (i + 1) * parent.height / 12; height: 1px; width: parent.width; background: Tokens.text.with-alpha(0.04); }
+                // Outlines where they really are, as Mainsail and Fluidd draw them.
+                for o in root.objects: Path {
+                    width: parent.width;
+                    height: parent.height;
+                    viewbox-width: 1000;
+                    viewbox-height: 1000;
+                    commands: o.shape;
+                    fill: o.excluded ? transparent : o.name == root.picked ? Tokens.danger-solid : o.current ? #5b7fe6 : #4466cc;
+                    stroke: o.excluded ? Tokens.text-faint : o.current ? Tokens.text : o.name == root.picked ? #ffb4be : #6d8ff0;
+                    stroke-width: o.current ? 2px : 1.5px;
+                }
+                // Centre marks, names, and a finger-sized target around each part.
+                for o in root.objects: Rectangle {
+                    property <length> bw: max(44px, o.w * parent.width);
+                    property <length> bh: max(44px, o.h * parent.height);
+                    x: o.cx * parent.width - self.bw / 2;
+                    y: o.cy * parent.height - self.bh / 2;
+                    width: self.bw;
+                    height: self.bh;
+                    accessible-role: button;
+                    accessible-label: o.title;
+                    accessible-checkable: true;
+                    accessible-checked: o.name == root.picked;
+                    Rectangle { width: 9px; height: 1.5px; background: Tokens.text.with-alpha(0.7); }
+                    Rectangle { width: 1.5px; height: 9px; background: Tokens.text.with-alpha(0.7); }
+                    // The name on a dark tag under the centre mark: readable on any fill.
+                    Rectangle {
+                        y: parent.height / 2 + 7px;
+                        width: min(label.preferred-width + 12px, 130px);
+                        height: 18px;
+                        x: (parent.width - self.width) / 2;
+                        border-radius: 6px;
+                        background: #0b0d10b3;
+                        label := Text {
+                            width: parent.width - 12px;
+                            text: o.title;
+                            color: o.excluded ? Tokens.text-faint : Tokens.text;
+                            font-size: 12px;
+                            font-weight: 700;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                            overflow: elide;
+                        }
+                    }
+                    TouchArea { clicked => { if (!o.excluded) { root.picked = root.picked == o.name ? "" : o.name; root.picked-title = o.title; } } }
+                }
+            }
+        }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            padding-top: 4px;
+            spacing: 0;
+            Text { text: @tr("Skip objects"); color: Tokens.text; font-size: 26px; font-weight: 800; wrap: word-wrap; }
+            Rectangle { height: 10px; }
+            Text { text: @tr("Tap the part on the bed that came loose or went wrong."); color: Tokens.text-dim; font-size: 16px; wrap: word-wrap; }
+            Rectangle { vertical-stretch: 1; }
+            Text { text: @tr("Outlined: already skipped. A white edge: printing now."); color: Tokens.text-faint; font-size: 14px; wrap: word-wrap; }
+            Rectangle { height: 10px; }
+            HorizontalLayout {
+                height: 80px;
+                spacing: 10px;
+                Rectangle {
+                    horizontal-stretch: 1;
+                    border-radius: 20px;
+                    background: back-ta.pressed ? Tokens.surface-3 : Tokens.surface-2;
+                    accessible-role: button;
+                    accessible-label: @tr("Back");
+                    accessible-action-default => { root.back(); }
+                    Text { text: @tr("Back"); color: Tokens.text; font-size: 18px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+                    back-ta := TouchArea { clicked => { root.back(); } }
+                }
+                Rectangle {
+                    horizontal-stretch: 1.5;
+                    border-radius: 20px;
+                    background: root.picked == "" ? Tokens.surface-1 : skip-ta.pressed ? Tokens.danger-solid.darker(15%) : Tokens.danger-solid;
+                    accessible-role: button;
+                    accessible-label: @tr("Skip");
+                    accessible-action-default => { if (root.picked != "") { root.skip(root.picked, root.picked-title); } }
+                    Text { text: @tr("Skip"); color: root.picked == "" ? Tokens.line : #ffffff; font-size: 18px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+                    skip-ta := TouchArea { clicked => { if (root.picked != "") { root.skip(root.picked, root.picked-title); } } }
+                }
             }
         }
     }

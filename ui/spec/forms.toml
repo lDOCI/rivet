@@ -1,0 +1,349 @@
+# List pages of the prototype that Rivet builds with FormScreen, and a name for each row.
+# tools/gen-forms.py reads the rows from docs/design/style/<Page>.dc.html; a row without an
+# entry here fails the build. The name becomes the row's properties in app.slint
+# (`<name>-shown`, `-on`, `-num`, `-value`, ...) and the key of its callbacks.
+#   name                               static row: everything from the prototype
+#   { name, data = [...] }             title / sub / value / range / tone from live data
+#   { name, later = "why" }            hidden until that function exists
+# Page keys: component, title = "data" (title from live data), back = false, en (msgids).
+
+[Light]
+component = "LightForm"
+rows = { r0 = "light", r1 = "brightness", r2 = "on-start" }
+en = { "Подсветка" = "Lights", "Яркость" = "Brightness", "Включать при старте" = "Turn on at startup" }
+
+[Speed]
+component = "SpeedForm"
+[Speed.rows]
+r0 = "speed"
+r1 = "flow"
+r2 = "reset-speed"
+r3 = { name = "now", data = ["value"] }
+
+[PrintTune]
+component = "TuneForm"
+[PrintTune.rows]
+r0 = "speed"
+r1 = "flow"
+r2 = "z"
+r3 = "save-z"
+r4 = "pa"
+r5 = { name = "temps", data = ["sub"] }
+r6 = { name = "fans", data = ["sub"] }
+r7 = "reset-speed"
+
+[PrintMore]
+component = "MoreForm"
+[PrintMore.rows]
+r0 = { name = "layer-pause", data = ["sub"] }
+r1 = { name = "exclude", data = ["sub"] }
+r2 = { name = "camera", later = "the camera view (MJPEG stream) is not built" }
+r3 = "light"
+r4 = { name = "timelapse", data = ["sub"] }
+r5 = "off-after"
+
+[Extruder]
+component = "ExtruderForm"
+[Extruder.rows]
+# Tap: how hot (presets, the last print's filament, or a number).
+r0 = { name = "nozzle", data = ["sub", "value"], kind = "link" }
+r1 = "length"
+r2 = "rate"
+# Beside Extrude: cool the nozzle down (a snowflake), as GuppyScreen has.
+r3 = { name = "extrude", side = "cool", side_icon = "M12 2v20 M4.9 6l14.2 12 M4.9 18l14.2-12 M9 3.5l3 2.5 3-2.5 M9 20.5l3-2.5 3 2.5 M2.6 9.4l3.7.9-1.1 3.6 M21.4 14.6l-3.7-.9 1.1-3.6 M2.6 14.6l3.7-.9-1.1-3.6 M21.4 9.4l-3.7.9 1.1 3.6" }
+r4 = "retract"
+r5 = "filament"
+r6 = "load"
+r7 = "unload"
+r8 = { name = "spools", data = ["sub"] }
+r9 = { name = "retraction", data = ["sub"] }
+r10 = { name = "dryer", data = ["sub"] }
+
+[Settings]
+component = "SettingsForm"
+back = false
+[Settings.rows]
+r0 = { name = "network", data = ["sub"] }
+r1 = { name = "screen", data = ["sub"] }
+r2 = { name = "lock", data = ["sub"] }
+r3 = "sound"
+r4 = { name = "language", data = ["sub"] }
+r5 = "safety"
+r6 = { name = "printers", data = ["sub"] }
+r7 = { name = "updates", data = ["sub"] }
+r8 = "system"
+
+[FileActions]
+component = "FileActionsForm"
+en = { "Скопировать на принтер" = "Copy to the printer" }
+title = "data"
+[FileActions.rows]
+r0 = "queue"
+r1 = "rename"
+r2 = "move"
+r4 = "copy"
+r3 = "delete"
+
+[JobQueue]
+component = "JobQueueForm"
+en = { "Очередь печати" = "Print queue", "Ждать подтверждения между печатями" = "Wait for a tap between prints", "снять деталь со стола" = "to take the part off the bed", "Очистить очередь" = "Clear the queue" }
+[JobQueue.rows]
+r0 = { name = "jobs", repeat = true }
+r1 = { name = "jobs", example = true }
+r2 = { name = "queue-run", data = ["title", "sub"] }
+r3 = { name = "queue-wait", later = "Moonraker's automatic_transition is a moonraker.conf option, not something a screen can switch" }
+r4 = "queue-clear"
+
+[MotionAdvanced]
+component = "MotionMoreForm"
+[MotionAdvanced.rows]
+r0 = "park"
+r1 = "home-all"
+r2 = "home-xy"
+r3 = "home-z"
+r4 = "goto"
+r5 = { name = "goto-x", data = ["sub", "range"] }
+r6 = { name = "goto-y", data = ["sub", "range"] }
+r7 = { name = "goto-z", data = ["sub", "range"] }
+r8 = "go"
+r9 = "jog"
+r10 = "jog-xy"
+r11 = "jog-z"
+r12 = "invert-x"
+r13 = "invert-y"
+r14 = "invert-z"
+
+[LayerPause]
+component = "LayerPauseForm"
+[LayerPause.rows]
+r0 = { name = "layer-now", data = ["value"] }
+r1 = { name = "pause-layer", data = ["range"] }
+r2 = { name = "pause-at", data = ["sub"] }
+r3 = { name = "pause-next", data = ["sub"] }
+
+[Retraction]
+component = "RetractionForm"
+[Retraction.rows]
+r0 = "retract-length"
+r1 = "retract-speed"
+r2 = "unretract-extra"
+r3 = "unretract-speed"
+r4 = "retract-note"
+
+[Dryer]
+component = "DryerForm"
+[Dryer.rows]
+r0 = "dry-material"
+r1 = "dry-hours"
+r2 = { name = "dry-start", data = ["title", "sub"] }
+
+[Spools]
+component = "SpoolsForm"
+[Spools.rows]
+r0 = { name = "spools", repeat = true }
+r1 = { name = "spools", example = true }
+r2 = { name = "spools", example = true }
+r3 = { name = "spools", example = true }
+r4 = "spool-clear"
+
+[Devices]
+component = "DevicesForm"
+[Devices.rows]
+r0 = "power-section"
+r1 = { name = "power", repeat = true }
+r2 = "pins-section"
+r3 = { name = "pins", repeat = true }
+
+[History]
+component = "HistoryForm"
+en = { "История" = "History", "Всего печатей" = "Prints in all", "с первого запуска Moonraker" = "since Moonraker's first start", "Время печати" = "Print time", "ПОСЛЕДНИЕ" = "LATEST", "Очистить историю" = "Clear the history", "файлы останутся" = "the files stay" }
+[History.rows]
+r0 = { name = "total", data = ["value"] }
+r1 = { name = "time", data = ["value", "sub"] }
+r2 = "latest"
+r3 = { name = "jobs", repeat = true }
+r4 = { name = "jobs", example = true }
+r5 = { name = "jobs", example = true }
+r6 = "clear"
+
+[Sensors]
+component = "SensorsForm"
+en = { "Датчики" = "Sensors", "ФИЛАМЕНТ" = "FILAMENT", "Датчик обрыва" = "Runout sensor", "ДРУГИЕ ДАТЧИКИ" = "OTHER SENSORS", "Качество воздуха" = "Air quality", "Тензодатчик" = "Load cell", "нагрузка на сопло" = "force on the nozzle", "Температура MCU и хоста" = "MCU and host temperature" }
+[Sensors.rows]
+r0 = "filament"
+r1 = { name = "runout", data = ["sub"] }
+r2 = "others"
+r3 = { name = "air", data = ["value", "sub"] }
+r4 = { name = "loadcell", data = ["value"] }
+r5 = { name = "mcu", data = ["value", "sub"] }
+
+[Calibrate]
+component = "CalibrateForm"
+en = { "Калибровки" = "Calibrations", "Карта стола" = "Bed mesh", "Винты стола" = "Bed screws", "сколько крутить каждый винт" = "how far to turn each screw", "Z-offset" = "Z offset", "точная подстройка, проверка датчика" = "fine tuning, probe check", "Вибрации" = "Vibrations", "Ремни" = "Belts", "Нагрев (PID)" = "Heating (PID)", "сопло и стол" = "nozzle and bed", "Pressure advance" = "Pressure advance", "Драйверы TMC" = "TMC drivers", "ток, режимы" = "current, modes", "обнулить, если врёт касание" = "zero it when touches are off", "сравнить два ремня" = "compare the two belts" }
+[Calibrate.rows]
+r0 = { name = "mesh", data = ["sub"] }
+r1 = "screws"
+r2 = "probe"
+r3 = { name = "shaper", data = ["sub"] }
+r4 = "belts"
+r5 = "pid"
+r6 = { name = "pa", data = ["sub"] }
+r7 = "tmc"
+r8 = "tare"
+
+[ProbeZ]
+component = "ProbeForm"
+en = { "Сейчас" = "Now", "сохранён в конфиге" = "saved in the config", "Точная подстройка" = "Fine tuning", "на тестовом слое" = "on a test layer", "Проверить точность датчика" = "Check the probe's accuracy", "10 касаний в одной точке" = "10 touches at one spot", "Последняя проверка" = "Last check", "норма до 0.01" = "fine up to 0.01", "ДАТЧИК" = "PROBE", "Смещение X / Y" = "Offset X / Y", "Касаний на точку" = "Touches per point" }
+[ProbeZ.rows]
+r0 = { name = "now", data = ["value"] }
+r1 = { name = "tune", data = ["sub"] }
+r2 = "accuracy"
+r3 = { name = "last", data = ["value"] }
+r4 = "probe"
+r5 = { name = "offset", data = ["value"] }
+r6 = { name = "samples", data = ["value"] }
+
+[InputShaper]
+component = "ShaperForm"
+en = { "Ось X" = "X axis", "Ось Y" = "Y axis", "из printer.cfg" = "from printer.cfg", "Что измерить" = "What to measure", "Обе оси" = "Both axes", "Измерить" = "Measure", "не трогайте принтер во время замера" = "don't touch the printer while it measures", "Последний замер" = "Last measurement", "графики и все варианты сглаживания" = "graphs and every shaper", "Проверить датчик" = "Check the sensor", "шум акселерометра" = "accelerometer noise", "Вибрации" = "Vibrations" }
+[InputShaper.rows]
+r0 = { name = "x", data = ["value"] }
+r1 = { name = "y", data = ["value"] }
+r2 = "axes"
+r3 = "measure"
+r4 = "last"
+r5 = "noise"
+
+[PidCal]
+component = "PidForm"
+en = { "Нагреватель" = "Heater", "Сопло" = "Nozzle", "Стол" = "Bed", "Температура" = "Temperature", "как при обычной печати" = "as for a normal print", "Обдув во время" = "Part fan during it", "как при печати" = "as when printing", "Выкл." = "Off", "Текущие" = "Now", "Запустить" = "Start", "нагреватель несколько раз включится и выключится" = "the heater switches on and off several times", "Температура, °" = "Temperature, °", "Нагрев (PID)" = "Heating (PID)" }
+[PidCal.rows]
+r0 = "heater"
+r1 = "temp"
+r2 = "fan"
+r3 = { name = "now", data = ["value"] }
+r4 = "run"
+
+[PressureAdvance]
+component = "PaForm"
+en = { "сейчас" = "now", "Smooth time" = "Smooth time", "с" = "s", "Smooth time, с" = "Smooth time, s", "Применить" = "Apply", "действует до перезапуска" = "until a restart", "Тестовая башня" = "Test tower", "печать с PA 0→0.1 по высоте, потом ввести высоту лучшего слоя" = "prints PA 0→0.1 up the height, then enter the best layer's height" }
+[PressureAdvance.rows]
+r0 = "pa"
+r1 = "smooth"
+r2 = "apply"
+r3 = { name = "tower", later = "needs a test-tower G-code file to print" }
+
+[Tmc]
+component = "TmcForm"
+en = { "Драйверы TMC" = "TMC drivers" }
+[Tmc.rows]
+r0 = { name = "drivers", repeat = true }
+r1 = { name = "drivers", example = true }
+r2 = { name = "drivers", example = true }
+r3 = { name = "drivers", example = true }
+
+[Screen]
+component = "ScreenForm"
+en = { "Экран" = "Screen", "Яркость" = "Brightness", "подсветка экрана" = "the screen's backlight", "Гасить через, мин" = "Sleep after, min", "без касаний" = "without a touch", "Не гасить во время печати" = "Stay on while printing", "показывать заставку с прогрессом" = "show the progress screensaver", "Поворот" = "Rotation", "Калибровка тача" = "Touch calibration", "коснуться 4 точек" = "touch 4 points", "Оформление" = "Appearance", "цвет акцента и фона" = "accent and background colours", "Тест касаний" = "Touch test", "стилус, указательный и большой палец — для настройки" = "stylus, index finger and thumb — for tuning" }
+# Not on the prototype page: the colours (themes were planned after 1.0; the owner asked for them before the alpha).
+extra = [{ name = "theme", t = "Оформление", sub = "цвет акцента и фона", icon = "M12 3a9 9 0 1 0 0 18c1 0 1.6-.8 1.6-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-.9.8-1.7 1.7-1.7H16a5 5 0 0 0 5-5c0-4-4-7.2-9-7.2 M7.5 11.5h.01 M10.5 7.5h.01 M15.5 8h.01" }, { name = "touch-test", t = "Тест касаний", sub = "стилус, указательный и большой палец — для настройки", icon = "M9 11V5a2 2 0 1 1 4 0v6 M13 9a2 2 0 1 1 4 0v3 M17 11a2 2 0 1 1 4 0v4a7 7 0 0 1-7 7h-1a7 7 0 0 1-6-3.4L4 14.5a2 2 0 0 1 3.4-2L9 15" }]
+[Screen.rows]
+r0 = "brightness"
+r1 = "sleep"
+r2 = "awake"
+r3 = { name = "rotate", later = "the framebuffer layer does not rotate yet" }
+r4 = "touch-cal"
+
+[LockSettings]
+component = "LockForm"
+en = { "Блокировка и PIN" = "Lock and PIN", "Блокировка во время печати" = "Lock while printing", "разблокировать — провести пальцем" = "unlock with the PIN or a long press", "PIN-код" = "PIN code", "4–6 цифр" = "4–6 digits", "Автоблокировка" = "Lock by itself", "Нет" = "Never", "5 мин" = "5 min", "15 мин" = "15 min", "30 мин" = "30 min", "без касаний" = "without a touch" }
+[LockSettings.rows]
+r0 = "lock-print"
+r1 = { name = "pin", data = ["sub"] }
+r2 = "autolock"
+
+[Sound]
+component = "SoundForm"
+en = { "Звук" = "Sound", "Звуки" = "Sounds", "пищалка принтера" = "the printer's beeper", "Громкость" = "Volume", "Мелодия в конце печати" = "Tune when a print ends", "Звук касаний" = "Touch sounds", "Проверить звук" = "Test the sound" }
+[Sound.rows]
+r0 = "sounds"
+r1 = { name = "volume", later = "M300 has no volume" }
+r2 = "tune"
+r3 = { name = "touch", later = "a beep per touch through G-code lags the finger" }
+r4 = "test"
+
+[LangTime]
+component = "LangTimeForm"
+en = { "Язык и время" = "Language and time", "Язык" = "Language", "Русский" = "Русский", "English" = "English", "Формат времени" = "Time format", "24 ч" = "24 h", "12 ч" = "12 h", "Часовой пояс" = "Time zone", "для «готово в 15:20»" = "for “done at 15:20”" }
+[LangTime.rows]
+r0 = "lang"
+r1 = "clock"
+r2 = { name = "zone", data = ["value", "sub"] }
+
+[Safety]
+component = "SafetyForm"
+en = { "Безопасность" = "Safety", "Удерживать «Стоп» 1 секунду" = "Hold Stop for 1 second", "защита от случайного касания; иначе — сразу по нажатию" = "against a stray touch; otherwise it stops at once", "Если отмена зависла — аварийная остановка" = "If a cancel hangs: emergency stop", "Ждать перед E-stop" = "Wait before E-stop", "Подтверждать запуск макросов" = "Confirm before running macros", "Уведомления" = "Notifications", "что показывать поверх экрана" = "what pops up over the screen", "Все" = "All", "Важные" = "Important", "Ошибки" = "Errors", "Ждать перед E-stop, с" = "Wait before E-stop, s" }
+[Safety.rows]
+r0 = "hold-stop"
+r1 = { name = "cancel-estop", later = "needs a watchdog on CANCEL_PRINT, not built" }
+r2 = { name = "estop-wait", later = "goes with the cancel watchdog" }
+r3 = "confirm-macros"
+r4 = { name = "notify", later = "only errors pop up today" }
+
+[System]
+component = "SystemForm"
+en = { "Система" = "System", "ПЕРЕЗАПУСК" = "RESTART", "Перезапустить Klipper" = "Restart Klipper", "перечитает конфиг" = "reads the config again", "Перезапустить прошивку" = "Restart the firmware", "после ошибки платы" = "after a board error", "Перезапустить Moonraker" = "Restart Moonraker", "Перезапустить экран" = "Restart the screen", "ПИТАНИЕ" = "POWER", "Выключить после печати" = "Power off after the print", "когда остынет ниже 50°" = "once it cools below 50°", "Перезагрузить принтер" = "Reboot the printer", "Выключить принтер" = "Power off the printer", "Загрузить стоковую прошивку" = "Boot the stock firmware", "вернуться в прошивку Flashforge до перезагрузки" = "Flashforge's firmware until the next reboot", "О СИСТЕМЕ" = "ABOUT", "Процессор" = "Processor", "Память" = "Memory", "Диск" = "Disk", "Логи" = "Logs", "уровень" = "level", "Инфо" = "Info", "Отладка" = "Debug", "Очистить место" = "Free up space", "старые логи, таймлапсы, кэш миниатюр" = "old logs, timelapses, preview cache", "Сбросить настройки Rivet" = "Reset Rivet's settings", "Klipper не трогает" = "Klipper is not touched", "Ошибки" = "Errors" }
+[System.rows]
+r0 = "restart"
+r1 = "klipper"
+r2 = "firmware"
+r3 = "moonraker"
+r4 = { name = "screen", later = "needs the init script (M2) to bring the screen back" }
+r5 = "power"
+r6 = "off-after"
+r7 = "reboot"
+r8 = "shutdown"
+r9 = { name = "stock", data = ["sub"] }
+r10 = "about"
+r11 = { name = "cpu", data = ["value"] }
+r12 = { name = "memory", data = ["value"] }
+r13 = { name = "disk", data = ["value"] }
+r14 = { name = "logs", later = "log level is a start option (--log-level) for now" }
+r15 = { name = "clean", later = "which files are safe to remove is not settled" }
+r16 = "reset"
+
+[Network]
+component = "NetworkForm"
+en = { "Сеть" = "Network", "Подключено" = "Connected", "ДОСТУПНЫЕ СЕТИ" = "NETWORKS AROUND", "Скрытая сеть" = "Hidden network", "ввести имя вручную" = "type its name", "ПРОЧЕЕ" = "OTHER", "Имя хоста" = "Host name", "Ethernet" = "Ethernet", "5 ГГц · WPA2" = "5 GHz · WPA2" }
+[Network.rows]
+r0 = { name = "wifi", later = "switching the radio off from the screen would cut the printer off the network it is reached by" }
+r1 = { name = "connected", data = ["title", "value", "sub"] }
+r2 = "around"
+r3 = { name = "nets", repeat = true }
+r4 = { name = "nets", example = true }
+r5 = { name = "nets", example = true }
+r6 = "hidden"
+r7 = "other"
+r8 = { name = "host", data = ["value"] }
+r9 = { name = "ethernet", data = ["value"] }
+
+[Printers]
+component = "PrintersForm"
+en = { "Принтеры" = "Printers", "Добавить принтер" = "Add a printer", "адрес Moonraker и порт" = "Moonraker's address and port" }
+[Printers.rows]
+r0 = { name = "this", data = ["title", "sub"] }
+r1 = { name = "add", later = "M4: several printers" }
+
+[Updates]
+component = "UpdatesForm"
+extra = [{ name = "update-rivet", after = "rivet", t = "Обновить экран", sub = "", icon = "M12 4v11 M7 10l5 5 5-5 M5 20h14" }]
+en = { "Обновления" = "Updates", "ВЕРСИИ" = "VERSIONS", "обновляется образом KlipperMod с USB" = "updated with a KlipperMod image from USB", "ВЕБ-ИНТЕРФЕЙСЫ" = "WEB INTERFACES", "актуально" = "up to date", "Проверить обновления" = "Check for updates", "Обновить экран" = "Update the screen" }
+[Updates.rows]
+r0 = "versions"
+r1 = { name = "klipper", data = ["value"] }
+r2 = { name = "moonraker", data = ["value"] }
+r3 = { name = "rivet", data = ["value", "sub"] }
+r4 = "web"
+r5 = { name = "mainsail", data = ["value", "sub"] }
+r6 = { name = "fluidd", data = ["value", "sub"] }
+r7 = "check"

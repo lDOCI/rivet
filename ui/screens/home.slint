@@ -1,5 +1,6 @@
-// Home while idle: last print, heaters, files. Only real values: no last print
-// in history means the "ready" card, never a made-up one.
+// Home while idle: last print, heaters, files, loaded filament. Laid out as the
+// prototype's grid (columns 1.45fr / 1fr, rows 1fr / 100 px, gap 12). Only real
+// values: no last print in history means the "ready" card, never a made-up one.
 import { Tokens } from "../kit/tokens.slint";
 import { Icons } from "../kit/icons.slint";
 import { Icon } from "../kit/controls.slint";
@@ -12,14 +13,17 @@ component HeaterRow inherits Rectangle {
     in property <float> current;
     in property <float> target;
     in property <float> maximum;
-    horizontal-stretch: 1;
+    callback clicked;
     vertical-stretch: 1;
+    accessible-role: button;
+    accessible-label: root.name;
+    accessible-action-default => { root.clicked(); }
     HorizontalLayout {
         spacing: 14px;
         alignment: start;
         VerticalLayout {
             alignment: center;
-            Gauge { current: root.current; target: root.target; maximum: root.maximum; size: 92px; value-size: 24px; }
+            Gauge { current: root.current; target: root.target; maximum: root.maximum; size: 100px; value-size: 26px; value-weight: 700; }
         }
         VerticalLayout {
             alignment: center;
@@ -32,6 +36,7 @@ component HeaterRow inherits Rectangle {
             }
         }
     }
+    TouchArea { clicked => { root.clicked(); } }
 }
 
 export component HomeScreen inherits VerticalLayout {
@@ -47,19 +52,30 @@ export component HomeScreen inherits VerticalLayout {
     in property <int> last-minutes;
     in property <int> last-days-ago: -1;
     in property <bool> last-completed: true;
+    in property <string> last-material;
     in property <image> last-thumb;
     in property <bool> has-last-thumb;
+    // Files on the printer and on a USB stick; -1 until counted.
+    in property <int> files-local: -1;
+    in property <int> files-usb;
+    // Loaded filament; empty when Rivet does not know it (no Spoolman, wizard not used).
+    in property <string> material;
+    in property <color> material-color;
     callback open(string);
     callback print-again;
     padding: Tokens.pad;
     spacing: Tokens.gap;
+
 
     HorizontalLayout {
         spacing: Tokens.gap;
         vertical-stretch: 1;
 
         if root.last-name != "": Rectangle {
-            horizontal-stretch: 145;
+            // The prototype's 1.45fr: no base width, stretch 1.45 against 1.
+            preferred-width: 0px;
+            min-width: 0px;
+            horizontal-stretch: 1.45;
             border-radius: Tokens.r-l;
             background: Tokens.surface-1;
             accessible-role: groupbox;
@@ -67,31 +83,31 @@ export component HomeScreen inherits VerticalLayout {
             VerticalLayout {
                 padding: 14px;
                 spacing: 12px;
-                HorizontalLayout {
-                    alignment: center;
-                    vertical-stretch: 1;
-                    Thumb {
-                        max-width: 232px;
-                        max-height: 232px;
-                        preferred-width: 232px;
-                        preferred-height: 232px;
-                        border-radius: Tokens.r-m;
-                        icon-size: 88px;
-                        source: root.last-thumb;
-                        has: root.has-last-thumb;
-                    }
+                // The whole width of the card: the preview (prepared for this
+                // place, thumbs::prepare_for) is as large as it fits.
+                Thumb {
+                    height: 232px;
+                    border-radius: Tokens.r-m;
+                    icon-size: 88px;
+                    source: root.last-thumb;
+                    has: root.has-last-thumb;
                 }
+                // What is left under the thumbnail: 64 px on the prototype's 336 px card.
+                // The 76 px button sticks out 6 px above and below, as it does there.
                 HorizontalLayout {
+                    vertical-stretch: 1;
+                    min-height: 0px;
                     spacing: 12px;
                     VerticalLayout {
                         horizontal-stretch: 1;
                         alignment: center;
                         spacing: 4px;
-                        Text { text: root.last-name; color: Tokens.text; font-size: 19px; font-weight: 700; overflow: elide; }
+                        Text { text: root.last-name; color: Tokens.text; font-size: 19px; font-weight: 700; letter-spacing: -0.19px; overflow: elide; }
                         Text {
                             text: (root.last-days-ago < 0 ? "" : Format.age(root.last-days-ago) + " · ")
                                 + (root.last-completed ? "" : @tr("stopped") + " · ")
-                                + Format.duration(root.last-minutes);
+                                + Format.duration(root.last-minutes)
+                                + (root.last-material != "" ? " · " + root.last-material : "");
                             color: Tokens.text-dim;
                             font-size: Tokens.caption;
                             overflow: elide;
@@ -99,27 +115,39 @@ export component HomeScreen inherits VerticalLayout {
                     }
                     Rectangle {
                         width: 76px;
-                        height: 76px;
-                        border-radius: Tokens.r-m;
-                        background: again.pressed ? Tokens.accent.darker(15%) : Tokens.accent;
-                        accessible-role: button;
-                        accessible-label: @tr("Print again");
-                        accessible-action-default => { root.print-again(); }
-                        Icon { d: "M7.5 4.8v14.4a1 1 0 0 0 1.5.86l11.6-7.2a1 1 0 0 0 0-1.72L9 3.94a1 1 0 0 0-1.5.86z"; size: 30px; filled: true; weight: 0; color: Tokens.accent-ink; }
-                        again := TouchArea { clicked => { root.print-again(); } }
+                        min-height: 0px;
+                        Rectangle {
+                            y: (parent.height - self.height) / 2;
+                            width: 76px;
+                            height: 76px;
+                            border-radius: 22px;
+                            background: again.pressed ? Tokens.accent.darker(15%) : Tokens.accent;
+                            // box-shadow: 0 8px 24px rgba(45, 212, 191, 0.2)
+                            drop-shadow-offset-y: 8px;
+                            drop-shadow-blur: 24px;
+                            drop-shadow-color: Tokens.accent.with-alpha(0.2);
+                            accessible-role: button;
+                            accessible-label: @tr("Print again");
+                            accessible-action-default => { root.print-again(); }
+                            Icon { d: "M7.5 4.8v14.4a1 1 0 0 0 1.5.86l11.6-7.2a1 1 0 0 0 0-1.72L9 3.94a1 1 0 0 0-1.5.86z"; size: 30px; filled: true; weight: 0; color: Tokens.accent-ink; }
+                            again := TouchArea { clicked => { root.print-again(); } }
+                        }
                     }
                 }
             }
         }
         if root.last-name == "": Rectangle {
-            horizontal-stretch: 145;
+            // The prototype's 1.45fr: no base width, stretch 1.45 against 1.
+            preferred-width: 0px;
+            min-width: 0px;
+            horizontal-stretch: 1.45;
             border-radius: Tokens.r-l;
             background: Tokens.surface-1;
             VerticalLayout {
                 padding: 26px;
                 spacing: 12px;
                 alignment: center;
-                Text { text: @tr("Printer is ready"); color: Tokens.text; font-size: Tokens.title; font-weight: 800; }
+                Text { text: @tr("Printer is ready"); color: Tokens.text; font-size: Tokens.title; font-weight: 800; letter-spacing: -0.52px; }
                 Text {
                     text: @tr("Send a model from your slicer or pick a file below. Your last print will show up here.");
                     color: Tokens.text-dim;
@@ -130,7 +158,9 @@ export component HomeScreen inherits VerticalLayout {
         }
 
         Rectangle {
-            horizontal-stretch: 100;
+            preferred-width: 0px;
+            min-width: 0px;
+            horizontal-stretch: 1;
             border-radius: Tokens.r-l;
             background: Tokens.surface-1;
             VerticalLayout {
@@ -138,44 +168,90 @@ export component HomeScreen inherits VerticalLayout {
                 padding-right: 16px;
                 padding-top: 6px;
                 padding-bottom: 6px;
-                HeaterRow { name: @tr("Nozzle"); current: root.nozzle; target: root.nozzle-target; maximum: root.max-nozzle; }
+                HeaterRow { name: @tr("Nozzle"); current: root.nozzle; target: root.nozzle-target; maximum: root.max-nozzle; clicked => { root.open("heating"); } }
                 Rectangle { height: 1px; background: Tokens.surface-2; }
-                HeaterRow { name: @tr("Bed"); current: root.bed; target: root.bed-target; maximum: root.max-bed; }
+                HeaterRow { name: @tr("Bed"); current: root.bed; target: root.bed-target; maximum: root.max-bed; clicked => { root.open("heating-bed"); } }
             }
         }
     }
 
-    Rectangle {
+    HorizontalLayout {
         height: 100px;
-        border-radius: Tokens.r-l;
-        background: files.pressed ? Tokens.surface-2 : Tokens.surface-1;
-        accessible-role: button;
-        accessible-label: @tr("Files");
-        accessible-action-default => { root.open("files"); }
-        HorizontalLayout {
-            padding-left: 20px;
-            padding-right: 20px;
-            spacing: 16px;
-            VerticalLayout {
-                alignment: center;
-                Rectangle {
-                    width: 56px;
-                    height: 56px;
-                    border-radius: Tokens.r-s;
-                    background: Tokens.surface-2;
-                    Icon { d: Icons.folder; size: 28px; color: Tokens.accent; }
+        spacing: Tokens.gap;
+        Rectangle {
+            preferred-width: 0px;
+            min-width: 0px;
+            horizontal-stretch: 1.45;
+            border-radius: Tokens.r-l;
+            background: files.pressed ? Tokens.surface-2 : Tokens.surface-1;
+            accessible-role: button;
+            accessible-label: @tr("Files");
+            accessible-action-default => { root.open("files"); }
+            HorizontalLayout {
+                padding-left: 20px;
+                padding-right: 20px;
+                spacing: 16px;
+                VerticalLayout {
+                    alignment: center;
+                    Rectangle {
+                        width: 56px;
+                        height: 56px;
+                        border-radius: Tokens.r-s;
+                        background: Tokens.surface-2;
+                        Icon { d: Icons.folder; size: 28px; color: Tokens.accent; }
+                    }
+                }
+                VerticalLayout {
+                    horizontal-stretch: 1;
+                    alignment: center;
+                    spacing: 2px;
+                    Text { text: @tr("Files"); color: Tokens.text; font-size: 19px; font-weight: 700; }
+                    if root.files-local >= 0: Text {
+                        text: root.files-usb > 0 ? @tr("{} on the printer · {} on USB", root.files-local, root.files-usb) : @tr("{} on the printer", root.files-local);
+                        color: Tokens.text-dim;
+                        font-size: Tokens.caption;
+                    }
+                }
+                VerticalLayout {
+                    alignment: center;
+                    Icon { d: "m9 6 6 6-6 6"; size: 22px; weight: 2.2; color: Tokens.text-faint; }
                 }
             }
-            VerticalLayout {
-                horizontal-stretch: 1;
-                alignment: center;
-                Text { text: @tr("Files"); color: Tokens.text; font-size: 19px; font-weight: 700; }
-            }
-            VerticalLayout {
-                alignment: center;
-                Icon { d: "m9 6 6 6-6 6"; size: 22px; weight: 2.2; color: Tokens.text-faint; }
-            }
+            files := TouchArea { clicked => { root.open("files"); } }
         }
-        files := TouchArea { clicked => { root.open("files"); } }
+        if root.material != "": Rectangle {
+            preferred-width: 0px;
+            min-width: 0px;
+            horizontal-stretch: 1;
+            border-radius: Tokens.r-l;
+            background: change.pressed ? Tokens.surface-2 : Tokens.surface-1;
+            accessible-role: button;
+            accessible-label: @tr("{} loaded. Tap to change the filament", root.material);
+            accessible-action-default => { root.open("filament"); }
+            HorizontalLayout {
+                padding-left: 18px;
+                padding-right: 18px;
+                spacing: 14px;
+                VerticalLayout {
+                    alignment: center;
+                    Rectangle {
+                        width: 44px;
+                        height: 44px;
+                        border-radius: 22px;
+                        background: root.material-color;
+                        border-width: 4px;
+                        border-color: Tokens.text.with-alpha(0.12);
+                    }
+                }
+                VerticalLayout {
+                    horizontal-stretch: 1;
+                    alignment: center;
+                    spacing: 2px;
+                    Text { text: root.material; color: Tokens.text; font-size: Tokens.row-title; font-weight: 700; overflow: elide; }
+                    Text { text: @tr("loaded · change"); color: Tokens.text-dim; font-size: Tokens.caption; }
+                }
+            }
+            change := TouchArea { clicked => { root.open("filament"); } }
+        }
     }
 }

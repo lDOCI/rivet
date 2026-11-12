@@ -409,7 +409,7 @@ msgid "Fans"
 msgstr "Вентиляторы"
 
 msgid "The slicer may change the part fan on the next layer."
-msgstr "Слайсер может изменить обдув на следующем слое."
+msgstr "Слайсер может поменять обдув модели на следующем слое."
 
 msgid "Print tuning"
 msgstr "Подстройка печати"
@@ -497,3 +497,1813 @@ msgid_plural "{n} macros"
 msgstr[0] "{n} макрос"
 msgstr[1] "{n} макроса"
 msgstr[2] "{n} макросов"
+
+msgid "Chamber"
+msgstr "Камера"
+
+msgid "Inside air"
+msgstr "Внутри"
+
+msgid "Outside air"
+msgstr "Наружу"
+
+msgid "Hotend"
+msgstr "Хотэнд"
+
+msgid "Drivers"
+msgstr "Драйверы"
+
+msgid "turns on by itself from {}°"
+msgstr "включается сам от {}°"
+
+msgid "turns on by itself"
+msgstr "включается сам"
+
+msgid "runs while the motors are on"
+msgstr "работает, пока включены моторы"
+
+msgid "holds {}°"
+msgstr "держит {}°"
+
+msgid "Chamber air"
+msgstr "Воздух в камере"
+
+msgid "Filter"
+msgstr "Фильтр"
+
+msgid "Exhaust"
+msgstr "Вытяжка"
+
+msgid "AUTOMATIC"
+msgstr "АВТОМАТИЧЕСКИЕ"
+
+msgid "switched off"
+msgstr "выключен"
+
+msgid "holding temperature"
+msgstr "держит температуру"
+
+msgid "Lights"
+msgstr "Подсветка"
+
+msgid "Brightness"
+msgstr "Яркость"
+
+msgid "Turn on at startup"
+msgstr "Включать при старте"
+
+msgid "heating · ~{} s left"
+msgstr "нагревается · ещё ~{} с"
+
+msgid "heating · ~{} min left"
+msgstr "нагревается · ещё ~{} мин"
+
+msgid "Presets"
+msgstr "Пресеты"
+
+msgid "Graph"
+msgstr "График"
+
+msgid "10 mm"
+msgstr "10 мм"
+
+msgid "100 mm"
+msgstr "100 мм"
+
+msgid "25 mm"
+msgstr "25 мм"
+
+msgid "5 mm"
+msgstr "5 мм"
+
+msgid "50 mm"
+msgstr "50 мм"
+
+msgid "X, mm"
+msgstr "X, мм"
+
+msgid "Y, mm"
+msgstr "Y, мм"
+
+msgid "Z, mm"
+msgstr "Z, мм"
+
+msgid "Back to 100% / 100%"
+msgstr "Вернуть 100% / 100%"
+
+msgid "All axes"
+msgstr "Все оси"
+
+msgid "Unload filament"
+msgstr "Выгрузить пруток"
+
+msgid "Power off after print"
+msgstr "Выключить после печати"
+
+msgid "Motion · more"
+msgstr "Движение · ещё"
+
+msgid "Add to queue"
+msgstr "Добавить в очередь"
+
+msgid "Load / change filament"
+msgstr "Заправить / сменить пруток"
+
+msgid "Invert X"
+msgstr "Инвертировать X"
+
+msgid "Invert Y"
+msgstr "Инвертировать Y"
+
+msgid "Invert Z"
+msgstr "Инвертировать Z"
+
+msgid "Spoolman spools"
+msgstr "Катушки Spoolman"
+
+msgid "JOG SETTINGS"
+msgstr "НАСТРОЙКИ ДЖОЙСТИКА"
+
+msgid "HOMING"
+msgstr "ПАРКОВКА"
+
+msgid "GO TO POSITION"
+msgstr "ПЕРЕЙТИ В ТОЧКУ"
+
+msgid "Pause at layer"
+msgstr "Пауза на слое"
+
+msgid "Rename"
+msgstr "Переименовать"
+
+msgid "Move to folder"
+msgstr "Переместить в папку"
+
+msgid "Go"
+msgstr "Поехать"
+
+
+msgid "Exclude objects"
+msgstr "Пропуск объектов"
+
+msgid "Firmware retraction"
+msgstr "Ретракт прошивки"
+
+msgid "Now"
+msgstr "Сейчас"
+
+msgid "XY speed"
+msgstr "Скорость XY"
+
+msgid "XY speed, mm/s"
+msgstr "Скорость XY, мм/с"
+
+msgid "Z speed"
+msgstr "Скорость Z"
+
+msgid "Z speed, mm/s"
+msgstr "Скорость Z, мм/с"
+
+msgid "Save Z-offset"
+msgstr "Сохранить Z-offset"
+
+msgid "Dry filament on the bed"
+msgstr "Сушка филамента на столе"
+
+msgid "Timelapse"
+msgstr "Таймлапс"
+
+msgid "Temperatures"
+msgstr "Температуры"
+
+msgid "XY only"
+msgstr "Только XY"
+
+msgid "Z only"
+msgstr "Только Z"
+
+msgid "FILAMENT"
+msgstr "ФИЛАМЕНТ"
+
+msgid "the chosen length"
+msgstr "выбранную длину"
+
+msgid "saved after the print"
+msgstr "запишется после печати"
+
+msgid "wizard: heat, feed, check the colour"
+msgstr "мастер: нагрев, протяжка, проверка цвета"
+
+msgid "heats and pulls it out"
+msgstr "нагреет и вытянет"
+
+msgid "back into the extruder"
+msgstr "обратно в экструдер"
+
+msgid "of the slicer"
+msgstr "от слайсера"
+
+msgid "confirmations"
+msgstr "подтверждения"
+
+msgid "real toolhead speed"
+msgstr "реальная скорость головы"
+
+msgid "signal at the end of a print"
+msgstr "сигнал в конце печати"
+
+msgid "next or chosen"
+msgstr "следующий или выбранный"
+
+msgid "the bed as a dryer"
+msgstr "стол как сушилка"
+
+msgid "on this screen only"
+msgstr "только на экране"
+
+
+
+
+msgid "More…"
+msgstr "Ещё…"
+
+msgid "nozzle {}° · bed {}°"
+msgstr "сопло {}° · стол {}°"
+
+msgid "to extrude, needs ≥ {}°"
+msgstr "для выдавливания нужно ≥ {}°"
+
+msgid "Above 150% quality and strength usually drop."
+msgstr "Выше 150% качество и прочность обычно падают."
+
+msgid "OUTPUTS"
+msgstr "ВЫХОДЫ"
+
+msgid "Time, h"
+msgstr "Время, ч"
+
+msgid "Lasts until a restart"
+msgstr "Действует до перезапуска"
+
+msgid "Retract length"
+msgstr "Длина ретракта"
+
+msgid "Retract length, mm"
+msgstr "Длина ретракта, мм"
+
+msgid "Extra prime"
+msgstr "Доп. подача"
+
+msgid "Extra prime, mm"
+msgstr "Доп. подача, мм"
+
+msgid "Spools"
+msgstr "Катушки"
+
+msgid "Material"
+msgstr "Материал"
+
+msgid "At the next layer"
+msgstr "На следующем слое"
+
+msgid "POWER"
+msgstr "ПИТАНИЕ"
+
+msgid "Set the pause"
+msgstr "Поставить паузу"
+
+msgid "Works only when the slicer uses firmware retraction."
+msgstr "Работает, только если в слайсере включён ретракт прошивкой."
+
+msgid "Prime speed"
+msgstr "Скорость подачи"
+
+msgid "Prime speed, mm/s"
+msgstr "Скорость подачи, мм/с"
+
+msgid "Retract speed"
+msgstr "Скорость ретракта"
+
+msgid "Retract speed, mm/s"
+msgstr "Скорость ретракта, мм/с"
+
+msgid "Clear the active spool"
+msgstr "Снять активную катушку"
+
+msgid "Filament drying"
+msgstr "Сушка филамента"
+
+msgid "insert a magnet, change colour"
+msgstr "вставить магнит, сменить цвет"
+
+msgid "direct drive 0.4–2 mm"
+msgstr "директ 0.4–2 мм"
+
+msgid "for good: only in the printer config"
+msgstr "насовсем — только в конфиге принтера"
+
+msgid "after unretracting"
+msgstr "после возврата"
+
+msgid "usage won't be deducted"
+msgstr "расход не будет списываться"
+
+msgid "bed temperature"
+msgstr "температура стола"
+
+msgid "h"
+msgstr "ч"
+
+msgid "active"
+msgstr "активна"
+
+msgid "Start drying"
+msgstr "Начать сушку"
+
+msgid "Stop drying"
+msgstr "Остановить сушку"
+
+msgid "drying · {} left"
+msgstr "идёт сушка · осталось {}"
+
+msgid "the bed switches off by itself on time"
+msgstr "стол выключится сам по таймеру"
+
+msgid "set for layer {}"
+msgstr "стоит на слое {}"
+
+msgid "set"
+msgstr "стоит"
+
+msgid "recording"
+msgstr "пишется"
+
+msgid "length {} mm"
+msgstr "длина {} мм"
+
+msgid "active: {}"
+msgstr "активная: {}"
+
+msgid "no active spool"
+msgstr "нет активной"
+
+msgid "pause at layer {}"
+msgstr "пауза на слое {}"
+
+msgid "drying: {} left"
+msgstr "сушится: осталось {}"
+
+msgid "{} on the printer · {} on USB"
+msgstr "{} на принтере · {} на USB"
+
+msgid "{} on the printer"
+msgstr "{} на принтере"
+
+msgid "{} loaded. Tap to change the filament"
+msgstr "Заправлен {}. Нажмите, чтобы сменить пруток"
+
+msgid "loaded · change"
+msgstr "заправлен · сменить"
+
+msgid "done at {}"
+msgstr "готово в {}"
+
+msgid "Stop print"
+msgstr "Отменить"
+
+msgid "Filament"
+msgstr "Пластик"
+
+msgid "Bed {}° — {} comes off easier once it cools."
+msgstr "Стол {}° — {} легче снять, когда остынет."
+
+msgid "the part"
+msgstr "деталь"
+
+msgid "Print it again"
+msgstr "Печатать снова"
+
+msgid "Not sticking: lower the nozzle.\nScraping or the layer is see-through: raise it."
+msgstr "Не липнет — опустите сопло.\nЦарапает или слой прозрачный — поднимите."
+
+msgid "Raise nozzle"
+msgstr "Поднять сопло"
+
+msgid "Lower nozzle"
+msgstr "Опустить сопло"
+
+msgid "Back to {}"
+msgstr "Вернуть {}"
+
+msgid "Fine tune"
+msgstr "Подстройка"
+
+msgid "Save"
+msgstr "Сохранить"
+
+msgid "{}: just what is loaded"
+msgstr "{} — как раз заправлен"
+
+msgid "Sliced for {}, {} is loaded"
+msgstr "Файл под {}, а заправлен {}"
+
+msgid "Is the bed empty and clean?"
+msgstr "Стол пустой и чистый?"
+
+msgid "File actions"
+msgstr "Действия с файлом"
+
+msgid "Where the files are"
+msgstr "Где лежат файлы"
+
+msgid "On the printer · {}"
+msgstr "На принтере · {}"
+
+msgid "USB · {}"
+msgstr "USB · {}"
+
+msgid "Moonraker does not answer. Trying again every 5 seconds: the screen updates by itself once the link is back."
+msgstr "Moonraker не отвечает. Пробуем снова каждые 5 секунд — экран обновится сам, как только связь появится."
+
+msgid "attempt {} · next in {} s"
+msgstr "попытка {} · следующая через {} с"
+
+msgid "attempt {} · trying now"
+msgstr "попытка {} · пробуем сейчас"
+
+msgid "Retry now"
+msgstr "Повторить сейчас"
+
+msgid "Heaters and motors are off"
+msgstr "Нагрев и моторы выключены"
+
+msgid "print stopped at {}%"
+msgstr "печать прервана на {}%"
+
+msgid "The control board did not run a command in time. A firmware restart usually helps: it takes about 10 seconds."
+msgstr "Плата управления не успела выполнить команду вовремя. Обычно помогает перезапуск прошивки — это займёт около 10 секунд."
+
+msgid "The printer lost the link to its control board. Check the cable, then restart the firmware."
+msgstr "Принтер потерял связь с платой управления. Проверьте кабель и перезапустите прошивку."
+
+msgid "A temperature reading is out of range: a sensor or its wire may be loose. Check it before restarting."
+msgstr "Температура вне допустимых пределов: возможно, отошёл датчик или его провод. Проверьте перед перезапуском."
+
+msgid "A heater does not warm up as expected: check the heater and its sensor before restarting."
+msgstr "Нагреватель греется не так, как ожидалось: проверьте нагреватель и датчик перед перезапуском."
+
+msgid "A move went past the printer's limits. Home the axes after the restart."
+msgstr "Движение вышло за пределы принтера. После перезапуска запаркуйте оси."
+
+msgid "A firmware restart usually brings the printer back."
+msgstr "Обычно помогает перезапуск прошивки."
+
+msgid "If it happens during prints, check the board's USB cable and don't run heavy calibrations while printing."
+msgstr "Если повторяется во время печати — проверьте USB-кабель платы и не запускайте тяжёлые калибровки вместе с печатью."
+
+msgid "Log"
+msgstr "Журнал"
+
+msgid "Print {}%, tap to open"
+msgstr "Печать {}%, коснитесь, чтобы открыть"
+
+msgid "Left"
+msgstr "Осталось"
+
+msgid "Tap to open"
+msgstr "Коснитесь, чтобы открыть"
+
+msgid "{n} job is removed from the queue. The files stay."
+msgid_plural "{n} jobs are removed from the queue. The files stay."
+msgstr[0] "Из очереди уйдёт {n} печать. Файлы останутся."
+msgstr[1] "Из очереди уйдут {n} печати. Файлы останутся."
+msgstr[2] "Из очереди уйдут {n} печатей. Файлы останутся."
+
+msgid "Start the queue"
+msgstr "Начать очередь"
+
+msgid "Pause the queue"
+msgstr "Остановить очередь"
+
+msgid "total {}"
+msgstr "всего {}"
+
+msgid "the next job starts when this print ends"
+msgstr "следующая начнётся после этой печати"
+
+msgid "the next job starts when the printer is free"
+msgstr "следующая начнётся, когда принтер свободен"
+
+msgid "The queue is empty"
+msgstr "Очередь пуста"
+
+msgid "Add a file from its menu, or several at once with Select."
+msgstr "Добавьте файл из его меню или сразу несколько через «Выбрать»."
+
+msgid "Clear the queue?"
+msgstr "Очистить очередь?"
+
+msgid "to take the part off the bed"
+msgstr "снять деталь со стола"
+
+msgid "Print queue"
+msgstr "Очередь печати"
+
+msgid "Wait for a tap between prints"
+msgstr "Ждать подтверждения между печатями"
+
+msgid "Clear the queue"
+msgstr "Очистить очередь"
+
+msgid "Latin letters"
+msgstr "Латинские буквы"
+
+msgid "Russian letters"
+msgstr "Русские буквы"
+
+msgid "Print queue, {}"
+msgstr "Очередь печати, {}"
+
+msgid "Search and sort"
+msgstr "Поиск и сортировка"
+
+msgid "Nothing found"
+msgstr "Ничего не нашлось"
+
+msgid "No file name has “{}”."
+msgstr "Нет файлов, в имени которых есть «{}»."
+
+msgid "To queue {}"
+msgstr "В очередь {}"
+
+msgid "To queue"
+msgstr "В очередь"
+
+msgid "Part of the file name"
+msgstr "Часть имени файла"
+
+msgid "Clear search"
+msgstr "Очистить поиск"
+
+msgid "Newest"
+msgstr "Новые"
+
+msgid "Name"
+msgstr "Имя"
+
+msgid "Print time"
+msgstr "Время печати"
+
+msgid "Size"
+msgstr "Размер"
+
+msgid "File name"
+msgstr "Имя файла"
+
+msgid "Files (top level)"
+msgstr "Файлы (верхний уровень)"
+
+msgid "here now"
+msgstr "файл здесь"
+
+msgid "{} mm tall: higher than Z travel ({} mm)"
+msgstr "Высота {} мм — больше хода Z ({} мм)"
+
+msgid "Copy to the printer"
+msgstr "Скопировать на принтер"
+
+msgid "Stop the print?"
+msgstr "Остановить печать?"
+
+msgid "{}% of “{}” is done. This print cannot be resumed later."
+msgstr "Готово {}% печати «{}». Продолжить её потом не получится."
+
+msgid "Stop printing"
+msgstr "Остановить"
+
+msgid "Don't stop"
+msgstr "Не останавливать"
+
+msgid "Heaters and motors are off. The print stopped at {}% and cannot be resumed."
+msgstr "Нагрев и моторы выключены. Печать прервана на {}% — продолжить её нельзя."
+
+msgid "Heaters and motors are off."
+msgstr "Нагрев и моторы выключены."
+
+msgid "The heaters cool down by themselves. A restart takes about 10 seconds."
+msgstr "Нагреватели остывают сами. Перезапуск займёт около 10 секунд."
+
+msgid "Out of filament"
+msgstr "Закончился филамент"
+
+msgid "Paused at layer {} of {}. The nozzle stays hot."
+msgstr "Печать на паузе на слое {} из {}. Сопло держит температуру."
+
+msgid "Paused at {}%. The nozzle stays hot."
+msgstr "Печать на паузе на {}%. Сопло держит температуру."
+
+msgid "Unload what is left"
+msgstr "Выгрузить остаток"
+
+msgid "heat and pull the broken end out"
+msgstr "нагреем и вытянем обрывок"
+
+msgid "Load a new strand"
+msgstr "Заправить новый пруток"
+
+msgid "heat and feed it to the nozzle"
+msgstr "нагреем и подадим до сопла"
+
+msgid "Purge the nozzle"
+msgstr "Прочистить сопло"
+
+msgid "25 mm, until the colour runs clean"
+msgstr "25 мм, чтобы пошёл чистый цвет"
+
+msgid "the nozzle is not hot enough yet"
+msgstr "сопло ещё не нагрето"
+
+msgid "Resume print"
+msgstr "Продолжить печать"
+
+msgid "the sensor sees no filament yet"
+msgstr "датчик пока не видит пруток"
+
+msgid "FROM A MACRO"
+msgstr "ИЗ МАКРОСА"
+
+msgid "Close"
+msgstr "Закрыть"
+
+msgid "{n} part"
+msgid_plural "{n} parts"
+msgstr[0] "{n} деталь"
+msgstr[1] "{n} детали"
+msgstr[2] "{n} деталей"
+
+msgid "The bed from above"
+msgstr "Стол, вид сверху"
+
+msgid "Skip objects"
+msgstr "Пропуск объектов"
+
+msgid "Tap the part on the bed that came loose or went wrong."
+msgstr "Коснитесь детали на столе, которая отклеилась или испортилась."
+
+msgid "Outlined: already skipped. A white edge: printing now."
+msgstr "Контуром — уже пропущенные, белая рамка — печатается сейчас."
+
+msgid "Skip"
+msgstr "Пропустить"
+
+msgid "Skip “{}”?"
+msgstr "Пропустить «{}»?"
+
+msgid "The printer stops printing this part until the end. It cannot be brought back."
+msgstr "Принтер больше не будет печатать эту деталь. Вернуть её нельзя."
+
+msgid "Print finished"
+msgstr "Печать завершена"
+
+msgid "Print stopped by hand"
+msgstr "Печать остановлена вручную"
+
+msgid "Print cut short by an error"
+msgstr "Печать прервана ошибкой"
+
+msgid "Klipper: the config needs saving"
+msgstr "Klipper: нужно сохранить конфиг"
+
+msgid "Klipper warns"
+msgstr "Предупреждение Klipper"
+
+msgid "Moonraker warns"
+msgstr "Предупреждение Moonraker"
+
+msgid "after a calibration · tap to save, Klipper restarts"
+msgstr "после калибровки · коснитесь, чтобы сохранить; Klipper перезапустится"
+
+msgid "Mark all read"
+msgstr "Прочитать все"
+
+msgid "No messages"
+msgstr "Сообщений нет"
+
+msgid "Finished prints and warnings from the printer show up here."
+msgstr "Здесь появятся завершённые печати и предупреждения принтера."
+
+msgid "Save the config?"
+msgstr "Сохранить конфиг?"
+
+msgid "Klipper restarts to save it: save once the print is over."
+msgstr "Для сохранения Klipper перезапустится — сохраните после печати."
+
+msgid "Klipper restarts to save it: about 10 seconds."
+msgstr "Для сохранения Klipper перезапустится, это около 10 секунд."
+
+msgid "OK"
+msgstr "Понятно"
+
+msgid "Heat presets"
+msgstr "Пресеты нагрева"
+
+msgid "NOZZLE"
+msgstr "СОПЛО"
+
+msgid "BED"
+msgstr "СТОЛ"
+
+msgid "nozzle"
+msgstr "сопло"
+
+msgid "bed"
+msgstr "стол"
+
+msgid "Temperature graph"
+msgstr "График температур"
+
+msgid "last {} min"
+msgstr "последние {} мин"
+
+msgid "No readings yet"
+msgstr "Пока нет данных"
+
+msgid "Load filament · step {} of 3"
+msgstr "Загрузка филамента · шаг {} из 3"
+
+msgid "Which plastic are you loading?"
+msgstr "Какой пластик заправляете?"
+
+msgid "Push the strand in as far as it goes"
+msgstr "Вставьте пруток до упора"
+
+msgid "Is the right colour coming out?"
+msgstr "Пошёл пластик нужного цвета?"
+
+msgid "The nozzle heats to the plastic's temperature."
+msgstr "Сопло нагреется до температуры этого пластика."
+
+msgid "Push the end into the extruder until it stops, hold it, then pull 50 mm."
+msgstr "Протолкните конец прутка в экструдер до сопротивления, держите и протяните 50 мм."
+
+msgid "Nozzle {}° of {}°: wait until it is hot, then push the strand in."
+msgstr "Сопло {}° из {}°: дождитесь нагрева, затем вставьте пруток."
+
+msgid "If the old colour still comes out, purge some more."
+msgstr "Если из сопла ещё идёт старый цвет — выдавите ещё."
+
+msgid "Purged: {} mm."
+msgstr "Выдавлено: {} мм."
+
+msgid "{} mm"
+msgstr "{} мм"
+
+msgid "Heat the nozzle"
+msgstr "Нагреть сопло"
+
+msgid "Pull 50 mm"
+msgstr "Протянуть 50 мм"
+
+msgid "Purge {} mm"
+msgstr "Выдавить {} мм"
+
+msgid "Yes, done"
+msgstr "Да, готово"
+
+msgid "Motion limits"
+msgstr "Лимиты движения"
+
+msgid "the head's top speed"
+msgstr "предел скорости головы"
+
+msgid "Acceleration"
+msgstr "Ускорение"
+
+msgid "mm/s²"
+msgstr "мм/с²"
+
+msgid "lower: quieter, less ringing"
+msgstr "меньше — тише и меньше ряби"
+
+msgid "FINE TUNING"
+msgstr "ТОНКАЯ НАСТРОЙКА"
+
+msgid "Corner speed"
+msgstr "Скорость в углах"
+
+msgid "higher: faster, rounder corners"
+msgstr "выше — быстрее, но углы круглее"
+
+msgid "Smooth cruising"
+msgstr "Плавность разгона"
+
+msgid "share of the path at full speed"
+msgstr "сколько пути на полной скорости"
+
+msgid "Until Klipper restarts."
+msgstr "Действует до перезапуска Klipper."
+
+msgid "Service"
+msgstr "Сервис"
+
+msgid "time to grease"
+msgstr "пора смазать"
+
+msgid "time to replace"
+msgstr "пора заменить"
+
+msgid "replace in {} h"
+msgstr "заменить через {} ч"
+
+msgid "{} of {} print hours"
+msgstr "{} из {} ч печати"
+
+msgid "Greased"
+msgstr "Смазал"
+
+msgid "Replaced"
+msgstr "Заменил"
+
+msgid "HEPA filter"
+msgstr "Фильтр HEPA"
+
+msgid "Rails"
+msgstr "Направляющие"
+
+msgid "Camera"
+msgstr "Камера"
+
+msgid "No camera connected"
+msgstr "Камера не подключена"
+
+msgid "Add a camera to Moonraker: the picture from the printer shows here, and a timelapse while printing."
+msgstr "Добавьте камеру в Moonraker — здесь появится картинка с принтера, а в печати — таймлапс."
+
+msgid "The camera is set up in Moonraker. Watch it in Fluidd or Mainsail: this screen cannot show its stream yet."
+msgstr "Камера настроена в Moonraker. Смотрите её в Fluidd или Mainsail: этот экран пока не умеет показывать поток."
+
+msgid "Speed, mm/s"
+msgstr "Скорость, мм/с"
+
+msgid "Acceleration, mm/s²"
+msgstr "Ускорение, мм/с²"
+
+msgid "Corner speed, mm/s"
+msgstr "Скорость в углах, мм/с"
+
+msgid "Smooth cruising, %"
+msgstr "Плавность разгона, %"
+
+msgid "off: a print goes on without filament"
+msgstr "выключен: печать не остановится без прутка"
+
+msgid "now: filament is in"
+msgstr "сейчас: пруток есть"
+
+msgid "now: no filament"
+msgstr "сейчас: прутка нет"
+
+msgid "no data"
+msgstr "нет данных"
+
+msgid "formaldehyde"
+msgstr "формальдегид"
+
+msgid "filament {} km"
+msgstr "филамент {} км"
+
+msgid "Clear the history?"
+msgstr "Очистить историю?"
+
+msgid "The list of past prints and its totals are removed. The files stay."
+msgstr "Список прошлых печатей и итоги удалятся. Файлы останутся."
+
+msgid "History"
+msgstr "История"
+
+msgid "Limits"
+msgstr "Лимиты"
+
+msgid "speed, acceleration"
+msgstr "скорость, ускорение"
+
+msgid "Sensors"
+msgstr "Датчики"
+
+msgid "runout, temperatures"
+msgstr "обрыв нити, температуры"
+
+msgid "filter, nozzle, rails"
+msgstr "фильтр, сопло, рельсы"
+
+msgid "and timelapse"
+msgstr "и таймлапс"
+
+msgid "{n} print"
+msgid_plural "{n} prints"
+msgstr[0] "{n} печать"
+msgstr[1] "{n} печати"
+msgstr[2] "{n} печатей"
+
+msgid "Air quality"
+msgstr "Качество воздуха"
+
+msgid "Load cell"
+msgstr "Тензодатчик"
+
+msgid "MCU and host temperature"
+msgstr "Температура MCU и хоста"
+
+msgid "Runout sensor"
+msgstr "Датчик обрыва"
+
+msgid "OTHER SENSORS"
+msgstr "ДРУГИЕ ДАТЧИКИ"
+
+msgid "force on the nozzle"
+msgstr "нагрузка на сопло"
+
+msgid "no sensors"
+msgstr "нет датчиков"
+
+msgid "not set up on this printer"
+msgstr "на этом принтере не настроены"
+
+msgid "LATEST"
+msgstr "ПОСЛЕДНИЕ"
+
+msgid "Clear the history"
+msgstr "Очистить историю"
+
+msgid "the files stay"
+msgstr "файлы останутся"
+
+msgid "Prints in all"
+msgstr "Всего печатей"
+
+msgid "since Moonraker's first start"
+msgstr "с первого запуска Moonraker"
+
+msgid "profile “{}”"
+msgstr "профиль «{}»"
+
+msgid "profiles: {} · none loaded"
+msgstr "профили: {} · не загружен"
+
+msgid "not probed yet"
+msgstr "ещё не снята"
+
+msgid "Hz"
+msgstr "Гц"
+
+msgid "not set up"
+msgstr "не настроены"
+
+msgid "live, while printing"
+msgstr "на ходу, во время печати"
+
+msgid "measuring…"
+msgstr "идёт замер…"
+
+msgid "10 touches at one spot"
+msgstr "10 касаний в одной точке"
+
+msgid "spread {} mm"
+msgstr "разброс {} мм"
+
+msgid "running: the heater cycles, about 5 minutes"
+msgstr "идёт: нагреватель переключается, около 5 минут"
+
+msgid "the heater switches on and off several times"
+msgstr "нагреватель несколько раз включится и выключится"
+
+msgid "how far to turn each screw"
+msgstr "сколько крутить каждый винт"
+
+msgid "fine tuning, probe check"
+msgstr "точная подстройка, проверка датчика"
+
+msgid "compare the two belts"
+msgstr "сравнить два ремня"
+
+msgid "nozzle and bed"
+msgstr "сопло и стол"
+
+msgid "current, modes"
+msgstr "ток, режимы"
+
+msgid "zero it when touches are off"
+msgstr "обнулить, если врёт касание"
+
+msgid "Calibrations"
+msgstr "Калибровки"
+
+msgid "Bed mesh"
+msgstr "Карта стола"
+
+msgid "Bed screws"
+msgstr "Винты стола"
+
+msgid "Vibrations"
+msgstr "Вибрации"
+
+msgid "Belts"
+msgstr "Ремни"
+
+msgid "Heating (PID)"
+msgstr "Нагрев (PID)"
+
+msgid "TMC drivers"
+msgstr "Драйверы TMC"
+
+msgid "saved in the config"
+msgstr "сохранён в конфиге"
+
+msgid "fine up to 0.01"
+msgstr "норма до 0.01"
+
+msgid "Fine tuning"
+msgstr "Точная подстройка"
+
+msgid "Check the probe's accuracy"
+msgstr "Проверить точность датчика"
+
+msgid "Last check"
+msgstr "Последняя проверка"
+
+msgid "PROBE"
+msgstr "ДАТЧИК"
+
+msgid "Offset X / Y"
+msgstr "Смещение X / Y"
+
+msgid "Touches per point"
+msgstr "Касаний на точку"
+
+msgid "from printer.cfg"
+msgstr "из printer.cfg"
+
+msgid "don't touch the printer while it measures"
+msgstr "не трогайте принтер во время замера"
+
+msgid "graphs and every shaper"
+msgstr "графики и все варианты сглаживания"
+
+msgid "accelerometer noise"
+msgstr "шум акселерометра"
+
+msgid "X axis"
+msgstr "Ось X"
+
+msgid "Y axis"
+msgstr "Ось Y"
+
+msgid "What to measure"
+msgstr "Что измерить"
+
+msgid "Both axes"
+msgstr "Обе оси"
+
+msgid "Measure"
+msgstr "Измерить"
+
+msgid "Last measurement"
+msgstr "Последний замер"
+
+msgid "Check the sensor"
+msgstr "Проверить датчик"
+
+msgid "as for a normal print"
+msgstr "как при обычной печати"
+
+msgid "as when printing"
+msgstr "как при печати"
+
+msgid "Temperature, °"
+msgstr "Температура, °"
+
+msgid "Heater"
+msgstr "Нагреватель"
+
+msgid "Temperature"
+msgstr "Температура"
+
+msgid "Part fan during it"
+msgstr "Обдув во время"
+
+msgid "Start"
+msgstr "Запустить"
+
+msgid "until a restart"
+msgstr "действует до перезапуска"
+
+msgid "prints PA 0→0.1 up the height, then enter the best layer's height"
+msgstr "печать с PA 0→0.1 по высоте, потом ввести высоту лучшего слоя"
+
+msgid "Smooth time, s"
+msgstr "Smooth time, с"
+
+msgid "s"
+msgstr "с"
+
+msgid "Apply"
+msgstr "Применить"
+
+msgid "Test tower"
+msgstr "Тестовая башня"
+
+msgid "Bed mesh {} by {}"
+msgstr "Карта стола {} на {}"
+
+msgid "No mesh yet"
+msgstr "Карта ещё не снята"
+
+msgid "lower"
+msgstr "ниже"
+
+msgid "higher"
+msgstr "выше"
+
+msgid "Spread across the bed"
+msgstr "Разброс по столу"
+
+msgid "Fine: the mesh compensates"
+msgstr "В норме — компенсация справится"
+
+msgid "Uneven: level the bed with its screws"
+msgstr "Неровно — выровняйте стол винтами"
+
+msgid "Profile “{}”."
+msgstr "Профиль «{}»."
+
+msgid "No profile loaded."
+msgstr "Профиль не загружен."
+
+msgid "Over 0.3 mm: level the bed with its screws."
+msgstr "Если разброс больше 0.3 мм — выровняйте стол винтами."
+
+msgid "Probing…"
+msgstr "Снимаю карту…"
+
+msgid "Probe again"
+msgstr "Снять заново"
+
+msgid "after the print"
+msgstr "после печати"
+
+msgid "Profiles"
+msgstr "Профили"
+
+msgid "Profiles: {} ›"
+msgstr "Профили: {} ›"
+
+msgid "Mesh profiles"
+msgstr "Профили карты"
+
+msgid "loaded"
+msgstr "загружен"
+
+msgid "load"
+msgstr "загрузить"
+
+msgid "the bed from above"
+msgstr "стол, вид сверху"
+
+msgid "base"
+msgstr "опорный"
+
+msgid "not checked yet"
+msgstr "ещё не проверен"
+
+msgid "don't turn"
+msgstr "не крутить"
+
+msgid "level"
+msgstr "ровно"
+
+msgid "clockwise"
+msgstr "по часовой"
+
+msgid "anticlockwise"
+msgstr "против часовой"
+
+msgid "Turn the screws as far as shown and check again. Repeat until all are “level”."
+msgstr "Подкрутите винты на столько, сколько показано, и проверьте снова. Повторять, пока все не станут «ровно»."
+
+msgid "Checking…"
+msgstr "Проверяю…"
+
+msgid "Check again"
+msgstr "Проверить снова"
+
+msgid "the probe touches near each screw"
+msgstr "датчик коснётся у каждого винта"
+
+msgid "bed, probe, vibrations"
+msgstr "стол, щуп, вибрации"
+
+msgid "up to date"
+msgstr "актуально"
+
+msgid "update to {}"
+msgstr "есть {}"
+
+msgid "no network address"
+msgstr "нет адреса в сети"
+
+msgid "sleep: {}"
+msgstr "сон: {}"
+
+msgid "never"
+msgstr "никогда"
+
+msgid "PIN on"
+msgstr "PIN включён"
+
+msgid "while printing"
+msgstr "во время печати"
+
+msgid "24 h"
+msgstr "24 ч"
+
+msgid "12 h"
+msgstr "12 ч"
+
+msgid "1 connected"
+msgstr "1 подключён"
+
+msgid "{} digits"
+msgstr "{} цифр"
+
+msgid "4–6 digits"
+msgstr "4–6 цифр"
+
+msgid "New PIN, 4–6 digits"
+msgstr "Новый PIN, 4–6 цифр"
+
+msgid "not set"
+msgstr "не задан"
+
+msgid "for “done at 15:20”"
+msgstr "для «готово в 15:20»"
+
+msgid "set it in KlipperMod: the clock stays hidden until then"
+msgstr "задайте его в KlipperMod — до этого часы не показываются"
+
+msgid "Flashforge's firmware until the next reboot"
+msgstr "прошивка Flashforge до перезагрузки"
+
+msgid "Connected"
+msgstr "Подключено"
+
+msgid "not connected"
+msgstr "не подключён"
+
+msgid "This printer"
+msgstr "Этот принтер"
+
+msgid "this printer · connected"
+msgstr "этот принтер · подключён"
+
+msgid "Restart Klipper?"
+msgstr "Перезапустить Klipper?"
+
+msgid "Restart the firmware?"
+msgstr "Перезапустить прошивку?"
+
+msgid "Restart Moonraker?"
+msgstr "Перезапустить Moonraker?"
+
+msgid "Reboot the printer?"
+msgstr "Перезагрузить принтер?"
+
+msgid "Power off the printer?"
+msgstr "Выключить принтер?"
+
+msgid "Boot the stock firmware?"
+msgstr "Загрузить стоковую прошивку?"
+
+msgid "Reset Rivet's settings?"
+msgstr "Сбросить настройки Rivet?"
+
+msgid "Presets, lock, sounds and the rest go back to how they came. Klipper's config is not touched."
+msgstr "Пресеты, блокировка, звук и остальное вернутся к исходным. Конфиг Klipper не тронется."
+
+msgid "The printer restarts into Flashforge's firmware; the next reboot brings KlipperMod back."
+msgstr "Принтер перезапустится в прошивку Flashforge; следующая перезагрузка вернёт KlipperMod."
+
+msgid "Turn it on again with its power switch."
+msgstr "Включить снова — кнопкой питания."
+
+msgid "The screen loses the printer for a few seconds."
+msgstr "Экран потеряет связь с принтером на несколько секунд."
+
+msgid "Reset"
+msgstr "Сбросить"
+
+msgid "Power off"
+msgstr "Выключить"
+
+msgid "Restart"
+msgstr "Перезапустить"
+
+msgid "without a touch"
+msgstr "без касаний"
+
+msgid "show the progress screensaver"
+msgstr "показывать заставку с прогрессом"
+
+msgid "touch 4 points"
+msgstr "коснуться 4 точек"
+
+msgid "Sleep after, min"
+msgstr "Гасить через, мин"
+
+msgid "Stay on while printing"
+msgstr "Не гасить во время печати"
+
+msgid "Rotation"
+msgstr "Поворот"
+
+msgid "Touch calibration"
+msgstr "Калибровка тача"
+
+msgid "unlock with the PIN or a long press"
+msgstr "разблокировать — PIN или долгое нажатие"
+
+msgid "Lock while printing"
+msgstr "Блокировка во время печати"
+
+msgid "PIN code"
+msgstr "PIN-код"
+
+msgid "Lock by itself"
+msgstr "Автоблокировка"
+
+msgid "Never"
+msgstr "Нет"
+
+msgid "5 min"
+msgstr "5 мин"
+
+msgid "15 min"
+msgstr "15 мин"
+
+msgid "30 min"
+msgstr "30 мин"
+
+msgid "the printer's beeper"
+msgstr "пищалка принтера"
+
+msgid "Volume"
+msgstr "Громкость"
+
+msgid "Sounds"
+msgstr "Звуки"
+
+msgid "Tune when a print ends"
+msgstr "Мелодия в конце печати"
+
+msgid "Touch sounds"
+msgstr "Звук касаний"
+
+msgid "Test the sound"
+msgstr "Проверить звук"
+
+msgid "Language"
+msgstr "Язык"
+
+msgid "Русский"
+msgstr "Русский"
+
+msgid "Time format"
+msgstr "Формат времени"
+
+msgid "Time zone"
+msgstr "Часовой пояс"
+
+msgid "against a stray touch; otherwise it stops at once"
+msgstr "защита от случайного касания; иначе — сразу по нажатию"
+
+msgid "what pops up over the screen"
+msgstr "что показывать поверх экрана"
+
+msgid "Wait before E-stop, s"
+msgstr "Ждать перед E-stop, с"
+
+msgid "Hold Stop for 1 second"
+msgstr "Удерживать «Стоп» 1 секунду"
+
+msgid "If a cancel hangs: emergency stop"
+msgstr "Если отмена зависла — аварийная остановка"
+
+msgid "Wait before E-stop"
+msgstr "Ждать перед E-stop"
+
+msgid "Confirm before running macros"
+msgstr "Подтверждать запуск макросов"
+
+msgid "Notifications"
+msgstr "Уведомления"
+
+msgid "All"
+msgstr "Все"
+
+msgid "Important"
+msgstr "Важные"
+
+msgid "Errors"
+msgstr "Ошибки"
+
+msgid "reads the config again"
+msgstr "перечитает конфиг"
+
+msgid "after a board error"
+msgstr "после ошибки платы"
+
+msgid "once it cools below 50°"
+msgstr "когда остынет ниже 50°"
+
+msgid "old logs, timelapses, preview cache"
+msgstr "старые логи, таймлапсы, кэш миниатюр"
+
+msgid "Klipper is not touched"
+msgstr "Klipper не трогает"
+
+msgid "RESTART"
+msgstr "ПЕРЕЗАПУСК"
+
+msgid "Restart Klipper"
+msgstr "Перезапустить Klipper"
+
+msgid "Restart the firmware"
+msgstr "Перезапустить прошивку"
+
+msgid "Restart Moonraker"
+msgstr "Перезапустить Moonraker"
+
+msgid "Restart the screen"
+msgstr "Перезапустить экран"
+
+msgid "Power off after the print"
+msgstr "Выключить после печати"
+
+msgid "Reboot the printer"
+msgstr "Перезагрузить принтер"
+
+msgid "Power off the printer"
+msgstr "Выключить принтер"
+
+msgid "Boot the stock firmware"
+msgstr "Загрузить стоковую прошивку"
+
+msgid "ABOUT"
+msgstr "О СИСТЕМЕ"
+
+msgid "Processor"
+msgstr "Процессор"
+
+msgid "Memory"
+msgstr "Память"
+
+msgid "Disk"
+msgstr "Диск"
+
+msgid "Logs"
+msgstr "Логи"
+
+msgid "Info"
+msgstr "Инфо"
+
+msgid "Debug"
+msgstr "Отладка"
+
+msgid "Free up space"
+msgstr "Очистить место"
+
+msgid "Reset Rivet's settings"
+msgstr "Сбросить настройки Rivet"
+
+msgid "5 GHz · WPA2"
+msgstr "5 ГГц · WPA2"
+
+msgid "type its name"
+msgstr "ввести имя вручную"
+
+msgid "NETWORKS AROUND"
+msgstr "ДОСТУПНЫЕ СЕТИ"
+
+msgid "Hidden network"
+msgstr "Скрытая сеть"
+
+msgid "OTHER"
+msgstr "ПРОЧЕЕ"
+
+msgid "Host name"
+msgstr "Имя хоста"
+
+msgid "Moonraker's address and port"
+msgstr "адрес Moonraker и порт"
+
+msgid "Add a printer"
+msgstr "Добавить принтер"
+
+msgid "updated with a KlipperMod image from USB"
+msgstr "обновляется образом KlipperMod с USB"
+
+msgid "VERSIONS"
+msgstr "ВЕРСИИ"
+
+msgid "WEB INTERFACES"
+msgstr "ВЕБ-ИНТЕРФЕЙСЫ"
+
+msgid "Check for updates"
+msgstr "Проверить обновления"
+
+msgid "Screen locked"
+msgstr "Экран заблокирован"
+
+msgid "Printing: {}%"
+msgstr "Печать идёт: {}%"
+
+msgid "Hold the lock to open."
+msgstr "Удерживайте замок, чтобы открыть."
+
+msgid "Hold to unlock"
+msgstr "Удерживайте, чтобы открыть"
+
+msgid "measuring… don't touch the printer"
+msgstr "идёт замер… не трогайте принтер"
+
+msgid "~{} min · don't touch the printer"
+msgstr "~{} мин · не трогайте принтер"
+
+msgid "Vibrations · measurement"
+msgstr "Вибрации · замер"
+
+msgid "No graph: the measurement files are on the printer"
+msgstr "Графика нет: файлы замера лежат на принтере"
+
+msgid "without shaping"
+msgstr "без сглаживания"
+
+msgid "with {}"
+msgstr "с {}"
+
+msgid "resonance {} Hz"
+msgstr "резонанс {} Гц"
+
+msgid "TYPE"
+msgstr "ТИП"
+
+msgid "HZ"
+msgstr "ГЦ"
+
+msgid "VIBR."
+msgstr "ВИБР."
+
+msgid "ACCEL."
+msgstr "УСКОР."
+
+msgid "Save {}"
+msgstr "Сохранить {}"
+
+msgid "Klipper will restart"
+msgstr "Klipper перезапустится"
+
+msgid "until Klipper restarts"
+msgstr "до перезапуска Klipper"
+
+msgid "Measuring…"
+msgstr "Идёт замер…"
+
+msgid "Not checked yet"
+msgstr "Ещё не проверяли"
+
+msgid "belt A · peak {} Hz"
+msgstr "ремень A · пик {} Гц"
+
+msgid "belt B · peak {} Hz"
+msgstr "ремень B · пик {} Гц"
+
+msgid "Similarity"
+msgstr "Похожесть"
+
+msgid "good — from 90%"
+msgstr "хорошо — от 90%"
+
+msgid "The belts are tensioned alike."
+msgstr "Ремни натянуты одинаково."
+
+msgid "Belt {0} is looser: its peak is lower. Tighten tensioner {0} a little and check again."
+msgstr "Ремень {0} слабее: его пик ниже. Подтяните натяжитель {0} и проверьте снова."
+
+msgid "The belts differ. Check both tensioners and measure again."
+msgstr "Ремни отличаются. Проверьте оба натяжителя и измерьте снова."
+
+msgid "Check"
+msgstr "Проверить"
+
+msgid "{} GHz"
+msgstr "{} ГГц"
+
+msgid "open"
+msgstr "открытая"
+
+msgid "joined before"
+msgstr "сохранена"
+
+msgid "strong signal"
+msgstr "сильный сигнал"
+
+msgid "fair signal"
+msgstr "средний сигнал"
+
+msgid "weak signal"
+msgstr "слабый сигнал"
+
+msgid "Could not join “{}”. Check the password and try again."
+msgstr "Не удалось подключиться к «{}». Проверьте пароль и попробуйте снова."
+
+msgid "joining “{}”…"
+msgstr "подключаюсь к «{}»…"
+
+msgid "looking…"
+msgstr "ищу…"
+
+msgid "Network “{}”"
+msgstr "Сеть «{}»"
+
+msgid "Network name"
+msgstr "Имя сети"
+
+msgid "Password"
+msgstr "Пароль"
+
+msgid "Hide"
+msgstr "Скрыть"
+
+msgid "Show"
+msgstr "Показать"
+
+msgid "An open network: no password."
+msgstr "Открытая сеть: пароль не нужен."
+
+msgid "Next"
+msgstr "Далее"
+
+msgid "Joining…"
+msgstr "Подключаюсь…"
+
+msgid "Join"
+msgstr "Подключиться"
+
+msgid "The printer stays on its network until the new one answers."
+msgstr "Принтер остаётся в своей сети, пока новая не ответит."
+
+msgid "heating to {}°, then extrudes…"
+msgstr "грею до {}°, потом выдавлю…"
+
+msgid "heats to {}° first"
+msgstr "сначала нагреет до {}°"
+
+msgid "heating to {}°…"
+msgstr "грею до {}°…"
+
+msgid "asks how hot first"
+msgstr "сначала спросит температуру"
+
+msgid "Heat the nozzle to"
+msgstr "Нагреть сопло до"
+
+msgid "For the filament that is in now. It heats, then moves the filament."
+msgstr "Для пластика, который сейчас заправлен. Сначала нагреет, потом подаст пруток."
+
+msgid "For the filament that is in now."
+msgstr "Для пластика, который сейчас заправлен."
+
+msgid "from the last print"
+msgstr "из последней печати"
+
+msgid "Other…"
+msgstr "Другая…"
+
+msgid "Touch the centre of the cross with your finger, as you usually tap. {} of 4."
+msgstr "Коснитесь центра крестика пальцем — как обычно нажимаете. {} из 4."
+
+msgid "These taps do not fit together: a cross was missed. Try again."
+msgstr "Касания не сходятся — похоже, промах мимо крестика. Попробуйте ещё раз."
+
+msgid "Taps were off by {} px on average, now {} px. Tap anywhere to check: a dot shows where the touch lands."
+msgstr "Касания промахивались в среднем на {} px, теперь на {} px. Коснитесь где угодно для проверки — точка покажет, куда попало касание."
+
+msgid "Again"
+msgstr "Заново"
+
+msgid "Teal"
+msgstr "Бирюзовый"
+
+msgid "Orange"
+msgstr "Оранжевый"
+
+msgid "Blue"
+msgstr "Синий"
+
+msgid "Violet"
+msgstr "Фиолетовый"
+
+msgid "Pink"
+msgstr "Розовый"
+
+msgid "Lime"
+msgstr "Лаймовый"
+
+msgid "Amber"
+msgstr "Янтарный"
+
+msgid "Cyan"
+msgstr "Голубой"
+
+msgid "Graphite"
+msgstr "Графит"
+
+msgid "Black"
+msgstr "Чёрный"
+
+msgid "Navy"
+msgstr "Ночной"
+
+msgid "Appearance"
+msgstr "Оформление"
+
+msgid "ACCENT"
+msgstr "АКЦЕНТ"
+
+msgid "BACKGROUND"
+msgstr "ФОН"
+
+msgid "accent and background colours"
+msgstr "цвет акцента и фона"
+
+msgid "default"
+msgstr "по умолчанию"
+
+msgid "Loading…"
+msgstr "Загружаю…"
+
+msgid "Your own"
+msgstr "Свой"
+
+msgid "Accent colour"
+msgstr "Цвет акцента"
+
+msgid "Background colour"
+msgstr "Цвет фона"
+
+msgid "Default colours"
+msgstr "Цвета по умолчанию"
+
+msgid "a stylus"
+msgstr "стилусом"
+
+msgid "your index finger"
+msgstr "указательным пальцем"
+
+msgid "your thumb"
+msgstr "большим пальцем"
+
+msgid "Touch the dot with {} — {} of 12"
+msgstr "Коснитесь точки {} — {} из 12"
+
+msgid "Done, thank you. The taps are in Rivet's log."
+msgstr "Готово, спасибо! Касания записаны в лог Rivet."
+
+msgid "Round {} of 3: touch each dot with {}, as you would tap a button."
+msgstr "Раунд {} из 3: касайтесь каждой точки {}, как будто нажимаете кнопку."
+
+msgid "stylus, index finger and thumb — for tuning"
+msgstr "стилус, указательный и большой палец — для настройки"
+
+msgid "Touch test"
+msgstr "Тест касаний"
+
+msgid "Begin"
+msgstr "Начать"
+
+msgid "touch 9 points with a finger"
+msgstr "коснуться 9 точек пальцем"
+
+msgid "Touch the centre of the cross with your finger, as you usually tap. {} of 9."
+msgstr "Коснитесь центра крестика пальцем — как обычно нажимаете. {} из 9."
+
+msgid "Rivet {}, the screen restarts"
+msgstr "Rivet {}, экран перезапустится"
+
+msgid "downloading and installing…"
+msgstr "скачивается и устанавливается…"
+
+msgid "the new version did not start; the previous one is back"
+msgstr "новая версия не запустилась, вернулась прежняя"
+
+msgid "Update the screen"
+msgstr "Обновить экран"

@@ -1,4 +1,4 @@
-// Basic building blocks: icon, header, buttons. docs/ux/design-code.md §4.
+// Basic building blocks: icon, header, buttons. docs/design/design-code.md §4.
 import { Tokens } from "tokens.slint";
 import { Icons } from "icons.slint";
 
@@ -33,7 +33,14 @@ export component BackButton inherits Rectangle {
         d: "m15 18-6-6 6-6";
         weight: 2.2;
     }
+    // Fingers on this panel land right of and below the point aimed at (a
+    // recording of real taps on Back: x 151–183 for a button at 104–168), so
+    // the button takes taps well beyond what it draws, as phones do.
     ta := TouchArea {
+        x: -16px;
+        y: -16px;
+        width: parent.width + 72px;
+        height: parent.height + 32px;
         clicked => { root.clicked(); }
     }
 }
@@ -48,11 +55,13 @@ export component Header inherits HorizontalLayout {
     if root.back: BackButton {
         clicked => { root.back-clicked(); }
     }
-    Text {
+    // No title: whatever the screen puts in the header takes the room.
+    if root.title != "": Text {
         text: root.title;
         color: Tokens.text;
         font-size: Tokens.title;
         font-weight: 800;
+        letter-spacing: -0.52px; // -0.02em, as the prototype's h1
         vertical-alignment: center;
         horizontal-stretch: 1;
         overflow: elide;
@@ -100,13 +109,14 @@ export component PrimaryButton inherits Rectangle {
 // Plain secondary button (surface fill), e.g. ± or a choice in a pair.
 export component SecondaryButton inherits Rectangle {
     in property <string> text;
+    in property <length> radius: Tokens.r-s;
     in property <length> font-size: 17px;
     in property <color> fg: Tokens.text;
     in property <bool> enabled: true;
     callback clicked;
     min-height: Tokens.touch;
     min-width: Tokens.touch;
-    border-radius: Tokens.r-s;
+    border-radius: root.radius;
     background: ta.pressed ? Tokens.surface-3 : Tokens.surface-2;
     opacity: root.enabled ? 1 : 0.4;
     accessible-role: button;
@@ -167,26 +177,29 @@ export component ActionTile inherits Rectangle {
     accessible-role: button;
     accessible-label: root.text;
     accessible-action-default => { root.clicked(); }
-    VerticalLayout {
-        alignment: center;
-        spacing: 6px;
-        HorizontalLayout {
-            alignment: center;
-            Icon {
-                d: root.icon;
-                size: 26px;
-                filled: root.filled;
-                color: root.danger ? Tokens.danger : Tokens.text;
-            }
-        }
-        Text {
-            text: root.text;
-            color: root.danger ? Tokens.danger : Tokens.text;
-            font-size: 15px;
-            font-weight: 600;
-            horizontal-alignment: center;
-            overflow: elide;
-        }
+    // Icon and label centred together, 6 px apart; the label may run wider than a
+    // narrow tile (81 px, «Подстройка»), as it does in the prototype.
+    property <length> label-h: 19px;
+    property <length> top: (root.height - 26px - 6px - root.label-h) / 2;
+    Icon {
+        x: (root.width - 26px) / 2;
+        y: root.top;
+        d: root.icon;
+        size: 26px;
+        filled: root.filled;
+        color: root.danger ? Tokens.danger : Tokens.text;
+    }
+    Text {
+        x: -12px;
+        y: root.top + 32px;
+        width: root.width + 24px;
+        height: root.label-h;
+        text: root.text;
+        color: root.danger ? Tokens.danger : Tokens.text;
+        font-size: 15px;
+        font-weight: 600;
+        horizontal-alignment: center;
+        vertical-alignment: center;
     }
     ta := TouchArea { clicked => { root.clicked(); } }
 }
