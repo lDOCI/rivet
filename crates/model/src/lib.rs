@@ -292,6 +292,8 @@ pub struct Snapshot {
     pub limits: Limits,
     /// Toolhead X, Y, Z in mm.
     pub position: [f64; 3],
+    /// Z as the G-code sets it (`gcode_move.gcode_position`), without the Z offset.
+    pub gcode_z: f64,
     /// Axes Klipper knows the position of, e.g. `"xy"`; empty after motors off.
     pub homed_axes: String,
     pub axis_min: [f64; 3],
@@ -1447,6 +1449,93 @@ pub fn parse_wpa_status(text: &str) -> std::collections::HashMap<String, String>
         .collect()
 }
 
+/// The most layers a reading may move the count on (two seconds of printing).
+const MAX_LAYER_STEP: u32 = 3;
+
+/// Layers of a print whose slicer does not tell Klipper about them (no
+/// `SET_PRINT_STATS_INFO` at layer changes): worked out from the height the
+/// G-code sets and the file's first-layer and layer heights.
+///
+/// Travel moves hop Z for a moment, so a layer counts once the lowest Z over
+/// the last two seconds has reached it. Counting starts when the nozzle is
+/// down at the first layer (not while it waits up high for the bed).
+#[derive(Debug, Clone)]
+pub struct LayerTracker {
+    first: f64,
+    height: f64,
+    count: u32,
+    window: std::collections::VecDeque<(f64, f64)>,
+    /// Since when Z has stayed at the first layer, before counting starts.
+    low_since: Option<f64>,
+    armed: bool,
+    sent: u32,
+}
+
+impl LayerTracker {
+    pub fn new(first: f64, height: f64, count: u32) -> Option<Self> {
+        (first > 0.0 && height > 0.0 && count > 0).then(|| Self {
+            first,
+            height,
+            count,
+            window: std::collections::VecDeque::new(),
+            low_since: None,
+            armed: false,
+            sent: 0,
+        })
+    }
+
+    pub fn count(&self) -> u32 {
+        self.count
+    }
+
+    /// A Z reading at `t` seconds. Returns the layers just reached, in order
+    /// and none skipped (a pause at layer N waits for exactly N).
+    pub fn update(&mut self, t: f64, z: f64) -> Vec<u32> {
+        self.window.push_back((t, z));
+        while self.window.front().is_some_and(|(t0, _)| t - t0 > 2.0) {
+            self.window.pop_front();
+        }
+        let low = self
+            .window
+            .iter()
+            .map(|w| w.1)
+            .fold(f64::INFINITY, f64::min);
+        if !self.armed {
+            // At the first layer, and has stayed there for a moment.
+            if z > 0.0 && z <= self.first + self.height / 2.0 {
+                let since = *self.low_since.get_or_insert(t);
+                if t - since < 1.0 {
+                    return Vec::new();
+                }
+                self.armed = true;
+            } else {
+                self.low_since = None;
+                return Vec::new();
+            }
+        }
+        let layer = (((low - self.first) / self.height).round() as i64 + 1)
+            .clamp(1, i64::from(self.count)) as u32;
+        // Further than a few layers at once is the head going up (end of the
+        // print, a park), not printing: it must not count, nor fire a pause.
+        if layer > self.sent + MAX_LAYER_STEP {
+            return Vec::new();
+        }
+        let new: Vec<u32> = (self.sent + 1..=layer).collect();
+        self.sent = self.sent.max(layer);
+        new
+    }
+}
+
+/// First-layer height, layer height and layer count from a file's metadata.
+pub fn layer_plan(meta: &Value) -> Option<(f64, f64, u32)> {
+    let num = |k: &str| meta.get(k).and_then(Value::as_f64).filter(|v| *v > 0.0);
+    let height = num("layer_height")?;
+    let first = num("first_layer_height").unwrap_or(height);
+    let count = num("layer_count")
+        .or_else(|| num("object_height").map(|h| ((h - first) / height).round() + 1.0))?;
+    Some((first, height, count as u32))
+}
+
 /// How alike two belts' responses are, 0..100 %: the cosine of the two curves
 /// between lo and hi Hz (1 when they have the same shape).
 pub fn belt_similarity(a: &Psd, b: &Psd, lo: f64, hi: f64) -> Option<f64> {
@@ -1984,6 +2073,11 @@ impl PrinterState {
                 .collect(),
             limits: self.limits,
             position: self.axes("toolhead", "position"),
+            gcode_z: self
+                .field("gcode_move", "gcode_position")
+                .and_then(|p| p.get(2))
+                .and_then(Value::as_f64)
+                .unwrap_or(0.0),
             homed_axes: self.str("toolhead", "homed_axes").to_owned(),
             axis_min: self.axes("toolhead", "axis_minimum"),
             axis_max: self.axes("toolhead", "axis_maximum"),
@@ -2783,5 +2877,39 @@ mod tests {
         assert_eq!(wpa_hex("Дом"), "d094d0bed0bc");
         let st = parse_wpa_status("wpa_state=COMPLETED\nssid=Home\nip_address=192.168.0.20\n");
         assert_eq!(st["wpa_state"], "COMPLETED");
+    }
+
+    #[test]
+    fn layers_from_z() {
+        let plan = layer_plan(&serde_json::json!({
+            "layer_height": 0.2, "first_layer_height": 0.2, "layer_count": 103, "object_height": 20.6
+        }));
+        assert_eq!(plan, Some((0.2, 0.2, 103)));
+        let mut t = LayerTracker::new(0.2, 0.2, 103).unwrap();
+        // Z readings four times a second, as Moonraker sends them.
+        let mut now = 0.0;
+        let mut feed = |t: &mut LayerTracker, secs: f64, z: f64| {
+            let mut got = Vec::new();
+            let end = now + secs;
+            while now < end {
+                got.extend(t.update(now, z));
+                now += 0.25;
+            }
+            got
+        };
+        // Up high while the bed heats: nothing.
+        assert!(feed(&mut t, 30.0, 10.0).is_empty());
+        // Down at the first layer: layer 1 after a moment.
+        assert_eq!(feed(&mut t, 20.0, 0.2), [1]);
+        // A travel hop of half a second does not count.
+        assert!(feed(&mut t, 0.5, 0.6).is_empty());
+        assert!(feed(&mut t, 10.0, 0.2).is_empty());
+        // The next layer once Z stayed there for two seconds.
+        assert_eq!(feed(&mut t, 15.0, 0.4), [2]);
+        // A jump of two layers announces both.
+        assert_eq!(feed(&mut t, 15.0, 0.8), [3, 4]);
+        // Never back down; the head going up at the end counts no layers.
+        assert!(feed(&mut t, 5.0, 0.4).is_empty());
+        assert!(feed(&mut t, 5.0, 50.0).is_empty());
     }
 }

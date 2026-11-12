@@ -320,6 +320,11 @@ pub async fn run(
     let mut light_start_done = false;
     // Things Rivet does itself when a print ends, and the bed dryer's timer.
     let mut off_after_print = false;
+    // Layers for a print whose slicer does not report them: the file it is
+    // for, and the tracker once the file's layer plan came in.
+    let mut layers_for = String::new();
+    let mut layers: Option<model::LayerTracker> = None;
+    let started = Instant::now();
     let mut save_config_pending = false;
     let mut dryer: Option<(SystemTime, f32)> = None;
     let mut dryer_shown_minutes = -1;
@@ -432,6 +437,18 @@ pub async fn run(
                 Internal::ConsoleError(message) => {
                     state.push_console(format!("!! {message}"), model::LineKind::Error);
                 }
+                Internal::LayerPlan(file, plan) => {
+                    let snap = state.snapshot();
+                    if file == layers_for && snap.total_layers.is_none() {
+                        layers = plan.and_then(|(first, height, count)| {
+                            model::LayerTracker::new(first, height, count)
+                        });
+                        // Klipper learns the count now: layer pauses become possible.
+                        if let Some(t) = &layers {
+                            spawn_gcode(&client, format!("SET_PRINT_STATS_INFO TOTAL_LAYER={}", t.count()));
+                        }
+                    }
+                }
             },
             _ = tick.tick() => {
                 if shown_console != state.console_revision {
@@ -497,6 +514,41 @@ pub async fn run(
                     }) {
                         fbdev_platform::screen::wake();
                     }
+                }
+                // A print whose slicer reports no layers: Rivet tells Klipper.
+                let printing = snap.print_state == "printing";
+                if matches!(snap.print_state.as_str(), "printing" | "paused") {
+                    if snap.filename != layers_for {
+                        layers_for.clone_from(&snap.filename);
+                        layers = None;
+                        if snap.total_layers.is_none() && !snap.filename.is_empty() {
+                            let (client, tx, file) = (client.clone(), resync_tx.clone(), snap.filename.clone());
+                            tokio::spawn(async move {
+                                let plan = client
+                                    .call_timeout("server.files.metadata", json!({ "filename": file }), SETUP_TIMEOUT)
+                                    .await
+                                    .ok()
+                                    .and_then(|m| model::layer_plan(&m));
+                                let _ = tx.send(Internal::LayerPlan(file, plan));
+                            });
+                        }
+                    }
+                    if printing {
+                        if let Some(t) = layers.as_mut() {
+                            let new = t.update(started.elapsed().as_secs_f64(), snap.gcode_z);
+                            if !new.is_empty() {
+                                let code = new
+                                    .iter()
+                                    .map(|n| format!("SET_PRINT_STATS_INFO CURRENT_LAYER={n}"))
+                                    .collect::<Vec<_>>()
+                                    .join("\n");
+                                spawn_gcode(&client, code);
+                            }
+                        }
+                    }
+                } else {
+                    layers_for.clear();
+                    layers = None;
                 }
                 // A print just ended: what was waiting for it.
                 if snap.print_state != last_print_state {
@@ -623,6 +675,8 @@ enum Internal {
     Resync,
     /// Klipper's reason a command failed, for the console.
     ConsoleError(String),
+    /// A printing file's first-layer height, layer height and layer count.
+    LayerPlan(String, Option<(f64, f64, u32)>),
 }
 
 /// A macro's prompt to the dialog, or close it.
