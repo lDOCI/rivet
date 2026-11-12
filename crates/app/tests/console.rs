@@ -23,6 +23,15 @@ fn console_keyboard_and_macros() {
     let sent = Rc::new(RefCell::new(Vec::<String>::new()));
     let sink = sent.clone();
     ui.on_run_gcode(move |s| sink.borrow_mut().push(s.to_string()));
+    // The engine looks a picked macro's parameters up; these have none, so it
+    // asks first (confirm on), as the engine does.
+    let weak = ui.as_weak();
+    ui.on_macro_open(move |_| {
+        let ui = weak.upgrade().unwrap();
+        if ui.get_set_confirm_macros() {
+            ui.set_overlay("run-macro".into());
+        }
+    });
     ui.set_console_lines(ModelRc::new(VecModel::from(vec![ConsoleLine {
         text: "ok".into(),
         kind: 1,
