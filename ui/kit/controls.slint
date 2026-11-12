@@ -33,7 +33,14 @@ export component BackButton inherits Rectangle {
         d: "m15 18-6-6 6-6";
         weight: 2.2;
     }
+    // Fingers on this panel land right of and below the point aimed at (a
+    // recording of real taps on Back: x 151–183 for a button at 104–168), so
+    // the button takes taps well beyond what it draws, as phones do.
     ta := TouchArea {
+        x: -16px;
+        y: -16px;
+        width: parent.width + 72px;
+        height: parent.height + 32px;
         clicked => { root.clicked(); }
     }
 }

@@ -275,7 +275,48 @@ pub fn fit(img: Rgba, width: u32, height: u32, max_scale: f32) -> Rgba {
         (img.width as f32 * k).round() as u32,
         (img.height as f32 * k).round() as u32,
     );
-    resize(&img, w.max(1), h.max(1))
+    let big = resize(&img, w.max(1), h.max(1));
+    // Scaled up this much, edges go soft: an unsharp mask brings them back.
+    if k >= 1.5 {
+        sharpen(big, 0.6)
+    } else {
+        big
+    }
+}
+
+/// Unsharp mask: each colour pushed away from its 3×3 neighbourhood mean by
+/// `amount`. Alpha stays, so the model's outline and the shadow keep their shape.
+fn sharpen(img: Rgba, amount: f32) -> Rgba {
+    let (w, h) = (img.width as usize, img.height as usize);
+    if w < 3 || h < 3 {
+        return img;
+    }
+    let src = &img.data;
+    let mut out = src.clone();
+    for y in 1..h - 1 {
+        for x in 1..w - 1 {
+            let i = (y * w + x) * 4;
+            if src[i + 3] == 0 {
+                continue;
+            }
+            for c in 0..3 {
+                let mut sum = 0.0;
+                for dy in [-1i64, 0, 1] {
+                    for dx in [-1i64, 0, 1] {
+                        let j = (((y as i64 + dy) as usize) * w + (x as i64 + dx) as usize) * 4;
+                        sum += f32::from(src[j + c]);
+                    }
+                }
+                let v = f32::from(src[i + c]);
+                out[i + c] = (v + amount * (v - sum / 9.0)).round().clamp(0.0, 255.0) as u8;
+            }
+        }
+    }
+    Rgba {
+        width: img.width,
+        height: img.height,
+        data: out,
+    }
 }
 
 /// A preview for a box of its own: margins cut, fitted to the box (the shadow
