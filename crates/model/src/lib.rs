@@ -825,6 +825,12 @@ pub struct CalibInfo {
     /// Input shaper per axis: type and frequency.
     pub shaper: [Option<(String, f64)>; 2],
     pub has_accel: bool,
+    /// CoreXY: the two belts can be compared along the diagonals.
+    pub corexy: bool,
+    /// One resonance sweep (min_freq..max_freq at hz_per_sec), seconds.
+    pub sweep_seconds: f64,
+    /// The measured range, Hz (resonance_tester min_freq..max_freq).
+    pub freq_range: (f64, f64),
     /// Stepper drivers: section ("tmc2209 stepper_x"), run current, quiet mode.
     pub drivers: Vec<(String, f64, bool)>,
     pub has_tare: bool,
@@ -933,16 +939,247 @@ impl CalibInfo {
             screws,
             pid: [pid("extruder"), pid("heater_bed")],
             shaper: [shaper("x"), shaper("y")],
-            has_accel: objects.iter().any(|o| {
-                o.starts_with("adxl345")
-                    || o.starts_with("lis2dw")
-                    || o.starts_with("mpu9250")
-                    || o.starts_with("lis3dh")
-            }),
+            // Accelerometers are not listed among Klipper's objects; their
+            // config sections are.
+            has_accel: cfg.as_object().is_some_and(|c| {
+                c.keys().any(|k| {
+                    [
+                        "adxl345", "lis2dw", "lis3dh", "mpu9250", "icm20948", "bmi160",
+                    ]
+                    .iter()
+                    .any(|chip| k.starts_with(chip))
+                })
+            }) && cfg.get("resonance_tester").is_some(),
+            corexy: cfg["printer"]["kinematics"].as_str() == Some("corexy"),
+            freq_range: (
+                cfg["resonance_tester"]["min_freq"].as_f64().unwrap_or(5.0),
+                cfg["resonance_tester"]["max_freq"]
+                    .as_f64()
+                    .unwrap_or(133.33),
+            ),
+            sweep_seconds: {
+                let rt = &cfg["resonance_tester"];
+                let lo = rt["min_freq"].as_f64().unwrap_or(5.0);
+                let hi = rt["max_freq"].as_f64().unwrap_or(133.33);
+                let rate = rt["hz_per_sec"].as_f64().unwrap_or(1.0).max(0.1);
+                (hi - lo).max(0.0) / rate
+            },
             drivers,
             has_tare: has("gcode_macro LOAD_CELL_TARE"),
         }
     }
+}
+
+/// One input shaper Klipper fitted to a measurement.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct ShaperFit {
+    pub name: String,
+    pub freq: f64,
+    /// Remaining vibrations, %.
+    pub vibrations: f64,
+    pub smoothing: f64,
+    /// The highest acceleration that keeps smoothing acceptable, mm/s².
+    pub max_accel: Option<f64>,
+}
+
+/// SHAPER_CALIBRATE's findings for one axis.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct AxisShapers {
+    pub fits: Vec<ShaperFit>,
+    pub recommended: Option<(String, f64)>,
+    /// The CSV Klipper wrote (frequency response and every shaper's curve).
+    pub csv: Option<String>,
+}
+
+/// What resonance measurements printed to the console, gathered line by line.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Resonance {
+    /// X and Y.
+    pub axes: [AxisShapers; 2],
+    /// TEST_RESONANCES CSVs of belt A and belt B (NAME=belt_a / belt_b).
+    pub belts: [Option<String>; 2],
+    current: Option<usize>,
+}
+
+impl Resonance {
+    /// Feed one console line (as Moonraker sends it, with or without "// ").
+    pub fn feed(&mut self, line: &str) {
+        let line = line.trim_start_matches("//").trim();
+        let axis_of = |a: &str| match a.trim() {
+            "x" | "X" => Some(0),
+            "y" | "Y" => Some(1),
+            _ => None,
+        };
+        if let Some(rest) = line.strip_prefix("Calculating the best input shaper parameters for") {
+            self.current = axis_of(rest.trim().trim_end_matches("axis"));
+            if let Some(a) = self.current {
+                self.axes[a] = AxisShapers::default();
+            }
+        } else if let Some(rest) = line.strip_prefix("Fitted shaper '") {
+            // zv' frequency = 56.2 Hz (vibrations = 4.2%, smoothing ~= 0.075)
+            let Some(a) = self.current else { return };
+            let Some((name, rest)) = rest.split_once('\'') else {
+                return;
+            };
+            let num = |key: &str| -> Option<f64> {
+                let after = rest.split(key).nth(1)?;
+                let t: String = after
+                    .trim_start_matches([' ', '=', '~'])
+                    .chars()
+                    .take_while(|c| c.is_ascii_digit() || *c == '.')
+                    .collect();
+                t.parse().ok()
+            };
+            if let (Some(freq), Some(vibrations), Some(smoothing)) =
+                (num("frequency"), num("vibrations"), num("smoothing"))
+            {
+                self.axes[a].fits.push(ShaperFit {
+                    name: name.to_owned(),
+                    freq,
+                    vibrations,
+                    smoothing,
+                    max_accel: None,
+                });
+            }
+        } else if let Some(rest) = line.strip_prefix("To avoid too much smoothing with '") {
+            // mzv', suggested max_accel <= 13000 mm/sec^2
+            let Some(a) = self.current else { return };
+            let Some((name, rest)) = rest.split_once('\'') else {
+                return;
+            };
+            let accel = rest
+                .split("<=")
+                .nth(1)
+                .and_then(|t| t.split_whitespace().next())
+                .and_then(|t| t.parse().ok());
+            if let Some(fit) = self.axes[a].fits.iter_mut().rev().find(|f| f.name == name) {
+                fit.max_accel = accel;
+            }
+        } else if let Some(rest) = line.strip_prefix("Recommended shaper_type_") {
+            // x = mzv, shaper_freq_x = 56.4 Hz
+            let Some((axis, rest)) = rest.split_once('=') else {
+                return;
+            };
+            let Some(a) = axis_of(axis) else { return };
+            let mut parts = rest.split(',');
+            let name = parts.next().unwrap_or_default().trim().to_owned();
+            let freq = parts
+                .next()
+                .and_then(|p| p.split('=').nth(1))
+                .and_then(|f| f.split_whitespace().next())
+                .and_then(|f| f.parse().ok());
+            if let Some(freq) = freq {
+                self.axes[a].recommended = Some((name, freq));
+            }
+        } else if let Some(rest) = line.strip_prefix("Shaper calibration data written to") {
+            let path = rest.trim().trim_end_matches("file").trim();
+            let a = self.current.or_else(|| {
+                let file = path.rsplit('/').next().unwrap_or(path);
+                if file.contains("_x_") {
+                    Some(0)
+                } else if file.contains("_y_") {
+                    Some(1)
+                } else {
+                    None
+                }
+            });
+            if let Some(a) = a {
+                self.axes[a].csv = Some(path.to_owned());
+            }
+        } else if let Some(rest) = line.strip_prefix("Resonances data written to") {
+            let path = rest.trim().trim_end_matches("file").trim();
+            let file = path.rsplit('/').next().unwrap_or(path);
+            if file.contains("belt_a") {
+                self.belts[0] = Some(path.to_owned());
+            } else if file.contains("belt_b") {
+                self.belts[1] = Some(path.to_owned());
+            }
+        }
+    }
+}
+
+/// A frequency response from one of Klipper's resonance CSVs.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Psd {
+    pub freq: Vec<f64>,
+    /// psd_xyz: the sum over the three axes, what Klipper's graphs plot.
+    pub psd: Vec<f64>,
+    /// Each shaper's response (0..1 per frequency), keyed by name ("mzv").
+    pub shapers: Vec<(String, Vec<f64>)>,
+}
+
+impl Psd {
+    /// Parse "freq,psd_x,psd_y,psd_z,psd_xyz[,zv(56.2),...]".
+    pub fn parse(text: &str) -> Option<Self> {
+        let mut lines = text.lines();
+        let head: Vec<&str> = lines.next()?.split(',').map(str::trim).collect();
+        let col = |name: &str| head.iter().position(|h| *h == name);
+        let (f, p) = (col("freq")?, col("psd_xyz")?);
+        let shaper_cols: Vec<(usize, String)> = head
+            .iter()
+            .enumerate()
+            .skip(p + 1)
+            .map(|(i, h)| (i, h.split('(').next().unwrap_or(h).to_owned()))
+            .collect();
+        let mut out = Self {
+            shapers: shaper_cols
+                .iter()
+                .map(|(_, n)| (n.clone(), Vec::new()))
+                .collect(),
+            ..Self::default()
+        };
+        for line in lines {
+            let cells: Vec<f64> = line
+                .split(',')
+                .map(|c| c.trim().parse().unwrap_or(f64::NAN))
+                .collect();
+            let (Some(&fr), Some(&ps)) = (cells.get(f), cells.get(p)) else {
+                continue;
+            };
+            if !fr.is_finite() || !ps.is_finite() {
+                continue;
+            }
+            out.freq.push(fr);
+            out.psd.push(ps);
+            for (k, (i, _)) in shaper_cols.iter().enumerate() {
+                out.shapers[k].1.push(cells.get(*i).copied().unwrap_or(1.0));
+            }
+        }
+        (!out.freq.is_empty()).then_some(out)
+    }
+
+    /// The frequency of the strongest response between lo and hi Hz.
+    pub fn peak(&self, lo: f64, hi: f64) -> Option<f64> {
+        self.freq
+            .iter()
+            .zip(&self.psd)
+            .filter(|(f, _)| **f >= lo && **f <= hi)
+            .max_by(|a, b| a.1.total_cmp(b.1))
+            .map(|(f, _)| *f)
+    }
+}
+
+/// How alike two belts' responses are, 0..100 %: the cosine of the two curves
+/// between lo and hi Hz (1 when they have the same shape).
+pub fn belt_similarity(a: &Psd, b: &Psd, lo: f64, hi: f64) -> Option<f64> {
+    let (mut ab, mut aa, mut bb) = (0.0, 0.0, 0.0);
+    for (f, pa) in a.freq.iter().zip(&a.psd) {
+        if *f < lo || *f > hi {
+            continue;
+        }
+        // The same bins in both files; take the nearest one to be safe.
+        let k = b
+            .freq
+            .iter()
+            .enumerate()
+            .min_by(|x, y| (x.1 - f).abs().total_cmp(&(y.1 - f).abs()))?
+            .0;
+        let pb = b.psd[k];
+        ab += pa * pb;
+        aa += pa * pa;
+        bb += pb * pb;
+    }
+    (aa > 0.0 && bb > 0.0).then(|| (ab / (aa.sqrt() * bb.sqrt()) * 100.0).clamp(0.0, 100.0))
 }
 
 /// "probe accuracy results: maximum …, range 0.004000, …" → the range, mm.
@@ -1689,7 +1926,10 @@ mod tests {
             "screws_tilt_adjust": { "results": { "screw2": { "z": 2.0, "sign": "CW", "adjust": "00:15", "is_base": false } } }
         });
         let i = CalibInfo::read(cfg, &status, &objects);
-        assert!(i.has_probe && i.has_mesh && i.has_screws && i.has_tare && !i.has_accel);
+        assert!(i.has_probe && i.has_mesh && i.has_screws && i.has_tare);
+        // adxl345 on the eboard: not among Klipper's objects, only in the config.
+        assert!(i.has_accel && i.corexy);
+        assert_eq!(i.sweep_seconds, 95.0);
         assert_eq!(i.z_offset, Some(-0.275));
         assert_eq!(i.mesh_profiles, ["auto"]);
         assert_eq!(i.mesh.len(), 2);
@@ -2095,5 +2335,67 @@ mod tests {
         assert_eq!(Klippy::parse("ready"), Klippy::Ready);
         assert_eq!(Klippy::parse("shutdown"), Klippy::Shutdown);
         assert_eq!(Klippy::parse("weird"), Klippy::Unknown);
+    }
+
+    #[test]
+    fn resonance_reads_shaper_calibrate_output() {
+        let mut r = Resonance::default();
+        for line in [
+            "// Calculating the best input shaper parameters for x axis",
+            "// Fitted shaper 'zv' frequency = 56.2 Hz (vibrations = 4.2%, smoothing ~= 0.075)",
+            "// To avoid too much smoothing with 'zv', suggested max_accel <= 13000 mm/sec^2",
+            "// Fitted shaper 'mzv' frequency = 54.2 Hz (vibrations = 0.7%, smoothing ~= 0.090)",
+            "// To avoid too much smoothing with 'mzv', suggested max_accel <= 9700 mm/sec^2",
+            "// Recommended shaper_type_x = mzv, shaper_freq_x = 54.2 Hz",
+            "// Shaper calibration data written to /tmp/calibration_data_x_20261112_101010.csv file",
+            "// Calculating the best input shaper parameters for y axis",
+            "// Fitted shaper 'ei' frequency = 41.8 Hz (vibrations = 1.1%, smoothing ~= 0.140)",
+            "// Recommended shaper_type_y = ei, shaper_freq_y = 41.8 Hz",
+            "// Resonances data written to /tmp/resonances_axis=1.000,1.000_belt_a.csv file",
+            "// Resonances data written to /tmp/resonances_axis=1.000,-1.000_belt_b.csv file",
+        ] {
+            r.feed(line);
+        }
+        let x = &r.axes[0];
+        assert_eq!(x.fits.len(), 2);
+        assert_eq!(x.fits[1].name, "mzv");
+        assert_eq!(x.fits[1].freq, 54.2);
+        assert_eq!(x.fits[1].vibrations, 0.7);
+        assert_eq!(x.fits[1].smoothing, 0.09);
+        assert_eq!(x.fits[1].max_accel, Some(9700.0));
+        assert_eq!(x.recommended, Some(("mzv".into(), 54.2)));
+        assert_eq!(
+            x.csv.as_deref(),
+            Some("/tmp/calibration_data_x_20261112_101010.csv")
+        );
+        assert_eq!(r.axes[1].recommended, Some(("ei".into(), 41.8)));
+        assert_eq!(r.axes[1].fits[0].max_accel, None);
+        assert!(r.belts[0].as_deref().unwrap().ends_with("belt_a.csv"));
+        assert!(r.belts[1].as_deref().unwrap().ends_with("belt_b.csv"));
+    }
+
+    #[test]
+    fn psd_csv_and_belts() {
+        let a = Psd::parse(
+            "freq,psd_x,psd_y,psd_z,psd_xyz,zv(56.2),mzv(54.2)\n\
+             10.0,1e-1,0,0,1.000e+02,0.9,0.8\n\
+             50.0,1e-1,0,0,9.000e+02,0.2,0.1\n\
+             90.0,1e-1,0,0,2.000e+02,0.5,0.4\n",
+        )
+        .unwrap();
+        assert_eq!(a.freq, [10.0, 50.0, 90.0]);
+        assert_eq!(a.psd[1], 900.0);
+        assert_eq!(a.shapers[1].0, "mzv");
+        assert_eq!(a.shapers[1].1, [0.8, 0.1, 0.4]);
+        assert_eq!(a.peak(5.0, 100.0), Some(50.0));
+        let same = belt_similarity(&a, &a, 5.0, 100.0).unwrap();
+        assert!((same - 100.0).abs() < 1e-9);
+        let b = Psd::parse(
+            "freq,psd_x,psd_y,psd_z,psd_xyz\n10,0,0,0,900\n50,0,0,0,100\n90,0,0,0,200\n",
+        )
+        .unwrap();
+        assert!(b.shapers.is_empty());
+        assert!(belt_similarity(&a, &b, 5.0, 100.0).unwrap() < 50.0);
+        assert!(Psd::parse("nothing").is_none());
     }
 }

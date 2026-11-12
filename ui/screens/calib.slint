@@ -4,6 +4,7 @@ import { Icon, Header, PrimaryButton } from "../kit/controls.slint";
 import { LinkRow } from "../kit/rows.slint";
 import { ScrollList } from "../kit/scroll.slint";
 import { Format } from "../kit/format.slint";
+import { GraphLine } from "heat-extra.slint";
 
 // One probed point: its height and colour (blue lower, orange higher).
 export struct MeshCell { text: string, color: color }
@@ -201,6 +202,284 @@ export component ScrewsScreen inherits Rectangle {
                 sub: root.printing ? @tr("after the print") : @tr("the probe touches near each screw");
                 enabled: !root.busy && !root.printing;
                 clicked => { root.check(); }
+            }
+        }
+    }
+}
+
+// One input shaper Klipper fitted: the table row of the result screen.
+// `kind` and `hz` are what SET_INPUT_SHAPER takes ("mzv", "54.2").
+export struct ShaperRow { name: string, freq: string, vib: string, accel: string, best: bool, kind: string, hz: string }
+// One measured axis: the response without shaping, with each shaper (same
+// order as rows), and the resonance peak (frequency text, 0..1 across the plot).
+export struct ShaperAxis { shown: bool, rows: [ShaperRow], raw: string, curves: [string], peak: string, peak-at: float }
+// Belt A and B compared along the two diagonals of a CoreXY.
+export struct BeltsResult { shown: bool, a: string, b: string, peak-a: string, peak-b: string, peak-a-at: float, peak-b-at: float, similarity: int, weaker: string }
+
+// The frequency plot shared by both screens: 5..150 Hz across, gridlines
+// every 25 Hz as the prototype. Curves come as Path commands drawn for the
+// plot's proportions (see `aspect`).
+component ResponsePlot inherits Rectangle {
+    in property <[GraphLine]> lines;
+    // Vertical markers: where (0..1 across) and colour.
+    in property <[{ at: float, color: color }]> marks;
+    in property <string> empty;
+    out property <float> aspect: area.width / max(1px, area.height);
+    // The plot got its size (or a new one): curves must be drawn for it.
+    callback resized(float);
+    changed aspect => { root.resized(root.aspect); }
+    border-radius: Tokens.r-m;
+    background: Tokens.surface-1;
+    area := Rectangle {
+        x: 12px;
+        y: 12px;
+        width: parent.width - 24px;
+        height: parent.height - 40px;
+        for f in [25, 50, 75, 100, 125]: Rectangle {
+            x: (f - 5) / 145 * parent.width;
+            width: 1px;
+            background: Tokens.surface-2;
+            Text { x: -20px; y: parent.height + 6px; width: 40px; text: f; color: Tokens.text-faint; font-size: 11px; horizontal-alignment: center; }
+        }
+        Text { x: parent.width - 30px; y: parent.height + 6px; width: 30px; text: @tr("Hz"); color: Tokens.text-faint; font-size: 11px; horizontal-alignment: right; }
+        for l in root.lines: Path {
+            width: parent.width;
+            height: parent.height;
+            viewbox-width: 1000 * root.aspect;
+            viewbox-height: 1000;
+            commands: l.path;
+            stroke: l.color;
+            stroke-width: l.legend == "thin" ? 1.5px : 3px;
+        }
+        for m in root.marks: Rectangle {
+            x: m.at * parent.width;
+            width: 1.5px;
+            // Dotted, as the prototype's dashed marker.
+            for i in 40: Rectangle {
+                y: i * parent.height / 40;
+                height: parent.height / 80;
+                background: m.color;
+            }
+        }
+    }
+    if root.lines.length == 0: Text { text: root.empty; color: Tokens.text-dim; font-size: Tokens.body; horizontal-alignment: center; vertical-alignment: center; }
+}
+
+component LegendItem inherits HorizontalLayout {
+    in property <color> color;
+    in property <string> text;
+    spacing: 6px;
+    VerticalLayout { alignment: center; Rectangle { width: 14px; height: 3px; border-radius: 1.5px; background: root.color; } }
+    Text { text: root.text; color: Tokens.text-dim; font-size: 13px; vertical-alignment: center; }
+}
+
+// SHAPER_CALIBRATE's result: the prototype's ShaperResult page.
+export component ShaperResultScreen inherits Rectangle {
+    horizontal-stretch: 1;
+    in property <[ShaperAxis]> axes;
+    in-out property <int> axis;
+    in-out property <int> pick-x;
+    in-out property <int> pick-y;
+    callback back;
+    // Asks for the curves drawn for this plot's proportions.
+    callback draw(float);
+    // A G-code script that applies (and when all are recommended, saves) the picks.
+    callback save(string);
+    property <ShaperAxis> cur: root.axes[root.axis];
+    property <int> pick: root.axis == 0 ? root.pick-x : root.pick-y;
+    property <ShaperRow> chosen: root.cur.rows[root.pick];
+    property <ShaperAxis> ax: root.axes[0];
+    property <ShaperAxis> ay: root.axes[1];
+    // Klipper keeps the recommended shapers to save; any other pick is applied
+    // until Klipper restarts.
+    property <bool> all-best: (!root.ax.shown || root.ax.rows[root.pick-x].best) && (!root.ay.shown || root.ay.rows[root.pick-y].best);
+    init => {
+        if (!root.cur.shown && root.ay.shown) { root.axis = 1; }
+        root.draw(plot.aspect);
+    }
+    VerticalLayout {
+        padding: Tokens.pad;
+        spacing: 10px;
+        Header {
+            title: @tr("Vibrations · measurement");
+            back-clicked => { root.back(); }
+            if root.ax.shown && root.ay.shown: Rectangle {
+                width: 2 * 76px + 4px + 10px;
+                border-radius: Tokens.r-m;
+                background: Tokens.surface-1;
+                HorizontalLayout {
+                    padding: 5px;
+                    spacing: 4px;
+                    for name[i] in ["X", "Y"]: Rectangle {
+                        width: 76px;
+                        border-radius: 15px;
+                        background: root.axis == i ? Tokens.accent : transparent;
+                        Text { text: name; color: root.axis == i ? Tokens.accent-ink : Tokens.text-2; font-size: 17px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+                        TouchArea { clicked => { root.axis = i; } }
+                    }
+                }
+            }
+        }
+        HorizontalLayout {
+            vertical-stretch: 1;
+            spacing: 12px;
+            VerticalLayout {
+                horizontal-stretch: 1;
+                spacing: 4px;
+                plot := ResponsePlot {
+                    vertical-stretch: 1;
+                    resized(a) => { root.draw(a); }
+                    empty: @tr("No graph: the measurement files are on the printer");
+                    lines: root.cur.raw == "" ? [] : [
+                        { path: root.cur.raw, color: Tokens.text-dim, legend: "thin" },
+                        { path: root.cur.curves[root.pick], color: Tokens.accent, legend: "" },
+                    ];
+                    marks: root.cur.raw == "" ? [] : [{ at: root.cur.peak-at, color: Tokens.heat-1 }];
+                }
+                HorizontalLayout {
+                    height: 22px;
+                    padding-left: 8px;
+                    spacing: 16px;
+                    alignment: start;
+                    LegendItem { color: Tokens.text-dim; text: @tr("without shaping"); }
+                    LegendItem { color: Tokens.accent; text: @tr("with {}", root.chosen.name); }
+                    if root.cur.peak != "": LegendItem { color: Tokens.heat-1; text: @tr("resonance {} Hz", root.cur.peak); }
+                }
+            }
+            VerticalLayout {
+                width: 250px;
+                spacing: 6px;
+                HorizontalLayout {
+                    padding-left: 10px;
+                    padding-right: 10px;
+                    height: 18px;
+                    Text { horizontal-stretch: 1.7; text: @tr("TYPE"); color: Tokens.text-faint; font-size: 12px; font-weight: 700; }
+                    Text { horizontal-stretch: 0.9; text: @tr("HZ"); color: Tokens.text-faint; font-size: 12px; font-weight: 700; }
+                    Text { horizontal-stretch: 0.8; text: @tr("VIBR."); color: Tokens.text-faint; font-size: 12px; font-weight: 700; }
+                    Text { horizontal-stretch: 1.1; text: @tr("ACCEL."); color: Tokens.text-faint; font-size: 12px; font-weight: 700; }
+                }
+                for r[i] in root.cur.rows: Rectangle {
+                    height: 44px;
+                    border-radius: 12px;
+                    background: i == root.pick ? Tokens.accent-soft : Tokens.surface-1;
+                    border-width: i == root.pick ? 2px : 0px;
+                    border-color: #2dd4bf80;
+                    accessible-role: button;
+                    accessible-label: r.name;
+                    HorizontalLayout {
+                        padding-left: 10px;
+                        padding-right: 10px;
+                        Text { horizontal-stretch: 1.7; text: r.name + (r.best ? " ★" : ""); color: i == root.pick ? Tokens.accent-hi : Tokens.text-2; font-size: 13px; font-weight: 800; vertical-alignment: center; overflow: elide; }
+                        Text { horizontal-stretch: 0.9; text: r.freq; color: i == root.pick ? Tokens.accent-hi : Tokens.text-2; font-size: 13px; vertical-alignment: center; }
+                        Text { horizontal-stretch: 0.8; text: r.vib; color: i == root.pick ? Tokens.accent-hi : Tokens.text-2; font-size: 13px; vertical-alignment: center; }
+                        Text { horizontal-stretch: 1.1; text: r.accel; color: i == root.pick ? Tokens.accent-hi : Tokens.text-2; font-size: 13px; vertical-alignment: center; }
+                    }
+                    TouchArea {
+                        clicked => {
+                            if (root.axis == 0) { root.pick-x = i; } else { root.pick-y = i; }
+                        }
+                    }
+                }
+                Rectangle { vertical-stretch: 1; }
+                PrimaryButton {
+                    text: @tr("Save {}", root.chosen.name);
+                    sub: root.all-best ? @tr("Klipper will restart") : @tr("until Klipper restarts");
+                    clicked => {
+                        root.save(
+                            (root.ax.shown ? "SET_INPUT_SHAPER SHAPER_TYPE_X=" + root.ax.rows[root.pick-x].kind + " SHAPER_FREQ_X=" + root.ax.rows[root.pick-x].hz + "\n" : "")
+                            + (root.ay.shown ? "SET_INPUT_SHAPER SHAPER_TYPE_Y=" + root.ay.rows[root.pick-y].kind + " SHAPER_FREQ_Y=" + root.ay.rows[root.pick-y].hz + "\n" : "")
+                            + (root.all-best ? "SAVE_CONFIG" : ""));
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Belt tension compared on a CoreXY: the prototype's Belts page.
+export component BeltsScreen inherits Rectangle {
+    horizontal-stretch: 1;
+    in property <BeltsResult> result;
+    in property <bool> busy;
+    in property <bool> printing;
+    // One full check, minutes.
+    in property <int> minutes;
+    callback back;
+    callback draw(float);
+    callback check;
+    init => { root.draw(plot.aspect); }
+    VerticalLayout {
+        padding: Tokens.pad;
+        spacing: 10px;
+        Header { title: @tr("Belts"); back-clicked => { root.back(); } }
+        HorizontalLayout {
+            vertical-stretch: 1;
+            spacing: 12px;
+            VerticalLayout {
+                horizontal-stretch: 1;
+                spacing: 4px;
+                plot := ResponsePlot {
+                    vertical-stretch: 1;
+                    resized(a) => { root.draw(a); }
+                    empty: root.busy ? @tr("Measuring…") : root.result.shown ? @tr("No graph: the measurement files are on the printer") : @tr("Not checked yet");
+                    lines: root.result.a == "" ? [] : [
+                        { path: root.result.a, color: Tokens.accent, legend: "" },
+                        { path: root.result.b, color: Tokens.heat-2, legend: "" },
+                    ];
+                    marks: root.result.a == "" ? [] : [
+                        { at: root.result.peak-a-at, color: Tokens.accent },
+                        { at: root.result.peak-b-at, color: Tokens.heat-2 },
+                    ];
+                }
+                HorizontalLayout {
+                    height: 22px;
+                    padding-left: 8px;
+                    spacing: 16px;
+                    alignment: start;
+                    if root.result.peak-a != "": LegendItem { color: Tokens.accent; text: @tr("belt A · peak {} Hz", root.result.peak-a); }
+                    if root.result.peak-b != "": LegendItem { color: Tokens.heat-2; text: @tr("belt B · peak {} Hz", root.result.peak-b); }
+                }
+            }
+            VerticalLayout {
+                width: 250px;
+                spacing: 10px;
+                if root.result.shown && root.result.similarity >= 0: Rectangle {
+                    border-radius: Tokens.r-m;
+                    background: Tokens.surface-1;
+                    VerticalLayout {
+                        padding: 14px;
+                        padding-left: 16px;
+                        spacing: 2px;
+                        Text { text: @tr("Similarity"); color: Tokens.text-dim; font-size: 13px; }
+                        Text { text: root.result.similarity + "%"; color: root.result.similarity >= 90 ? Tokens.accent : Tokens.warn-text; font-size: 36px; font-weight: 800; }
+                        Text { text: @tr("good — from 90%"); color: Tokens.text-dim; font-size: 13px; }
+                    }
+                }
+                if root.result.shown && root.result.similarity >= 0: Rectangle {
+                    border-radius: Tokens.r-m;
+                    background: root.result.similarity >= 90 ? Tokens.accent-soft : #fbbf2414;
+                    VerticalLayout {
+                        padding: 14px;
+                        padding-left: 16px;
+                        Text {
+                            text: root.result.similarity >= 90
+                                ? @tr("The belts are tensioned alike.")
+                                : root.result.weaker != ""
+                                ? @tr("Belt {0} is looser: its peak is lower. Tighten tensioner {0} a little and check again.", root.result.weaker)
+                                : @tr("The belts differ. Check both tensioners and measure again.");
+                            color: Tokens.text;
+                            font-size: 15px;
+                            wrap: word-wrap;
+                        }
+                    }
+                }
+                Rectangle { vertical-stretch: 1; }
+                PrimaryButton {
+                    text: root.busy ? @tr("Measuring…") : root.result.shown ? @tr("Check again") : @tr("Check");
+                    sub: root.printing ? @tr("after the print") : @tr("~{} min · don't touch the printer", root.minutes);
+                    enabled: !root.busy && !root.printing;
+                    clicked => { root.check(); }
+                }
             }
         }
     }

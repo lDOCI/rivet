@@ -35,7 +35,8 @@ export { FileItem, FileInfo, ConsoleLine, FanRow }
 import { MessagesScreen, MessageRow } from "screens/messages.slint";
 import { FilamentScreen } from "screens/filament.slint";
 import { LockScreen } from "screens/lock.slint";
-import { BedMeshScreen, MeshProfilesScreen, ScrewsScreen, MeshCell, ScrewRow } from "screens/calib.slint";
+import { BedMeshScreen, MeshProfilesScreen, ScrewsScreen, MeshCell, ScrewRow, ShaperResultScreen, BeltsScreen, ShaperAxis, ShaperRow, BeltsResult } from "screens/calib.slint";
+export { ShaperAxis, ShaperRow, BeltsResult }
 export { MeshCell, ScrewRow }
 import { LimitsScreen, ServiceScreen, ServiceItem, CameraScreen } from "screens/tools-extra.slint";
 export { ServiceItem }
@@ -481,6 +482,17 @@ export component AppWindow inherits Window {
     in-out property <float> pid-temp: 220;
     in-out property <int> pid-fan: 1;
     in-out property <int> shaper-axes;
+    // Vibrations: the last SHAPER_CALIBRATE (X, Y) and the belt check.
+    in property <bool> calib-corexy;
+    in property <[ShaperAxis]> shaper-result: [{ shown: false }, { shown: false }];
+    in-out property <int> shaper-pick-x;
+    in-out property <int> shaper-pick-y;
+    in-out property <int> shaper-axis;
+    in property <BeltsResult> belts;
+    // One resonance sweep, minutes (from resonance_tester).
+    in property <int> sweep-minutes: 2;
+    // Curves for a plot of these proportions.
+    callback draw-resonance(float);
     callback refresh-calib();
     callback calibrate(string);
 
@@ -504,7 +516,7 @@ export component AppWindow inherits Window {
             active: !root.ready ? "" : (root.screen == "fans" || root.screen == "filament" || root.screen == "heating" || root.screen == "heat-presets" || root.screen == "temp-graph" || root.screen == "motion" || root.screen == "extruder" || root.screen == "light" || root.screen == "speed" || root.screen == "zoffset" || root.screen == "motion-more" || root.screen == "retraction" || root.screen == "dryer" || root.screen == "spools" || root.screen == "devices") ? "control"
                 : (root.screen == "control" || root.screen == "tools" || root.screen == "settings" || root.screen == "messages") ? root.screen
                 : (root.screen == "set-screen" || root.screen == "set-lock" || root.screen == "set-sound" || root.screen == "set-language" || root.screen == "set-safety" || root.screen == "set-system" || root.screen == "set-network" || root.screen == "set-printers" || root.screen == "set-updates") ? "settings"
-                : (root.screen == "console" || root.screen == "macros" || root.screen == "calibrate" || root.screen == "bed-mesh" || root.screen == "mesh-profiles" || root.screen == "screws" || root.screen == "probe" || root.screen == "shaper" || root.screen == "pid" || root.screen == "pa" || root.screen == "tmc" || root.screen == "limits" || root.screen == "sensors" || root.screen == "history" || root.screen == "service" || root.screen == "camera") ? "tools"
+                : (root.screen == "console" || root.screen == "macros" || root.screen == "calibrate" || root.screen == "bed-mesh" || root.screen == "mesh-profiles" || root.screen == "screws" || root.screen == "probe" || root.screen == "shaper" || root.screen == "shaper-result" || root.screen == "belts" || root.screen == "pid" || root.screen == "pa" || root.screen == "tmc" || root.screen == "limits" || root.screen == "sensors" || root.screen == "history" || root.screen == "service" || root.screen == "camera") ? "tools"
                 : "home";
             unread: root.unread;
             hold-stop: root.set-hold-stop;
@@ -762,12 +774,14 @@ export component AppWindow inherits Window {
             shaper-sub: root.shaper-x != "" ? "X: " + root.shaper-x + " " + @tr("Hz") + " · Y: " + root.shaper-y + " " + @tr("Hz") : @tr("not set up");
             pa-sub: Format.fixed(root.pressure-advance, 3);
             tare-shown: root.calib-has-tare;
+            belts-shown: root.calib-has-accel && root.calib-corexy;
             back => { root.screen = "tools"; }
             activate(key) => {
                 if (key == "mesh") { root.screen = "bed-mesh"; }
                 if (key == "screws") { root.screen = "screws"; }
                 if (key == "probe") { root.screen = "probe"; }
                 if (key == "shaper") { root.screen = "shaper"; }
+                if (key == "belts") { root.screen = "belts"; }
                 if (key == "pid") { root.pid-temp = root.pid-heater == 0 ? 220 : 60; root.screen = "pid"; }
                 if (key == "pa") { root.screen = "pa"; }
                 if (key == "tmc") { root.screen = "tmc"; }
@@ -824,12 +838,33 @@ export component AppWindow inherits Window {
             measure-shown: root.calib-has-accel;
             measure-enabled: !root.calib-busy && !root.busy;
             noise-shown: root.calib-has-accel;
+            measure-sub: root.calib-busy ? @tr("measuring… don't touch the printer") : @tr("~{} min · don't touch the printer", (root.shaper-axes == 0 ? 2 : 1) * root.sweep-minutes);
+            last-shown: root.shaper-result[0].shown || root.shaper-result[1].shown;
             back => { root.screen = "calibrate"; }
             picked(key, i) => { if (key == "axes") { root.shaper-axes = i; } }
             activate(key) => {
                 if (key == "measure") { root.calibrate(root.shaper-axes == 1 ? "G28\nSHAPER_CALIBRATE AXIS=X" : root.shaper-axes == 2 ? "G28\nSHAPER_CALIBRATE AXIS=Y" : "G28\nSHAPER_CALIBRATE"); }
                 if (key == "noise") { root.calibrate("MEASURE_AXES_NOISE"); }
+                if (key == "last") { root.screen = "shaper-result"; }
             }
+        }
+        if root.ready && root.screen == "shaper-result": ShaperResultScreen {
+            axes: root.shaper-result;
+            axis <=> root.shaper-axis;
+            pick-x <=> root.shaper-pick-x;
+            pick-y <=> root.shaper-pick-y;
+            back => { root.screen = "shaper"; }
+            draw(aspect) => { root.draw-resonance(aspect); }
+            save(script) => { root.calibrate(script); root.screen = "shaper"; }
+        }
+        if root.ready && root.screen == "belts": BeltsScreen {
+            result: root.belts;
+            busy: root.calib-busy;
+            printing: root.busy;
+            minutes: 2 * root.sweep-minutes;
+            back => { root.screen = "calibrate"; }
+            draw(aspect) => { root.draw-resonance(aspect); }
+            check => { root.calibrate("G28\nTEST_RESONANCES AXIS=1,1 OUTPUT=resonances NAME=belt_a\nTEST_RESONANCES AXIS=1,-1 OUTPUT=resonances NAME=belt_b"); }
         }
         if root.ready && root.screen == "pid": PidForm {
             heater-sel: root.pid-heater;

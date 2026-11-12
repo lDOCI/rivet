@@ -9,6 +9,9 @@ pub fn show(ui: &AppWindow, info: model::CalibInfo) {
     ui.set_calib_has_mesh(info.has_mesh);
     ui.set_calib_has_screws(info.has_screws && !info.screws.is_empty());
     ui.set_calib_has_accel(info.has_accel);
+    ui.set_calib_corexy(info.corexy);
+    crate::resonance::set_range(info.freq_range.0, info.freq_range.1);
+    ui.set_sweep_minutes((info.sweep_seconds / 60.0).ceil().max(1.0) as i32);
     ui.set_calib_has_tare(info.has_tare);
     ui.set_probe_z_saved(info.z_offset.map_or(-999.0, |z| z as f32));
     ui.set_probe_offset(format!("{} / {}", info.probe_offset[0], info.probe_offset[1]).into());

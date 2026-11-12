@@ -8,6 +8,7 @@ pub mod config;
 pub mod engine;
 pub mod files;
 pub mod logfile;
+pub mod resonance;
 pub mod thumbs;
 
 /// Interface language: `--lang ru`, else `RIVET_LANG`, else the `LANG` of the

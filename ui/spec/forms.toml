@@ -183,7 +183,7 @@ r0 = { name = "mesh", data = ["sub"] }
 r1 = "screws"
 r2 = "probe"
 r3 = { name = "shaper", data = ["sub"] }
-r4 = { name = "belts", later = "needs an accelerometer (adxl345 / lis2dw); the AD5M has none to test with" }
+r4 = "belts"
 r5 = "pid"
 r6 = { name = "pa", data = ["sub"] }
 r7 = "tmc"
@@ -209,7 +209,7 @@ r0 = { name = "x", data = ["value"] }
 r1 = { name = "y", data = ["value"] }
 r2 = "axes"
 r3 = "measure"
-r4 = { name = "last", later = "the result screen needs an accelerometer to test with" }
+r4 = "last"
 r5 = "noise"
 
 [PidCal]

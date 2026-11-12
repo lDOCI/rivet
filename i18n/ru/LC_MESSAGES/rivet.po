@@ -2031,3 +2031,75 @@ msgstr "Удерживайте замок, чтобы открыть."
 
 msgid "Hold to unlock"
 msgstr "Удерживайте, чтобы открыть"
+
+msgid "measuring… don't touch the printer"
+msgstr "идёт замер… не трогайте принтер"
+
+msgid "~{} min · don't touch the printer"
+msgstr "~{} мин · не трогайте принтер"
+
+msgid "Vibrations · measurement"
+msgstr "Вибрации · замер"
+
+msgid "No graph: the measurement files are on the printer"
+msgstr "Графика нет: файлы замера лежат на принтере"
+
+msgid "without shaping"
+msgstr "без сглаживания"
+
+msgid "with {}"
+msgstr "с {}"
+
+msgid "resonance {} Hz"
+msgstr "резонанс {} Гц"
+
+msgid "TYPE"
+msgstr "ТИП"
+
+msgid "HZ"
+msgstr "ГЦ"
+
+msgid "VIBR."
+msgstr "ВИБР."
+
+msgid "ACCEL."
+msgstr "УСКОР."
+
+msgid "Save {}"
+msgstr "Сохранить {}"
+
+msgid "Klipper will restart"
+msgstr "Klipper перезапустится"
+
+msgid "until Klipper restarts"
+msgstr "до перезапуска Klipper"
+
+msgid "Measuring…"
+msgstr "Идёт замер…"
+
+msgid "Not checked yet"
+msgstr "Ещё не проверяли"
+
+msgid "belt A · peak {} Hz"
+msgstr "ремень A · пик {} Гц"
+
+msgid "belt B · peak {} Hz"
+msgstr "ремень B · пик {} Гц"
+
+msgid "Similarity"
+msgstr "Похожесть"
+
+msgid "good — from 90%"
+msgstr "хорошо — от 90%"
+
+msgid "The belts are tensioned alike."
+msgstr "Ремни натянуты одинаково."
+
+msgid "Belt {0} is looser: its peak is lower. Tighten tensioner {0} a little and check again."
+msgstr "Ремень {0} слабее: его пик ниже. Подтяните натяжитель {0} и проверьте снова."
+
+msgid "The belts differ. Check both tensioners and measure again."
+msgstr "Ремни отличаются. Проверьте оба натяжителя и измерьте снова."
+
+msgid "Check"
+msgstr "Проверить"

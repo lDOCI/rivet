@@ -71,6 +71,8 @@ const ALL: &[&str] = &[
     "screws",
     "probe",
     "shaper",
+    "shaper-result",
+    "belts",
     "pid",
     "pa",
     "tmc",
@@ -129,6 +131,15 @@ fn main() -> anyhow::Result<()> {
     ui.set_extruder_temp(187.0);
     ui.set_extruder_target(240.0);
     ui.set_bed_temp(23.0);
+    {
+        let weak = ui.as_weak();
+        ui.on_draw_resonance(move |aspect| {
+            rivet::resonance::set_aspect(f64::from(aspect));
+            if let Some(ui) = weak.upgrade() {
+                rivet::resonance::show_now(&ui);
+            }
+        });
+    }
     ui.show()?;
 
     let mut buf = vec![Rgb8Pixel::default(); (WIDTH * HEIGHT) as usize];
@@ -567,7 +578,8 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_overlay("cancel-print".into());
         }
         "heat-presets" => ui.set_screen("heat-presets".into()),
-        "calibrate" | "bed-mesh" | "screws" | "probe" | "shaper" | "pid" | "pa" | "tmc" => {
+        "calibrate" | "bed-mesh" | "screws" | "probe" | "shaper" | "pid" | "pa" | "tmc"
+        | "shaper-result" | "belts" => {
             // The AD5M Pro's own config and the prototype pages' mesh and screws.
             let cfg: serde_json::Value = serde_json::from_str(include_str!(
                 "../../model/tests/fixtures/ad5m-pro/configfile.json"
@@ -608,6 +620,9 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_pressure_advance(0.04);
             ui.set_pa_smooth(0.04);
             ui.set_probe_range(0.004);
+            if name == "shaper-result" || name == "belts" {
+                resonance_fixture();
+            }
             ui.set_screen(name.into());
         }
         "set-screen" | "set-lock" | "set-sound" | "set-language" | "set-safety" | "set-system"
@@ -986,4 +1001,96 @@ fn write_png(path: &PathBuf, buf: &[Rgb8Pixel]) -> anyhow::Result<()> {
     let bytes: Vec<u8> = buf.iter().flat_map(|p| [p.r, p.g, p.b]).collect();
     writer.write_image_data(&bytes)?;
     Ok(())
+}
+
+/// A made-up measurement for the vibration screens: what Klipper prints, and
+/// CSVs in its format with one main resonance per axis and belt (54 and 42 Hz
+/// for X and Y, 78 and 71 Hz for belts A and B, as the prototype pages).
+fn resonance_fixture() {
+    let dir = std::env::temp_dir().join("rivet-snapshot");
+    let _ = std::fs::create_dir_all(&dir);
+    let peak = |f: f64, at: f64, width: f64| 1.0 / (1.0 + ((f - at) / width).powi(2));
+    let shapers = [
+        ("zv", 58.6),
+        ("mzv", 54.2),
+        ("ei", 62.0),
+        ("2hump_ei", 74.4),
+        ("3hump_ei", 89.2),
+    ];
+    let write = |file: &str, main: f64, second: f64, with_shapers: bool| {
+        let mut csv = String::from("freq,psd_x,psd_y,psd_z,psd_xyz");
+        if with_shapers {
+            for (n, f) in shapers {
+                csv.push_str(&format!(",{n}({f:.1})"));
+            }
+        }
+        csv.push('\n');
+        let mut f = 0.0;
+        while f < 200.0 {
+            let p = 1.0e4 * (peak(f, main, 4.0) + 0.25 * peak(f, second, 6.0)) + 300.0;
+            csv.push_str(&format!("{f:.1},0,0,0,{p:.3e}"));
+            if with_shapers {
+                for (_, sf) in shapers {
+                    // Shapers damp everything above about 70 % of their frequency.
+                    let k = 1.0 / (1.0 + (f / (0.7 * sf)).powi(6));
+                    csv.push_str(&format!(",{k:.3}"));
+                }
+            }
+            csv.push('\n');
+            f += 0.5;
+        }
+        let path = dir.join(file);
+        let _ = std::fs::write(&path, csv);
+        path.display().to_string()
+    };
+    let x = write("calibration_data_x.csv", 54.2, 98.0, true);
+    let y = write("calibration_data_y.csv", 41.8, 86.0, true);
+    let a = write("resonances_belt_a.csv", 78.0, 40.0, false);
+    let b = write("resonances_belt_b.csv", 71.0, 38.0, false);
+    let mut lines = vec![];
+    for (axis, csv, rows, best) in [
+        (
+            "x",
+            x,
+            [
+                (58.6, 4.2, 11200.0),
+                (54.2, 0.7, 7400.0),
+                (62.0, 0.2, 6100.0),
+                (74.4, 0.0, 4900.0),
+                (89.2, 0.0, 4300.0),
+            ],
+            "mzv",
+        ),
+        (
+            "y",
+            y,
+            [
+                (45.0, 6.1, 9800.0),
+                (41.8, 1.4, 5200.0),
+                (47.2, 0.6, 4600.0),
+                (56.0, 0.1, 3700.0),
+                (66.6, 0.0, 3200.0),
+            ],
+            "mzv",
+        ),
+    ] {
+        lines.push(format!(
+            "// Calculating the best input shaper parameters for {axis} axis"
+        ));
+        for ((name, _), (freq, vib, accel)) in shapers.iter().zip(rows) {
+            lines.push(format!("// Fitted shaper '{name}' frequency = {freq:.1} Hz (vibrations = {vib:.1}%, smoothing ~= 0.090)"));
+            lines.push(format!("// To avoid too much smoothing with '{name}', suggested max_accel <= {accel:.0} mm/sec^2"));
+        }
+        let freq = rows[1].0;
+        lines.push(format!(
+            "// Recommended shaper_type_{axis} = {best}, shaper_freq_{axis} = {freq:.1} Hz"
+        ));
+        lines.push(format!("// Shaper calibration data written to {csv} file"));
+    }
+    lines.push(format!("// Resonances data written to {a} file"));
+    lines.push(format!("// Resonances data written to {b} file"));
+    for l in &lines {
+        rivet::resonance::feed(l);
+    }
+    rivet::resonance::load();
 }

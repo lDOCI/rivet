@@ -237,6 +237,8 @@ pub enum Command {
     /// Temperatures of the last minutes for the graph, drawn for the plot's
     /// width / height.
     TempGraph(f32),
+    /// Vibration and belt curves, drawn for the plot's width / height.
+    DrawResonance(f32),
     /// Read the messages again; mark all of them read.
     ListMessages,
     ReadMessages,
@@ -542,6 +544,7 @@ async fn handle_event(ev: Event, client: &Client, state: &mut PrinterState) {
             "notify_gcode_response" => {
                 if let Some(line) = params.get(0).and_then(Value::as_str) {
                     state.prompt_line(line);
+                    crate::resonance::feed(line);
                     if let Some(range) = model::probe_range(line) {
                         state.probe_range = Some(range);
                     }
@@ -2290,11 +2293,34 @@ async fn execute(
             list_files(client, ui, thumbs, usb).await
         }
         Command::Calibrate(script) => {
+            let shaper = script.contains("SHAPER_CALIBRATE");
+            let resonance = shaper || script.contains("TEST_RESONANCES");
             let _ = ui.upgrade_in_event_loop(|ui| ui.set_calib_busy(true));
             let result = gcode(client, script).await;
-            let _ = ui.upgrade_in_event_loop(|ui| ui.set_calib_busy(false));
+            if resonance {
+                crate::resonance::load();
+                crate::resonance::show(ui);
+            }
+            let fitted = shaper && result.is_ok() && crate::resonance::has_shapers();
+            let _ = ui.upgrade_in_event_loop(move |ui| {
+                ui.set_calib_busy(false);
+                if fitted {
+                    // A new measurement: start from the recommended shapers.
+                    ui.set_shaper_pick_x(0);
+                    ui.set_shaper_pick_y(0);
+                    ui.set_shaper_axis(0);
+                    if ui.get_screen() == "shaper" {
+                        ui.set_screen("shaper-result".into());
+                    }
+                }
+            });
             calib_info(client, ui).await;
             result
+        }
+        Command::DrawResonance(aspect) => {
+            crate::resonance::set_aspect(f64::from(*aspect));
+            crate::resonance::show(ui);
+            Ok(())
         }
         Command::SystemInfo => {
             system_info(client, ui).await;
@@ -2309,7 +2335,22 @@ async fn execute(
                     .map(drop)?,
                 "moonraker" => client.call("server.restart", json!({})).await.map(drop)?,
                 "reboot" => client.call("machine.reboot", json!({})).await.map(drop)?,
-                "shutdown" => client.call("machine.shutdown", json!({})).await.map(drop)?,
+                "shutdown" => {
+                    // KlipperMod: Moonraker has no machine provider there; its own
+                    // macro syncs the disks, cuts the power and powers off.
+                    let objects = client
+                        .call("printer.objects.list", json!({}))
+                        .await
+                        .unwrap_or_default();
+                    let mod_off = objects["objects"]
+                        .as_array()
+                        .is_some_and(|o| o.iter().any(|n| n == "gcode_macro _SHUTDOWN_STAGE"));
+                    if mod_off {
+                        gcode(client, "_SHUTDOWN_STAGE").await?
+                    } else {
+                        client.call("machine.shutdown", json!({})).await.map(drop)?
+                    }
+                }
                 "stock" => gcode(client, "REBOOT_STOCK_SYSTEM").await?,
                 "check-updates" => {
                     client

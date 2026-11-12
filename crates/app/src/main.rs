@@ -577,6 +577,12 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
     }
     {
         let tx = tx.clone();
+        ui.on_draw_resonance(move |aspect| {
+            let _ = tx.send(Command::DrawResonance(aspect));
+        });
+    }
+    {
+        let tx = tx.clone();
         let weak = ui.as_weak();
         ui.on_preset_changed(move |i, nozzle, bed| {
             use slint::Model;

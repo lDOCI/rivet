@@ -799,8 +799,8 @@ export component CalibrateForm inherits FormScreen {
     in property <bool> shaper-shown: true;
     in property <string> shaper-sub;
     in property <string> shaper-value;
-    // Ремни — later: needs an accelerometer (adxl345 / lis2dw); the AD5M has none to test with
-    in property <bool> belts-shown: false;
+    // Ремни
+    in property <bool> belts-shown: true;
     in property <string> belts-sub: @tr("compare the two belts");
     in property <string> belts-value;
     // Нагрев (PID)
@@ -910,8 +910,8 @@ export component ShaperForm inherits FormScreen {
     in property <bool> measure-shown: true;
     in property <string> measure-sub: @tr("don't touch the printer while it measures");
     in property <bool> measure-enabled: true;
-    // Последний замер — later: the result screen needs an accelerometer to test with
-    in property <bool> last-shown: false;
+    // Последний замер
+    in property <bool> last-shown: true;
     in property <string> last-sub: @tr("graphs and every shaper");
     in property <string> last-value;
     // Проверить датчик
