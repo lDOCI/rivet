@@ -127,7 +127,17 @@ export component AppWindow inherits Window {
     in-out property <string> macro-pending;
     callback move-axis(int, float);
     callback motors-off();
-    callback extrude(float, float);
+    // Length (mm, negative pulls back), speed (mm/s), and the temperature to
+    // heat a cold nozzle to first (0: hot enough).
+    callback extrude(float, float, float);
+    // Heating before an extrusion is under way.
+    in property <bool> extrude-busy;
+    pure callback material-temp(string) -> int;
+    // A cold nozzle heats to the loaded material's preset, else the first preset;
+    // a nozzle already heating keeps its target.
+    property <float> extrude-heat: root.can-extrude ? 0
+        : root.extruder-target >= max(1, root.min-extrude-temp) ? root.extruder-target
+        : max(root.min-extrude-temp, root.material-temp(root.loaded-material) > 0 ? root.material-temp(root.loaded-material) : root.heat-presets[0].nozzle);
     // Toolhead: position and which axes Klipper has a position for.
     in property <float> position-x;
     in property <float> position-y;
@@ -638,8 +648,15 @@ export component AppWindow inherits Window {
             unload-shown: root.has-load-macros;
             length-sel: root.extrude-length;
             rate-sel: root.extrude-rate;
-            extrude-enabled: root.can-extrude;
-            retract-enabled: root.can-extrude;
+            // Cold: the button heats first. While printing only when Klipper lets it.
+            extrude-enabled: !root.extrude-busy && (root.can-extrude || !root.busy);
+            // The snowflake beside Extrude: nozzle heater off.
+            extrude-side-enabled: root.extruder-target > 0;
+            retract-enabled: !root.extrude-busy && (root.can-extrude || !root.busy);
+            extrude-sub: root.extrude-busy ? @tr("heating to {}°, then extrudes…", round(root.extruder-target))
+                : root.can-extrude ? @tr("the chosen length") : @tr("heats to {}° first", round(root.extrude-heat));
+            retract-sub: root.extrude-busy ? @tr("heating to {}°…", round(root.extruder-target))
+                : root.can-extrude ? @tr("back into the extruder") : @tr("heats to {}° first", round(root.extrude-heat));
             spools-shown: root.has-spoolman;
             spools-sub: root.has-active-spool ? @tr("active: {}", root.active-spool) : @tr("no active spool");
             retraction-shown: root.has-retraction;
@@ -651,8 +668,9 @@ export component AppWindow inherits Window {
                 if (key == "rate") { root.extrude-rate = i; }
             }
             activate(key) => {
-                if (key == "extrude") { root.extrude(self.length-values[root.extrude-length], self.rate-values[root.extrude-rate]); }
-                if (key == "retract") { root.extrude(-self.length-values[root.extrude-length], self.rate-values[root.extrude-rate]); }
+                if (key == "extrude") { root.extrude(self.length-values[root.extrude-length], self.rate-values[root.extrude-rate], root.extrude-heat); }
+                if (key == "cool") { root.set-nozzle(0); }
+                if (key == "retract") { root.extrude(-self.length-values[root.extrude-length], self.rate-values[root.extrude-rate], root.extrude-heat); }
                 if (key == "spools") { root.list-spools(); root.screen = "spools"; }
                 if (key == "retraction") { root.screen = "retraction"; }
                 if (key == "load") { root.filament-step = 1; root.screen = "filament"; }
@@ -769,7 +787,7 @@ export component AppWindow inherits Window {
             can-extrude: root.can-extrude;
             step <=> root.filament-step;
             heat(t) => { root.set-nozzle(t); }
-            extrude(mm) => { root.extrude(mm, 5); }
+            extrude(mm) => { root.extrude(mm, 5, 0); }
             done(name) => { root.set-loaded(name); root.screen = "extruder"; }
             cancel => { root.screen = "extruder"; }
         }
@@ -1258,7 +1276,7 @@ export component AppWindow inherits Window {
             filament-back: !root.filament-out;
             unload => { root.run-gcode("UNLOAD_FILAMENT"); }
             load => { root.run-gcode("LOAD_FILAMENT"); }
-            purge => { root.extrude(25, 5); }
+            purge => { root.extrude(25, 5, 0); }
             cancel => { root.overlay = "cancel-print"; }
             resume => { root.resume-print(); }
         }

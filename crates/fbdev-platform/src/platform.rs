@@ -108,7 +108,8 @@ struct FbPlatform {
     /// A finger lift not yet passed on: a finger on this panel loses contact for a
     /// few milliseconds mid-swipe, which would turn a scroll into taps. A press
     /// within RELEASE_DEBOUNCE continues the same touch instead.
-    pending_release: Cell<Option<(Instant, f32, f32)>>,
+    /// Where, and whether it may click (not a touch that only stopped a glide).
+    pending_release: Cell<Option<(Instant, f32, f32, bool)>>,
     /// Tap or drag: finger jitter within the slop is not a scroll.
     slop: Cell<crate::touch_state::TapSlop>,
 }
@@ -241,22 +242,18 @@ impl FbPlatform {
                 // Back within the debounce time and near where it was: the same
                 // touch goes on. Elsewhere it is a new touch: end the old one.
                 TouchAction::Pressed { x, y } if self.pending_release.get().is_some() => {
-                    let (lx, ly) = self
+                    let (lx, ly, click) = self
                         .pending_release
                         .take()
-                        .map_or((x, y), |(_, lx, ly)| (lx, ly));
+                        .map_or((x, y, true), |(_, lx, ly, c)| (lx, ly, c));
                     if (x - lx).hypot(y - ly) <= SAME_FINGER {
-                        slop.moved(x, y).map(|(x, y)| WindowEvent::PointerMoved {
-                            position: LogicalPosition::new(x, y),
-                        })
+                        slop.moved(x, y, Instant::now())
+                            .map(|(x, y)| WindowEvent::PointerMoved {
+                                position: LogicalPosition::new(x, y),
+                            })
                     } else {
-                        let w = window.window();
-                        w.dispatch_event(WindowEvent::PointerReleased {
-                            position: LogicalPosition::new(lx, ly),
-                            button: PointerEventButton::Left,
-                        });
-                        w.dispatch_event(WindowEvent::PointerExited);
-                        let (x, y) = slop.press(x, y);
+                        release(window.window(), lx, ly, click);
+                        let (x, y, _) = slop.press(x, y, Instant::now());
                         Some(WindowEvent::PointerPressed {
                             position: LogicalPosition::new(x, y),
                             button: PointerEventButton::Left,
@@ -264,22 +261,24 @@ impl FbPlatform {
                     }
                 }
                 TouchAction::Pressed { x, y } => {
-                    let (x, y) = slop.press(x, y);
+                    let (x, y, _) = slop.press(x, y, Instant::now());
                     Some(WindowEvent::PointerPressed {
                         position: LogicalPosition::new(x, y),
                         button: PointerEventButton::Left,
                     })
                 }
                 TouchAction::Moved { x, y } => {
-                    slop.moved(x, y).map(|(x, y)| WindowEvent::PointerMoved {
-                        position: LogicalPosition::new(x, y),
-                    })
+                    slop.moved(x, y, Instant::now())
+                        .map(|(x, y)| WindowEvent::PointerMoved {
+                            position: LogicalPosition::new(x, y),
+                        })
                 }
                 // Held back; `flush_release` passes it on once the finger stays up.
                 // A tap lands where the finger touched.
                 TouchAction::Released { x, y } => {
-                    let (x, y) = slop.release(x, y);
-                    self.pending_release.set(Some((Instant::now(), x, y)));
+                    let (x, y, click) = slop.release(x, y, Instant::now());
+                    self.pending_release
+                        .set(Some((Instant::now(), x, y, click)));
                     None
                 }
             };
@@ -300,15 +299,10 @@ impl FbPlatform {
 
     /// Pass on a finger lift once it has lasted the debounce time.
     fn flush_release(&self) {
-        if let Some((at, x, y)) = self.pending_release.get() {
+        if let Some((at, x, y, click)) = self.pending_release.get() {
             if at.elapsed() >= RELEASE_DEBOUNCE {
                 self.pending_release.set(None);
-                let window = self.window.window();
-                window.dispatch_event(WindowEvent::PointerReleased {
-                    position: LogicalPosition::new(x, y),
-                    button: PointerEventButton::Left,
-                });
-                window.dispatch_event(WindowEvent::PointerExited);
+                release(self.window.window(), x, y, click);
             }
         }
     }
@@ -428,4 +422,17 @@ impl Platform for FbPlatform {
             self.wait(timeout);
         }
     }
+}
+
+/// A finger lifts. A touch that only stopped a gliding list leaves first, so the
+/// button under it sees no click.
+fn release(window: &slint::Window, x: f32, y: f32, click: bool) {
+    if !click {
+        window.dispatch_event(WindowEvent::PointerExited);
+    }
+    window.dispatch_event(WindowEvent::PointerReleased {
+        position: LogicalPosition::new(x, y),
+        button: PointerEventButton::Left,
+    });
+    window.dispatch_event(WindowEvent::PointerExited);
 }

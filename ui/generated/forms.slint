@@ -211,6 +211,7 @@ export component ExtruderForm inherits FormScreen {
     in property <bool> extrude-shown: true;
     in property <string> extrude-sub: @tr("the chosen length");
     in property <bool> extrude-enabled: true;
+    in property <bool> extrude-side-enabled: true;
     // Втянуть
     in property <bool> retract-shown: true;
     in property <string> retract-sub: @tr("back into the extruder");
@@ -252,7 +253,7 @@ export component ExtruderForm inherits FormScreen {
         { kind: "info", key: "nozzle", title: @tr("Nozzle"), sub: root.nozzle-sub, shown: root.nozzle-shown, value: root.nozzle-value },
         { kind: "seg", key: "length", title: @tr("Length"), sub: root.length-sub, shown: root.length-shown, opts: [@tr("5 mm"), @tr("10 mm"), @tr("25 mm"), @tr("50 mm"), @tr("100 mm")], sel: root.length-sel },
         { kind: "seg", key: "rate", title: @tr("Speed"), sub: root.rate-sub, shown: root.rate-shown, opts: ["2", "5", "10", "15"], sel: root.rate-sel },
-        { kind: "action", key: "extrude", title: @tr("Extrude"), sub: root.extrude-sub, shown: root.extrude-shown, tone: "accent", on: root.extrude-enabled },
+        { kind: "action", key: "extrude", title: @tr("Extrude"), sub: root.extrude-sub, shown: root.extrude-shown, tone: "accent", on: root.extrude-enabled, value: "cool", icon: "M12 2v20 M4.9 6l14.2 12 M4.9 18l14.2-12 M9 3.5l3 2.5 3-2.5 M9 20.5l3-2.5 3 2.5 M2.6 9.4l3.7.9-1.1 3.6 M21.4 14.6l-3.7-.9 1.1-3.6 M2.6 14.6l3.7-.9-1.1-3.6 M21.4 9.4l-3.7.9 1.1 3.6", changed: root.extrude-side-enabled },
         { kind: "action", key: "retract", title: @tr("Retract"), sub: root.retract-sub, shown: root.retract-shown, on: root.retract-enabled },
         { kind: "section", key: "filament", title: @tr("FILAMENT"), sub: root.filament-sub, shown: root.filament-shown },
         { kind: "link", key: "load", title: @tr("Load / change filament"), sub: root.load-sub, shown: root.load-shown, value: root.load-value, icon: "M12 3v9 m8 8 4 4 4-4 M8 15h8l-2 4h-4z" },

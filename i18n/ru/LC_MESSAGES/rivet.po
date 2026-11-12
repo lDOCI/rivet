@@ -2160,3 +2160,12 @@ msgstr "Подключиться"
 
 msgid "The printer stays on its network until the new one answers."
 msgstr "Принтер остаётся в своей сети, пока новая не ответит."
+
+msgid "heating to {}°, then extrudes…"
+msgstr "грею до {}°, потом выдавлю…"
+
+msgid "heats to {}° first"
+msgstr "сначала нагреет до {}°"
+
+msgid "heating to {}°…"
+msgstr "грею до {}°…"

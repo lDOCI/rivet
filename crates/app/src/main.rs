@@ -197,8 +197,12 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
     ui.on_motors_off(send(Command::MotorsOff));
     {
         let tx = tx.clone();
-        ui.on_extrude(move |length, speed| {
-            let _ = tx.send(Command::Extrude { length, speed });
+        ui.on_extrude(move |length, speed, heat| {
+            let _ = tx.send(Command::Extrude {
+                length,
+                speed,
+                heat,
+            });
         });
     }
     {
@@ -593,6 +597,16 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
         });
     }
     ui.on_mask(|n| "•".repeat(n.clamp(0, 64) as usize).into());
+    // The nozzle temperature of a material's heat preset (0 when it has none).
+    {
+        let weak = ui.as_weak();
+        ui.on_material_temp(move |name| {
+            let Some(ui) = weak.upgrade() else { return 0 };
+            slint::Model::iter(&ui.get_heat_presets())
+                .find(|p| p.name.eq_ignore_ascii_case(&name))
+                .map_or(0, |p| p.nozzle)
+        });
+    }
     ui.set_wifi_available(rivet::wifi::available());
     ui.on_wifi_scan(send(Command::WifiScan));
     {

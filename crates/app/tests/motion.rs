@@ -27,7 +27,7 @@ fn motion_and_extruder() {
     ui.on_move_axis(move |a, d| sink.borrow_mut().push((a, d)));
     let pushes = Rc::new(RefCell::new(Vec::<(f32, f32)>::new()));
     let sink = pushes.clone();
-    ui.on_extrude(move |l, s| sink.borrow_mut().push((l, s)));
+    ui.on_extrude(move |l, s, _heat| sink.borrow_mut().push((l, s)));
 
     // Motion: only X is homed.
     ui.set_screen("motion".into());

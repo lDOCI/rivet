@@ -137,10 +137,12 @@ pub enum Command {
         speed: f32,
     },
     MotorsOff,
-    /// Push (positive) or pull (negative) filament: mm and mm/s.
+    /// Push (positive) or pull (negative) filament: mm and mm/s. A cold
+    /// nozzle is heated to `heat` degrees first (0: it is hot enough).
     Extrude {
         length: f32,
         speed: f32,
+        heat: f32,
     },
     /// Move the Z offset by this many mm, live (`SET_GCODE_OFFSET`).
     AdjustZ(f32),
@@ -2272,8 +2274,18 @@ fn gcode_for(cmd: &Command) -> Option<String> {
             format!("SET_RETRACTION {param}={value:.2}")
         }
         Command::SetPin { name, on } => format!("SET_PIN PIN={name} VALUE={}", u8::from(*on)),
-        Command::Extrude { length, speed } => format!(
-            "SAVE_GCODE_STATE NAME=RIVET\nM83\nG1 E{length:.1} F{:.0}\nRESTORE_GCODE_STATE NAME=RIVET",
+        Command::Extrude {
+            length,
+            speed,
+            heat,
+        } => format!(
+            "{}SAVE_GCODE_STATE NAME=RIVET\nM83\nG1 E{length:.1} F{:.0}\nRESTORE_GCODE_STATE NAME=RIVET",
+            if *heat > 0.0 {
+                // Heat and wait, then move the filament.
+                format!("M109 S{heat:.0}\n")
+            } else {
+                String::new()
+            },
             speed * 60.0
         ),
         Command::SetFan { object, percent } => match object.split_once(' ') {
@@ -2311,6 +2323,16 @@ async fn execute(
     ui: &slint::Weak<AppWindow>,
     thumbs: &Arc<Thumbs>,
 ) -> Result<(), moonraker::Error> {
+    // Heating first takes a while: the button shows it and takes no more taps.
+    if let Command::Extrude { heat, .. } = cmd {
+        if *heat > 0.0 {
+            let code = gcode_for(cmd).unwrap_or_default();
+            let _ = ui.upgrade_in_event_loop(|ui| ui.set_extrude_busy(true));
+            let result = client.gcode(&code).await;
+            let _ = ui.upgrade_in_event_loop(|ui| ui.set_extrude_busy(false));
+            return result;
+        }
+    }
     if let Some(code) = gcode_for(cmd) {
         return client.gcode(&code).await;
     }
@@ -3077,9 +3099,19 @@ mod tests {
         let code = gcode_for(&Command::Extrude {
             length: -25.0,
             speed: 5.0,
+            heat: 0.0,
         })
         .unwrap();
         assert!(code.contains("M83") && code.contains("G1 E-25.0 F300"));
+        assert!(!code.contains("M109"));
+        // A cold nozzle: heat and wait first.
+        let code = gcode_for(&Command::Extrude {
+            length: 10.0,
+            speed: 5.0,
+            heat: 215.0,
+        })
+        .unwrap();
+        assert!(code.starts_with("M109 S215\n") && code.contains("G1 E10.0 F300"));
         assert_eq!(gcode_for(&Command::MotorsOff).unwrap(), "M84");
     }
 

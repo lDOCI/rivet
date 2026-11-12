@@ -145,56 +145,132 @@ impl TouchState {
     }
 }
 
-/// Tells a tap from a drag the way phones do: until the finger has gone
-/// further than `slop` from where it touched, its jitter is not passed on, and
-/// a lift there counts as a tap at the touch point. Only a finger that clearly
-/// travels starts a drag (a list scroll).
+/// Tells a tap from a drag the way phones do, for a finger on this resistive
+/// panel (a stylus barely needs it):
 ///
-/// Without it every wobble of a fingertip (more for a broad finger, which rolls
-/// as it presses) reaches Slint's Flickable, which takes 8 px of movement for a
+/// - a light, broad fingertip makes the reported point jump by several pixels,
+///   most in the first moments of a press: positions go through a median of
+///   the last three, and the first `SETTLE` after a press never start a drag;
+/// - until the finger has gone further than `slop` from where it touched, its
+///   wobble is not passed on, and a lift there is a tap at the touch point;
+/// - a press while a flung list still glides only stops it: it is no tap on
+///   whatever is under the finger (as on a phone).
+///
+/// Without it every wobble reached Slint's Flickable, which takes 8 px for a
 /// scroll and cancels the button under the finger.
 #[derive(Debug, Clone, Copy)]
 pub struct TapSlop {
     slop: f32,
     origin: Option<(f32, f32)>,
+    pressed_at: Option<std::time::Instant>,
     dragging: bool,
+    /// The last raw points of this touch, for the median.
+    recent: [(f32, f32); 3],
+    count: usize,
+    /// The last two points passed on while dragging, for the fling speed.
+    last: Option<(std::time::Instant, f32, f32)>,
+    prev: Option<(std::time::Instant, f32, f32)>,
+    /// A list released while moving keeps gliding until about then.
+    glide_until: Option<std::time::Instant>,
+    /// This touch only stops a glide.
+    stopper: bool,
 }
+
+/// How long after a press the reported point is still settling.
+const SETTLE: std::time::Duration = std::time::Duration::from_millis(60);
+/// Slint's Flickable slows a fling by this much, px/s² (i-slint-core DECELERATION).
+const DECELERATION: f32 = 2000.0;
+/// Slower than this, a release does not glide on.
+const MIN_FLING: f32 = 80.0;
 
 impl TapSlop {
     pub fn new(slop: f32) -> Self {
         Self {
             slop,
             origin: None,
+            pressed_at: None,
             dragging: false,
+            recent: [(0.0, 0.0); 3],
+            count: 0,
+            last: None,
+            prev: None,
+            glide_until: None,
+            stopper: false,
         }
     }
 
-    pub fn press(&mut self, x: f32, y: f32) -> (f32, f32) {
-        self.origin = Some((x, y));
-        self.dragging = false;
-        (x, y)
+    fn median(&mut self, x: f32, y: f32) -> (f32, f32) {
+        self.recent[self.count % 3] = (x, y);
+        self.count += 1;
+        if self.count < 3 {
+            return (x, y);
+        }
+        let mid = |mut v: [f32; 3]| {
+            v.sort_by(f32::total_cmp);
+            v[1]
+        };
+        (mid(self.recent.map(|p| p.0)), mid(self.recent.map(|p| p.1)))
     }
 
-    /// The position to pass on, or None while the finger is still within the slop.
-    pub fn moved(&mut self, x: f32, y: f32) -> Option<(f32, f32)> {
+    /// A finger lands. Returns where, and whether it only stops a glide.
+    pub fn press(&mut self, x: f32, y: f32, now: std::time::Instant) -> (f32, f32, bool) {
+        self.stopper = self.glide_until.is_some_and(|t| now < t);
+        self.glide_until = None;
+        self.origin = Some((x, y));
+        self.pressed_at = Some(now);
+        self.dragging = false;
+        self.count = 0;
+        self.median(x, y);
+        self.last = None;
+        self.prev = None;
+        (x, y, self.stopper)
+    }
+
+    /// The position to pass on, or None while the finger is still a tap.
+    pub fn moved(&mut self, x: f32, y: f32, now: std::time::Instant) -> Option<(f32, f32)> {
+        // The point is still settling: these samples do not count at all.
+        if !self.dragging
+            && self
+                .pressed_at
+                .is_some_and(|t| now.duration_since(t) < SETTLE)
+        {
+            return None;
+        }
+        let (x, y) = self.median(x, y);
         let Some((ox, oy)) = self.origin else {
             return Some((x, y));
         };
-        if !self.dragging && (x - ox).hypot(y - oy) <= self.slop {
-            return None;
+        if !self.dragging {
+            if (x - ox).hypot(y - oy) <= self.slop {
+                return None;
+            }
+            self.dragging = true;
         }
-        self.dragging = true;
+        self.prev = self.last;
+        self.last = Some((now, x, y));
         Some((x, y))
     }
 
-    /// Where the lift lands: the touch point for a tap, the finger for a drag.
-    /// The state stays until the next press: a finger that loses contact for a
-    /// moment and comes back goes on with the same touch.
-    pub fn release(&mut self, x: f32, y: f32) -> (f32, f32) {
-        match (self.origin, self.dragging) {
-            (Some(origin), false) => origin,
-            _ => (x, y),
+    /// Where the lift lands (the touch point for a tap), and whether it may
+    /// click: not when the touch only stopped a glide. The state stays until
+    /// the next press: a finger that loses contact for a moment and comes back
+    /// goes on with the same touch.
+    pub fn release(&mut self, x: f32, y: f32, now: std::time::Instant) -> (f32, f32, bool) {
+        if self.dragging {
+            // Released while moving: the list glides on for v / deceleration.
+            if let (Some((t1, x1, y1)), Some((t0, x0, y0))) = (self.last, self.prev) {
+                let dt = t1.duration_since(t0).as_secs_f32().max(0.005);
+                let recent = now.duration_since(t1).as_secs_f32() < 0.1;
+                let speed = (x1 - x0).hypot(y1 - y0) / dt;
+                if recent && speed > MIN_FLING {
+                    let secs = (speed / DECELERATION).min(3.0);
+                    self.glide_until = Some(now + std::time::Duration::from_secs_f32(secs));
+                }
+            }
+            return (x, y, true);
         }
+        let (x, y) = self.origin.unwrap_or((x, y));
+        (x, y, !self.stopper)
     }
 
     /// Whether a point is close enough to the touch to be the same finger.
@@ -328,23 +404,36 @@ mod tests {
 
     #[test]
     fn tap_slop_keeps_taps_and_lets_drags_through() {
+        use std::time::{Duration, Instant};
+        let t0 = Instant::now();
+        let at = |ms: u64| t0 + Duration::from_millis(ms);
         let mut t = TapSlop::new(14.0);
         // A wobbling finger: nothing passes, the lift lands where it touched.
-        assert_eq!(t.press(100.0, 200.0), (100.0, 200.0));
-        assert_eq!(t.moved(106.0, 195.0), None);
-        assert_eq!(t.moved(92.0, 204.0), None);
-        assert_eq!(t.release(109.0, 208.0), (100.0, 200.0));
-        // A finger that travels: moves pass once it leaves the slop, and from
-        // then on even small ones do.
-        t.press(100.0, 300.0);
-        assert_eq!(t.moved(100.0, 290.0), None);
-        assert_eq!(t.moved(100.0, 280.0), Some((100.0, 280.0)));
-        assert_eq!(t.moved(100.0, 278.0), Some((100.0, 278.0)));
-        assert_eq!(t.release(100.0, 260.0), (100.0, 260.0));
-        // The next touch starts fresh.
-        t.press(50.0, 50.0);
+        assert_eq!(t.press(100.0, 200.0, at(0)), (100.0, 200.0, false));
+        assert_eq!(t.moved(106.0, 195.0, at(80)), None);
+        assert_eq!(t.moved(92.0, 204.0, at(100)), None);
+        assert_eq!(t.release(109.0, 208.0, at(120)), (100.0, 200.0, true));
+        // A jump in the first moments of a press is no drag.
+        t.press(100.0, 200.0, at(1000));
+        assert_eq!(t.moved(100.0, 240.0, at(1020)), None);
+        // One wild sample later on is taken out by the median.
+        assert_eq!(t.moved(101.0, 201.0, at(1100)), None);
+        assert_eq!(t.moved(100.0, 260.0, at(1110)), None);
+        assert_eq!(t.release(100.0, 200.0, at(1130)), (100.0, 200.0, true));
+        // A finger that travels: moves pass once it leaves the slop.
+        t.press(100.0, 300.0, at(2000));
+        assert_eq!(t.moved(100.0, 290.0, at(2070)), None);
+        assert_eq!(t.moved(100.0, 270.0, at(2080)), None); // median still 290
+        assert!(t.moved(100.0, 250.0, at(2090)).is_some());
+        assert!(t.moved(100.0, 230.0, at(2100)).is_some());
+        // Released fast: the list glides; a press now only stops it, no click.
+        assert!(t.release(100.0, 225.0, at(2105)).2);
+        assert!(t.press(120.0, 100.0, at(2200)).2);
+        assert_eq!(t.release(120.0, 100.0, at(2260)), (120.0, 100.0, false));
+        // The next touch is a tap again.
+        assert!(!t.press(50.0, 50.0, at(9000)).2);
         assert!(t.near(60.0, 50.0, 40.0));
         assert!(!t.near(150.0, 50.0, 40.0));
-        assert_eq!(t.release(55.0, 52.0), (50.0, 50.0));
+        assert_eq!(t.release(55.0, 52.0, at(9050)), (50.0, 50.0, true));
     }
 }

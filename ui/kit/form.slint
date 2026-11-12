@@ -3,7 +3,7 @@
 // column on the right. Pages fill it from ui/generated/forms.slint, which
 // tools/gen-forms.py writes from the prototype itself: order, kinds, titles, steps.
 import { Tokens } from "tokens.slint";
-import { Header, PrimaryButton, SectionLabel } from "controls.slint";
+import { Header, PrimaryButton, SectionLabel, Icon } from "controls.slint";
 import { LinkRow, InfoRow, ActionRow, ToggleRow, SegmentedRow } from "rows.slint";
 import { VBar, Stepper, FineStepper } from "values.slint";
 import { ScrollList } from "scroll.slint";
@@ -117,11 +117,33 @@ component FormItem inherits VerticalLayout {
         selected: root.r.sel;
         picked(i) => { root.picked(root.r.key, i); }
     }
-    if root.r.shown && root.r.kind == "action" && root.r.tone == "accent": PrimaryButton {
+    if root.r.shown && root.r.kind == "action" && root.r.tone == "accent" && root.r.value == "": PrimaryButton {
         text: root.r.title;
         sub: root.r.sub;
         enabled: root.r.on;
         clicked => { root.activate(root.r.key); }
+    }
+    // With a square icon button beside it (its key in `value`, enabled by `changed`).
+    if root.r.shown && root.r.kind == "action" && root.r.tone == "accent" && root.r.value != "": HorizontalLayout {
+        spacing: 8px;
+        PrimaryButton {
+            horizontal-stretch: 1;
+            text: root.r.title;
+            sub: root.r.sub;
+            enabled: root.r.on;
+            clicked => { root.activate(root.r.key); }
+        }
+        Rectangle {
+            width: Tokens.touch-primary;
+            border-radius: Tokens.r-m;
+            background: side-ta.pressed ? Tokens.surface-3 : Tokens.surface-1;
+            opacity: root.r.changed ? 1 : 0.4;
+            accessible-role: button;
+            accessible-label: root.r.value;
+            accessible-action-default => { if (root.r.changed) { root.activate(root.r.value); } }
+            Icon { d: root.r.icon; color: Tokens.text; size: 28px; x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2; }
+            side-ta := TouchArea { enabled: root.r.changed; clicked => { root.activate(root.r.value); } }
+        }
     }
     if root.r.shown && root.r.kind == "action" && root.r.tone != "accent": ActionRow {
         title: root.r.title;

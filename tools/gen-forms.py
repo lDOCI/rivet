@@ -218,6 +218,13 @@ def main():
                 edits.append(f'        if (key == "{n}") {{ root.edit-number(key, {tr(page, kt)}, {lo_e}, {hi_e}, root.{n}-num, {dec}); }}')
             if kind == "link" and r.get("ic"):
                 f.append(f"icon: {s(dots(' '.join(r['ic'])))}")
+            # A square icon button beside an action (Extrude | cool down): its key
+            # goes in `value`, its icon path in `icon`.
+            if kind == "action" and e.get("side"):
+                props.append(f"    in property <bool> {n}-side-enabled: true;")
+                f.append(f"value: {s(e['side'])}")
+                f.append(f"icon: {s(e['side_icon'])}")
+                f.append(f"changed: root.{n}-side-enabled")
             items.append("{ " + ", ".join(f) + " }")
 
         out.append(f"// {page}.dc.html")
