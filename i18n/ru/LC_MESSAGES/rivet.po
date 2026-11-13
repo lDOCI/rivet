@@ -2325,3 +2325,9 @@ msgstr "сначала сопло, потом стол при 60°"
 
 msgid "Both"
 msgstr "Оба"
+
+msgid "step"
+msgstr "шаг"
+
+msgid "Step {} mm"
+msgstr "Шаг {} мм"

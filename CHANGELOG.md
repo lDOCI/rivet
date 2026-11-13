@@ -2,6 +2,19 @@
 
 Each release's section is also its description on GitHub. [Русский — ниже в каждом разделе.]
 
+## v0.1.4-alpha
+
+- Z-Mod: the part fan is `fanM106`, which Z-Mod's M106 drives. Rivet showed Klipper's `fan` as the
+  part fan and `fanM106` as one more fan, so turning `fanM106` did not move the part fan's bar. It
+  is now the part fan, shown once.
+- Motion: the big buttons move by 10, 50 or 100 mm (the step button in the corner), to run an axis
+  end to end after greasing it.
+
+**Русский.** Z-Mod: обдув модели — это `fanM106`, им управляет M106 Z-Mod. Rivet показывал
+обдувом `fan` Klipper, а `fanM106` отдельным вентилятором, поэтому `fanM106` не двигал полоску
+обдува. Теперь он и есть обдув, показан один раз. Движение: большие кнопки двигают на 10, 50 или
+100 мм (кнопка шага в углу), чтобы прогнать ось из конца в конец после смазки.
+
 ## v0.1.3-alpha
 
 - Files from OrcaSlicer with several filaments: the material and the filament's name showed as a raw

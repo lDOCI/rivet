@@ -50,6 +50,9 @@ export component MotionScreen inherits Rectangle {
     callback more;
 
     property <bool> any-homed: root.homed-x || root.homed-y || root.homed-z;
+    // The big buttons' step, mm: 10, 50 or 100 (to run an axis end to end, as
+    // after greasing it); the small ones stay 1.
+    in-out property <int> big-step: 10;
 
     HorizontalLayout {
         padding: Tokens.pad;
@@ -61,9 +64,23 @@ export component MotionScreen inherits Rectangle {
             Row {
                 Cell { HorizontalLayout { alignment: start; VerticalLayout { alignment: start; BackButton { clicked => { root.back(); } } } } }
                 Cell { }
-                MoveButton { width: 84px; height: 84px; text: "Y +10"; big: true; enabled: root.homed-y; clicked => { root.move-axis(1, 10); } }
+                MoveButton { width: 84px; height: 84px; text: "Y +" + root.big-step; big: true; enabled: root.homed-y; clicked => { root.move-axis(1, root.big-step); } }
                 Cell { }
-                Cell { }
+                Rectangle {
+                    width: 84px;
+                    height: 84px;
+                    border-radius: Tokens.r-m;
+                    background: step-ta.pressed ? Tokens.surface-2 : Tokens.surface-1;
+                    accessible-role: button;
+                    accessible-label: @tr("Step {} mm", root.big-step);
+                    accessible-action-default => { root.big-step = root.big-step == 10 ? 50 : root.big-step == 50 ? 100 : 10; }
+                    VerticalLayout {
+                        alignment: center;
+                        Text { text: @tr("step"); color: Tokens.text-dim; font-size: 13px; horizontal-alignment: center; }
+                        Text { text: root.big-step + " " + @tr("mm"); color: Tokens.accent; font-size: 18px; font-weight: 800; horizontal-alignment: center; }
+                    }
+                    step-ta := TouchArea { clicked => { root.big-step = root.big-step == 10 ? 50 : root.big-step == 50 ? 100 : 10; } }
+                }
             }
             Row {
                 Cell { }
@@ -73,7 +90,7 @@ export component MotionScreen inherits Rectangle {
                 Cell { }
             }
             Row {
-                MoveButton { width: 84px; height: 84px; text: "X −10"; big: true; enabled: root.homed-x; clicked => { root.move-axis(0, -10); } }
+                MoveButton { width: 84px; height: 84px; text: "X −" + root.big-step; big: true; enabled: root.homed-x; clicked => { root.move-axis(0, -root.big-step); } }
                 MoveButton { width: 84px; height: 84px; text: "−1"; enabled: root.homed-x; clicked => { root.move-axis(0, -1); } }
                 Rectangle {
                     width: 84px;
@@ -87,7 +104,7 @@ export component MotionScreen inherits Rectangle {
                     home := TouchArea { clicked => { root.home-all(); } }
                 }
                 MoveButton { width: 84px; height: 84px; text: "+1"; enabled: root.homed-x; clicked => { root.move-axis(0, 1); } }
-                MoveButton { width: 84px; height: 84px; text: "X +10"; big: true; enabled: root.homed-x; clicked => { root.move-axis(0, 10); } }
+                MoveButton { width: 84px; height: 84px; text: "X +" + root.big-step; big: true; enabled: root.homed-x; clicked => { root.move-axis(0, root.big-step); } }
             }
             Row {
                 Cell { }
@@ -99,7 +116,7 @@ export component MotionScreen inherits Rectangle {
             Row {
                 Cell { }
                 Cell { }
-                MoveButton { width: 84px; height: 84px; text: "Y −10"; big: true; enabled: root.homed-y; clicked => { root.move-axis(1, -10); } }
+                MoveButton { width: 84px; height: 84px; text: "Y −" + root.big-step; big: true; enabled: root.homed-y; clicked => { root.move-axis(1, -root.big-step); } }
                 Cell { }
                 Cell { }
             }
@@ -126,10 +143,10 @@ export component MotionScreen inherits Rectangle {
                     Text { text: "Z " + (root.homed-z ? Format.signed(root.pos-z, 1) : "—"); color: Tokens.text; font-size: 15px; font-weight: 700; vertical-alignment: center; }
                 }
             }
-            MoveButton { vertical-stretch: 1; text: "Z +10"; big: true; enabled: root.homed-z; clicked => { root.move-axis(2, 10); } }
+            MoveButton { vertical-stretch: 1; text: "Z +" + root.big-step; big: true; enabled: root.homed-z; clicked => { root.move-axis(2, root.big-step); } }
             MoveButton { vertical-stretch: 1; text: "Z +1"; enabled: root.homed-z; clicked => { root.move-axis(2, 1); } }
             MoveButton { vertical-stretch: 1; text: "Z −1"; enabled: root.homed-z; clicked => { root.move-axis(2, -1); } }
-            MoveButton { vertical-stretch: 1; text: "Z −10"; big: true; enabled: root.homed-z; clicked => { root.move-axis(2, -10); } }
+            MoveButton { vertical-stretch: 1; text: "Z −" + root.big-step; big: true; enabled: root.homed-z; clicked => { root.move-axis(2, -root.big-step); } }
             HorizontalLayout {
                 spacing: 7px;
                 SecondaryButton { text: @tr("Motors off"); min-height: 64px; clicked => { root.motors-off(); } }

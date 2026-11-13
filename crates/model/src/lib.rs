@@ -1949,18 +1949,33 @@ impl PrinterState {
         }
     }
 
+    /// The part cooling fan's object. Z-Mod drives it as `fan_generic fanM106`
+    /// (its M106 macro sets that one); else Klipper's own `fan`.
+    fn part_fan(&self) -> Option<String> {
+        self.fan_objects
+            .iter()
+            .find(|o| o.eq_ignore_ascii_case("fan_generic fanM106"))
+            .cloned()
+            .or_else(|| self.status.get("fan").map(|_| "fan".to_owned()))
+    }
+
     fn fans(&self) -> Vec<Fan> {
         let mut fans = Vec::new();
-        if self.status.get("fan").is_some() {
+        let part = self.part_fan();
+        if let Some(object) = &part {
             fans.push(Fan {
-                object: "fan".to_owned(),
+                object: object.clone(),
                 name: "fan".to_owned(),
                 kind: FanKind::Part,
-                percent: self.f64("fan", "speed") * 100.0,
+                percent: self.f64(object, "speed") * 100.0,
                 trigger: FanTrigger::None,
             });
         }
         for object in &self.fan_objects {
+            // The part fan is shown once, as the part fan.
+            if part.as_deref() == Some(object.as_str()) {
+                continue;
+            }
             let Some((kind, name)) = object.split_once(' ') else {
                 continue;
             };
@@ -2125,7 +2140,9 @@ impl PrinterState {
             pressure_advance: self.f64("extruder", "pressure_advance"),
             pa_smooth: self.f64("extruder", "smooth_time"),
             live_velocity: self.f64("motion_report", "live_velocity"),
-            fan_percent: self.f64("fan", "speed") * 100.0,
+            fan_percent: self
+                .part_fan()
+                .map_or(0.0, |o| self.f64(&o, "speed") * 100.0),
             fans: self.fans(),
             air_mode: self.air_mode(),
             light,
@@ -2773,6 +2790,37 @@ mod tests {
         let rev = state.console_revision;
         state.clear_console();
         assert!(state.console.is_empty() && state.console_revision > rev);
+    }
+
+    #[test]
+    fn z_mod_part_fan_is_fan_m106() {
+        // Z-Mod's M106 drives fan_generic fanM106: that is the part fan, shown
+        // once, and the Fans screen's part fan follows it.
+        let mut state = PrinterState {
+            fan_objects: vec![
+                "fan_generic fanM106".to_owned(),
+                "fan_generic internal_fan".to_owned(),
+            ],
+            ..Default::default()
+        };
+        state.replace_status(json!({
+            "fan": { "speed": 0.0 },
+            "fan_generic fanM106": { "speed": 1.0 },
+            "fan_generic internal_fan": { "speed": 0.0 },
+        }));
+        let snap = state.snapshot();
+        assert_eq!(snap.fan_percent.round(), 100.0);
+        let parts: Vec<_> = snap
+            .fans
+            .iter()
+            .filter(|f| f.kind == FanKind::Part)
+            .collect();
+        assert_eq!(parts.len(), 1);
+        assert_eq!(parts[0].object, "fan_generic fanM106");
+        assert!(!snap
+            .fans
+            .iter()
+            .any(|f| f.kind != FanKind::Part && f.object == "fan_generic fanM106"));
     }
 
     #[test]
