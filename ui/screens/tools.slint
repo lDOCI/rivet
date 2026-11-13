@@ -165,3 +165,25 @@ export component MacrosScreen inherits VerticalLayout {
         }
     }
 }
+
+// A list to choose one item from (a time zone): the current one is marked.
+export component PickScreen inherits VerticalLayout {
+    horizontal-stretch: 1;
+    in property <string> title;
+    in property <[string]> items;
+    in property <string> current;
+    callback back;
+    callback pick(string);
+    padding: Tokens.pad;
+    padding-bottom: 0;
+    spacing: Tokens.gap-s;
+    Header { title: root.title; back-clicked => { root.back(); } }
+    ScrollList {
+        vertical-stretch: 1;
+        for item in root.items: ActionRow {
+            title: item;
+            sub: item == root.current ? @tr("chosen") : "";
+            clicked => { root.pick(item); }
+        }
+    }
+}

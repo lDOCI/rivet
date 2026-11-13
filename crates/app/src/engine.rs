@@ -709,6 +709,14 @@ fn restart_for_update() {
     std::process::exit(0);
 }
 
+/// Exit so S80rivet starts Rivet again (when it runs Rivet).
+fn restart_self(why: &str) {
+    if std::env::var_os("RIVET_SUPERVISED").is_some() {
+        tracing::info!(why, "restarting");
+        std::process::exit(0);
+    }
+}
+
 /// Things the engine tells itself from spawned tasks.
 enum Internal {
     /// A drying session that was running when Rivet stopped: end time, °C.
@@ -917,13 +925,13 @@ async fn system_info(client: &Client, ui: &slint::Weak<AppWindow>) {
         .ok()
         .and_then(|p| p.parent().map(|d| d.join("rolled-back")))
         .is_some_and(|p| p.exists());
-    let zone = std::fs::read_link("/etc/localtime")
-        .ok()
-        .and_then(|p| {
-            let p = p.to_string_lossy().into_owned();
-            p.split_once("zoneinfo/").map(|(_, z)| z.to_owned())
-        })
-        .unwrap_or_default();
+    let zone = crate::timezone::current();
+    // Z-Mod's macro sets the zone; on Klipper Mod Rivet writes it.
+    let zone_macro = objects["objects"].as_array().is_some_and(|o| {
+        o.iter()
+            .any(|n| n.as_str() == Some("gcode_macro SET_TIMEZONE"))
+    });
+    let zone_settable = zone_macro || crate::timezone::target().is_some();
     let stock = objects["objects"].as_array().is_some_and(|o| {
         o.iter()
             .any(|n| n.as_str() == Some("gcode_macro REBOOT_STOCK_SYSTEM"))
@@ -989,7 +997,15 @@ async fn system_info(client: &Client, ui: &slint::Weak<AppWindow>) {
         ui.set_ver_fluidd_sub(state(&fluidd).into());
         ui.set_ver_fluidd(fluidd.0.into());
         ui.set_has_stock_macro(stock);
-        ui.set_time_zone(zone.into());
+        ui.set_time_zone(
+            match zone {
+                Some(z) if z.is_empty() => words.get_zone_set().to_string(),
+                Some(z) => z.replace('_', " "),
+                None => String::new(),
+            }
+            .into(),
+        );
+        ui.set_zone_settable(zone_settable);
     });
 }
 
@@ -2034,6 +2050,34 @@ pub mod prefs {
 
 /// Read Rivet's saved settings once Klipper is ready, show them, and act on
 /// "turn the light on at startup".
+/// The language Fluidd or Mainsail was set to (kept in Moonraker's database),
+/// when it is one Rivet speaks.
+async fn web_ui_language(client: &Client) -> Option<&'static str> {
+    for (namespace, key) in [
+        ("fluidd", "uiSettings.general.locale"),
+        ("mainsail", "general.language"),
+    ] {
+        let value = client
+            .call_timeout(
+                "server.database.get_item",
+                json!({ "namespace": namespace, "key": key }),
+                SETUP_TIMEOUT,
+            )
+            .await
+            .ok();
+        let code = value
+            .as_ref()
+            .and_then(|v| v["value"].as_str())
+            .map(|l| l.get(..2).unwrap_or(l).to_ascii_lowercase());
+        match code.as_deref() {
+            Some("ru") => return Some("ru"),
+            Some("en") => return Some("en"),
+            _ => {}
+        }
+    }
+    None
+}
+
 async fn load_settings(
     client: Client,
     ui: slint::Weak<AppWindow>,
@@ -2125,6 +2169,8 @@ async fn load_settings(
     prefs::set(&prefs::CLOCK_12, clock12);
     prefs::set(&prefs::END_TUNE, sounds && tune);
     let language = text("language");
+    // Nothing set for Rivet: the language the web interface was set to.
+    let web_language = web_ui_language(&client).await;
     let _ = ui.upgrade_in_event_loop(move |ui| {
         ui.set_set_sleep(
             [1, 5, 10, 30]
@@ -2146,10 +2192,16 @@ async fn load_settings(
         ui.set_set_clock(i32::from(clock12));
         ui.set_set_hold_stop(hold);
         ui.set_set_confirm_macros(confirm);
-        // A language picked on the screen wins over the start-up one.
+        // A language picked on the screen wins over the start-up one; with
+        // neither, the screen asks once.
         if language == "ru" || language == "en" {
             crate::apply_language(&language);
             ui.set_russian(language == "ru");
+        } else if let Some(web) =
+            web_language.filter(|_| !crate::LANGUAGE_SET.load(std::sync::atomic::Ordering::Relaxed))
+        {
+            crate::apply_language(web);
+            ui.set_russian(web == "ru");
         }
         if !presets.is_empty() {
             let rows: Vec<crate::HeatPreset> = presets
@@ -2718,6 +2770,36 @@ async fn execute(
         }
         Command::SystemInfo => {
             system_info(client, ui).await;
+            Ok(())
+        }
+        Command::SystemAction(what) if what.starts_with("tz:") => {
+            // Shown with spaces, named with underscores.
+            let zone = &what[3..].replace(' ', "_");
+            let objects = client
+                .call_timeout("printer.objects.list", json!({}), SETUP_TIMEOUT)
+                .await
+                .unwrap_or(Value::Null);
+            let has_macro = objects["objects"].as_array().is_some_and(|o| {
+                o.iter()
+                    .any(|n| n.as_str() == Some("gcode_macro SET_TIMEZONE"))
+            });
+            if has_macro {
+                // Z-Mod: its macro links the zone; it applies after a reboot.
+                gcode(client, &format!("SET_TIMEZONE ZONE={zone}")).await?;
+                system_info(client, ui).await;
+            } else {
+                if let Err(err) = crate::timezone::set(zone) {
+                    tracing::warn!(%err, zone, "cannot set the time zone");
+                    return Err(moonraker::Error::Rpc {
+                        code: 0,
+                        message: format!("time zone {zone}: {err}"),
+                    });
+                }
+                tracing::info!(zone, "time zone set");
+                system_info(client, ui).await;
+                // Clock times read the zone once per process: start again.
+                restart_self("the time zone changed");
+            }
             Ok(())
         }
         Command::SystemAction(what) => {

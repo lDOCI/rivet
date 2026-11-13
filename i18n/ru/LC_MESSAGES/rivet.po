@@ -2307,3 +2307,12 @@ msgstr "новая версия не запустилась, вернулась 
 
 msgid "Update the screen"
 msgstr "Обновить экран"
+
+msgid "set, not in the list"
+msgstr "задан, не из списка"
+
+msgid "choose it: the clock stays hidden until then"
+msgstr "выберите его — до этого часы не показываются"
+
+msgid "chosen"
+msgstr "выбран"
