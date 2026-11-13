@@ -1104,7 +1104,7 @@ async fn list_history(client: &Client, ui: &slint::Weak<AppWindow>) {
                 (j["print_duration"].as_f64().unwrap_or(0.0) / 60.0).round() as i32,
                 j.pointer("/metadata/filament_type")
                     .and_then(Value::as_str)
-                    .map(|t| t.split(';').next().unwrap_or(t).trim().to_owned())
+                    .map(model::slicer_types)
                     .unwrap_or_default(),
             ))
         })
