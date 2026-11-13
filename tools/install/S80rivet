@@ -99,7 +99,9 @@ check_binary() {
 supervise() {
     child=
     fails=0
-    trap 'say "stop"; [ -n "$child" ] && kill $child 2>/dev/null; wait $child 2>/dev/null; rm -f $CHILD_PID_FILE; exit 0' TERM INT
+    # Stopped by S80rivet stop or by a plain kill of this process (Z-Mod's
+    # zdisplay.sh): take Rivet down and give the next screen the first page.
+    trap 'say "stop"; [ -n "$child" ] && kill $child 2>/dev/null; wait $child 2>/dev/null; rm -f $CHILD_PID_FILE; show_first_page; exit 0' TERM INT
     delay=1
     while :; do
         cut_console_log
