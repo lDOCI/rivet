@@ -2682,7 +2682,20 @@ async fn execute(
             let shaper = script.contains("SHAPER_CALIBRATE");
             let resonance = shaper || script.contains("TEST_RESONANCES");
             let _ = ui.upgrade_in_event_loop(|ui| ui.set_calib_busy(true));
-            let result = gcode(client, script).await;
+            // The screen stays on while it runs (a PID test of the bed alone may
+            // pass ten minutes, both heaters twenty).
+            #[cfg(feature = "fbdev")]
+            fbdev_platform::screen::set_busy(true);
+            let result = client
+                .call_timeout(
+                    "printer.gcode.script",
+                    json!({ "script": script }),
+                    Duration::from_secs(45 * 60),
+                )
+                .await
+                .map(drop);
+            #[cfg(feature = "fbdev")]
+            fbdev_platform::screen::set_busy(false);
             if resonance {
                 crate::resonance::load();
                 crate::resonance::load_latest(std::path::Path::new(KLIPPER_TMP));

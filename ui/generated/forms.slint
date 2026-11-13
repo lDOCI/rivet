@@ -974,7 +974,7 @@ export component PidForm inherits FormScreen {
     }
     bars: [];
     rows: [
-        { kind: "seg", key: "heater", title: @tr("Heater"), sub: root.heater-sub, shown: root.heater-shown, opts: [@tr("Nozzle"), @tr("Bed")], sel: root.heater-sel },
+        { kind: "seg", key: "heater", title: @tr("Heater"), sub: root.heater-sub, shown: root.heater-shown, opts: [@tr("Nozzle"), @tr("Bed"), @tr("Both")], sel: root.heater-sel },
         { kind: "stepper", key: "temp", title: @tr("Temperature"), sub: root.temp-sub, shown: root.temp-shown, value: Format.fixed(root.temp-num, 0) + "°", big: 5 },
         { kind: "seg", key: "fan", title: @tr("Part fan during it"), sub: root.fan-sub, shown: root.fan-shown, opts: [@tr("Off"), "50%", "100%"], sel: root.fan-sel },
         { kind: "info", key: "now", title: @tr("Now"), sub: root.now-sub, shown: root.now-shown, value: root.now-value },

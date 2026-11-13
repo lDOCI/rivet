@@ -216,7 +216,7 @@ r5 = "noise"
 
 [PidCal]
 component = "PidForm"
-en = { "Нагреватель" = "Heater", "Сопло" = "Nozzle", "Стол" = "Bed", "Температура" = "Temperature", "как при обычной печати" = "as for a normal print", "Обдув во время" = "Part fan during it", "как при печати" = "as when printing", "Выкл." = "Off", "Текущие" = "Now", "Запустить" = "Start", "нагреватель несколько раз включится и выключится" = "the heater switches on and off several times", "Температура, °" = "Temperature, °", "Нагрев (PID)" = "Heating (PID)" }
+en = { "Нагреватель" = "Heater", "Сопло" = "Nozzle", "Стол" = "Bed", "Оба" = "Both", "Температура" = "Temperature", "как при обычной печати" = "as for a normal print", "Обдув во время" = "Part fan during it", "как при печати" = "as when printing", "Выкл." = "Off", "Текущие" = "Now", "Запустить" = "Start", "нагреватель несколько раз включится и выключится" = "the heater switches on and off several times", "Температура, °" = "Temperature, °", "Нагрев (PID)" = "Heating (PID)" }
 [PidCal.rows]
 r0 = "heater"
 r1 = "temp"

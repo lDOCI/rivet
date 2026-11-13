@@ -13,6 +13,8 @@ use std::time::Duration;
 static SLEEP_AFTER: AtomicU64 = AtomicU64::new(600);
 /// Set while something must stay visible (a print running).
 static KEEP_AWAKE: AtomicBool = AtomicBool::new(false);
+/// Set while a calibration runs: the screen stays on, as while printing.
+static BUSY: AtomicBool = AtomicBool::new(false);
 /// Bumped to ask the event loop to wake the screen (e.g. an error came in).
 static WAKE_REQUESTS: AtomicU64 = AtomicU64::new(0);
 /// Backlight level asked for, percent (0: none asked yet), and how many asks.
@@ -54,6 +56,15 @@ pub fn set_keep_awake(on: bool) {
         wake();
     } else if !on {
         KEEP_AWAKE.store(false, Ordering::Relaxed);
+    }
+}
+
+/// Keep the screen on while a calibration runs; waking it if it slept.
+pub fn set_busy(on: bool) {
+    if on && !BUSY.swap(true, Ordering::Relaxed) {
+        wake();
+    } else if !on {
+        BUSY.store(false, Ordering::Relaxed);
     }
 }
 
@@ -115,7 +126,7 @@ pub fn sleep_after() -> Option<Duration> {
 // Used by the Linux event loop only.
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 pub(crate) fn keep_awake() -> bool {
-    KEEP_AWAKE.load(Ordering::Relaxed)
+    KEEP_AWAKE.load(Ordering::Relaxed) || BUSY.load(Ordering::Relaxed)
 }
 
 // Used by the Linux event loop only.

@@ -2316,3 +2316,12 @@ msgstr "выберите его — до этого часы не показыв
 
 msgid "chosen"
 msgstr "выбран"
+
+msgid "running: the nozzle, then the bed at 60°, about 20 minutes"
+msgstr "идёт: сопло, затем стол при 60°, около 20 минут"
+
+msgid "the nozzle first, then the bed at 60°"
+msgstr "сначала сопло, потом стол при 60°"
+
+msgid "Both"
+msgstr "Оба"

@@ -1046,21 +1046,29 @@ export component AppWindow inherits Window {
             heater-sel: root.pid-heater;
             temp-num: root.pid-temp;
             fan-sel: root.pid-fan;
-            fan-shown: root.pid-heater == 0;
-            now-value: root.pid-heater == 0 ? root.pid-nozzle : root.pid-bed;
+            fan-shown: root.pid-heater != 1;
+            now-value: root.pid-heater == 1 ? root.pid-bed : root.pid-nozzle;
             run-enabled: !root.calib-busy && !root.busy;
-            run-sub: root.calib-busy ? @tr("running: the heater cycles, about 5 minutes") : @tr("the heater switches on and off several times");
+            run-sub: root.calib-busy ? (root.pid-heater == 2 ? @tr("running: the nozzle, then the bed at 60°, about 20 minutes") : @tr("running: the heater cycles, about 5 minutes"))
+                : root.pid-heater == 2 ? @tr("the nozzle first, then the bed at 60°") : @tr("the heater switches on and off several times");
             back => { root.screen = "calibrate"; }
             picked(key, i) => {
-                if (key == "heater") { root.pid-heater = i; root.pid-temp = i == 0 ? 220 : 60; }
+                if (key == "heater") { root.pid-heater = i; root.pid-temp = i == 1 ? 60 : 220; }
                 if (key == "fan") { root.pid-fan = i; }
             }
             set-value(key, v) => { if (key == "temp") { root.pid-temp = v; } }
             activate(key) => {
                 if (key == "run") {
-                    root.calibrate((root.pid-heater == 0 ? "M106 S" + (root.pid-fan == 0 ? 0 : root.pid-fan == 1 ? 128 : 255) + "\n" : "")
-                        + "PID_CALIBRATE HEATER=" + (root.pid-heater == 0 ? "extruder" : "heater_bed") + " TARGET=" + round(root.pid-temp)
-                        + (root.pid-heater == 0 ? "\nM107" : ""));
+                    // Nozzle (with the part fan as when printing), bed, or both in a row.
+                    root.calibrate(
+                        (root.pid-heater != 1
+                            ? "M106 S" + (root.pid-fan == 0 ? 0 : root.pid-fan == 1 ? 128 : 255)
+                              + "\nPID_CALIBRATE HEATER=extruder TARGET=" + round(root.pid-temp) + "\nM107"
+                            : "")
+                        + (root.pid-heater == 2 ? "\n" : "")
+                        + (root.pid-heater != 0
+                            ? "PID_CALIBRATE HEATER=heater_bed TARGET=" + (root.pid-heater == 1 ? round(root.pid-temp) : 60)
+                            : ""));
                 }
             }
         }
