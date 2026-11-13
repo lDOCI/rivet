@@ -2823,6 +2823,7 @@ mod tests {
             .any(|f| f.kind != FanKind::Part && f.object == "fan_generic fanM106"));
     }
 
+    #[test]
     fn fans_of_the_ad5m_pro() {
         let available = [
             "fan",
