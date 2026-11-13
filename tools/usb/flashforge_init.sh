@@ -3,8 +3,9 @@
 #
 # The release's rivet-<version>-usb.zip, unpacked onto a FAT32 USB stick:
 #   flashforge_init.sh     this script
-#   rivet/                 rivet, rivet.sha256, release_info.json, S80rivet,
-#                          rivet.toml.example, *.fb.gz (the screen pictures)
+#   rivet/                 rivet, rivet-watchdog, rivet.sha256, release_info.json,
+#                          S80rivet, S80rivet.initd, rivet.toml.example, *.fb.gz
+#                          (the screen pictures)
 # Insert the stick and switch the printer on. Klipper Mod sees flashforge_init.sh
 # on the stick and leaves the boot to the stock firmware's auto_run.sh, which runs
 # this script (as for any Flashforge or Klipper Mod update). It installs Rivet
@@ -77,7 +78,7 @@ OPT=$MOD/opt/rivet
 CONF=$MOD/root/printer_data/config
 
 install_rivet() {
-    for f in rivet rivet.sha256 release_info.json S80rivet rivet.toml.example; do
+    for f in rivet rivet-watchdog rivet.sha256 release_info.json S80rivet S80rivet.initd rivet.toml.example; do
         [ -f $SRC/$f ] || fail "rivet/$f is missing on the USB stick"
     done
     (cd $SRC && sha256sum -c rivet.sha256 >/dev/null 2>&1) || fail "rivet/rivet does not match rivet.sha256 (copy the files to the stick again)"
@@ -91,7 +92,9 @@ install_rivet() {
     put $SRC/rivet $OPT/rivet 755 || fail "cannot write $OPT/rivet"
     cp -f $SRC/rivet.sha256 $SRC/release_info.json $OPT/
     rm -f $OPT/rolled-back
-    put $SRC/S80rivet $INIT/S80rivet 755 || fail "cannot write $INIT/S80rivet"
+    put $SRC/rivet-watchdog $OPT/rivet-watchdog 755 || fail "cannot write $OPT/rivet-watchdog"
+    put $SRC/S80rivet $OPT/S80rivet 755 || fail "cannot write $OPT/S80rivet"
+    put $SRC/S80rivet.initd $INIT/S80rivet 755 || fail "cannot write $INIT/S80rivet"
     if [ -f $CONF/rivet.toml ]; then
         log "kept existing rivet.toml"
     else

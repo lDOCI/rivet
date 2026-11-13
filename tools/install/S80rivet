@@ -7,9 +7,10 @@
 # /etc/init.d/S80rivet). RIVET_DIR overrides it. Config and logs go to Klipper
 # Mod's printer_data, or to Z-Mod's /opt/config/mod_data.
 #
-# start-stop-daemon runs this script's "supervise" loop in the background; the
-# loop starts Rivet and starts it again if it exits, waiting longer after each
-# quick crash (1, 2, 4 ... 60 s) so a crash loop does not eat the CPU.
+# start-stop-daemon runs rivet-watchdog (next to the binary) in the background,
+# or, in a release without it, this script's "supervise" loop. Either starts
+# Rivet and starts it again if it exits, waiting longer after each quick crash
+# (1, 2, 4 ... 60 s) so a crash loop does not eat the CPU.
 #
 # Updates (Moonraker's update manager unpacks a release into /opt/rivet, see
 # tools/install.sh) are checked before each start: the binary must match
@@ -168,7 +169,16 @@ start() {
     fi
     mkdir -p $LOG_DIR
 
-    start-stop-daemon -S -b -m -p $PID_FILE -N $NICENESS --exec /bin/sh -- "$SELF" supervise
+    if [ -x $DIR/rivet-watchdog ]; then
+        # The watchdog binary (restarts, checksum, roll-back) waits on Rivet
+        # without polling; the shell loop below is for releases without it.
+        LANG=$LANGUAGE RIVET_CONFIG_DIR=$CONFIG_DIR \
+            start-stop-daemon -S -b -m -p $PID_FILE -N $NICENESS --exec $DIR/rivet-watchdog -- \
+            --dir $DIR --log $CONSOLE_LOG --child-pid $CHILD_PID_FILE -- \
+            --config $CONFIG --log-file $LOG_FILE
+    else
+        start-stop-daemon -S -b -m -p $PID_FILE -N $NICENESS --exec /bin/sh -- "$SELF" supervise
+    fi
 }
 
 stop() {

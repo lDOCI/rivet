@@ -44,7 +44,7 @@ jobs:
           esac
 
       - name: build
-        run: cargo printer
+        run: cargo printer && cargo printer-watchdog
 
       - name: package
         run: tools/package-release.sh "${GITHUB_REF_NAME}" dist

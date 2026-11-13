@@ -337,7 +337,7 @@ r1 = { name = "add", later = "M4: several printers" }
 [Updates]
 component = "UpdatesForm"
 extra = [{ name = "update-rivet", after = "rivet", t = "Обновить экран", sub = "", icon = "M12 4v11 M7 10l5 5 5-5 M5 20h14" }]
-en = { "Обновления" = "Updates", "ВЕРСИИ" = "VERSIONS", "обновляется образом KlipperMod с USB" = "updated with a KlipperMod image from USB", "ВЕБ-ИНТЕРФЕЙСЫ" = "WEB INTERFACES", "актуально" = "up to date", "Проверить обновления" = "Check for updates", "Обновить экран" = "Update the screen" }
+en = { "Обновления" = "Updates", "ВЕРСИИ" = "VERSIONS", "обновляется вместе с прошивкой принтера" = "updated with the printer's firmware", "ВЕБ-ИНТЕРФЕЙСЫ" = "WEB INTERFACES", "актуально" = "up to date", "Проверить обновления" = "Check for updates", "Обновить экран" = "Update the screen" }
 [Updates.rows]
 r0 = "versions"
 r1 = { name = "klipper", data = ["value"] }

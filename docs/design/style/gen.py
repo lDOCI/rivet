@@ -656,8 +656,8 @@ def build():
     ])
     form('Updates', 'Обновления', 'settings', 'Settings.dc.html', [
         S('ВЕРСИИ'),
-        I('Klipper', 'v0.13.0-285', 'обновляется образом KlipperMod с USB', src='printer.info.software_version; update_manager has no version for klipper on KlipperMod'),
-        I('Moonraker', 'v0.9.3', 'обновляется образом KlipperMod с USB', src='server.info.moonraker_version'),
+        I('Klipper', 'v0.13.0-285', 'обновляется вместе с прошивкой принтера', src='printer.info.software_version; update_manager has no version for klipper on KlipperMod'),
+        I('Moonraker', 'v0.9.3', 'обновляется вместе с прошивкой принтера', src='server.info.moonraker_version'),
         I('Rivet', '0.1.0', '', src='Rivet build'),
         S('ВЕБ-ИНТЕРФЕЙСЫ'),
         I('Mainsail', 'v2.19.0', 'актуально', src='machine.update.status.version_info.mainsail (version == remote_version)'),

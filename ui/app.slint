@@ -1247,7 +1247,7 @@ export component AppWindow inherits Window {
             lang-sel: root.russian ? 0 : 1;
             clock-sel: root.set-clock;
             zone-value: root.time-zone != "" ? root.time-zone : @tr("not set");
-            zone-sub: root.time-zone != "" ? @tr("for “done at 15:20”") : @tr("set it in KlipperMod: the clock stays hidden until then");
+            zone-sub: root.time-zone != "" ? @tr("for “done at 15:20”") : @tr("not set on the printer: the clock stays hidden until then");
             back => { root.screen = "settings"; }
             picked(key, i) => {
                 if (key == "lang") { root.set-language(i); }
