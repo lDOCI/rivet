@@ -73,10 +73,12 @@ tools/uninstall.sh --keep-config IP_ПРИНТЕРА
 | Путь | Что |
 |---|---|
 | `/opt/rivet/rivet` | программа |
+| `/opt/rivet/rivet-watchdog`, `/opt/rivet/S80rivet` | её сторож и скрипт запуска (обновляются с каждым релизом) |
 | `/opt/rivet/rivet.sha256`, `release_info.json` | её контрольная сумма и версия, для обновлений |
 | `/opt/rivet/rivet.good` | копия последней версии, проработавшей 30 секунд, — чтобы было куда вернуться |
 | `/opt/rivet/replaced` | какой экран выключен и работал ли он |
-| `/etc/init.d/S80rivet` | запускает Rivet при старте и следит, чтобы он работал |
+| `/etc/init.d/S80rivet` | запускает Rivet при старте (вызывает `/opt/rivet/S80rivet`) |
+| `/root/printer_data/config/rivet.cfg` | макрос `RIVET_SCREEN`, подключён из `printer.cfg` строкой `[include rivet.cfg]` |
 | `/etc/init.d/_S80guppyscreen` | стартовый скрипт старого экрана, переименован, чтобы не запускался |
 | `/root/printer_data/config/moonraker.conf` | добавляется секция `[update_manager rivet]` (копия файла до изменения — `moonraker.conf.before-rivet`) |
 | `/root/printer_data/config/rivet.toml` | файл настроек, создаётся, только если его нет ([пример](rivet.toml.example)) |
@@ -109,6 +111,25 @@ Moonraker проверяет новые релизы на GitHub, как дел�
 
 Если Rivet упадёт, он запустится снова через секунду; при повторных быстрых падениях пауза
 растёт (до минуты), чтобы цикл падений не грузил процессор.
+
+## Из консоли
+
+В консоли Fluidd или Mainsail или в своих макросах:
+
+```
+RIVET_SCREEN ACTION=OFF       погасить подсветку (касание включит, даже во время печати)
+RIVET_SCREEN ACTION=ON        включить подсветку
+RIVET_SCREEN ACTION=RESTART   перезапустить Rivet
+```
+
+## Язык и часовой пояс
+
+Rivet говорит по-русски и по-английски. Пока язык не выбран в Настройки › Язык и время, он берёт
+язык, выбранный в Fluidd или Mainsail (на Z-Mod — язык самого Z-Mod).
+
+Часовой пояс выбирается там же. Пока он не задан, часы принтера идут по UTC, и Rivet прячет время
+суток, чтобы не показывать неправильное. На Klipper Mod Rivet записывает пояс в
+`printer_data/config/timezone`, откуда его читает Klipper Mod; на Z-Mod вызывает его `SET_TIMEZONE`.
 
 ## Логи
 

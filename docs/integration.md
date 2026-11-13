@@ -85,7 +85,14 @@ What the watchdog does:
 | logs | `/opt/config/mod_data/log/rivet.log`, `rivet-console.log` | `/root/printer_data/logs/…` | the program's folder |
 | language | Z-Mod's `mod_data/lang.cfg`, unless `rivet.toml` sets one | system `LANG` | system `LANG` |
 
-The PID files are `/run/rivet.pid` (watchdog) and `/run/rivet.child.pid` (Rivet).
+The watchdog is `rivet-watchdog`, a small program next to `rivet` (older releases used a loop in
+`S80rivet`). The PID files are `/run/rivet.pid` (watchdog) and `/run/rivet.child.pid` (Rivet).
+`killall rivet-watchdog rivet` stops both like `S80rivet stop`; `killall rivet` alone restarts Rivet.
+
+Rivet registers a Moonraker remote method, `rivet_screen`, with one argument `action`: `off`
+(backlight off until a touch), `on`, `restart`. A macro calls it with
+`{action_call_remote_method("rivet_screen", action="off")}`; Rivet's installers add one,
+`RIVET_SCREEN ACTION=…` ([tools/install/rivet.cfg](../tools/install/rivet.cfg)).
 
 ## What Rivet needs from the system
 

@@ -2,6 +2,26 @@
 
 Each release's section is also its description on GitHub. [Русский — ниже в каждом разделе.]
 
+## v0.1.3-alpha
+
+- Files from OrcaSlicer with several filaments: the material and the filament's name showed as a raw
+  list (`["PETG", "PETG"]`, `\u041d…`); now "PETG" and the name.
+- Language: with none chosen in Rivet, it follows Fluidd's or Mainsail's (Klipper Mod has no system
+  language), instead of English.
+- Time zone: Klipper Mod's zone was never recognised, so the clock stayed hidden; it is now, and it
+  can be chosen in Settings › Language and time.
+- `RIVET_SCREEN ACTION=OFF|ON|RESTART` from the console of Fluidd or Mainsail.
+- A small watchdog program (`rivet-watchdog`) instead of a shell loop that woke every 5 seconds; it
+  comes with updates, together with the start script.
+
+**Русский.** Файлы OrcaSlicer с несколькими филаментами: материал и название филамента
+показывались сырым списком (`["PETG", "PETG"]`, `\u041d…`); теперь «PETG» и название. Язык: если
+он не выбран в Rivet, берётся язык Fluidd или Mainsail (у Klipper Mod нет системного языка), а не
+английский. Часовой пояс: пояс Klipper Mod не распознавался, и часы были скрыты; теперь
+распознаётся и выбирается в Настройки › Язык и время. `RIVET_SCREEN ACTION=OFF|ON|RESTART` из
+консоли Fluidd или Mainsail. Маленький сторож (`rivet-watchdog`) вместо цикла на shell, который
+просыпался каждые 5 секунд; он приходит с обновлениями вместе со скриптом запуска.
+
 ## v0.1.2-alpha
 
 - Z-Mod: the screen's backlight stayed off. Z-Mod has its own `backlight` command in the place

@@ -88,7 +88,15 @@ persistent_files:
 | логи | `/opt/config/mod_data/log/rivet.log`, `rivet-console.log` | `/root/printer_data/logs/…` | папка программы |
 | язык | из `mod_data/lang.cfg` Z-Mod, если в `rivet.toml` не задан свой | системный `LANG` | системный `LANG` |
 
-PID-файлы: `/run/rivet.pid` (сторож) и `/run/rivet.child.pid` (Rivet).
+Сторож — `rivet-watchdog`, маленькая программа рядом с `rivet` (в старых релизах это был цикл в
+`S80rivet`). PID-файлы: `/run/rivet.pid` (сторож) и `/run/rivet.child.pid` (Rivet).
+`killall rivet-watchdog rivet` останавливает оба, как `S80rivet stop`; один `killall rivet`
+перезапускает Rivet.
+
+Rivet регистрирует у Moonraker удалённый метод `rivet_screen` с одним аргументом `action`: `off`
+(подсветка выключена до касания), `on`, `restart`. Макрос вызывает его так:
+`{action_call_remote_method("rivet_screen", action="off")}`; установщики Rivet добавляют такой
+макрос, `RIVET_SCREEN ACTION=…` ([tools/install/rivet.cfg](../tools/install/rivet.cfg)).
 
 ## Что Rivet нужно от системы
 
