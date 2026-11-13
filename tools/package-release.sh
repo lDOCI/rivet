@@ -54,7 +54,7 @@ done
 cp "$root/tools/usb/flashforge_init.sh" "$work/usb/" && chmod 755 "$work/usb/flashforge_init.sh"
 cp "$root/tools/usb/flashforge_init.sh" "$work/usb-remove/"
 cp "$work/zip/rivet" "$work/zip/rivet.sha256" "$work/zip/release_info.json" "$work/usb/rivet/"
-cp "$root/tools/install/S80rivet" "$root/tools/install/S80rivet.initd" "$work/zip/rivet-watchdog" "$work/usb/rivet/"
+cp "$root/tools/install/S80rivet" "$root/tools/install/S80rivet.initd" "$root/tools/install/rivet.cfg" "$work/zip/rivet-watchdog" "$work/usb/rivet/"
 cp "$root/docs/rivet.toml.example" "$work/usb/rivet/"
 echo "Remove Rivet: this stick's flashforge_init.sh takes Rivet off the printer." > "$work/usb-remove/rivet/remove"
 rm -f "$out/rivet-$version-usb.zip" "$out/rivet-$version-usb-remove.zip"

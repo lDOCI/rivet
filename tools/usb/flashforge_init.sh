@@ -131,6 +131,12 @@ persistent_files:
 CONF_END
         log "added [update_manager rivet] to moonraker.conf"
     fi
+    # RIVET_SCREEN for the console: rivet.cfg, included from printer.cfg.
+    [ -f $SRC/rivet.cfg ] && cp -f $SRC/rivet.cfg $CONF/rivet.cfg
+    if [ -f $CONF/rivet.cfg ] && [ -f $CONF/printer.cfg ] && ! grep -q '^\[include rivet.cfg\]' $CONF/printer.cfg; then
+        awk 'BEGIN{d=0} /^#\*# <-+ SAVE_CONFIG/ && !d {print "[include rivet.cfg]"; print ""; d=1} {print} END{if(!d){print ""; print "[include rivet.cfg]"}}' $CONF/printer.cfg > $CONF/printer.cfg.rivet-tmp && mv -f $CONF/printer.cfg.rivet-tmp $CONF/printer.cfg
+        log "added [include rivet.cfg] to printer.cfg"
+    fi
     sync
     log "done: Rivet $version starts with Klipper Mod"
 }
@@ -148,6 +154,11 @@ remove_rivet() {
         rm -f $CONF/moonraker.conf.before-rivet
         log "removed [update_manager rivet] from moonraker.conf"
     fi
+    if [ -f $CONF/printer.cfg ] && grep -q '^\[include rivet.cfg\]' $CONF/printer.cfg; then
+        grep -v '^\[include rivet.cfg\]' $CONF/printer.cfg > $CONF/printer.cfg.rivet-tmp && mv -f $CONF/printer.cfg.rivet-tmp $CONF/printer.cfg
+        log "removed [include rivet.cfg] from printer.cfg"
+    fi
+    rm -f $CONF/rivet.cfg
     echo "$replaced" | while read -r name st; do
         [ -n "$name" ] || continue
         if [ -f "$INIT/_$name" ] && [ ! -f "$INIT/$name" ]; then

@@ -640,6 +640,17 @@ async fn handle_event(ev: Event, client: &Client, state: &mut PrinterState) {
             {
                 tracing::warn!(%err, "identify failed");
             }
+            // RIVET_SCREEN (rivet.cfg) reaches the screen through Moonraker.
+            if let Err(err) = client
+                .call_timeout(
+                    "connection.register_remote_method",
+                    json!({ "method_name": "rivet_screen" }),
+                    SETUP_TIMEOUT,
+                )
+                .await
+            {
+                tracing::warn!(%err, "cannot register rivet_screen");
+            }
             refresh_klippy(client, state).await;
         }
         Event::Retrying { .. } => {}
@@ -676,6 +687,25 @@ async fn handle_event(ev: Event, client: &Client, state: &mut PrinterState) {
                     && !r["message"].as_str().unwrap_or_default().contains("Error")
                 {
                     restart_for_update();
+                }
+            }
+            // RIVET_SCREEN ACTION=OFF|ON|RESTART from the console or a macro.
+            "rivet_screen" => {
+                let action = params
+                    .get("action")
+                    .or_else(|| params.get(0).and_then(|p| p.get("action")))
+                    .and_then(Value::as_str)
+                    .unwrap_or("on")
+                    .to_ascii_lowercase();
+                tracing::info!(action, "screen from Klipper");
+                match action.as_str() {
+                    "restart" => restart_self("RIVET_SCREEN ACTION=RESTART"),
+                    #[cfg(feature = "fbdev")]
+                    "off" => fbdev_platform::screen::sleep_now(),
+                    #[cfg(feature = "fbdev")]
+                    _ => fbdev_platform::screen::wake(),
+                    #[cfg(not(feature = "fbdev"))]
+                    _ => {}
                 }
             }
             "notify_klippy_ready" => {

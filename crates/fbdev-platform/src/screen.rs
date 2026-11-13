@@ -62,6 +62,20 @@ pub fn wake() {
     WAKE_REQUESTS.fetch_add(1, Ordering::Relaxed);
 }
 
+/// Bumped to put the screen to sleep now (RIVET_SCREEN ACTION=OFF).
+static SLEEP_REQUESTS: AtomicU64 = AtomicU64::new(0);
+
+/// Turn the backlight off now, as after the idle time; a touch wakes it.
+pub fn sleep_now() {
+    SLEEP_REQUESTS.fetch_add(1, Ordering::Relaxed);
+}
+
+// Used by the Linux event loop only.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+pub(crate) fn sleep_requests() -> u64 {
+    SLEEP_REQUESTS.load(Ordering::Relaxed)
+}
+
 /// Set the backlight, 5–100 %; it applies while the screen is on and again
 /// after it wakes.
 pub fn set_brightness(percent: u32) {

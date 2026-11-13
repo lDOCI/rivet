@@ -105,6 +105,10 @@ struct FbPlatform {
     asleep: Cell<bool>,
     swallow: Cell<bool>,
     wakes_seen: Cell<u64>,
+    /// Sleep requests handled; while dark on request, "keep awake" waits for a
+    /// touch or a wake request.
+    sleeps_seen: Cell<u64>,
+    dark_on_request: Cell<bool>,
     /// Brightness asks handled.
     brightness_seen: Cell<u64>,
     /// A finger lift not yet passed on: a finger on this panel loses contact for a
@@ -199,6 +203,8 @@ pub fn init(config: Config) -> anyhow::Result<()> {
         asleep: Cell::new(false),
         swallow: Cell::new(false),
         wakes_seen: Cell::new(crate::screen::wake_requests()),
+        sleeps_seen: Cell::new(crate::screen::sleep_requests()),
+        dark_on_request: Cell::new(false),
         brightness_seen: Cell::new(0),
         pending_release: Cell::new(None),
         slop: Cell::new(crate::touch_state::TapSlop::new(TAP_SLOP)),
@@ -244,6 +250,7 @@ impl FbPlatform {
             // A touch on a sleeping screen only wakes it; the rest of that touch,
             // up to the finger lifting, goes nowhere.
             if self.asleep.get() && matches!(action, TouchAction::Pressed { .. }) {
+                self.dark_on_request.set(false);
                 self.set_awake(true);
                 self.swallow.set(true);
             }
@@ -378,8 +385,20 @@ impl FbPlatform {
             let on = !self.asleep.get();
             self.backlight.borrow_mut().set_percent(percent, on);
         }
+        // Asked to go dark now (RIVET_SCREEN ACTION=OFF): even while printing,
+        // until a touch or a wake request.
+        let sleeps = crate::screen::sleep_requests();
+        if sleeps != self.sleeps_seen.replace(sleeps) && self.backlight.borrow().available() {
+            self.set_awake(false);
+            self.dark_on_request.set(true);
+            return;
+        }
         let requests = crate::screen::wake_requests();
-        if requests != self.wakes_seen.replace(requests) || crate::screen::keep_awake() {
+        let woken = requests != self.wakes_seen.replace(requests);
+        if woken {
+            self.dark_on_request.set(false);
+        }
+        if woken || (crate::screen::keep_awake() && !self.dark_on_request.get()) {
             self.set_awake(true);
             return;
         }
