@@ -104,8 +104,9 @@ Rivet runs as root on the AD5M (framebuffer, input, backlight and Wi-Fi need it)
 
 **Framebuffer pages.** Rivet draws into one page and shows it by panning, alternately. A screen
 started after it that keeps the offset it finds at start (GuppyScreen's LVGL driver does) would
-draw on the page that is not shown. `S80rivet stop` resets it; if you stop Rivet another way,
-do it yourself: `echo 0,0 > /sys/class/graphics/fb0/pan`.
+draw on the page that is not shown. The watchdog resets it when it stops, by `S80rivet stop` or by a
+plain `kill $(cat /run/rivet.pid)`; if you kill Rivet in some other way, do it yourself:
+`echo 0,0 > /sys/class/graphics/fb0/pan`.
 
 ## What Rivet writes
 
@@ -136,7 +137,7 @@ What Z-Mod does for HelixScreen, done for Rivet:
   ```json
   "rivet": {"type": "web", "repo": "lDOCI/rivet", "path": "/srv/rivet",
             "persistent_files": ["rivet.good", "rolled-back"],
-            "var": "rivet", "var_swap": "guppy", "var_off": ["helix"],
+            "var": "rivet", "var_swap": "guppy",
             "check_files": ["rivet", "S80rivet"], "printers": ["FF5M"]}
   ```
 
@@ -148,7 +149,6 @@ What Z-Mod does for HelixScreen, done for Rivet:
 Proposed to Z-Mod in [ghzserg/z_ff5m#16](https://github.com/ghzserg/z_ff5m/pull/16) (plugins, `start.sh`,
 `S80rivet`, `S80guppyscreen`, `zdisplay.sh`), [ghzserg/base#19](https://github.com/ghzserg/base/pull/19)
 (`DISPLAY_OFF RIVET=1`) and [ghzserg/zmod#799](https://github.com/ghzserg/zmod/pull/799) (documentation).
-`var_off` is a key those pull requests add to plugman: variables set to 0 when the plugin is turned on.
 
 ## Forge-X
 

@@ -107,9 +107,9 @@ PID-файлы: `/run/rivet.pid` (сторож) и `/run/rivet.child.pid` (Rivet
 
 **Страницы кадрового буфера.** Rivet рисует в одну страницу и показывает её сдвигом (panning),
 по очереди. Экран, запущенный после него и запоминающий смещение при старте (так делает
-LVGL-драйвер GuppyScreen), рисовал бы в невидимую страницу. `S80rivet stop` сбрасывает
-смещение; если останавливаете Rivet иначе, сделайте это сами:
-`echo 0,0 > /sys/class/graphics/fb0/pan`.
+LVGL-драйвер GuppyScreen), рисовал бы в невидимую страницу. Сторож сбрасывает смещение, когда
+останавливается — через `S80rivet stop` или простым `kill $(cat /run/rivet.pid)`; если гасите
+Rivet как-то иначе, сделайте это сами: `echo 0,0 > /sys/class/graphics/fb0/pan`.
 
 ## Что Rivet записывает
 
@@ -140,7 +140,7 @@ Rivet работает с любым конфигом Klipper и показыв�
   ```json
   "rivet": {"type": "web", "repo": "lDOCI/rivet", "path": "/srv/rivet",
             "persistent_files": ["rivet.good", "rolled-back"],
-            "var": "rivet", "var_swap": "guppy", "var_off": ["helix"],
+            "var": "rivet", "var_swap": "guppy",
             "check_files": ["rivet", "S80rivet"], "printers": ["FF5M"]}
   ```
 
@@ -152,7 +152,6 @@ Rivet работает с любым конфигом Klipper и показыв�
 Предложено в Z-Mod: [ghzserg/z_ff5m#16](https://github.com/ghzserg/z_ff5m/pull/16) (плагины, `start.sh`,
 `S80rivet`, `S80guppyscreen`, `zdisplay.sh`), [ghzserg/base#19](https://github.com/ghzserg/base/pull/19)
 (`DISPLAY_OFF RIVET=1`) и [ghzserg/zmod#799](https://github.com/ghzserg/zmod/pull/799) (документация).
-`var_off` — ключ, который эти PR добавляют в plugman: переменные, обнуляемые при включении плагина.
 
 ## Forge-X
 
