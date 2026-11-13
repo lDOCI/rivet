@@ -3,9 +3,33 @@
 For the Flashforge Adventurer 5M / 5M Pro with [Klipper Mod](https://github.com/xblax/flashforge_ad5m_klipper_mod).
 [Русская версия](install.ru.md).
 
-On **Z-Mod**, Rivet is installed by Z-Mod itself once it lists it as one of its screens (the way it
-offers HelixScreen); these installers refuse to run there. **Forge-X** and the stock firmware are
-not supported.
+On **Z-Mod** Rivet is one of Z-Mod's screens, like HelixScreen: see [On Z-Mod](#on-z-mod) below; the
+USB and ssh installers are for Klipper Mod and refuse to run on Z-Mod. **Forge-X** and the stock
+firmware are not supported.
+
+## On Z-Mod
+
+1. In Fluidd or Mainsail run the `PLUGINS` macro and tap **RIVET**, then
+   **Save (Moonraker restart)**.
+
+   ![PLUGINS: RIVET](screenshots/zmod-1-plugins.jpg)
+
+   Z-Mod says to install it through the updates:
+
+   ![rivet: install via Fluidd/Mainsail updates](screenshots/zmod-2-notice.jpg)
+
+2. In the list of updates of Fluidd or Mainsail, update **rivet**.
+
+   ![rivet v0.0.1 -> v0.1.2-alpha](screenshots/zmod-3-update.jpg)
+
+3. Run `DISPLAY_OFF` with `GUPPY=0`, `HELIX=0`, `RIVET=1` (`DISPLAY_OFF GUPPY=0 RIVET=1` in the
+   console). The printer restarts with Rivet.
+
+   ![DISPLAY_OFF: RIVET=1](screenshots/zmod-4-display-off.jpg)
+
+Updates come the same way, in the list of updates, or on the screen in Settings › Updates. Back to
+GuppyScreen: `DISPLAY_OFF GUPPY=1`. Rivet's settings and logs are in `mod_data` (`rivet.toml`,
+`log/rivet.log`).
 
 ## From a USB stick
 
@@ -72,10 +96,12 @@ installing anything; `tools/swap-screen.sh guppy PRINTER_IP` goes back.
 | Path | What |
 |---|---|
 | `/opt/rivet/rivet` | the program |
+| `/opt/rivet/rivet-watchdog`, `/opt/rivet/S80rivet` | its watchdog and start script (updated with every release) |
 | `/opt/rivet/rivet.sha256`, `release_info.json` | its checksum and version, for updates |
 | `/opt/rivet/rivet.good` | a copy of the last version that ran for 30 seconds, to come back to |
 | `/opt/rivet/replaced` | which screen was switched off and whether it was running |
-| `/etc/init.d/S80rivet` | starts Rivet at boot and keeps it running |
+| `/etc/init.d/S80rivet` | starts Rivet at boot (it calls `/opt/rivet/S80rivet`) |
+| `/root/printer_data/config/rivet.cfg` | the `RIVET_SCREEN` macro, included from `printer.cfg` by an `[include rivet.cfg]` line |
 | `/etc/init.d/_S80guppyscreen` | the old screen's start script, renamed so it no longer starts |
 | `/root/printer_data/config/moonraker.conf` | gets an `[update_manager rivet]` section (a copy of the file before is kept as `moonraker.conf.before-rivet`) |
 | `/root/printer_data/config/rivet.toml` | settings file, created only if missing ([example](rivet.toml.example)) |
@@ -107,6 +133,25 @@ When the new version starts, it runs under a watchdog (`S80rivet`):
 
 If Rivet ever crashes, it is started again after 1 s; repeated quick crashes wait longer (up to a
 minute), so a crash loop does not load the processor.
+
+## From the console
+
+In the console of Fluidd or Mainsail, or in your own macros:
+
+```
+RIVET_SCREEN ACTION=OFF       backlight off now (a touch wakes it, even during a print)
+RIVET_SCREEN ACTION=ON        backlight on
+RIVET_SCREEN ACTION=RESTART   start Rivet again
+```
+
+## Language and time zone
+
+Rivet speaks English and Russian. Unless you pick one in Settings › Language and time, it follows the
+language set in Fluidd or Mainsail (on Z-Mod, Z-Mod's own language).
+
+The time zone is chosen in the same place. Until one is set, the printer's clock is UTC and Rivet
+hides times of day rather than show wrong ones. On Klipper Mod Rivet writes the zone to
+`printer_data/config/timezone`, where Klipper Mod reads it; on Z-Mod it runs Z-Mod's `SET_TIMEZONE`.
 
 ## Logs
 

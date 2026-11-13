@@ -149,7 +149,9 @@ impl Client {
             json!({
                 "client_name": name,
                 "version": version,
-                "type": "display",
+                // "agent": a screen too, but one that may register a remote
+                // method (rivet_screen, for the RIVET_SCREEN macro).
+                "type": "agent",
                 "url": "https://github.com/lDOCI/rivet",
             }),
             timeout,

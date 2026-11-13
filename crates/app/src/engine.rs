@@ -29,7 +29,10 @@ const SETUP_TIMEOUT: Duration = Duration::from_secs(5);
 type Preview = SharedPixelBuffer<Rgba8Pixel>;
 
 /// Cache limit for decoded previews. The printer has ~38 MB free in total.
-const THUMB_CACHE_BYTES: usize = 3 * 1024 * 1024;
+/// Decoded previews kept for going back and forth; the grid's are small.
+const THUMB_CACHE_BYTES: usize = 1536 * 1024;
+/// The place a preview has on a Files card (inside its padding, above the name).
+const GRID_THUMB: (u32, u32) = (196, 112);
 /// The Home card's preview area, px (the card less its padding, by the thumbnail's height).
 const HOME_THUMB: (u32, u32) = (372, 232);
 
@@ -113,7 +116,34 @@ async fn preview(
     file: &str,
     meta: Option<model::FileMeta>,
 ) -> Option<Preview> {
-    if let Some(hit) = thumbs.cache.lock().ok()?.get(file) {
+    preview_sized(client, thumbs, file, meta, None).await
+}
+
+/// A preview for a Files card: decoded only as large as the card shows it, so a
+/// screenful of them takes a third of the memory and the screen does not scale.
+async fn grid_preview(
+    client: &Client,
+    thumbs: &Thumbs,
+    file: &str,
+    meta: Option<model::FileMeta>,
+) -> Option<Preview> {
+    preview_sized(client, thumbs, file, meta, Some(GRID_THUMB)).await
+}
+
+/// A preview fitted to `place` (width, height), or the large one (file and
+/// print screens) when `None`.
+async fn preview_sized(
+    client: &Client,
+    thumbs: &Thumbs,
+    file: &str,
+    meta: Option<model::FileMeta>,
+    place: Option<(u32, u32)>,
+) -> Option<Preview> {
+    let key = match place {
+        Some((w, h)) => format!("{w}x{h}:{file}"),
+        None => file.to_owned(),
+    };
+    if let Some(hit) = thumbs.cache.lock().ok()?.get(&key) {
         return Some(hit);
     }
     let meta = match meta {
@@ -129,10 +159,13 @@ async fn preview(
                 .ok()?,
         ),
     };
-    let img = thumbs::prepare(fetch_png(thumbs, file, &meta, thumbs::MAX_WIDTH).await?);
+    let img = match place {
+        Some((w, h)) => thumbs::prepare_for(fetch_png(thumbs, file, &meta, w).await?, w, h),
+        None => thumbs::prepare(fetch_png(thumbs, file, &meta, thumbs::MAX_WIDTH).await?),
+    };
     let size = img.data.len();
     let buf = Preview::clone_from_slice(&img.data, img.width, img.height);
-    thumbs.cache.lock().ok()?.insert(file, buf.clone(), size);
+    thumbs.cache.lock().ok()?.insert(&key, buf.clone(), size);
     Some(buf)
 }
 
@@ -640,6 +673,17 @@ async fn handle_event(ev: Event, client: &Client, state: &mut PrinterState) {
             {
                 tracing::warn!(%err, "identify failed");
             }
+            // RIVET_SCREEN (rivet.cfg) reaches the screen through Moonraker.
+            if let Err(err) = client
+                .call_timeout(
+                    "connection.register_remote_method",
+                    json!({ "method_name": "rivet_screen" }),
+                    SETUP_TIMEOUT,
+                )
+                .await
+            {
+                tracing::warn!(%err, "cannot register rivet_screen");
+            }
             refresh_klippy(client, state).await;
         }
         Event::Retrying { .. } => {}
@@ -678,6 +722,25 @@ async fn handle_event(ev: Event, client: &Client, state: &mut PrinterState) {
                     restart_for_update();
                 }
             }
+            // RIVET_SCREEN ACTION=OFF|ON|RESTART from the console or a macro.
+            "rivet_screen" => {
+                let action = params
+                    .get("action")
+                    .or_else(|| params.get(0).and_then(|p| p.get("action")))
+                    .and_then(Value::as_str)
+                    .unwrap_or("on")
+                    .to_ascii_lowercase();
+                tracing::info!(action, "screen from Klipper");
+                match action.as_str() {
+                    "restart" => restart_self("RIVET_SCREEN ACTION=RESTART"),
+                    #[cfg(feature = "fbdev")]
+                    "off" => fbdev_platform::screen::sleep_now(),
+                    #[cfg(feature = "fbdev")]
+                    _ => fbdev_platform::screen::wake(),
+                    #[cfg(not(feature = "fbdev"))]
+                    _ => {}
+                }
+            }
             "notify_klippy_ready" => {
                 state.klippy = Klippy::Ready;
                 subscribe(client, state).await;
@@ -707,6 +770,14 @@ fn restart_for_update() {
     }
     tracing::info!("a new Rivet is installed: exiting so S80rivet starts it");
     std::process::exit(0);
+}
+
+/// Exit so S80rivet starts Rivet again (when it runs Rivet).
+fn restart_self(why: &str) {
+    if std::env::var_os("RIVET_SUPERVISED").is_some() {
+        tracing::info!(why, "restarting");
+        std::process::exit(0);
+    }
 }
 
 /// Things the engine tells itself from spawned tasks.
@@ -917,13 +988,13 @@ async fn system_info(client: &Client, ui: &slint::Weak<AppWindow>) {
         .ok()
         .and_then(|p| p.parent().map(|d| d.join("rolled-back")))
         .is_some_and(|p| p.exists());
-    let zone = std::fs::read_link("/etc/localtime")
-        .ok()
-        .and_then(|p| {
-            let p = p.to_string_lossy().into_owned();
-            p.split_once("zoneinfo/").map(|(_, z)| z.to_owned())
-        })
-        .unwrap_or_default();
+    let zone = crate::timezone::current();
+    // Z-Mod's macro sets the zone; on Klipper Mod Rivet writes it.
+    let zone_macro = objects["objects"].as_array().is_some_and(|o| {
+        o.iter()
+            .any(|n| n.as_str() == Some("gcode_macro SET_TIMEZONE"))
+    });
+    let zone_settable = zone_macro || crate::timezone::target().is_some();
     let stock = objects["objects"].as_array().is_some_and(|o| {
         o.iter()
             .any(|n| n.as_str() == Some("gcode_macro REBOOT_STOCK_SYSTEM"))
@@ -989,7 +1060,15 @@ async fn system_info(client: &Client, ui: &slint::Weak<AppWindow>) {
         ui.set_ver_fluidd_sub(state(&fluidd).into());
         ui.set_ver_fluidd(fluidd.0.into());
         ui.set_has_stock_macro(stock);
-        ui.set_time_zone(zone.into());
+        ui.set_time_zone(
+            match zone {
+                Some(z) if z.is_empty() => words.get_zone_set().to_string(),
+                Some(z) => z.replace('_', " "),
+                None => String::new(),
+            }
+            .into(),
+        );
+        ui.set_zone_settable(zone_settable);
     });
 }
 
@@ -1104,7 +1183,7 @@ async fn list_history(client: &Client, ui: &slint::Weak<AppWindow>) {
                 (j["print_duration"].as_f64().unwrap_or(0.0) / 60.0).round() as i32,
                 j.pointer("/metadata/filament_type")
                     .and_then(Value::as_str)
-                    .map(|t| t.split(';').next().unwrap_or(t).trim().to_owned())
+                    .map(model::slicer_types)
                     .unwrap_or_default(),
             ))
         })
@@ -1645,7 +1724,7 @@ fn load_thumbs(
                 .await
                 .ok()
                 .map(|m| model::parse_file_meta(&m));
-            let buf = preview(&client, &thumbs, &path, meta.clone()).await;
+            let buf = grid_preview(&client, &thumbs, &path, meta.clone()).await;
             let _ = ui.upgrade_in_event_loop(move |ui| {
                 let thumb = buf.map(slint::Image::from_rgba8);
                 crate::files::update(&ui, &path, |item| {
@@ -2034,6 +2113,34 @@ pub mod prefs {
 
 /// Read Rivet's saved settings once Klipper is ready, show them, and act on
 /// "turn the light on at startup".
+/// The language Fluidd or Mainsail was set to (kept in Moonraker's database),
+/// when it is one Rivet speaks.
+async fn web_ui_language(client: &Client) -> Option<&'static str> {
+    for (namespace, key) in [
+        ("fluidd", "uiSettings.general.locale"),
+        ("mainsail", "general.language"),
+    ] {
+        let value = client
+            .call_timeout(
+                "server.database.get_item",
+                json!({ "namespace": namespace, "key": key }),
+                SETUP_TIMEOUT,
+            )
+            .await
+            .ok();
+        let code = value
+            .as_ref()
+            .and_then(|v| v["value"].as_str())
+            .map(|l| l.get(..2).unwrap_or(l).to_ascii_lowercase());
+        match code.as_deref() {
+            Some("ru") => return Some("ru"),
+            Some("en") => return Some("en"),
+            _ => {}
+        }
+    }
+    None
+}
+
 async fn load_settings(
     client: Client,
     ui: slint::Weak<AppWindow>,
@@ -2125,6 +2232,8 @@ async fn load_settings(
     prefs::set(&prefs::CLOCK_12, clock12);
     prefs::set(&prefs::END_TUNE, sounds && tune);
     let language = text("language");
+    // Nothing set for Rivet: the language the web interface was set to.
+    let web_language = web_ui_language(&client).await;
     let _ = ui.upgrade_in_event_loop(move |ui| {
         ui.set_set_sleep(
             [1, 5, 10, 30]
@@ -2146,10 +2255,16 @@ async fn load_settings(
         ui.set_set_clock(i32::from(clock12));
         ui.set_set_hold_stop(hold);
         ui.set_set_confirm_macros(confirm);
-        // A language picked on the screen wins over the start-up one.
+        // A language picked on the screen wins over the start-up one; with
+        // neither, the screen asks once.
         if language == "ru" || language == "en" {
             crate::apply_language(&language);
             ui.set_russian(language == "ru");
+        } else if let Some(web) =
+            web_language.filter(|_| !crate::LANGUAGE_SET.load(std::sync::atomic::Ordering::Relaxed))
+        {
+            crate::apply_language(web);
+            ui.set_russian(web == "ru");
         }
         if !presets.is_empty() {
             let rows: Vec<crate::HeatPreset> = presets
@@ -2600,7 +2715,20 @@ async fn execute(
             let shaper = script.contains("SHAPER_CALIBRATE");
             let resonance = shaper || script.contains("TEST_RESONANCES");
             let _ = ui.upgrade_in_event_loop(|ui| ui.set_calib_busy(true));
-            let result = gcode(client, script).await;
+            // The screen stays on while it runs (a PID test of the bed alone may
+            // pass ten minutes, both heaters twenty).
+            #[cfg(feature = "fbdev")]
+            fbdev_platform::screen::set_busy(true);
+            let result = client
+                .call_timeout(
+                    "printer.gcode.script",
+                    json!({ "script": script }),
+                    Duration::from_secs(45 * 60),
+                )
+                .await
+                .map(drop);
+            #[cfg(feature = "fbdev")]
+            fbdev_platform::screen::set_busy(false);
             if resonance {
                 crate::resonance::load();
                 crate::resonance::load_latest(std::path::Path::new(KLIPPER_TMP));
@@ -2718,6 +2846,36 @@ async fn execute(
         }
         Command::SystemInfo => {
             system_info(client, ui).await;
+            Ok(())
+        }
+        Command::SystemAction(what) if what.starts_with("tz:") => {
+            // Shown with spaces, named with underscores.
+            let zone = &what[3..].replace(' ', "_");
+            let objects = client
+                .call_timeout("printer.objects.list", json!({}), SETUP_TIMEOUT)
+                .await
+                .unwrap_or(Value::Null);
+            let has_macro = objects["objects"].as_array().is_some_and(|o| {
+                o.iter()
+                    .any(|n| n.as_str() == Some("gcode_macro SET_TIMEZONE"))
+            });
+            if has_macro {
+                // Z-Mod: its macro links the zone; it applies after a reboot.
+                gcode(client, &format!("SET_TIMEZONE ZONE={zone}")).await?;
+                system_info(client, ui).await;
+            } else {
+                if let Err(err) = crate::timezone::set(zone) {
+                    tracing::warn!(%err, zone, "cannot set the time zone");
+                    return Err(moonraker::Error::Rpc {
+                        code: 0,
+                        message: format!("time zone {zone}: {err}"),
+                    });
+                }
+                tracing::info!(zone, "time zone set");
+                system_info(client, ui).await;
+                // Clock times read the zone once per process: start again.
+                restart_self("the time zone changed");
+            }
             Ok(())
         }
         Command::SystemAction(what) => {

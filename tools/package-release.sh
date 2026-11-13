@@ -9,7 +9,8 @@
 #                                    (type web) unpacks it into /opt/rivet (Klipper
 #                                    Mod) or /srv/rivet (Z-Mod, which finds it by
 #                                    release_info.json's asset_name): rivet,
-#                                    rivet.sha256, release_info.json, S80rivet
+#                                    rivet.sha256, release_info.json, S80rivet,
+#                                    rivet-watchdog
 #   rivet-VERSION-usb.zip            unpack onto a FAT32 USB stick, switch the
 #                                    printer on with it: installs Rivet
 #   rivet-VERSION-usb-remove.zip     the same, but removes Rivet
@@ -33,12 +34,15 @@ sha() { if command -v sha256sum >/dev/null; then sha256sum "$@"; else shasum -a 
 
 # The update: what Moonraker installs.
 mkdir -p "$work/zip"
+watchdog="$(dirname "$bin")/rivet-watchdog"
+[ -f "$watchdog" ] || { echo "no rivet-watchdog at $watchdog; run 'cargo printer-watchdog' first" >&2; exit 1; }
 cp "$bin" "$work/zip/rivet" && chmod 755 "$work/zip/rivet"
+cp "$watchdog" "$work/zip/rivet-watchdog" && chmod 755 "$work/zip/rivet-watchdog"
 (cd "$work/zip" && sha rivet > rivet.sha256)
 printf '{"project_name": "rivet", "project_owner": "%s", "version": "%s", "asset_name": "rivet-ad5m.zip"}\n' "$owner" "$version" > "$work/zip/release_info.json"
 cp "$root/tools/install/S80rivet" "$work/zip/" && chmod 755 "$work/zip/S80rivet"
 rm -f "$out/rivet-ad5m.zip"
-(cd "$work/zip" && zip -qX "$out/rivet-ad5m.zip" rivet rivet.sha256 release_info.json S80rivet)
+(cd "$work/zip" && zip -qX "$out/rivet-ad5m.zip" rivet rivet.sha256 release_info.json S80rivet rivet-watchdog)
 
 # The USB installer's pictures, as raw framebuffer images.
 (cd "$root" && RIVET_FB_RAW=1 cargo run -q -p ui-snapshot -- "$work/pics" usb-installing usb-done usb-removed usb-error >/dev/null)
@@ -50,7 +54,7 @@ done
 cp "$root/tools/usb/flashforge_init.sh" "$work/usb/" && chmod 755 "$work/usb/flashforge_init.sh"
 cp "$root/tools/usb/flashforge_init.sh" "$work/usb-remove/"
 cp "$work/zip/rivet" "$work/zip/rivet.sha256" "$work/zip/release_info.json" "$work/usb/rivet/"
-cp "$root/tools/install/S80rivet" "$work/usb/rivet/"
+cp "$root/tools/install/S80rivet" "$root/tools/install/S80rivet.initd" "$root/tools/install/rivet.cfg" "$work/zip/rivet-watchdog" "$work/usb/rivet/"
 cp "$root/docs/rivet.toml.example" "$work/usb/rivet/"
 echo "Remove Rivet: this stick's flashforge_init.sh takes Rivet off the printer." > "$work/usb-remove/rivet/remove"
 rm -f "$out/rivet-$version-usb.zip" "$out/rivet-$version-usb-remove.zip"
@@ -60,7 +64,7 @@ rm -f "$out/rivet-$version-usb.zip" "$out/rivet-$version-usb-remove.zip"
 # Over ssh from a computer.
 inst="$work/rivet-$version"
 mkdir -p "$inst/tools/install" "$inst/docs"
-cp "$work/zip/rivet" "$work/zip/release_info.json" "$inst/"
+cp "$work/zip/rivet" "$work/zip/rivet-watchdog" "$work/zip/release_info.json" "$inst/"
 cp "$root/tools/install.sh" "$root/tools/uninstall.sh" "$inst/tools/"
 cp "$root"/tools/install/* "$inst/tools/install/"
 cp "$root/docs/rivet.toml.example" "$inst/docs/"

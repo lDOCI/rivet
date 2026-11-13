@@ -2,6 +2,33 @@
 
 Each release's section is also its description on GitHub. [Русский — ниже в каждом разделе.]
 
+## v0.1.3-alpha
+
+- Files from OrcaSlicer with several filaments: the material and the filament's name showed as a raw
+  list (`["PETG", "PETG"]`, `\u041d…`); now "PETG" and the name.
+- Language: with none chosen in Rivet, it follows Fluidd's or Mainsail's (Klipper Mod has no system
+  language), instead of English.
+- Time zone: Klipper Mod's zone was never recognised, so the clock stayed hidden; it is now, and it
+  can be chosen in Settings › Language and time.
+- `RIVET_SCREEN ACTION=OFF|ON|RESTART` from the console of Fluidd or Mainsail.
+- PID calibration of both heaters with one Start (the nozzle, then the bed). The screen no longer
+  goes to sleep while a calibration runs, and a long one (a bed PID test) is no longer reported
+  finished after 10 minutes while Klipper still runs it.
+- The Files screen takes 12 MB instead of 17: card previews are decoded at the size the card shows.
+- A small watchdog program (`rivet-watchdog`, 0.3 MB instead of 1.6) instead of a shell loop that
+  woke every 5 seconds; it comes with updates, together with the start script.
+
+**Русский.** Файлы OrcaSlicer с несколькими филаментами: материал и название филамента
+показывались сырым списком (`["PETG", "PETG"]`, `\u041d…`); теперь «PETG» и название. Язык: если
+он не выбран в Rivet, берётся язык Fluidd или Mainsail (у Klipper Mod нет системного языка), а не
+английский. Часовой пояс: пояс Klipper Mod не распознавался, и часы были скрыты; теперь
+распознаётся и выбирается в Настройки › Язык и время. `RIVET_SCREEN ACTION=OFF|ON|RESTART` из
+консоли Fluidd или Mainsail. Калибровка PID обоих нагревателей одной кнопкой (сопло, потом
+стол); экран не засыпает во время калибровки, а долгая калибровка (PID стола) больше не
+считается законченной через 10 минут, пока Klipper её ещё делает. Экран «Файлы» занимает 12 МБ
+вместо 17: превью карточек распаковываются в размере карточки. Маленький сторож (`rivet-watchdog`, 0,3 МБ вместо 1,6) вместо цикла на shell, который
+просыпался каждые 5 секунд; он приходит с обновлениями вместе со скриптом запуска.
+
 ## v0.1.2-alpha
 
 - Z-Mod: the screen's backlight stayed off. Z-Mod has its own `backlight` command in the place

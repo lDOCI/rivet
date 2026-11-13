@@ -11,6 +11,7 @@ pub mod logfile;
 pub mod resonance;
 pub mod theme;
 pub mod thumbs;
+pub mod timezone;
 pub mod touchcal;
 pub mod wifi;
 
@@ -32,6 +33,11 @@ pub fn language(arg: Option<&str>, rivet_lang: Option<&str>, system_lang: Option
 /// Switch the interface to `lang`. Call it after the first window exists.
 /// English is the source language; it is selected explicitly because the
 /// bundle may start in the system's language.
+/// Whether a language was set at start (command line, RIVET_LANG, rivet.toml or
+/// the system's LANG, which S80rivet fills from Z-Mod's setting); if not, and
+/// none was picked on the screen, Rivet follows Fluidd's or Mainsail's.
+pub static LANGUAGE_SET: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
 pub fn apply_language(lang: &str) {
     if let Err(err) = slint::select_bundled_translation(lang) {
         eprintln!("no translation for {lang:?}: {err}");

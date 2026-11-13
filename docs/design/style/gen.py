@@ -547,7 +547,7 @@ def build():
         A('Проверить датчик', 'шум акселерометра'),
     ])
     form('PidCal', 'Нагрев (PID)', 'tools', 'Calibrate.dc.html', [
-        SG('Нагреватель', '', ['Сопло', 'Стол'], 0, src='heaters.available_heaters'),
+        SG('Нагреватель', '', ['Сопло', 'Стол', 'Оба'], 0, src='heaters.available_heaters'),
         ST('Температура', 'как при обычной печати', 220, 40, 350, 5, '°', src='max: configfile.settings.<heater>.max_temp'),
         SG('Обдув во время', 'как при печати', ['Выкл.', '50%', '100%'], 1),
         I('Текущие', 'Kp 22.3 · Ki 1.1 · Kd 114', '', src='configfile.settings.extruder.pid_kp/ki/kd'),
@@ -656,8 +656,8 @@ def build():
     ])
     form('Updates', 'Обновления', 'settings', 'Settings.dc.html', [
         S('ВЕРСИИ'),
-        I('Klipper', 'v0.13.0-285', 'обновляется образом KlipperMod с USB', src='printer.info.software_version; update_manager has no version for klipper on KlipperMod'),
-        I('Moonraker', 'v0.9.3', 'обновляется образом KlipperMod с USB', src='server.info.moonraker_version'),
+        I('Klipper', 'v0.13.0-285', 'обновляется вместе с прошивкой принтера', src='printer.info.software_version; update_manager has no version for klipper on KlipperMod'),
+        I('Moonraker', 'v0.9.3', 'обновляется вместе с прошивкой принтера', src='server.info.moonraker_version'),
         I('Rivet', '0.1.0', '', src='Rivet build'),
         S('ВЕБ-ИНТЕРФЕЙСЫ'),
         I('Mainsail', 'v2.19.0', 'актуально', src='machine.update.status.version_info.mainsail (version == remote_version)'),

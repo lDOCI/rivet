@@ -8,7 +8,9 @@
 # from a checkout where Rivet was built with `cargo printer`. Over ssh
 # (root, no scp: Klipper Mod has no sftp-server) it copies
 #   target/armv7-unknown-linux-musleabihf/release/rivet -> /opt/rivet/rivet
-#   tools/install/S80rivet                              -> /etc/init.d/S80rivet
+#   rivet-watchdog (same folder as rivet)               -> /opt/rivet/rivet-watchdog
+#   tools/install/S80rivet                              -> /opt/rivet/S80rivet
+#   tools/install/S80rivet.initd                        -> /etc/init.d/S80rivet
 #   docs/rivet.toml.example -> /root/printer_data/config/rivet.toml (only if missing)
 # finds the screen Rivet replaces (the process holding /dev/fb0 and the init script
 # that starts it, or a known GuppyScreen/KlipperScreen/HelixScreen script), stops
@@ -51,6 +53,8 @@ root="$(cd "$(dirname "$0")/.." && pwd)"
 if [ -z "${RIVET_BIN:-}" ] && [ -f "$root/rivet" ]; then RIVET_BIN="$root/rivet"; fi
 bin="${RIVET_BIN:-$root/target/armv7-unknown-linux-musleabihf/release/rivet}"
 init="$root/tools/install/S80rivet"
+initd="$root/tools/install/S80rivet.initd"
+watchdog="$(dirname "$bin")/rivet-watchdog"
 funcs="$root/tools/install/screen.sh"
 example="$root/docs/rivet.toml.example"
 if [ -z "${RIVET_VERSION:-}" ] && [ -f "$root/release_info.json" ]; then
@@ -125,7 +129,14 @@ fi
 echo "uploading $(basename "$bin") ($(du -h "$bin" | cut -f1 | tr -d ' ')) to $host:/opt/rivet/rivet"
 run 'mkdir -p /opt/rivet && cat > /opt/rivet/rivet.new && chmod 755 /opt/rivet/rivet.new' < "$bin" \
   || { run 'rm -f /opt/rivet/rivet.new; rmdir /opt/rivet 2>/dev/null' || true; exit 1; }
-run 'cat > /etc/init.d/.S80rivet.new && chmod 755 /etc/init.d/.S80rivet.new' < "$init"
+if [ -f "$watchdog" ]; then
+  run 'cat > /opt/rivet/rivet-watchdog.new && chmod 755 /opt/rivet/rivet-watchdog.new' < "$watchdog"
+else
+  echo "no rivet-watchdog next to the binary: the start script's shell loop will keep Rivet running" >&2
+fi
+run 'cat > /opt/rivet/.S80rivet.new && chmod 755 /opt/rivet/.S80rivet.new' < "$init"
+run 'cat > /etc/init.d/.S80rivet.new && chmod 755 /etc/init.d/.S80rivet.new' < "$initd"
+run 'cat > /root/printer_data/config/.rivet.cfg.new' < "$root/tools/install/rivet.cfg"
 run 'f=/root/printer_data/config/rivet.toml; if [ -e $f ]; then cat > /dev/null; echo "kept existing $f"; else cat > $f.new && mv $f.new $f && echo "created $f"; fi' < "$example"
 
 # 3. Switch: stop Rivet and the screens found, disable their scripts, start Rivet.
@@ -153,6 +164,8 @@ done
 
 if [ -f /opt/rivet/rivet ]; then what=upgraded; else what=installed; fi
 mv -f /opt/rivet/rivet.new /opt/rivet/rivet
+[ -f /opt/rivet/rivet-watchdog.new ] && mv -f /opt/rivet/rivet-watchdog.new /opt/rivet/rivet-watchdog
+mv -f /opt/rivet/.S80rivet.new /opt/rivet/S80rivet
 echo "$what /opt/rivet/rivet ($VERSION)"
 # What Moonraker's update manager reads, and what S80rivet checks the binary against.
 sha256sum /opt/rivet/rivet | sed 's| .*|  rivet|' > /opt/rivet/rivet.sha256
@@ -177,6 +190,15 @@ CONF
   echo "added [update_manager rivet] to $conf (copy before: $conf.before-rivet)"
   restart_moonraker=1
 fi
+# RIVET_SCREEN for the console: rivet.cfg, included from printer.cfg (before
+# SAVE_CONFIG's block); Klipper restarts to read it.
+mv -f /root/printer_data/config/.rivet.cfg.new /root/printer_data/config/rivet.cfg
+pc=/root/printer_data/config/printer.cfg
+if [ -f $pc ] && ! grep -q '^\[include rivet.cfg\]' $pc; then
+  awk 'BEGIN{d=0} /^#\*# <-+ SAVE_CONFIG/ && !d {print "[include rivet.cfg]"; print ""; d=1} {print} END{if(!d){print ""; print "[include rivet.cfg]"}}' $pc > $pc.rivet-tmp && mv -f $pc.rivet-tmp $pc
+  echo "added [include rivet.cfg] to $pc (the RIVET_SCREEN macro)"
+  restart_klipper=1
+fi
 if [ -f /etc/init.d/S80rivet ]; then what=updated; else what=installed; fi
 mv -f /etc/init.d/.S80rivet.new /etc/init.d/S80rivet
 echo "$what /etc/init.d/S80rivet"
@@ -184,8 +206,18 @@ echo "$what /etc/init.d/S80rivet"
 if [ -n "${restart_moonraker:-}" ]; then
   setsid /etc/init.d/S65moonraker restart </dev/null >/dev/null 2>&1 && echo "restarted Moonraker for its new update_manager section"
 fi
+if [ -n "${restart_klipper:-}" ]; then
+  sleep 2
+  curl -s -m 10 -X POST http://127.0.0.1:7125/printer/restart >/dev/null && echo "restarted Klipper for rivet.cfg"
+fi
 /etc/init.d/S80rivet start >/dev/null
-sleep 3
+# Up to 20 s: after a Klipper restart the watchdog may take a while to start it.
+i=0
+while [ $i -lt 20 ] && ! { [ -f /run/rivet.child.pid ] && kill -0 "$(cat /run/rivet.child.pid)" 2>/dev/null; }; do
+  sleep 1
+  i=$((i + 1))
+done
+sleep 2
 pid="$(cat /run/rivet.child.pid 2>/dev/null || true)"
 if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
   echo "Rivet is running (pid $pid, $(grep VmRSS /proc/$pid/status | tr -s ' \t' ' '))"

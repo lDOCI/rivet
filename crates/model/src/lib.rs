@@ -768,6 +768,45 @@ pub struct FileMeta {
     pub thumbnails: Vec<ThumbRef>,
 }
 
+/// A per-filament slicer value as a list: OrcaSlicer may write a JSON list in
+/// the string (`["PETG", "PETG"]`, names with `\u` escapes), PrusaSlicer and
+/// others separate with `;`.
+pub fn slicer_values(raw: &str) -> Vec<String> {
+    let raw = raw.trim();
+    let items: Vec<String> = if raw.starts_with('[') {
+        serde_json::from_str::<Vec<Value>>(raw)
+            .map(|v| {
+                v.iter()
+                    .map(|x| x.as_str().map_or_else(|| x.to_string(), str::to_owned))
+                    .collect()
+            })
+            .unwrap_or_else(|_| vec![raw.trim_matches(|c| c == '[' || c == ']').to_owned()])
+    } else {
+        raw.split(';').map(str::to_owned).collect()
+    };
+    items
+        .into_iter()
+        .map(|s| s.trim().trim_matches('"').trim().to_owned())
+        .filter(|s| !s.is_empty())
+        .collect()
+}
+
+/// The filament types of a file, each once: "PETG", "PLA, PETG".
+pub fn slicer_types(raw: &str) -> String {
+    let mut seen: Vec<String> = Vec::new();
+    for t in slicer_values(raw) {
+        if !seen.contains(&t) {
+            seen.push(t);
+        }
+    }
+    seen.join(", ")
+}
+
+/// The first filament's value (its name, its colour).
+pub fn slicer_first(raw: &str) -> String {
+    slicer_values(raw).into_iter().next().unwrap_or_default()
+}
+
 pub fn parse_file_meta(result: &Value) -> FileMeta {
     let num = |k: &str| result.get(k).and_then(Value::as_f64).filter(|v| *v > 0.0);
     FileMeta {
@@ -782,8 +821,8 @@ pub fn parse_file_meta(result: &Value) -> FileMeta {
         filament_type: result
             .get("filament_type")
             .and_then(Value::as_str)
-            .filter(|s| !s.is_empty())
-            .map(str::to_owned),
+            .map(slicer_types)
+            .filter(|s| !s.is_empty()),
         filament_grams: num("filament_weight_total"),
         layers: num("layer_count").map(|v| v as u32),
         nozzle_diameter: num("nozzle_diameter"),
@@ -1759,7 +1798,7 @@ pub fn parse_last_print(result: &Value) -> Option<LastPrint> {
         material: job
             .pointer("/metadata/filament_type")
             .and_then(Value::as_str)
-            .map(|t| t.split(';').next().unwrap_or(t).trim().to_owned())
+            .map(slicer_types)
             .unwrap_or_default(),
         grams: job
             .pointer("/metadata/filament_weight_total")
@@ -1768,7 +1807,7 @@ pub fn parse_last_print(result: &Value) -> Option<LastPrint> {
         filament_name: job
             .pointer("/metadata/filament_name")
             .and_then(Value::as_str)
-            .map(|t| t.split(';').next().unwrap_or(t).trim().to_owned())
+            .map(slicer_first)
             .unwrap_or_default(),
         color: ["/metadata/filament_colors/0", "/metadata/extruder_colors/0"]
             .iter()
@@ -2606,6 +2645,24 @@ mod tests {
         assert_eq!(paths, ["sub/new.GCODE", "old.gcode"]);
         assert_eq!(files[0].size, 20);
         assert!(parse_file_list(&Value::Null).is_empty());
+    }
+
+    #[test]
+    fn multi_filament_values_from_any_slicer() {
+        // OrcaSlicer: a JSON list in the string, names escaped.
+        assert_eq!(slicer_types(r#"["PETG", "PETG"]"#), "PETG");
+        assert_eq!(slicer_types(r#"["PLA","PETG","PLA"]"#), "PLA, PETG");
+        assert_eq!(
+            slicer_first(r#"["\u041d\u0418\u0422 PETG", "Other"]"#),
+            "НИТ PETG"
+        );
+        // PrusaSlicer and others: `;`.
+        assert_eq!(slicer_types("PLA;PLA;PETG"), "PLA, PETG");
+        assert_eq!(slicer_first("Generic PLA; Generic PETG"), "Generic PLA");
+        // One plain value, empty.
+        assert_eq!(slicer_types("PETG"), "PETG");
+        assert_eq!(slicer_types(""), "");
+        assert_eq!(slicer_types("[]"), "");
     }
 
     #[test]

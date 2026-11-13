@@ -1,0 +1,8 @@
+#!/bin/sh
+#
+# Rivet, the touch screen. The real start script is /opt/rivet/S80rivet, next to
+# the program, so that every update (Moonraker's update manager) brings it too.
+# Installed by Rivet's installers; removed by its uninstallers.
+
+[ -x /opt/rivet/S80rivet ] || exit 0
+exec /opt/rivet/S80rivet "$@"

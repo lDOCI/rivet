@@ -24,6 +24,8 @@ export global Strings {
     // Rivet's own update: "{}" is the version.
     out property <string> rivet-to: @tr("Rivet {}, the screen restarts", "{}");
     out property <string> rivet-updating: @tr("downloading and installing…");
+    // A time zone is set, but none Rivet lists.
+    out property <string> zone-set: @tr("set, not in the list");
     out property <string> rivet-rolled-back: @tr("the new version did not start; the previous one is back");
     // Wi-Fi rows: band, security, joined before, signal.
     out property <string> ghz: @tr("{} GHz", "{}");
@@ -58,7 +60,7 @@ import { Toast } from "kit/toast.slint";
 import { HomeScreen } from "screens/home.slint";
 import { HeatingScreen } from "screens/heating.slint";
 import { MotionScreen } from "screens/motion.slint";
-import { ToolsScreen, ConsoleScreen, MacrosScreen, ConsoleLine } from "screens/tools.slint";
+import { ToolsScreen, ConsoleScreen, MacrosScreen, ConsoleLine, PickScreen } from "screens/tools.slint";
 import { FilesScreen, FileScreen, FileItem, FileInfo, FindScreen, RenameScreen, MoveScreen } from "screens/files.slint";
 import { WifiJoinScreen } from "screens/wifi.slint";
 import { TouchCalScreen } from "screens/touchcal.slint";
@@ -571,6 +573,9 @@ export component AppWindow inherits Window {
     in property <string> ver-fluidd-sub;
     in property <bool> has-stock-macro;
     in property <string> time-zone;
+    // The zone can be chosen here (Klipper Mod's file, or Z-Mod's SET_TIMEZONE).
+    in property <bool> zone-settable;
+    in property <[string]> time-zones;
     callback refresh-system();
     // Wi-Fi through wpa_supplicant (on the printer only).
     in property <bool> wifi-available;
@@ -661,7 +666,7 @@ export component AppWindow inherits Window {
         Rail {
             active: !root.ready ? "" : (root.screen == "fans" || root.screen == "filament" || root.screen == "heating" || root.screen == "heat-presets" || root.screen == "temp-graph" || root.screen == "motion" || root.screen == "extruder" || root.screen == "light" || root.screen == "speed" || root.screen == "zoffset" || root.screen == "motion-more" || root.screen == "retraction" || root.screen == "dryer" || root.screen == "spools" || root.screen == "devices") ? "control"
                 : (root.screen == "control" || root.screen == "tools" || root.screen == "settings" || root.screen == "messages") ? root.screen
-                : (root.screen == "set-screen" || root.screen == "set-theme" || root.screen == "theme-picker" || root.screen == "set-lock" || root.screen == "set-sound" || root.screen == "set-language" || root.screen == "set-safety" || root.screen == "set-system" || root.screen == "set-network" || root.screen == "wifi-join" || root.screen == "set-printers" || root.screen == "set-updates") ? "settings"
+                : (root.screen == "set-screen" || root.screen == "set-theme" || root.screen == "theme-picker" || root.screen == "set-lock" || root.screen == "set-sound" || root.screen == "set-language" || root.screen == "time-zone" || root.screen == "set-safety" || root.screen == "set-system" || root.screen == "set-network" || root.screen == "wifi-join" || root.screen == "set-printers" || root.screen == "set-updates") ? "settings"
                 : (root.screen == "console" || root.screen == "macros" || root.screen == "macro-params" || root.screen == "calibrate" || root.screen == "bed-mesh" || root.screen == "mesh-profiles" || root.screen == "screws" || root.screen == "probe" || root.screen == "shaper" || root.screen == "shaper-result" || root.screen == "belts" || root.screen == "pid" || root.screen == "pa" || root.screen == "tmc" || root.screen == "limits" || root.screen == "sensors" || root.screen == "history" || root.screen == "service" || root.screen == "camera") ? "tools"
                 : "home";
             unread: root.unread;
@@ -1041,21 +1046,29 @@ export component AppWindow inherits Window {
             heater-sel: root.pid-heater;
             temp-num: root.pid-temp;
             fan-sel: root.pid-fan;
-            fan-shown: root.pid-heater == 0;
-            now-value: root.pid-heater == 0 ? root.pid-nozzle : root.pid-bed;
+            fan-shown: root.pid-heater != 1;
+            now-value: root.pid-heater == 1 ? root.pid-bed : root.pid-nozzle;
             run-enabled: !root.calib-busy && !root.busy;
-            run-sub: root.calib-busy ? @tr("running: the heater cycles, about 5 minutes") : @tr("the heater switches on and off several times");
+            run-sub: root.calib-busy ? (root.pid-heater == 2 ? @tr("running: the nozzle, then the bed at 60°, about 20 minutes") : @tr("running: the heater cycles, about 5 minutes"))
+                : root.pid-heater == 2 ? @tr("the nozzle first, then the bed at 60°") : @tr("the heater switches on and off several times");
             back => { root.screen = "calibrate"; }
             picked(key, i) => {
-                if (key == "heater") { root.pid-heater = i; root.pid-temp = i == 0 ? 220 : 60; }
+                if (key == "heater") { root.pid-heater = i; root.pid-temp = i == 1 ? 60 : 220; }
                 if (key == "fan") { root.pid-fan = i; }
             }
             set-value(key, v) => { if (key == "temp") { root.pid-temp = v; } }
             activate(key) => {
                 if (key == "run") {
-                    root.calibrate((root.pid-heater == 0 ? "M106 S" + (root.pid-fan == 0 ? 0 : root.pid-fan == 1 ? 128 : 255) + "\n" : "")
-                        + "PID_CALIBRATE HEATER=" + (root.pid-heater == 0 ? "extruder" : "heater_bed") + " TARGET=" + round(root.pid-temp)
-                        + (root.pid-heater == 0 ? "\nM107" : ""));
+                    // Nozzle (with the part fan as when printing), bed, or both in a row.
+                    root.calibrate(
+                        (root.pid-heater != 1
+                            ? "M106 S" + (root.pid-fan == 0 ? 0 : root.pid-fan == 1 ? 128 : 255)
+                              + "\nPID_CALIBRATE HEATER=extruder TARGET=" + round(root.pid-temp) + "\nM107"
+                            : "")
+                        + (root.pid-heater == 2 ? "\n" : "")
+                        + (root.pid-heater != 0
+                            ? "PID_CALIBRATE HEATER=heater_bed TARGET=" + (root.pid-heater == 1 ? round(root.pid-temp) : 60)
+                            : ""));
                 }
             }
         }
@@ -1247,11 +1260,22 @@ export component AppWindow inherits Window {
             lang-sel: root.russian ? 0 : 1;
             clock-sel: root.set-clock;
             zone-value: root.time-zone != "" ? root.time-zone : @tr("not set");
-            zone-sub: root.time-zone != "" ? @tr("for “done at 15:20”") : @tr("set it in KlipperMod: the clock stays hidden until then");
+            zone-sub: root.time-zone != "" ? @tr("for “done at 15:20”") : root.zone-settable ? @tr("choose it: the clock stays hidden until then") : @tr("not set on the printer: the clock stays hidden until then");
             back => { root.screen = "settings"; }
+            activate(key) => { if (key == "zone" && root.zone-settable) { root.screen = "time-zone"; } }
             picked(key, i) => {
                 if (key == "lang") { root.set-language(i); }
                 if (key == "clock") { root.set-clock = i; root.setting-changed("clock_12h", i == 1 ? "1" : "0"); }
+            }
+        }
+        if root.ready && root.screen == "time-zone": PickScreen {
+            title: @tr("Time zone");
+            items: root.time-zones;
+            current: root.time-zone;
+            back => { root.screen = "set-language"; }
+            pick(zone) => {
+                root.system-action("tz:" + zone);
+                root.screen = "set-language";
             }
         }
         if root.ready && root.screen == "set-safety": SafetyForm {

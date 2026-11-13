@@ -609,6 +609,16 @@ fn show(ui: &AppWindow, name: &str) {
             ])));
             ui.set_screen("macro-params".into());
         }
+        "time-zone" => {
+            let zones: Vec<slint::SharedString> = rivet::timezone::ZONES
+                .iter()
+                .map(|z| z.replace('_', " ").into())
+                .collect();
+            ui.set_time_zones(slint::ModelRc::new(slint::VecModel::from(zones)));
+            ui.set_time_zone("Europe/Moscow".into());
+            ui.set_zone_settable(true);
+            ui.set_screen("time-zone".into());
+        }
         "touch-test" => ui.set_overlay("touch-test".into()),
         "usb-installing" | "usb-done" | "usb-removed" | "usb-error" => {
             ui.set_installer_step(name.trim_start_matches("usb-").into());

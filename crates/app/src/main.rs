@@ -34,6 +34,22 @@ fn main() -> anyhow::Result<()> {
     );
     rivet::apply_language(&lang);
     ui.set_russian(lang == "ru");
+    let zones: Vec<slint::SharedString> = rivet::timezone::ZONES
+        .iter()
+        .map(|z| z.replace('_', " ").into())
+        .collect();
+    ui.set_time_zones(slint::ModelRc::new(slint::VecModel::from(zones)));
+    let system_lang = std::env::var("LANG").ok().filter(|l| {
+        let l = l.to_ascii_lowercase();
+        !l.is_empty() && l != "c" && l != "posix" && !l.starts_with("c.")
+    });
+    rivet::LANGUAGE_SET.store(
+        lang_arg.is_some()
+            || lang_env.is_some()
+            || config.language.is_some()
+            || system_lang.is_some(),
+        std::sync::atomic::Ordering::Relaxed,
+    );
     // --screen <name>: open on that screen (proof shots on the printer); the rail
     // and back buttons work as usual from there.
     let start_screen = flag_value("--screen");

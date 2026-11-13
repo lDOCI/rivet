@@ -3,8 +3,9 @@
 #
 # The release's rivet-<version>-usb.zip, unpacked onto a FAT32 USB stick:
 #   flashforge_init.sh     this script
-#   rivet/                 rivet, rivet.sha256, release_info.json, S80rivet,
-#                          rivet.toml.example, *.fb.gz (the screen pictures)
+#   rivet/                 rivet, rivet-watchdog, rivet.sha256, release_info.json,
+#                          S80rivet, S80rivet.initd, rivet.toml.example, *.fb.gz
+#                          (the screen pictures)
 # Insert the stick and switch the printer on. Klipper Mod sees flashforge_init.sh
 # on the stick and leaves the boot to the stock firmware's auto_run.sh, which runs
 # this script (as for any Flashforge or Klipper Mod update). It installs Rivet
@@ -77,7 +78,7 @@ OPT=$MOD/opt/rivet
 CONF=$MOD/root/printer_data/config
 
 install_rivet() {
-    for f in rivet rivet.sha256 release_info.json S80rivet rivet.toml.example; do
+    for f in rivet rivet-watchdog rivet.sha256 release_info.json S80rivet S80rivet.initd rivet.toml.example; do
         [ -f $SRC/$f ] || fail "rivet/$f is missing on the USB stick"
     done
     (cd $SRC && sha256sum -c rivet.sha256 >/dev/null 2>&1) || fail "rivet/rivet does not match rivet.sha256 (copy the files to the stick again)"
@@ -91,7 +92,9 @@ install_rivet() {
     put $SRC/rivet $OPT/rivet 755 || fail "cannot write $OPT/rivet"
     cp -f $SRC/rivet.sha256 $SRC/release_info.json $OPT/
     rm -f $OPT/rolled-back
-    put $SRC/S80rivet $INIT/S80rivet 755 || fail "cannot write $INIT/S80rivet"
+    put $SRC/rivet-watchdog $OPT/rivet-watchdog 755 || fail "cannot write $OPT/rivet-watchdog"
+    put $SRC/S80rivet $OPT/S80rivet 755 || fail "cannot write $OPT/S80rivet"
+    put $SRC/S80rivet.initd $INIT/S80rivet 755 || fail "cannot write $INIT/S80rivet"
     if [ -f $CONF/rivet.toml ]; then
         log "kept existing rivet.toml"
     else
@@ -128,6 +131,12 @@ persistent_files:
 CONF_END
         log "added [update_manager rivet] to moonraker.conf"
     fi
+    # RIVET_SCREEN for the console: rivet.cfg, included from printer.cfg.
+    [ -f $SRC/rivet.cfg ] && cp -f $SRC/rivet.cfg $CONF/rivet.cfg
+    if [ -f $CONF/rivet.cfg ] && [ -f $CONF/printer.cfg ] && ! grep -q '^\[include rivet.cfg\]' $CONF/printer.cfg; then
+        awk 'BEGIN{d=0} /^#\*# <-+ SAVE_CONFIG/ && !d {print "[include rivet.cfg]"; print ""; d=1} {print} END{if(!d){print ""; print "[include rivet.cfg]"}}' $CONF/printer.cfg > $CONF/printer.cfg.rivet-tmp && mv -f $CONF/printer.cfg.rivet-tmp $CONF/printer.cfg
+        log "added [include rivet.cfg] to printer.cfg"
+    fi
     sync
     log "done: Rivet $version starts with Klipper Mod"
 }
@@ -145,6 +154,11 @@ remove_rivet() {
         rm -f $CONF/moonraker.conf.before-rivet
         log "removed [update_manager rivet] from moonraker.conf"
     fi
+    if [ -f $CONF/printer.cfg ] && grep -q '^\[include rivet.cfg\]' $CONF/printer.cfg; then
+        grep -v '^\[include rivet.cfg\]' $CONF/printer.cfg > $CONF/printer.cfg.rivet-tmp && mv -f $CONF/printer.cfg.rivet-tmp $CONF/printer.cfg
+        log "removed [include rivet.cfg] from printer.cfg"
+    fi
+    rm -f $CONF/rivet.cfg
     echo "$replaced" | while read -r name st; do
         [ -n "$name" ] || continue
         if [ -f "$INIT/_$name" ] && [ ! -f "$INIT/$name" ]; then

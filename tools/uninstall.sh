@@ -126,6 +126,18 @@ while [ $i -lt 30 ] && ! python3 -c 'import urllib.request; urllib.request.urlop
   i=$((i + 1))
 done
 
+# RIVET_SCREEN: rivet.cfg and its include line.
+pc=/root/printer_data/config/printer.cfg
+if [ -f $pc ] && grep -q '^\[include rivet.cfg\]' $pc; then
+  grep -v '^\[include rivet.cfg\]' $pc > $pc.rivet-tmp && mv -f $pc.rivet-tmp $pc
+  echo "removed [include rivet.cfg] from $pc"
+  restart_klipper=1
+fi
+gone /root/printer_data/config/rivet.cfg
+if [ -n "${restart_klipper:-}" ]; then
+  curl -s -m 10 -X POST http://127.0.0.1:7125/printer/restart >/dev/null && echo "restarted Klipper"
+fi
+
 # Bring back exactly the screens tools/install.sh disabled, nothing else.
 if [ -n "$REPLACED" ]; then
   echo "$REPLACED" | while read -r name st; do

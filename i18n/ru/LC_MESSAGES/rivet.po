@@ -1747,8 +1747,8 @@ msgstr "не задан"
 msgid "for “done at 15:20”"
 msgstr "для «готово в 15:20»"
 
-msgid "set it in KlipperMod: the clock stays hidden until then"
-msgstr "задайте его в KlipperMod — до этого часы не показываются"
+msgid "not set on the printer: the clock stays hidden until then"
+msgstr "не задан на принтере — до этого часы не показываются"
 
 msgid "Flashforge's firmware until the next reboot"
 msgstr "прошивка Flashforge до перезагрузки"
@@ -2008,8 +2008,8 @@ msgstr "адрес Moonraker и порт"
 msgid "Add a printer"
 msgstr "Добавить принтер"
 
-msgid "updated with a KlipperMod image from USB"
-msgstr "обновляется образом KlipperMod с USB"
+msgid "updated with the printer's firmware"
+msgstr "обновляется вместе с прошивкой принтера"
 
 msgid "VERSIONS"
 msgstr "ВЕРСИИ"
@@ -2307,3 +2307,21 @@ msgstr "новая версия не запустилась, вернулась 
 
 msgid "Update the screen"
 msgstr "Обновить экран"
+
+msgid "set, not in the list"
+msgstr "задан, не из списка"
+
+msgid "choose it: the clock stays hidden until then"
+msgstr "выберите его — до этого часы не показываются"
+
+msgid "chosen"
+msgstr "выбран"
+
+msgid "running: the nozzle, then the bed at 60°, about 20 minutes"
+msgstr "идёт: сопло, затем стол при 60°, около 20 минут"
+
+msgid "the nozzle first, then the bed at 60°"
+msgstr "сначала сопло, потом стол при 60°"
+
+msgid "Both"
+msgstr "Оба"
