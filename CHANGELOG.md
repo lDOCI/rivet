@@ -2,6 +2,16 @@
 
 Each release's section is also its description on GitHub. [Русский — ниже в каждом разделе.]
 
+## v0.1.2-alpha
+
+- Z-Mod: the screen's backlight stayed off. Z-Mod has its own `backlight` command in the place
+  where Klipper Mod keeps another one, taking percent instead of 0–255; Rivet now tells them apart
+  by their answer and, on Z-Mod, drives the display's backlight directly.
+
+**Русский.** Z-Mod: подсветка экрана оставалась выключенной. У Z-Mod своя команда `backlight` там
+же, где у Klipper Mod другая, и она принимает проценты, а не 0–255; теперь Rivet различает их по
+ответу и на Z-Mod управляет подсветкой дисплея напрямую.
+
 ## v0.1.1-alpha
 
 - Pause at layer: the row was missing during a print whose slicer writes no layer numbers

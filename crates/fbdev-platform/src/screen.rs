@@ -145,9 +145,13 @@ pub(crate) mod backlight {
                 .map(|e| e.path());
             let mut this = if let Some(dir) = sysfs {
                 Self::Sysfs(dir)
-            } else if Path::new(AD5M_TOOL).exists() {
-                let level = tool_level().filter(|l| *l > 0).unwrap_or(128);
-                Self::Tool { level }
+            } else if let Some(level) = Path::new(AD5M_TOOL).exists().then(tool_level).flatten() {
+                // Klipper Mod's tool answers "Current brightness: 191/255 (74%)".
+                // Z-Mod has another `backlight` there (percent, answers a bare
+                // number): not this one; the driver is then used directly.
+                Self::Tool {
+                    level: if level > 0 { level } else { 128 },
+                }
             } else if Path::new(disp::DEVICE).exists() {
                 let level = disp::level().filter(|l| *l > 0).unwrap_or(153);
                 Self::Disp { level }
@@ -280,6 +284,8 @@ pub(crate) mod backlight {
                 Some(191)
             );
             assert_eq!(super::parse_level("nonsense"), None);
+            // Z-Mod's `backlight` (percent in, a bare 0–255 out) is not this tool.
+            assert_eq!(super::parse_level("153\n"), None);
         }
     }
 }
