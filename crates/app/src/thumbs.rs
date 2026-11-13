@@ -268,6 +268,15 @@ pub fn fit(img: Rgba, width: u32, height: u32, max_scale: f32) -> Rgba {
     let k = (width as f32 / img.width as f32)
         .min(height as f32 / img.height as f32)
         .min(max_scale);
+    if k < 0.99 {
+        // Still larger than the box: shrink it once here (bicubic) rather than
+        // let the screen scale it on every frame (nearest pixel, and memory).
+        let (w, h) = (
+            (img.width as f32 * k).round() as u32,
+            (img.height as f32 * k).round() as u32,
+        );
+        return resize(&img, w.max(1), h.max(1));
+    }
     if k <= 1.01 {
         return img;
     }
@@ -632,5 +641,24 @@ mod tests {
         // Limited by the width: 300 → 372.
         let f = fit(wide, 372, 232, 2.0);
         assert_eq!(f.width, 372);
+    }
+
+    #[test]
+    fn fit_shrinks_a_large_preview_into_a_small_box() {
+        // A 300×300 slicer preview for a Files card: no larger than the box, so
+        // the screen never scales it.
+        let img = Rgba {
+            width: 300,
+            height: 300,
+            data: vec![200; 300 * 300 * 4],
+        };
+        let f = fit(img, 196, 100, 3.0);
+        assert!(
+            f.width <= 196 && f.height <= 100,
+            "{}x{}",
+            f.width,
+            f.height
+        );
+        assert_eq!(f.height, 100);
     }
 }

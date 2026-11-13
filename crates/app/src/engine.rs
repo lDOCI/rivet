@@ -29,7 +29,10 @@ const SETUP_TIMEOUT: Duration = Duration::from_secs(5);
 type Preview = SharedPixelBuffer<Rgba8Pixel>;
 
 /// Cache limit for decoded previews. The printer has ~38 MB free in total.
-const THUMB_CACHE_BYTES: usize = 3 * 1024 * 1024;
+/// Decoded previews kept for going back and forth; the grid's are small.
+const THUMB_CACHE_BYTES: usize = 1536 * 1024;
+/// The place a preview has on a Files card (inside its padding, above the name).
+const GRID_THUMB: (u32, u32) = (196, 112);
 /// The Home card's preview area, px (the card less its padding, by the thumbnail's height).
 const HOME_THUMB: (u32, u32) = (372, 232);
 
@@ -113,7 +116,34 @@ async fn preview(
     file: &str,
     meta: Option<model::FileMeta>,
 ) -> Option<Preview> {
-    if let Some(hit) = thumbs.cache.lock().ok()?.get(file) {
+    preview_sized(client, thumbs, file, meta, None).await
+}
+
+/// A preview for a Files card: decoded only as large as the card shows it, so a
+/// screenful of them takes a third of the memory and the screen does not scale.
+async fn grid_preview(
+    client: &Client,
+    thumbs: &Thumbs,
+    file: &str,
+    meta: Option<model::FileMeta>,
+) -> Option<Preview> {
+    preview_sized(client, thumbs, file, meta, Some(GRID_THUMB)).await
+}
+
+/// A preview fitted to `place` (width, height), or the large one (file and
+/// print screens) when `None`.
+async fn preview_sized(
+    client: &Client,
+    thumbs: &Thumbs,
+    file: &str,
+    meta: Option<model::FileMeta>,
+    place: Option<(u32, u32)>,
+) -> Option<Preview> {
+    let key = match place {
+        Some((w, h)) => format!("{w}x{h}:{file}"),
+        None => file.to_owned(),
+    };
+    if let Some(hit) = thumbs.cache.lock().ok()?.get(&key) {
         return Some(hit);
     }
     let meta = match meta {
@@ -129,10 +159,13 @@ async fn preview(
                 .ok()?,
         ),
     };
-    let img = thumbs::prepare(fetch_png(thumbs, file, &meta, thumbs::MAX_WIDTH).await?);
+    let img = match place {
+        Some((w, h)) => thumbs::prepare_for(fetch_png(thumbs, file, &meta, w).await?, w, h),
+        None => thumbs::prepare(fetch_png(thumbs, file, &meta, thumbs::MAX_WIDTH).await?),
+    };
     let size = img.data.len();
     let buf = Preview::clone_from_slice(&img.data, img.width, img.height);
-    thumbs.cache.lock().ok()?.insert(file, buf.clone(), size);
+    thumbs.cache.lock().ok()?.insert(&key, buf.clone(), size);
     Some(buf)
 }
 
@@ -1691,7 +1724,7 @@ fn load_thumbs(
                 .await
                 .ok()
                 .map(|m| model::parse_file_meta(&m));
-            let buf = preview(&client, &thumbs, &path, meta.clone()).await;
+            let buf = grid_preview(&client, &thumbs, &path, meta.clone()).await;
             let _ = ui.upgrade_in_event_loop(move |ui| {
                 let thumb = buf.map(slint::Image::from_rgba8);
                 crate::files::update(&ui, &path, |item| {
