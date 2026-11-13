@@ -83,9 +83,20 @@ fn main() {
 fn supervise(p: &Paths, rivet_args: &[String]) -> ! {
     let mut delay = Duration::from_secs(1);
     let mut fails = 0u32;
+    // The binary as last checked (size, modified): checking 14 MB on the
+    // printer's CPU takes seconds, so only a changed file is checked again.
+    let mut checked: Option<(u64, std::time::SystemTime)> = None;
     loop {
         cut_log(&p.log);
-        check_binary(p);
+        let stamp = fs::metadata(&p.rivet)
+            .ok()
+            .and_then(|m| Some((m.len(), m.modified().ok()?)));
+        if stamp.is_none() || stamp != checked {
+            check_binary(p);
+            checked = fs::metadata(&p.rivet)
+                .ok()
+                .and_then(|m| Some((m.len(), m.modified().ok()?)));
+        }
         let started = Instant::now();
         let log = OpenOptions::new()
             .create(true)
@@ -228,6 +239,12 @@ fn copy_atomic(from: &Path, to: &Path) -> std::io::Result<()> {
 }
 
 fn same_file(a: &Path, b: &Path) -> bool {
+    // Different sizes: different files, without reading 14 MB twice.
+    match (fs::metadata(a), fs::metadata(b)) {
+        (Ok(x), Ok(y)) if x.len() != y.len() => return false,
+        (Err(_), _) | (_, Err(_)) => return false,
+        _ => {}
+    }
     match (fs::read(a), fs::read(b)) {
         (Ok(x), Ok(y)) => x == y,
         _ => false,

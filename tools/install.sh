@@ -211,7 +211,13 @@ if [ -n "${restart_klipper:-}" ]; then
   curl -s -m 10 -X POST http://127.0.0.1:7125/printer/restart >/dev/null && echo "restarted Klipper for rivet.cfg"
 fi
 /etc/init.d/S80rivet start >/dev/null
-sleep 3
+# Up to 20 s: after a Klipper restart the watchdog may take a while to start it.
+i=0
+while [ $i -lt 20 ] && ! { [ -f /run/rivet.child.pid ] && kill -0 "$(cat /run/rivet.child.pid)" 2>/dev/null; }; do
+  sleep 1
+  i=$((i + 1))
+done
+sleep 2
 pid="$(cat /run/rivet.child.pid 2>/dev/null || true)"
 if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
   echo "Rivet is running (pid $pid, $(grep VmRSS /proc/$pid/status | tr -s ' \t' ' '))"
