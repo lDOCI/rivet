@@ -326,6 +326,9 @@ pub async fn run(
     // for, and the tracker once the file's layer plan came in.
     let mut layers_for = String::new();
     let mut layers: Option<model::LayerTracker> = None;
+    // When the layer count was last sent: Klipper may drop it (one sent as the
+    // file loads is cleared by the load), so it is sent again until it holds.
+    let mut layers_sent: Option<Instant> = None;
     let started = Instant::now();
     let mut save_config_pending = false;
     let mut dryer: Option<(SystemTime, f32)> = None;
@@ -448,6 +451,7 @@ pub async fn run(
                         // Klipper learns the count now: layer pauses become possible.
                         if let Some(t) = &layers {
                             spawn_gcode(&client, format!("SET_PRINT_STATS_INFO TOTAL_LAYER={}", t.count()));
+                            layers_sent = Some(Instant::now());
                         }
                     }
                 }
@@ -535,6 +539,16 @@ pub async fn run(
                             });
                         }
                     }
+                    // Sent, but Klipper still has no count: send it again.
+                    if let Some(t) = &layers {
+                        if snap.total_layers.is_none()
+                            && layers_sent.is_some_and(|at| at.elapsed() >= Duration::from_secs(5))
+                        {
+                            tracing::info!(count = t.count(), "Klipper lost the layer count: sending it again");
+                            spawn_gcode(&client, format!("SET_PRINT_STATS_INFO TOTAL_LAYER={}", t.count()));
+                            layers_sent = Some(Instant::now());
+                        }
+                    }
                     if printing {
                         if let Some(t) = layers.as_mut() {
                             let new = t.update(started.elapsed().as_secs_f64(), snap.gcode_z);
@@ -551,6 +565,7 @@ pub async fn run(
                 } else {
                     layers_for.clear();
                     layers = None;
+                    layers_sent = None;
                 }
                 // A print just ended: what was waiting for it.
                 if snap.print_state != last_print_state {

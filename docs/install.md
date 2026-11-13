@@ -28,6 +28,22 @@ stick and the printer starts as it did before.
 If the screen never shows a result, remove the stick and switch the printer off and on: without
 the stick Klipper Mod starts as usual.
 
+**The printer starts as usual and ignores the stick.** Klipper Mod looks at the stick two seconds
+into the start; a slow stick with a partition table is not ready by then (its log says
+`mounting /dev/sda on /mnt failed`). Format the stick as FAT32 *without* a partition table, then
+copy the files again. This erases the stick.
+
+- macOS (find the stick's `diskN` in `diskutil list`):
+
+  ```bash
+  diskutil unmountDisk /dev/diskN
+  sudo newfs_msdos -F 32 -v RIVET /dev/rdiskN
+  diskutil mountDisk /dev/diskN
+  ```
+
+- Linux (the whole device, e.g. `/dev/sdX`, not `/dev/sdX1`): `sudo mkfs.vfat -F 32 -I /dev/sdX`
+- Windows cannot do this by itself: try another stick, or use the ssh way.
+
 **Remove Rivet** the same way with `rivet-<version>-usb-remove.zip`: the screen says *Rivet is
 removed*, and GuppyScreen (or whatever screen Rivet replaced) is back after the restart.
 

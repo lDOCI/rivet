@@ -2,6 +2,20 @@
 
 Each release's section is also its description on GitHub. [Русский — ниже в каждом разделе.]
 
+## v0.1.1-alpha
+
+- Pause at layer: the row was missing during a print whose slicer writes no layer numbers
+  (OrcaSlicer by default). Rivet tells Klipper the layer count from the file, but the one it
+  sent as the file loaded could be lost; it now checks and sends it again until Klipper has it.
+- Installing from a USB stick: a stick with a partition table may be seen too late by Klipper
+  Mod; the instructions now say to format it without one.
+
+**Русский.** Пауза на слое: строки не было во время печати, если слайсер не записал номера
+слоёв (OrcaSlicer по умолчанию). Rivet сообщает Klipper число слоёв из файла, но сообщение,
+отправленное в момент загрузки файла, могло потеряться; теперь он проверяет и повторяет, пока
+Klipper его не запомнит. Установка с флешки: флешку с таблицей разделов Klipper Mod может не
+успеть увидеть; в инструкции теперь сказано, как отформатировать её без таблицы.
+
 ## v0.1.0-alpha
 
 First public release, for the Flashforge Adventurer 5M / 5M Pro with Klipper Mod.
