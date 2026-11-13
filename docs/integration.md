@@ -136,13 +136,19 @@ What Z-Mod does for HelixScreen, done for Rivet:
   ```json
   "rivet": {"type": "web", "repo": "lDOCI/rivet", "path": "/srv/rivet",
             "persistent_files": ["rivet.good", "rolled-back"],
-            "var": "rivet", "check_files": ["rivet", "S80rivet"], "printers": ["FF5M"]}
+            "var": "rivet", "var_swap": "guppy", "var_off": ["helix"],
+            "check_files": ["rivet", "S80rivet"], "printers": ["FF5M"]}
   ```
 
 - `start.sh`: seed `/srv/rivet/release_info.json` as above when it is missing;
 - the screen switcher (`S80guppyscreen`, `zdisplay.sh`, `stop.sh`): when `rivet = 1`, start and
   stop `/srv/rivet/S80rivet` where it does `S80helixscreen`, and stop Rivet (`S80rivet stop`)
   where it kills the other screens.
+
+Proposed to Z-Mod in [ghzserg/z_ff5m#16](https://github.com/ghzserg/z_ff5m/pull/16) (plugins, `start.sh`,
+`S80rivet`, `S80guppyscreen`, `zdisplay.sh`), [ghzserg/base#19](https://github.com/ghzserg/base/pull/19)
+(`DISPLAY_OFF RIVET=1`) and [ghzserg/zmod#799](https://github.com/ghzserg/zmod/pull/799) (documentation).
+`var_off` is a key those pull requests add to plugman: variables set to 0 when the plugin is turned on.
 
 ## Forge-X
 

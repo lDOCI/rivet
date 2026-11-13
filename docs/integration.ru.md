@@ -140,13 +140,19 @@ Rivet работает с любым конфигом Klipper и показыв�
   ```json
   "rivet": {"type": "web", "repo": "lDOCI/rivet", "path": "/srv/rivet",
             "persistent_files": ["rivet.good", "rolled-back"],
-            "var": "rivet", "check_files": ["rivet", "S80rivet"], "printers": ["FF5M"]}
+            "var": "rivet", "var_swap": "guppy", "var_off": ["helix"],
+            "check_files": ["rivet", "S80rivet"], "printers": ["FF5M"]}
   ```
 
 - `start.sh`: если `/srv/rivet/release_info.json` нет, положить его как выше;
 - переключатель экранов (`S80guppyscreen`, `zdisplay.sh`, `stop.sh`): при `rivet = 1` запускать и
   останавливать `/srv/rivet/S80rivet` там же, где `S80helixscreen`, и останавливать Rivet
   (`S80rivet stop`) там, где гасятся остальные экраны.
+
+Предложено в Z-Mod: [ghzserg/z_ff5m#16](https://github.com/ghzserg/z_ff5m/pull/16) (плагины, `start.sh`,
+`S80rivet`, `S80guppyscreen`, `zdisplay.sh`), [ghzserg/base#19](https://github.com/ghzserg/base/pull/19)
+(`DISPLAY_OFF RIVET=1`) и [ghzserg/zmod#799](https://github.com/ghzserg/zmod/pull/799) (документация).
+`var_off` — ключ, который эти PR добавляют в plugman: переменные, обнуляемые при включении плагина.
 
 ## Forge-X
 
