@@ -19,7 +19,7 @@ It replaces the screen that comes with [Klipper Mod](https://github.com/xblax/fl
 | Printer | Firmware | State |
 |---|---|---|
 | Adventurer 5M / 5M Pro | Klipper Mod | **supported**: install from a USB stick or over ssh |
-| Adventurer 5M / 5M Pro | Z-Mod | runs, once Z-Mod lists Rivet as one of its screens (as it does HelixScreen) |
+| Adventurer 5M / 5M Pro | Z-Mod | **supported**: one of Z-Mod's screens, like HelixScreen ([how](docs/install.md#on-z-mod)) |
 | Adventurer 5M / 5M Pro | Forge-X, stock firmware | not supported |
 | Adventurer 5X | any | planned: a different processor (MIPS) and the 4-colour IFS |
 | Other Klipper printers | — | later. Nothing in Rivet is tied to the AD5M except the installer; the screen size is fixed at 800×480 for now |

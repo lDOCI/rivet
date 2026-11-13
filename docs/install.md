@@ -3,9 +3,33 @@
 For the Flashforge Adventurer 5M / 5M Pro with [Klipper Mod](https://github.com/xblax/flashforge_ad5m_klipper_mod).
 [Русская версия](install.ru.md).
 
-On **Z-Mod**, Rivet is installed by Z-Mod itself once it lists it as one of its screens (the way it
-offers HelixScreen); these installers refuse to run there. **Forge-X** and the stock firmware are
-not supported.
+On **Z-Mod** Rivet is one of Z-Mod's screens, like HelixScreen: see [On Z-Mod](#on-z-mod) below; the
+USB and ssh installers are for Klipper Mod and refuse to run on Z-Mod. **Forge-X** and the stock
+firmware are not supported.
+
+## On Z-Mod
+
+1. In Fluidd or Mainsail run the `PLUGINS` macro and tap **RIVET**, then
+   **Save (Moonraker restart)**.
+
+   ![PLUGINS: RIVET](screenshots/zmod-1-plugins.jpg)
+
+   Z-Mod says to install it through the updates:
+
+   ![rivet: install via Fluidd/Mainsail updates](screenshots/zmod-2-notice.jpg)
+
+2. In the list of updates of Fluidd or Mainsail, update **rivet**.
+
+   ![rivet v0.0.1 -> v0.1.2-alpha](screenshots/zmod-3-update.jpg)
+
+3. Run `DISPLAY_OFF` with `GUPPY=0`, `HELIX=0`, `RIVET=1` (`DISPLAY_OFF GUPPY=0 RIVET=1` in the
+   console). The printer restarts with Rivet.
+
+   ![DISPLAY_OFF: RIVET=1](screenshots/zmod-4-display-off.jpg)
+
+Updates come the same way, in the list of updates, or on the screen in Settings › Updates. Back to
+GuppyScreen: `DISPLAY_OFF GUPPY=1`. Rivet's settings and logs are in `mod_data` (`rivet.toml`,
+`log/rivet.log`).
 
 ## From a USB stick
 
