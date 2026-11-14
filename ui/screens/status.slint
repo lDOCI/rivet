@@ -200,7 +200,7 @@ export component StatusScreen inherits Rectangle {
                 padding-left: 16px;
                 spacing: 6px;
                 Text { text: @tr("Message from Klipper"); color: Tokens.text-faint; font-size: 13px; font-weight: 600; }
-                Text { text: root.message; color: #fda4af; font-size: 15px; wrap: word-wrap; font-family: "monospace"; }
+                Text { text: root.message; color: #fda4af; font-size: 15px; wrap: word-wrap; }
             }
         }
         if root.kind == "timer": Text {
