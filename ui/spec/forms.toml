@@ -216,13 +216,14 @@ r5 = "noise"
 
 [PidCal]
 component = "PidForm"
-en = { "Нагреватель" = "Heater", "Сопло" = "Nozzle", "Стол" = "Bed", "Оба" = "Both", "Температура" = "Temperature", "как при обычной печати" = "as for a normal print", "Обдув во время" = "Part fan during it", "как при печати" = "as when printing", "Выкл." = "Off", "Текущие" = "Now", "Запустить" = "Start", "нагреватель несколько раз включится и выключится" = "the heater switches on and off several times", "Температура, °" = "Temperature, °", "Нагрев (PID)" = "Heating (PID)" }
+en = { "Нагреватель" = "Heater", "Сопло" = "Nozzle", "Стол" = "Bed", "Оба" = "Both", "Температура сопла" = "Nozzle temperature", "Температура стола" = "Bed temperature", "как при обычной печати" = "as for a normal print", "Обдув во время" = "Part fan during it", "как при печати, для сопла" = "as when printing, for the nozzle", "Выкл." = "Off", "Текущие" = "Now", "Запустить" = "Start", "нагреватель несколько раз включится и выключится" = "the heater switches on and off several times", "Температура сопла, °" = "Nozzle temperature, °", "Температура стола, °" = "Bed temperature, °", "Обдув во время, %" = "Part fan during it, %", "Нагрев (PID)" = "Heating (PID)" }
 [PidCal.rows]
 r0 = "heater"
 r1 = "temp"
-r2 = "fan"
-r3 = { name = "now", data = ["value"] }
-r4 = "run"
+r2 = "bed-temp"
+r3 = "fan"
+r4 = { name = "now", data = ["value"] }
+r5 = "run"
 
 [PressureAdvance]
 component = "PaForm"

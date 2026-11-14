@@ -203,7 +203,7 @@ pub(crate) mod backlight {
                     let _ = std::fs::write(dir.join("brightness"), value.to_string());
                 }
                 Self::Tool { level } | Self::Disp { level } => {
-                    *level = (255 * percent / 100).clamp(1, 255);
+                    *level = level_for(percent);
                     if on {
                         self.set_on(true);
                     }
@@ -224,7 +224,7 @@ pub(crate) mod backlight {
                             *level = l;
                         }
                     }
-                    let value = if on { *level } else { 0 };
+                    let value = if on { (*level).min(MAX_LEVEL) } else { 0 };
                     match Command::new(AD5M_TOOL).arg(value.to_string()).output() {
                         Ok(out) if out.status.success() => {}
                         Ok(out) => tracing::warn!(status = %out.status, "backlight tool failed"),
@@ -274,7 +274,10 @@ pub(crate) mod backlight {
         pub(super) fn set(on: bool, level: u32) -> std::io::Result<()> {
             if on {
                 call(BACKLIGHT_ENABLE, 0)?;
-                call(SET_BRIGHTNESS, libc::c_ulong::from(level.clamp(1, 255)))?;
+                call(
+                    SET_BRIGHTNESS,
+                    libc::c_ulong::from(level.clamp(1, super::MAX_LEVEL)),
+                )?;
             } else {
                 call(BACKLIGHT_DISABLE, 0)?;
             }
@@ -287,6 +290,16 @@ pub(crate) mod backlight {
                 .ok()
                 .and_then(|v| u32::try_from(v).ok())
         }
+    }
+
+    /// The AD5M's panel goes dark at the top of the driver's 0–255 scale (seen at
+    /// 100 % on Z-Mod; Klipper Mod's tool warns its ends can swap), so 100 % on
+    /// the screen is a little below it: no visible difference.
+    pub(super) const MAX_LEVEL: u32 = 240;
+
+    /// Screen percent (5–100) to the driver's level, 1..=MAX_LEVEL.
+    pub(crate) fn level_for(percent: u32) -> u32 {
+        (MAX_LEVEL * percent.min(100) / 100).clamp(1, MAX_LEVEL)
     }
 
     /// "Current brightness: 191/255 (74%)" → 191.
@@ -309,6 +322,9 @@ pub(crate) mod backlight {
                 Some(191)
             );
             assert_eq!(super::parse_level("nonsense"), None);
+            assert_eq!(super::level_for(100), 240);
+            assert_eq!(super::level_for(50), 120);
+            assert_eq!(super::level_for(0), 1);
             // Z-Mod's `backlight` (percent in, a bare 0–255 out) is not this tool.
             assert_eq!(super::parse_level("153\n"), None);
         }

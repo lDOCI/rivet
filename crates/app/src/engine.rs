@@ -975,7 +975,13 @@ async fn system_info(client: &Client, ui: &slint::Weak<AppWindow>) {
         let v = &updates["version_info"][name];
         let version = v["version"].as_str().unwrap_or_default().to_owned();
         let remote = v["remote_version"].as_str().unwrap_or_default();
-        let fresh = remote.is_empty() || remote == version;
+        // Rivet knows its own version; Moonraker's may be stale until it restarts.
+        let have = if name == "rivet" {
+            env!("CARGO_PKG_VERSION")
+        } else {
+            &version
+        };
+        let fresh = !newer(remote, have);
         (version, fresh, remote.to_owned())
     };
     let (mainsail, fluidd) = (web("mainsail"), web("fluidd"));
@@ -2910,15 +2916,42 @@ async fn execute(
                     restart_for_update();
                 }
                 "check-updates" => {
-                    client
+                    // Seen while it runs (it takes a while: GitHub, every component).
+                    let _ = ui.upgrade_in_event_loop(|ui| {
+                        ui.set_update_checking(true);
+                        ui.set_update_check_sub("".into());
+                    });
+                    let refreshed = client
                         .call_timeout(
                             "machine.update.refresh",
                             json!({}),
                             Duration::from_secs(120),
                         )
-                        .await
-                        .map(drop)?;
+                        .await;
                     system_info(client, ui).await;
+                    let status = client
+                        .call_timeout("machine.update.status", json!({}), SETUP_TIMEOUT)
+                        .await
+                        .unwrap_or(Value::Null);
+                    let any = status["version_info"].as_object().is_some_and(|apps| {
+                        apps.values().any(|v| {
+                            let (have, new) = (v["version"].as_str(), v["remote_version"].as_str());
+                            matches!((have, new), (Some(h), Some(n)) if newer(n, h))
+                        })
+                    });
+                    let failed = refreshed.is_err();
+                    let _ = ui.upgrade_in_event_loop(move |ui| {
+                        let words = slint::ComponentHandle::global::<crate::Strings>(&ui);
+                        ui.set_update_checking(false);
+                        ui.set_update_check_sub(if failed {
+                            words.get_check_failed()
+                        } else if any {
+                            words.get_updates_found()
+                        } else {
+                            words.get_no_updates()
+                        });
+                    });
+                    refreshed.map(drop)?;
                 }
                 "reset" => {
                     let keys = client
@@ -3524,5 +3557,38 @@ mod tests {
             message: "Must home axis first".into(),
         };
         assert_eq!(toast_for(&rpc), ("rpc", "Must home axis first".to_owned()));
+    }
+}
+
+/// Whether `remote` is a newer version than `have`. Versions like `v0.1.5-alpha`
+/// compare by their numbers; anything else (a git hash, "?") is newer when it differs.
+fn newer(remote: &str, have: &str) -> bool {
+    fn numbers(v: &str) -> Option<Vec<u64>> {
+        let v = v.trim().trim_start_matches('v');
+        let core = v.split(['-', '+']).next()?;
+        core.split('.').map(|n| n.parse().ok()).collect()
+    }
+    if remote.is_empty() || remote == "?" || remote == have {
+        return false;
+    }
+    match (numbers(remote), numbers(have)) {
+        (Some(r), Some(h)) => r > h,
+        _ => true,
+    }
+}
+
+#[cfg(test)]
+mod version_tests {
+    use super::newer;
+
+    #[test]
+    fn only_a_newer_release_is_an_update() {
+        assert!(newer("v0.1.5-alpha", "v0.1.4-alpha"));
+        assert!(newer("v0.1.5-alpha", "0.1.4"));
+        assert!(!newer("v0.1.4-alpha", "0.1.5"));
+        assert!(!newer("v0.1.5-alpha", "0.1.5"));
+        assert!(!newer("", "0.1.5"));
+        assert!(newer("v0.10.0", "v0.9.3"));
+        assert!(newer("abc123", "def456"));
     }
 }

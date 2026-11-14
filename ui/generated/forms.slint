@@ -945,14 +945,18 @@ export component PidForm inherits FormScreen {
     in property <bool> heater-shown: true;
     in property <string> heater-sub: "";
     in property <int> heater-sel: 0;
-    // Температура
+    // Температура сопла
     in property <bool> temp-shown: true;
     in property <string> temp-sub: @tr("as for a normal print");
     in property <float> temp-num: 40;
+    // Температура стола
+    in property <bool> bed-temp-shown: true;
+    in property <string> bed-temp-sub: @tr("as for a normal print");
+    in property <float> bed-temp-num: 30;
     // Обдув во время
     in property <bool> fan-shown: true;
-    in property <string> fan-sub: @tr("as when printing");
-    in property <int> fan-sel: 1;
+    in property <string> fan-sub: @tr("as when printing, for the nozzle");
+    in property <float> fan-num: 0;
     // Текущие
     in property <bool> now-shown: true;
     in property <string> now-sub: "";
@@ -968,15 +972,20 @@ export component PidForm inherits FormScreen {
     callback edit-number(string, string, float, float, float, int);
     stepped(key, d) => {
         if (key == "temp") { root.set-value(key, max(40, min(350, round((root.temp-num + d) * 1) / 1))); }
+        if (key == "bed-temp") { root.set-value(key, max(30, min(120, round((root.bed-temp-num + d) * 1) / 1))); }
+        if (key == "fan") { root.set-value(key, max(0, min(100, round((root.fan-num + d) * 1) / 1))); }
     }
     edit(key) => {
-        if (key == "temp") { root.edit-number(key, @tr("Temperature, °"), 40, 350, root.temp-num, 0); }
+        if (key == "temp") { root.edit-number(key, @tr("Nozzle temperature, °"), 40, 350, root.temp-num, 0); }
+        if (key == "bed-temp") { root.edit-number(key, @tr("Bed temperature, °"), 30, 120, root.bed-temp-num, 0); }
+        if (key == "fan") { root.edit-number(key, @tr("Part fan during it, %"), 0, 100, root.fan-num, 0); }
     }
     bars: [];
     rows: [
         { kind: "seg", key: "heater", title: @tr("Heater"), sub: root.heater-sub, shown: root.heater-shown, opts: [@tr("Nozzle"), @tr("Bed"), @tr("Both")], sel: root.heater-sel },
-        { kind: "stepper", key: "temp", title: @tr("Temperature"), sub: root.temp-sub, shown: root.temp-shown, value: Format.fixed(root.temp-num, 0) + "°", big: 5 },
-        { kind: "seg", key: "fan", title: @tr("Part fan during it"), sub: root.fan-sub, shown: root.fan-shown, opts: [@tr("Off"), "50%", "100%"], sel: root.fan-sel },
+        { kind: "stepper", key: "temp", title: @tr("Nozzle temperature"), sub: root.temp-sub, shown: root.temp-shown, value: Format.fixed(root.temp-num, 0) + "°", big: 5 },
+        { kind: "stepper", key: "bed-temp", title: @tr("Bed temperature"), sub: root.bed-temp-sub, shown: root.bed-temp-shown, value: Format.fixed(root.bed-temp-num, 0) + "°", big: 5 },
+        { kind: "stepper", key: "fan", title: @tr("Part fan during it"), sub: root.fan-sub, shown: root.fan-shown, value: Format.fixed(root.fan-num, 0) + "%", big: 5 },
         { kind: "info", key: "now", title: @tr("Now"), sub: root.now-sub, shown: root.now-shown, value: root.now-value },
         { kind: "action", key: "run", title: @tr("Start"), sub: root.run-sub, shown: root.run-shown, tone: "accent", on: root.run-enabled }
     ];

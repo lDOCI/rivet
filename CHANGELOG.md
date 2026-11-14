@@ -2,6 +2,22 @@
 
 Each release's section is also its description on GitHub. [Русский — ниже в каждом разделе.]
 
+## v0.1.5-alpha
+
+- Brightness at 100 % switched the screen off (the panel goes dark at the top of the driver's
+  scale); 100 % is now just below it, with no visible difference.
+- PID: the nozzle's and the bed's temperatures and the part fan (in %) are each set, also for
+  Both, as in Fluidd.
+- Checking for updates shows that it runs and what it found.
+- Settings › Updates offered an older Rivet as an update when Moonraker still had stale
+  versions; an update is now shown only when it is newer.
+
+**Русский.** Яркость 100 % выключала экран (у панели край шкалы драйвера); теперь 100 % чуть
+ниже края, разницы на глаз нет. PID: температура сопла, температура стола и обдув (в %)
+задаются отдельно, в том числе для «Оба», как во Fluidd. Проверка обновлений показывает, что
+идёт, и что нашла. Настройки › Обновления предлагали «обновиться» на более старый Rivet, пока у
+Moonraker были устаревшие версии; теперь обновление показывается, только если оно новее.
+
 ## v0.1.4-alpha
 
 - Z-Mod: the part fan is `fanM106`, which Z-Mod's M106 drives. Rivet showed Klipper's `fan` as the
