@@ -366,6 +366,10 @@ pub async fn run(
     let mut save_config_pending = false;
     let mut dryer: Option<(SystemTime, f32)> = None;
     let mut dryer_shown_minutes = -1;
+    // The nozzle heated by hand to extrude: off on its own a while after the
+    // last extrusion, so it is not left hot and forgotten.
+    let mut cool_at: Option<Instant> = None;
+    let mut cool_shown_minutes = -1;
     let mut last_print_state = String::new();
     // Reconnecting: which attempt failed last and when the next one comes.
     let mut retry_at: Option<(u32, Instant)> = None;
@@ -436,6 +440,11 @@ pub async fn run(
                         continue;
                     }
                     _ => {}
+                }
+                if matches!(cmd, Command::Extrude { .. })
+                    && !matches!(state.snapshot().print_state.as_str(), "printing" | "paused")
+                {
+                    cool_at = Some(Instant::now() + NOZZLE_AUTO_OFF);
                 }
                 let cmd = match cmd {
                     Command::Move { axis, delta, speed } => {
@@ -630,6 +639,26 @@ pub async fn run(
                         spawn_gcode(&client, "M140 S0".to_owned());
                         save_dryer(&client, None);
                     }
+                }
+                // The nozzle after extruding by hand: off on time, unless a print
+                // took it over or it is off already.
+                if cool_at.is_some()
+                    && (matches!(snap.print_state.as_str(), "printing" | "paused")
+                        || snap.extruder.target <= 0.0)
+                {
+                    cool_at = None;
+                }
+                if cool_at.is_some_and(|at| Instant::now() >= at) {
+                    cool_at = None;
+                    tracing::info!("nozzle left hot after extruding: switching it off");
+                    spawn_gcode(&client, "M104 S0".to_owned());
+                }
+                let cool_minutes = cool_at.map_or(-1, |at| {
+                    at.saturating_duration_since(Instant::now()).as_secs().div_ceil(60) as i32
+                });
+                if cool_minutes != cool_shown_minutes {
+                    cool_shown_minutes = cool_minutes;
+                    let _ = ui.upgrade_in_event_loop(move |ui| ui.set_nozzle_off_in(cool_minutes));
                 }
                 let minutes = dryer.map_or(-1, |(end, _)| {
                     end.duration_since(SystemTime::now())
@@ -1988,10 +2017,18 @@ fn unix_now() -> f64 {
 }
 
 /// A move that stays inside the axis range; `None` when it would not move.
+/// How long a nozzle heated by hand stays hot after the last extrusion.
+const NOZZLE_AUTO_OFF: Duration = Duration::from_secs(5 * 60);
+
 fn clamp_move(snap: &Snapshot, axis: usize, delta: f32) -> Option<f32> {
     let axis = axis.min(2);
     let at = snap.position[axis];
-    let target = (at + f64::from(delta)).clamp(snap.axis_min[axis], snap.axis_max[axis]);
+    let (lo, hi) = snap
+        .limits
+        .jog_range(axis, snap.axis_min[axis], snap.axis_max[axis]);
+    // Already past the endstop (a move from elsewhere): only back towards it.
+    let (lo, hi) = (lo.min(at), hi.max(at));
+    let target = (at + f64::from(delta)).clamp(lo, hi);
     let delta = (target - at) as f32;
     (delta.abs() >= 0.001).then_some(delta)
 }
@@ -3374,6 +3411,7 @@ fn push(ui: &slint::Weak<AppWindow>, s: Snapshot) {
         });
         ui.set_has_load_macros(s.caps.load_filament);
         ui.set_min_extrude_temp(s.limits.min_extrude_temp as f32);
+        ui.set_light_starts_on(s.limits.light_starts_on);
         ui.set_max_nozzle(s.limits.extruder_max as f32);
         ui.set_max_bed(s.limits.bed_max as f32);
         ui.set_speed_percent(s.speed_percent as f32);
@@ -3494,9 +3532,20 @@ mod tests {
         // Already at the end: no move at all.
         let at_end = Snapshot {
             position: [112.0, 0.0, 5.0],
-            ..snap
+            ..snap.clone()
         };
         assert_eq!(clamp_move(&at_end, 0, 10.0), None);
+        // Homed at Y 110 with Klipper allowing 112: the jog stops at the endstop.
+        let homed = Snapshot {
+            position: [0.0, 110.0, 5.0],
+            limits: model::Limits {
+                endstop: [Some(110.0), Some(110.0), Some(220.0)],
+                ..Default::default()
+            },
+            ..snap
+        };
+        assert_eq!(clamp_move(&homed, 1, 10.0), None);
+        assert_eq!(clamp_move(&homed, 1, -10.0), Some(-10.0));
     }
 
     #[test]

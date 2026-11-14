@@ -567,6 +567,26 @@ pub struct Limits {
     pub nozzle_diameter: f64,
     /// Coldest nozzle that may extrude.
     pub min_extrude_temp: f64,
+    /// Each axis's endstop (`stepper_x/y/z.position_endstop`), when it has one.
+    /// Klipper lets an axis run past it to `position_max` (Klipper Mod's AD5M:
+    /// X and Y home at 110 and go to 112, Z homes at 220 and goes to 230), into
+    /// the frame; a jog stops at it.
+    pub endstop: [Option<f64>; 3],
+    /// A light Klipper switches on by itself when it starts (`initial_*` above 0
+    /// in a `[led …]` section; Klipper Mod's AD5M: `initial_white: 0.8`).
+    pub light_starts_on: bool,
+}
+
+impl Limits {
+    /// How far a jog may go on `axis`: Klipper's range, cut at the endstop on
+    /// the side it sits.
+    pub fn jog_range(&self, axis: usize, min: f64, max: f64) -> (f64, f64) {
+        match self.endstop.get(axis).copied().flatten() {
+            Some(e) if e >= (min + max) / 2.0 => (min, max.min(e)),
+            Some(e) => (min.max(e), max),
+            None => (min, max),
+        }
+    }
 }
 
 /// Read limits from `configfile.settings`.
@@ -583,6 +603,27 @@ pub fn parse_limits(settings: &Value) -> Limits {
         bed_max: num("heater_bed", "max_temp"),
         nozzle_diameter: num("extruder", "nozzle_diameter"),
         min_extrude_temp: num("extruder", "min_extrude_temp"),
+        light_starts_on: settings.as_object().is_some_and(|sections| {
+            sections
+                .iter()
+                .filter(|(name, _)| name.starts_with("led ") || name.starts_with("neopixel "))
+                .any(|(_, s)| {
+                    [
+                        "initial_red",
+                        "initial_green",
+                        "initial_blue",
+                        "initial_white",
+                    ]
+                    .iter()
+                    .any(|k| s.get(*k).and_then(Value::as_f64).is_some_and(|v| v > 0.0))
+                })
+        }),
+        endstop: ["stepper_x", "stepper_y", "stepper_z"].map(|s| {
+            settings
+                .get(s)
+                .and_then(|s| s.get("position_endstop"))
+                .and_then(Value::as_f64)
+        }),
     }
 }
 
@@ -2826,6 +2867,20 @@ mod tests {
             (350.0, 130.0, 0.4)
         );
         assert_eq!(parse_limits(&Value::Null), Limits::default());
+        // Klipper Mod's AD5M: home at the high end, 2 mm (Z: 10 mm) further allowed.
+        let l = parse_limits(&json!({
+            "stepper_y": { "position_endstop": 110.0 },
+            "stepper_z": { "position_endstop": 220.0 }
+        }));
+        assert_eq!(l.jog_range(0, -112.0, 112.0), (-112.0, 112.0));
+        assert_eq!(l.jog_range(1, -112.0, 112.0), (-112.0, 110.0));
+        assert_eq!(l.jog_range(2, -10.0, 230.0), (-10.0, 220.0));
+        assert!(!l.light_starts_on);
+        assert!(
+            parse_limits(&json!({ "led chamber_led": { "initial_white": 0.8 } })).light_starts_on
+        );
+        let low = parse_limits(&json!({ "stepper_x": { "position_endstop": 0.0 } }));
+        assert_eq!(low.jog_range(0, -2.0, 220.0), (0.0, 220.0));
     }
 
     #[test]

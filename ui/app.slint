@@ -216,6 +216,8 @@ export component AppWindow inherits Window {
     // Real toolhead speed, mm/s.
     in property <float> live-velocity;
     // Extruder: chosen length and speed (indexes into the prototype's options).
+    // Minutes until the nozzle, heated by hand to extrude, switches off; -1 none.
+    in property <int> nozzle-off-in: -1;
     in-out property <int> extrude-length: 1;
     // The Extruder screen's own length (its last option), and the wizard's purge.
     in-out property <int> extrude-custom: 150;
@@ -402,6 +404,8 @@ export component AppWindow inherits Window {
     callback refresh-graph(float);
     // Rivet's own setting, read from Moonraker's database.
     in-out property <bool> light-on-start;
+    // Klipper switches the light on by itself at start: Rivet's switch would do nothing.
+    in property <bool> light-starts-on;
     // Z offset when the tuning screen opened: the «was» of its stepper.
     in-out property <float> tune-z-start;
     // Which value the keypad is editing: "speed" | "flow" | "z" | "pa".
@@ -729,7 +733,7 @@ export component AppWindow inherits Window {
             light-on: root.light-on;
             brightness-shown: root.has-light;
             brightness-source: root.light-level;
-            on-start-shown: root.has-light;
+            on-start-shown: root.has-light && !root.light-starts-on;
             on-start-on: root.light-on-start;
             back => { root.screen = "control"; }
             toggled(key, on) => {
@@ -780,7 +784,8 @@ export component AppWindow inherits Window {
             motors-off => { root.motors-off(); }
         }
         if root.ready && root.screen == "extruder": ExtruderForm {
-            nozzle-sub: root.min-extrude-temp > 0 ? @tr("to extrude, needs ≥ {}°", round(root.min-extrude-temp))
+            nozzle-sub: root.nozzle-off-in >= 0 ? @tr("switches off in {} min", max(1, root.nozzle-off-in))
+                : root.min-extrude-temp > 0 ? @tr("to extrude, needs ≥ {}°", round(root.min-extrude-temp))
                 : root.can-extrude ? @tr("hot enough to extrude") : @tr("too cold to extrude");
             nozzle-value: round(root.extruder-temp) + "° / " + round(root.extruder-target) + "°";
             load-value: root.material-name;

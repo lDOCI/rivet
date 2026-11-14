@@ -105,7 +105,7 @@ export component FilamentScreen inherits VerticalLayout {
     padding: Tokens.pad;
     spacing: 14px;
     property <HeatPreset> preset: root.picked >= 0 && root.picked < root.presets.length ? root.presets[root.picked] : { name: "", nozzle: 0, bed: 0 };
-    property <bool> hot: root.can-extrude && root.nozzle >= root.preset.nozzle - 5;
+    property <bool> hot: root.can-extrude && root.nozzle >= root.preset.nozzle - 10;
 
     HorizontalLayout {
         height: Tokens.touch;

@@ -2,6 +2,30 @@
 
 Each release's section is also its description on GitHub. [Русский — ниже в каждом разделе.]
 
+## v0.1.7-alpha
+
+- Moving the head or the bed by hand stops at the endstop. Klipper Mod's AD5M allows X and
+  Y 2 mm past it and Z 10 mm, so a jog from home drove the carriage into the frame.
+- Motion: the bed buttons read "Bed up" on top and "Bed down" below, as the bed moves (Z+
+  lowers the AD5M's bed).
+- Keypad: Done with nothing typed keeps the value shown (a custom purge length could not
+  be confirmed).
+- Load wizard: Pull is available 10 °C before the target, not 5.
+- A nozzle heated by hand to extrude switches off 5 minutes after the last extrusion (not
+  while printing); the Extruder screen shows when.
+- Light: "Turn on when the printer starts" is hidden where Klipper switches the light on
+  by itself (the AD5M's config does).
+
+**Русский.** Движение головы и стола кнопками останавливается на концевике: в Klipper Mod
+у AD5M разрешено проехать за него на 2 мм по X и Y и на 10 мм по Z, и с дома каретка
+билась в корпус. Кнопки стола: сверху «Стол ↑», снизу «Стол ↓», как он едет (Z+ у AD5M
+опускает стол). Клавиатура: «Готово» без ввода принимает показанное значение (своя длина
+протяжки не подтверждалась). Мастер загрузки: «Протянуть» доступна за 10 °C до цели, а не
+за 5. Сопло, нагретое вручную для выдавливания, само выключается через 5 минут после
+последнего выдавливания (не во время печати), экран экструдера показывает, когда. Свет:
+«Включать при включении принтера» скрыт, где Klipper сам включает свет при старте (у AD5M
+так в конфиге).
+
 ## v0.1.6-alpha
 
 - Bed mesh and bed screws are probed as the firmware's own leveling does: the bed at the

@@ -105,6 +105,33 @@ fn only_one_decimal_point_and_three_decimals() {
     assert_eq!(pad.finish(), Some(1.234));
 }
 
+fn done_keeps_the_value_shown() {
+    let pad = Pad::open(1.0, 500.0, false);
+    pad.ui.set_keypad_current("150".into());
+    assert_eq!(pad.finish(), Some(150.0));
+    // Shown but out of range: nothing to confirm.
+    let pad = Pad::open(1.0, 100.0, false);
+    pad.ui.set_keypad_current("150".into());
+    assert_eq!(pad.finish(), None);
+}
+
+/// The Extruder screen's own length: Custom… opens the keypad, Done sets it.
+fn custom_extrude_length() {
+    let pad = Pad::open(0.0, 1.0, false);
+    let ui = &pad.ui;
+    ui.set_overlay("".into());
+    ui.set_link_state("ready".into());
+    ui.set_screen("extruder".into());
+    pad.tap("Custom…");
+    assert_eq!(ui.get_overlay(), "keypad");
+    // Digits the screen behind has no button for (its speeds are 2, 5, 10, 15).
+    pad.type_keys("130");
+    pad.tap("Done");
+    assert_eq!(ui.get_overlay(), "");
+    assert_eq!(ui.get_extrude_custom(), 130);
+    assert_eq!(ui.get_extrude_length(), 4);
+}
+
 /// One test: the Slint platform is set once per process and windows belong to
 /// the thread that made them, so scenarios run one after another.
 #[test]
@@ -114,4 +141,6 @@ fn keypad() {
     backspace_edits_and_empties();
     out_of_range_cannot_be_confirmed();
     only_one_decimal_point_and_three_decimals();
+    done_keeps_the_value_shown();
+    custom_extrude_length();
 }
