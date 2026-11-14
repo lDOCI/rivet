@@ -747,6 +747,10 @@ export component SensorsForm inherits FormScreen {
     in property <bool> runout-shown: true;
     in property <string> runout-sub;
     in property <bool> runout-on;
+    // Датчик движения
+    in property <bool> motion-shown: true;
+    in property <string> motion-sub;
+    in property <bool> motion-on;
     // ДРУГИЕ ДАТЧИКИ
     in property <bool> others-shown: true;
     in property <string> others-sub: "";
@@ -775,6 +779,7 @@ export component SensorsForm inherits FormScreen {
     rows: [
         { kind: "section", key: "filament", title: @tr("FILAMENT"), sub: root.filament-sub, shown: root.filament-shown },
         { kind: "toggle", key: "runout", title: @tr("Runout sensor"), sub: root.runout-sub, shown: root.runout-shown, on: root.runout-on },
+        { kind: "toggle", key: "motion", title: @tr("Motion sensor"), sub: root.motion-sub, shown: root.motion-shown, on: root.motion-on },
         { kind: "section", key: "others", title: @tr("OTHER SENSORS"), sub: root.others-sub, shown: root.others-shown },
         { kind: "info", key: "air", title: @tr("Air quality"), sub: root.air-sub, shown: root.air-shown, value: root.air-value },
         { kind: "info", key: "loadcell", title: @tr("Load cell"), sub: root.loadcell-sub, shown: root.loadcell-shown, value: root.loadcell-value },

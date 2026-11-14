@@ -745,6 +745,8 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_runout_name("runout_sensor".into());
             ui.set_runout_enabled(true);
             ui.set_runout_sees(true);
+            ui.set_motion_name("encoder".into());
+            ui.set_motion_enabled(false);
             ui.set_has_air(true);
             ui.set_has_load_cell(true);
             ui.set_load_g(-40);

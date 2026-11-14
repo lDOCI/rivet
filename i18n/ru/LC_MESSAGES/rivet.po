@@ -1417,6 +1417,9 @@ msgstr "Температура MCU и хоста"
 msgid "Runout sensor"
 msgstr "Датчик обрыва"
 
+msgid "Motion sensor"
+msgstr "Датчик движения"
+
 msgid "OTHER SENSORS"
 msgstr "ДРУГИЕ ДАТЧИКИ"
 

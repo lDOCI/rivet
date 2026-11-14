@@ -595,8 +595,8 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
     }
     {
         let tx = tx.clone();
-        ui.on_set_runout(move |on| {
-            let _ = tx.send(Command::SetRunout(on));
+        ui.on_set_sensor(move |name, on| {
+            let _ = tx.send(Command::SetSensor(name.into(), on));
         });
     }
     {

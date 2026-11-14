@@ -168,14 +168,15 @@ r6 = "clear"
 
 [Sensors]
 component = "SensorsForm"
-en = { "Датчики" = "Sensors", "ФИЛАМЕНТ" = "FILAMENT", "Датчик обрыва" = "Runout sensor", "ДРУГИЕ ДАТЧИКИ" = "OTHER SENSORS", "Качество воздуха" = "Air quality", "Тензодатчик" = "Load cell", "нагрузка на сопло" = "force on the nozzle", "Температура MCU и хоста" = "MCU and host temperature" }
+en = { "Датчики" = "Sensors", "ФИЛАМЕНТ" = "FILAMENT", "Датчик обрыва" = "Runout sensor", "Датчик движения" = "Motion sensor", "ДРУГИЕ ДАТЧИКИ" = "OTHER SENSORS", "Качество воздуха" = "Air quality", "Тензодатчик" = "Load cell", "нагрузка на сопло" = "force on the nozzle", "Температура MCU и хоста" = "MCU and host temperature" }
 [Sensors.rows]
 r0 = "filament"
 r1 = { name = "runout", data = ["sub"] }
-r2 = "others"
-r3 = { name = "air", data = ["value", "sub"] }
-r4 = { name = "loadcell", data = ["value"] }
-r5 = { name = "mcu", data = ["value", "sub"] }
+r2 = { name = "motion", data = ["sub"] }
+r3 = "others"
+r4 = { name = "air", data = ["value", "sub"] }
+r5 = { name = "loadcell", data = ["value"] }
+r6 = { name = "mcu", data = ["value", "sub"] }
 
 [Calibrate]
 component = "CalibrateForm"

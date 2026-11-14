@@ -300,8 +300,8 @@ pub enum Command {
         key: String,
         value: f32,
     },
-    /// Switch the runout sensor on or off.
-    SetRunout(bool),
+    /// Switch a filament sensor (by its Klipper name) on or off.
+    SetSensor(String, bool),
     ListHistory,
     ClearHistory,
     /// Service intervals from print hours; a part replaced (or greased) now.
@@ -1123,23 +1123,6 @@ async fn calib_info(client: &Client, ui: &slint::Weak<AppWindow>) {
 /// Run a G-code line and wait for Klipper's answer.
 async fn gcode(client: &Client, script: &str) -> Result<(), moonraker::Error> {
     client.gcode(script).await
-}
-
-/// The runout sensor's name, from the printer's objects.
-async fn runout_name(client: &Client) -> Option<String> {
-    let list = client
-        .call_timeout("printer.objects.list", json!({}), SETUP_TIMEOUT)
-        .await
-        .ok()?;
-    list["objects"]
-        .as_array()?
-        .iter()
-        .filter_map(Value::as_str)
-        .find_map(|n| {
-            n.strip_prefix("filament_switch_sensor ")
-                .or_else(|| n.strip_prefix("filament_motion_sensor "))
-                .map(str::to_owned)
-        })
 }
 
 /// Hours printed in all, from Moonraker's history totals.
@@ -2996,10 +2979,7 @@ async fn execute(
             };
             gcode(client, &format!("SET_VELOCITY_LIMIT {arg}")).await
         }
-        Command::SetRunout(on) => {
-            let name = runout_name(client)
-                .await
-                .unwrap_or_else(|| "runout_sensor".into());
+        Command::SetSensor(name, on) => {
             gcode(
                 client,
                 &format!("SET_FILAMENT_SENSOR SENSOR={name} ENABLE={}", u8::from(*on)),
@@ -3337,6 +3317,10 @@ fn push(ui: &slint::Weak<AppWindow>, s: Snapshot) {
         ui.set_runout_name(name.into());
         ui.set_runout_enabled(enabled);
         ui.set_runout_sees(sees);
+        let (name, enabled, sees) = s.motion.clone().unwrap_or_default();
+        ui.set_motion_name(name.into());
+        ui.set_motion_enabled(enabled);
+        ui.set_motion_sees(sees);
         ui.set_has_air(s.caps.air_sensor);
         ui.set_air_text(
             s.air

@@ -491,11 +491,15 @@ export component AppWindow inherits Window {
     in property <float> limit-corner;
     in property <float> limit-cruise: -1;
     callback set-limit(string, float);
-    // Sensors: the runout sensor (name "" when none), air quality, load cell, boards.
+    // Sensors: the switch and the motion runout sensors (name "" when none), air quality,
+    // load cell, boards.
     in property <string> runout-name;
     in property <bool> runout-enabled;
     in property <bool> runout-sees;
-    callback set-runout(bool);
+    in property <string> motion-name;
+    in property <bool> motion-enabled;
+    in property <bool> motion-sees;
+    callback set-sensor(string, bool);
     in property <bool> has-air;
     in property <string> air-text;
     in property <bool> has-load-cell;
@@ -1120,10 +1124,13 @@ export component AppWindow inherits Window {
             back => { root.screen = "tools"; }
         }
         if root.ready && root.screen == "sensors": SensorsForm {
-            filament-shown: root.runout-name != "";
+            filament-shown: root.runout-name != "" || root.motion-name != "";
             runout-shown: root.runout-name != "";
             runout-on: root.runout-enabled;
             runout-sub: !root.runout-enabled ? @tr("off: a print goes on without filament") : root.runout-sees ? @tr("now: filament is in") : @tr("now: no filament");
+            motion-shown: root.motion-name != "";
+            motion-on: root.motion-enabled;
+            motion-sub: !root.motion-enabled ? @tr("off: a print goes on without filament") : root.motion-sees ? @tr("now: filament is in") : @tr("now: no filament");
             air-shown: root.has-air;
             air-value: root.air-text != "" ? root.air-text : @tr("no data");
             air-sub: "TVOC, CO₂, " + @tr("formaldehyde");
@@ -1133,7 +1140,10 @@ export component AppWindow inherits Window {
             mcu-sub: root.board-temps != "" ? "" : @tr("not set up on this printer");
             others-shown: true;
             back => { root.screen = "tools"; }
-            toggled(key, on) => { if (key == "runout") { root.set-runout(on); } }
+            toggled(key, on) => {
+                if (key == "runout") { root.set-sensor(root.runout-name, on); }
+                if (key == "motion") { root.set-sensor(root.motion-name, on); }
+            }
         }
         if root.ready && root.screen == "history": HistoryForm {
             total-value: root.history-total >= 0 ? "" + root.history-total : "";

@@ -304,8 +304,10 @@ pub struct Snapshot {
     pub filament_out: bool,
     /// Objects of the print (`exclude_object`), when the slicer labelled them.
     pub objects: Vec<PrintObject>,
-    /// The first runout sensor: its name, switched on, sees filament.
+    /// The first switch runout sensor: its name, switched on, sees filament.
     pub runout: Option<(String, bool, bool)>,
+    /// The first motion sensor (`filament_motion_sensor`), the same way.
+    pub motion: Option<(String, bool, bool)>,
     /// Air quality (AD5M Pro): TVOC, CO₂, formaldehyde; `None` until it reports.
     pub air: Option<[f64; 3]>,
     /// The load cell under the bed (AD5M), grams.
@@ -1932,6 +1934,21 @@ impl PrinterState {
     }
 
     /// First three numbers of an `[x, y, z, e]` array.
+    /// The first filament sensor of a kind (`prefix` ends with a space): its name,
+    /// switched on, sees filament. Klipper leaves `enabled` out until it changes.
+    fn filament_sensor(&self, prefix: &str) -> Option<(String, bool, bool)> {
+        let (n, v) = self
+            .status
+            .as_object()?
+            .iter()
+            .find(|(n, _)| n.starts_with(prefix))?;
+        Some((
+            n[prefix.len()..].to_owned(),
+            v["enabled"].as_bool().unwrap_or(true),
+            v["filament_detected"].as_bool().unwrap_or(false),
+        ))
+    }
+
     fn axes(&self, object: &str, field: &str) -> [f64; 3] {
         let mut out = [0.0; 3];
         if let Some(a) = self.field(object, field).and_then(Value::as_array) {
@@ -2186,20 +2203,8 @@ impl PrinterState {
                 .and_then(Value::as_bool)
                 .unwrap_or(false),
             objects: self.print_objects(),
-            runout: self.status.as_object().and_then(|objects| {
-                objects
-                    .iter()
-                    .find(|(n, _)| is_filament_sensor(n))
-                    .map(|(n, v)| {
-                        (
-                            n.split_once(' ')
-                                .map_or(n.as_str(), |(_, name)| name)
-                                .to_owned(),
-                            v["enabled"].as_bool().unwrap_or(true),
-                            v["filament_detected"].as_bool().unwrap_or(false),
-                        )
-                    })
-            }),
+            runout: self.filament_sensor("filament_switch_sensor "),
+            motion: self.filament_sensor("filament_motion_sensor "),
             air: self
                 .status
                 .get("flashforge_tvoc")
@@ -2508,6 +2513,27 @@ mod tests {
             "filament_switch_sensor runout_sensor": { "enabled": false }
         }));
         assert!(!st.snapshot().filament_out);
+    }
+
+    #[test]
+    fn switch_and_motion_sensors_each() {
+        let mut st = PrinterState::default();
+        st.apply_status(serde_json::json!({
+            "filament_switch_sensor runout_sensor": { "enabled": true, "filament_detected": true },
+            "filament_motion_sensor encoder": { "enabled": false, "filament_detected": true }
+        }));
+        let s = st.snapshot();
+        assert_eq!(s.runout, Some(("runout_sensor".into(), true, true)));
+        assert_eq!(s.motion, Some(("encoder".into(), false, true)));
+        st = PrinterState::default();
+        st.apply_status(serde_json::json!({
+            "filament_motion_sensor encoder": { "filament_detected": true }
+        }));
+        let s = st.snapshot();
+        assert_eq!(
+            (s.runout, s.motion),
+            (None, Some(("encoder".into(), true, true)))
+        );
     }
 
     #[test]

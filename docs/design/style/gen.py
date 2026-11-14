@@ -585,6 +585,7 @@ def build():
     form('Sensors', 'Датчики', 'tools', 'Tools.dc.html', [
         S('ФИЛАМЕНТ'),
         T('Датчик обрыва', 'сейчас: пруток есть', True, src='filament_switch_sensor runout_sensor.enabled/filament_detected'),
+        T('Датчик движения', 'сейчас: пруток есть', True, src='filament_motion_sensor <name>.enabled/filament_detected'),
         S('ДРУГИЕ ДАТЧИКИ'),
         I('Качество воздуха', 'нет данных', 'AD5M Pro · TVOC, CO₂, формальдегид', src='flashforge_tvoc.tvoc/co2/hcho/status (status "unknown" until the sensor reports)'),
         I('Тензодатчик', '−40 г', 'нагрузка на сопло', src='flashforge_loadcell.force_g'),
