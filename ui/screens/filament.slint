@@ -94,7 +94,8 @@ export component FilamentScreen inherits VerticalLayout {
     in-out property <int> step: 1;
     in-out property <int> picked: -1;
     in-out property <int> purged;
-    property <int> amount: 25;
+    // Kept by the app while it runs: who purges 100 mm wants it next time too.
+    in-out property <int> amount: 50;
     callback heat(float);
     callback extrude(float);
     callback done(string);
@@ -186,7 +187,7 @@ export component FilamentScreen inherits VerticalLayout {
             if root.step == 3: HorizontalLayout {
                 spacing: 10px;
                 height: 56px;
-                for mm in [10, 25, 50]: Rectangle {
+                for mm in [25, 50, 100, 150]: Rectangle {
                     horizontal-stretch: 1;
                     border-radius: 16px;
                     background: mm == root.amount ? Tokens.surface-3 : Tokens.surface-1;

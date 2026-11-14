@@ -66,6 +66,7 @@ const ALL: &[&str] = &[
     "messages",
     "heat-presets",
     "filament",
+    "filament-purge",
     "calibrate",
     "bed-mesh",
     "screws",
@@ -799,6 +800,10 @@ fn show(ui: &AppWindow, name: &str) {
         "filament" => {
             ui.set_screen("filament".into());
             ui.set_filament_step(1);
+        }
+        "filament-purge" => {
+            ui.set_screen("filament".into());
+            ui.set_filament_step(3);
         }
         "temp-graph" => {
             ui.set_screen("temp-graph".into());

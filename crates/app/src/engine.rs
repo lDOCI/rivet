@@ -2560,16 +2560,23 @@ fn gcode_for(cmd: &Command) -> Option<String> {
             length,
             speed,
             heat,
-        } => format!(
-            "{}SAVE_GCODE_STATE NAME=RIVET\nM83\nG1 E{length:.1} F{:.0}\nRESTORE_GCODE_STATE NAME=RIVET",
-            if *heat > 0.0 {
-                // Heat and wait, then move the filament.
-                format!("M109 S{heat:.0}\n")
-            } else {
-                String::new()
-            },
-            speed * 60.0
-        ),
+        } => {
+            // Klipper refuses one extrude-only move longer than max_extrude_only_distance
+            // (50 mm unless the config raises it): a long purge goes in 50 mm moves.
+            let moves = (length.abs() / 50.0).ceil().max(1.0);
+            let step = length / moves;
+            let feed = speed * 60.0;
+            format!(
+                "{}SAVE_GCODE_STATE NAME=RIVET\nM83\n{}RESTORE_GCODE_STATE NAME=RIVET",
+                if *heat > 0.0 {
+                    // Heat and wait, then move the filament.
+                    format!("M109 S{heat:.0}\n")
+                } else {
+                    String::new()
+                },
+                format!("G1 E{step:.1} F{feed:.0}\n").repeat(moves as usize)
+            )
+        }
         Command::SetFan { object, percent } => match object.split_once(' ') {
             // `fan_generic NAME` is set by name; the part fan takes M106.
             Some((_, name)) => format!(
@@ -3525,6 +3532,21 @@ mod tests {
         })
         .unwrap();
         assert!(code.starts_with("M109 S215\n") && code.contains("G1 E10.0 F300"));
+        // Longer than Klipper's default 50 mm: several moves.
+        let code = gcode_for(&Command::Extrude {
+            length: 150.0,
+            speed: 5.0,
+            heat: 0.0,
+        })
+        .unwrap();
+        assert_eq!(code.matches("G1 E50.0 F300").count(), 3);
+        let code = gcode_for(&Command::Extrude {
+            length: 120.0,
+            speed: 5.0,
+            heat: 0.0,
+        })
+        .unwrap();
+        assert_eq!(code.matches("G1 E40.0 F300").count(), 3);
         assert_eq!(gcode_for(&Command::MotorsOff).unwrap(), "M84");
     }
 

@@ -216,7 +216,7 @@ export component AppWindow inherits Window {
     // Real toolhead speed, mm/s.
     in property <float> live-velocity;
     // Extruder: chosen length and speed (indexes into the prototype's options).
-    in-out property <int> extrude-length: 2;
+    in-out property <int> extrude-length: 1;
     in-out property <int> extrude-rate: 1;
     // What this printer can do (its config, macros and Moonraker components), and the
     // live values behind those rows.
@@ -393,6 +393,7 @@ export component AppWindow inherits Window {
     callback preset-changed(int, int, int);
     // Filament wizard: its step, and what it loaded (saved, shown on Home).
     in-out property <int> filament-step: 1;
+    in-out property <int> filament-purge: 50;
     callback set-loaded(string);
     in property <[GraphLine]> graph-lines;
     in property <[{ y: float, label: string }]> graph-grid;
@@ -928,6 +929,7 @@ export component AppWindow inherits Window {
             nozzle-target: root.extruder-target;
             can-extrude: root.can-extrude;
             step <=> root.filament-step;
+            amount <=> root.filament-purge;
             heat(t) => { root.set-nozzle(t); }
             extrude(mm) => { root.extrude(mm, 5, 0); }
             done(name) => { root.set-loaded(name); root.screen = "extruder"; }

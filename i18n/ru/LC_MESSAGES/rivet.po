@@ -570,6 +570,9 @@ msgstr "10 мм"
 msgid "100 mm"
 msgstr "100 мм"
 
+msgid "200 mm"
+msgstr "200 мм"
+
 msgid "25 mm"
 msgstr "25 мм"
 
