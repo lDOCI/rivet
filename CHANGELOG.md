@@ -4,13 +4,6 @@ Each release's section is also its description on GitHub. [Русский — н
 
 ## v0.1.7-alpha
 
-- (что изменилось)
--bugfixes
-
-**Русский.** (то же по-русски)
-
-## v0.1.7-alpha
-
 - Moving the head or the bed by hand stops at the endstop. Klipper Mod's AD5M allows X and
   Y 2 mm past it and Z 10 mm, so a jog from home drove the carriage into the frame.
 - Motion: the bed buttons read "Bed up" on top and "Bed down" below, as the bed moves (Z+
