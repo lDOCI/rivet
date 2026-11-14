@@ -976,7 +976,11 @@ async fn system_info(client: &Client, ui: &slint::Weak<AppWindow>) {
         let version = v["version"].as_str().unwrap_or_default().to_owned();
         let remote = v["remote_version"].as_str().unwrap_or_default();
         // Rivet knows its own version; Moonraker's may be stale until it restarts.
-        let have = if name == "rivet" { env!("CARGO_PKG_VERSION") } else { &version };
+        let have = if name == "rivet" {
+            env!("CARGO_PKG_VERSION")
+        } else {
+            &version
+        };
         let fresh = !newer(remote, have);
         (version, fresh, remote.to_owned())
     };
