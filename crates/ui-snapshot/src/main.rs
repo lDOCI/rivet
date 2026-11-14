@@ -67,6 +67,8 @@ const ALL: &[&str] = &[
     "heat-presets",
     "filament",
     "filament-purge",
+    "filament-own",
+    "extruder-own",
     "calibrate",
     "bed-mesh",
     "screws",
@@ -804,6 +806,19 @@ fn show(ui: &AppWindow, name: &str) {
         "filament-purge" => {
             ui.set_screen("filament".into());
             ui.set_filament_step(3);
+        }
+        "filament-own" => {
+            ui.set_screen("filament".into());
+            ui.set_filament_step(3);
+            ui.set_filament_purge(150);
+        }
+        "extruder-own" => {
+            ui.set_screen("extruder".into());
+            ui.set_can_extrude(true);
+            ui.set_extruder_temp(240.0);
+            ui.set_extruder_target(240.0);
+            ui.set_extrude_length(4);
+            ui.set_extrude_custom(120);
         }
         "temp-graph" => {
             ui.set_screen("temp-graph".into());

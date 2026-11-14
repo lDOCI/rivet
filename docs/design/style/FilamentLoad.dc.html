@@ -117,9 +117,9 @@ class Component extends DCLogic {
       }),
       primary: function () { if (s.step < 3) self.setState({ step: s.step + 1, pushed: 0 }); },
       secondary: function () { if (s.step === 2) self.setState({ step: 1 }); else if (s.step === 3) self.setState({ pushed: s.pushed + s.amt }); },
-      amounts: [25, 50, 100, 150].map(function (n) {
+      amounts: [25, 50, 100, 'Своя…'].map(function (n) {
         var on = n === s.amt;
-        return { label: n + ' мм', checked: on ? 'true' : 'false', bg: on ? '#2dd4bf' : '#15181d', fg: on ? '#042f2a' : '#f4f6f8', pick: function () { self.setState({ amt: n }); } };
+        return { label: typeof n === 'number' ? n + ' мм' : n, checked: on ? 'true' : 'false', bg: on ? '#2dd4bf' : '#15181d', fg: on ? '#042f2a' : '#f4f6f8', pick: function () { self.setState({ amt: n }); } };
       })
     };
   }

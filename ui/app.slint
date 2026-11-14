@@ -217,6 +217,8 @@ export component AppWindow inherits Window {
     in property <float> live-velocity;
     // Extruder: chosen length and speed (indexes into the prototype's options).
     in-out property <int> extrude-length: 1;
+    // The Extruder screen's own length (its last option), and the wizard's purge.
+    in-out property <int> extrude-custom: 150;
     in-out property <int> extrude-rate: 1;
     // What this printer can do (its config, macros and Moonraker components), and the
     // live values behind those rows.
@@ -455,6 +457,8 @@ export component AppWindow inherits Window {
         else if (key == "pid-temp") { root.pid-temp = v; }
         else if (key == "pid-bed-temp") { root.pid-bed-temp = v; }
         else if (key == "pid-fan") { root.pid-fan = v; }
+        else if (key == "extrude-custom") { root.extrude-custom = v; }
+        else if (key == "filament-purge") { root.filament-purge = v; }
         else if (key == "pa-smooth") { root.run-gcode("SET_PRESSURE_ADVANCE SMOOTH_TIME=" + Format.fixed(v, 3)); }
         else if (key == "limit:cruise") { root.set-limit("cruise", v / 100); }
         else if (key == "limit:velocity" || key == "limit:accel" || key == "limit:corner") { root.set-limit(key == "limit:velocity" ? "velocity" : key == "limit:accel" ? "accel" : "corner", v); }
@@ -774,6 +778,7 @@ export component AppWindow inherits Window {
             load-value: root.material-name;
             unload-shown: root.has-load-macros;
             length-sel: root.extrude-length;
+            length-sub: root.extrude-length == 4 ? @tr("custom: {} mm", root.extrude-custom) : @tr("per press");
             rate-sel: root.extrude-rate;
             // Cold: the button heats first. While printing only when Klipper lets it.
             extrude-enabled: !root.extrude-busy && (root.can-extrude || !root.busy);
@@ -793,13 +798,16 @@ export component AppWindow inherits Window {
             dryer-sub: root.dryer-minutes-left >= 0 ? @tr("drying: {} left", Format.duration(root.dryer-minutes-left)) : @tr("the bed as a dryer");
             back => { root.screen = "control"; }
             picked(key, i) => {
-                if (key == "length") { root.extrude-length = i; }
+                if (key == "length") {
+                    root.extrude-length = i;
+                    if (i == 4) { root.open-number("extrude-custom", @tr("Length, mm"), 1, 500, root.extrude-custom, 0); }
+                }
                 if (key == "rate") { root.extrude-rate = i; }
             }
             activate(key) => {
                 if (key == "cool") { root.set-nozzle(0); }
                 if (key == "extrude" || key == "retract") {
-                    root.pending-length = (key == "extrude" ? 1 : -1) * self.length-values[root.extrude-length];
+                    root.pending-length = (key == "extrude" ? 1 : -1) * (root.extrude-length == 4 ? root.extrude-custom : [10, 25, 50, 100][root.extrude-length]);
                     root.pending-rate = self.rate-values[root.extrude-rate];
                     if (root.extrude-heat >= 0) {
                         root.extrude(root.pending-length, root.pending-rate, root.extrude-heat);
@@ -930,6 +938,7 @@ export component AppWindow inherits Window {
             can-extrude: root.can-extrude;
             step <=> root.filament-step;
             amount <=> root.filament-purge;
+            edit-amount => { root.open-number("filament-purge", @tr("Length, mm"), 1, 500, root.filament-purge, 0); }
             heat(t) => { root.set-nozzle(t); }
             extrude(mm) => { root.extrude(mm, 5, 0); }
             done(name) => { root.set-loaded(name); root.screen = "extruder"; }

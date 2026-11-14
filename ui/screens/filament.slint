@@ -98,6 +98,8 @@ export component FilamentScreen inherits VerticalLayout {
     in-out property <int> amount: 50;
     callback heat(float);
     callback extrude(float);
+    // The last length button: any length on the keypad.
+    callback edit-amount;
     callback done(string);
     callback cancel;
     padding: Tokens.pad;
@@ -187,7 +189,7 @@ export component FilamentScreen inherits VerticalLayout {
             if root.step == 3: HorizontalLayout {
                 spacing: 10px;
                 height: 56px;
-                for mm in [25, 50, 100, 150]: Rectangle {
+                for mm in [25, 50, 100]: Rectangle {
                     horizontal-stretch: 1;
                     border-radius: 16px;
                     background: mm == root.amount ? Tokens.surface-3 : Tokens.surface-1;
@@ -197,6 +199,19 @@ export component FilamentScreen inherits VerticalLayout {
                     accessible-label: @tr("{} mm", mm);
                     Text { text: @tr("{} mm", mm); color: Tokens.text; font-size: 17px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
                     TouchArea { clicked => { root.amount = mm; } }
+                }
+                // Any length on the keypad; once typed, the button shows it.
+                Rectangle {
+                    property <bool> own: root.amount != 25 && root.amount != 50 && root.amount != 100;
+                    horizontal-stretch: 1;
+                    border-radius: 16px;
+                    background: self.own ? Tokens.surface-3 : Tokens.surface-1;
+                    border-width: self.own ? 2px : 0;
+                    border-color: Tokens.accent;
+                    accessible-role: button;
+                    accessible-label: @tr("Custom…");
+                    Text { text: parent.own ? @tr("{} mm", root.amount) : @tr("Custom…"); color: Tokens.text; font-size: 17px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+                    TouchArea { clicked => { root.edit-amount(); } }
                 }
             }
         }
