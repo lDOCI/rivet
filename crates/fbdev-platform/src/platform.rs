@@ -141,7 +141,10 @@ const SAME_FINGER: f32 = 40.0;
 pub fn init(config: Config) -> anyhow::Result<()> {
     let mut framebuffer = Framebuffer::open(&config.framebuffer)
         .with_context(|| format!("open framebuffer {}", config.framebuffer.display()))?;
-    framebuffer.set_full_copy(config.rotation != Rotation::Deg0);
+    // RIVET_FB_FULL_COPY=1: copy the whole frame to the screen every time, to
+    // tell a drawing fault of Slint from one of the page copying here.
+    let full_copy = std::env::var("RIVET_FB_FULL_COPY").is_ok_and(|v| v == "1");
+    framebuffer.set_full_copy(full_copy || config.rotation != Rotation::Deg0);
 
     let (ui_w, ui_h) = if config.rotation.is_transposed() {
         (framebuffer.height, framebuffer.width)

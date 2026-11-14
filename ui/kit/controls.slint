@@ -177,8 +177,8 @@ export component ActionTile inherits Rectangle {
     accessible-role: button;
     accessible-label: root.text;
     accessible-action-default => { root.clicked(); }
-    // Icon and label centred together, 6 px apart; the label may run wider than a
-    // narrow tile (81 px, «Подстройка»), as it does in the prototype.
+    // Icon and label centred together, 6 px apart. The print screen sizes its tiles
+    // to their Russian labels («Продолжить», «Подстройка»), so they stay inside.
     property <length> label-h: 19px;
     property <length> top: (root.height - 26px - 6px - root.label-h) / 2;
     Icon {
@@ -196,7 +196,7 @@ export component ActionTile inherits Rectangle {
         height: root.label-h;
         text: root.text;
         color: root.danger ? Tokens.danger : Tokens.text;
-        font-size: 15px;
+        font-size: 13px;
         font-weight: 600;
         horizontal-alignment: center;
         vertical-alignment: center;

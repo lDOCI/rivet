@@ -2,6 +2,24 @@
 
 Each release's section is also its description on GitHub. [Русский — ниже в каждом разделе.]
 
+## v0.1.9-alpha
+
+- A dialog or the number keypad no longer lets the screen under it show through: the
+  heating dial was drawn over the keypad and wiped out a key. The screen under a dialog is
+  not drawn now; the dialog sits on a plain dark background.
+- Print buttons: four tiles of one width with a smaller label, so "Resume" and "Tune" fit
+  (in Russian they ran out of the tile).
+- Screensaver: hours left fit ("10 h 47 min" lost its last letters).
+- Purge lengths are kept across restarts: the chosen length and the custom one on the
+  Extruder screen, and the load wizard's purge.
+
+**Русский.** Окна и клавиатура больше не просвечивают: кольцо нагрева рисовалось поверх
+клавиатуры и стирало клавишу. Экран под окном теперь не рисуется, окно стоит на тёмном
+фоне. Кнопки на экране печати одной ширины с подписью помельче, «Продолжить» и
+«Подстройка» влезают. На заставке влезает время с часами («10 ч 47 мин» обрезалось).
+Длина протяжки помнится после перезапуска: выбранная и своя на экране экструдера и в
+мастере загрузки.
+
 ## v0.1.8-alpha
 
 - Rivet crashed on the "printer has stopped" screen: Klipper's message was set in a

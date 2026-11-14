@@ -44,6 +44,8 @@ const ALL: &[&str] = &[
     "file-actions",
     "layer-pause",
     "ambient",
+    "ambient-long",
+    "ambient-hours",
     "retraction",
     "dryer",
     "spools",
@@ -102,6 +104,7 @@ const ALL: &[&str] = &[
     "camera",
     "temp-graph",
     "keypad",
+    "keypad-heating",
     "toast",
 ];
 
@@ -123,7 +126,14 @@ fn main() -> anyhow::Result<()> {
         screens.iter().map(String::as_str).collect()
     };
     std::fs::create_dir_all(&out)?;
-    let window = MinimalSoftwareWindow::new(RepaintBufferType::NewBuffer);
+    // RIVET_PARTIAL=1: as the printer draws, only what changed on a frame that
+    // keeps the last one (after each screen, a temperature step is drawn on top).
+    let partial = std::env::var_os("RIVET_PARTIAL").is_some();
+    let window = MinimalSoftwareWindow::new(if partial {
+        RepaintBufferType::ReusedBuffer
+    } else {
+        RepaintBufferType::NewBuffer
+    });
     window.set_size(PhysicalSize::new(WIDTH, HEIGHT));
     slint::platform::set_platform(Box::new(Headless(window.clone())))
         .map_err(|e| anyhow::anyhow!("set platform: {e}"))?;
@@ -162,6 +172,16 @@ fn main() -> anyhow::Result<()> {
         let path = out.join(format!("{screen}.png"));
         write_png(&path, &buf).with_context(|| format!("write {}", path.display()))?;
         println!("{}", path.display());
+        if partial {
+            ui.set_extruder_temp(ui.get_extruder_temp() + 7.0);
+            slint::platform::update_timers_and_animations();
+            window.draw_if_needed(|renderer| {
+                renderer.render(&mut buf, WIDTH as usize);
+            });
+            let path = out.join(format!("{screen}-partial.png"));
+            write_png(&path, &buf).with_context(|| format!("write {}", path.display()))?;
+            println!("{}", path.display());
+        }
         // RIVET_FB_RAW=1: also the AD5M's framebuffer image (BGRX, both pages of
         // its 800×960 virtual screen), for the USB installer's pictures.
         if std::env::var_os("RIVET_FB_RAW").is_some() {
@@ -374,6 +394,21 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_layer(76);
             ui.set_total_layers(180);
             ui.set_eta_clock("15:20".into());
+            ui.set_ambient(true);
+        }
+        "ambient-hours" => {
+            print("printing", 0.42);
+            ui.set_remaining_minutes(9 * 60 + 58);
+            ui.set_eta_clock("05:42".into());
+            ui.set_ambient(true);
+        }
+        "ambient-long" => {
+            // Hours left: the time must still fit beside the ring.
+            print("printing", 0.12);
+            ui.set_layer(28);
+            ui.set_total_layers(450);
+            ui.set_remaining_minutes(10 * 60 + 47);
+            ui.set_eta_clock("05:42".into());
             ui.set_ambient(true);
         }
         "layer-pause" => {
@@ -991,6 +1026,16 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_progress(0.42);
             ui.set_error_kind("estop".into());
             ui.set_klippy_message("Shutdown due to webhooks request".into());
+        }
+        "keypad-heating" => {
+            ui.set_screen("heating".into());
+            ui.set_extruder_temp(187.0);
+            ui.set_extruder_target(240.0);
+            ui.set_keypad_title("Nozzle, °C".into());
+            ui.set_keypad_hint("0 … 350".into());
+            ui.set_keypad_current("240".into());
+            ui.set_keypad_max(350.0);
+            ui.set_overlay("keypad".into());
         }
         "keypad" => {
             ui.set_screen("control".into());

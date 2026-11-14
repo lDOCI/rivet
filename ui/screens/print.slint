@@ -192,9 +192,10 @@ export component PrintingScreen inherits Rectangle {
                 HeaterChip { name: @tr("Bed"); current: root.bed; target: root.bed-target; }
             }
             Rectangle { vertical-stretch: 1; }
-            // Four equal tiles, 84 px high, at the bottom (the prototype's grid).
+            // Four equal tiles, 84 px high, at the bottom (the prototype's grid); 8 px apart
+            // and a 13 px label, so «Продолжить» and «Подстройка» fit inside.
             HorizontalLayout {
-                spacing: 10px;
+                spacing: 8px;
                 height: 84px;
                 if !root.paused: ActionTile { preferred-width: 0px; min-width: 0px; horizontal-stretch: 1; icon: "M10 4.5v15 M16 4.5v15"; text: @tr("Pause"); clicked => { root.pause(); } }
                 if root.paused: ActionTile { preferred-width: 0px; min-width: 0px; horizontal-stretch: 1; icon: "M7.5 4.8v14.4a1 1 0 0 0 1.5.86l11.6-7.2a1 1 0 0 0 0-1.72L9 3.94a1 1 0 0 0-1.5.86z"; filled: true; text: @tr("Resume"); clicked => { root.resume(); } }
@@ -381,7 +382,17 @@ export component AmbientScreen inherits Rectangle {
             alignment: center;
             spacing: 6px;
             if root.remaining-minutes >= 0: Text { text: @tr("Left"); color: Tokens.text-mute; font-size: 18px; font-weight: 600; }
-            if root.remaining-minutes >= 0: Text { text: Format.duration(root.remaining-minutes); color: Tokens.text; font-size: 84px; font-weight: 800; letter-spacing: -2.52px; height: 84px; vertical-alignment: center; }
+            // The prototype's 84 px fits "48 мин"; with hours the line is longer, so smaller
+            // ("2 ч 05 мин", "10 ч 47 мин") to stay inside the screen.
+            if root.remaining-minutes >= 0: Text {
+                text: Format.duration(root.remaining-minutes);
+                color: Tokens.text;
+                font-size: root.remaining-minutes < 60 ? 84px : root.remaining-minutes < 600 ? 60px : 52px;
+                font-weight: 800;
+                letter-spacing: root.remaining-minutes < 60 ? -2.52px : -1.5px;
+                height: 84px;
+                vertical-alignment: center;
+            }
             if root.eta-clock != "": Text { text: @tr("done at {}", root.eta-clock); color: Tokens.text-2; font-size: 24px; }
             Rectangle { height: 31px; Rectangle { y: 18px; height: 1px; background: Tokens.surface-1; } }
             if root.layer >= 0 && root.total-layers > 0: Text { text: @tr("layer {} of {}", root.layer, root.total-layers); color: Tokens.text-dim; font-size: 18px; }

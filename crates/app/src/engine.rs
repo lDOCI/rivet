@@ -2227,6 +2227,11 @@ async fn load_settings(
         number("jog_z_speed", 10.0),
     );
     let level_bed = number("level_bed", 60.0);
+    let purge = (
+        number("extrude_length", 1.0),
+        number("extrude_custom", 150.0),
+        number("filament_purge", 50.0),
+    );
     // Heat presets the user changed; the built-in ones otherwise.
     let presets: Vec<(String, i32, i32)> = saved["heat_presets"]
         .as_array()
@@ -2311,6 +2316,9 @@ async fn load_settings(
         ui.set_jog_xy_speed(jog_xy);
         ui.set_jog_z_speed(jog_z);
         ui.set_level_bed(level_bed.round() as i32);
+        ui.set_extrude_length((purge.0.round() as i32).clamp(0, 4));
+        ui.set_extrude_custom((purge.1.round() as i32).clamp(1, 500));
+        ui.set_filament_purge((purge.2.round() as i32).clamp(1, 500));
     });
     // A drying session survives a restart of Rivet; a finished one switches the bed off.
     if let (Some(until), Some(temp)) = (saved["dryer_until"].as_f64(), saved["dryer_temp"].as_f64())

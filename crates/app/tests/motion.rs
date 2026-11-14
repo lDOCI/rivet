@@ -41,6 +41,9 @@ fn motion_and_extruder() {
     ui.set_screen("extruder".into());
     tap(&ui, "Extrude");
     assert!(pushes.borrow().is_empty());
+    // Cold: it asks how hot first (the screen under the question is not drawn).
+    assert_eq!(ui.get_overlay(), "heat-pick");
+    ui.set_overlay("".into());
     ui.set_can_extrude(true);
     tap(&ui, "Extrude");
     tap(&ui, "Retract");

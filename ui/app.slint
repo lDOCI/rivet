@@ -487,6 +487,11 @@ export component AppWindow inherits Window {
     // The runout screen stays up from the pause it caused until the print goes on
     // or ends, also once new filament is in.
     in-out property <bool> runout;
+    // Purge lengths are kept on the printer, like the brightness: a power cycle
+    // brings back the last choice.
+    changed extrude-length => { root.save-number("extrude_length", root.extrude-length); }
+    changed extrude-custom => { root.save-number("extrude_custom", root.extrude-custom); }
+    changed filament-purge => { root.save-number("filament_purge", root.filament-purge); }
     changed filament-out => { if (root.filament-out && root.print-state == "paused") { root.runout = true; } }
 
     // Labelled objects of the print (exclude_object); the one to skip, asked.
@@ -689,10 +694,12 @@ export component AppWindow inherits Window {
 
     property <bool> ready: root.link-state == "ready";
     property <bool> busy: root.ready && (root.print-state == "printing" || root.print-state == "paused");
-    // A layer over the whole glass (screensaver, touch calibration, lock): the
-    // screen under it is not drawn at all, else the renderer's partial redraws
-    // could let bits of it show through.
-    property <bool> covered: (root.ambient && root.busy) || root.overlay == "touch-cal" || root.overlay == "touch-test" || root.overlay == "installer" || (root.locked && root.ready);
+    // A layer over the screen (screensaver, lock, touch calibration, and any
+    // dialog or keypad): the screen under it is not drawn at all. The software
+    // renderer's partial redraws paint a changing path (the heating dial, an
+    // icon) over whatever covers it: seen on the AD5M as the dial through the
+    // keypad, a key wiped out. A dialog sits on the plain dark background.
+    property <bool> covered: (root.ambient && root.busy) || root.overlay != "" || (root.locked && root.ready);
 
     HorizontalLayout {
         visible: !root.covered;
