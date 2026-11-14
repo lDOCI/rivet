@@ -26,6 +26,10 @@ export global Strings {
     out property <string> rivet-updating: @tr("downloading and installing…");
     // A time zone is set, but none Rivet lists.
     out property <string> zone-set: @tr("set, not in the list");
+    // What a check for updates found.
+    out property <string> no-updates: @tr("checked: everything is up to date");
+    out property <string> updates-found: @tr("checked: there are updates, see above");
+    out property <string> check-failed: @tr("could not check: no connection to GitHub?");
     out property <string> rivet-rolled-back: @tr("the new version did not start; the previous one is back");
     // Wi-Fi rows: band, security, joined before, signal.
     out property <string> ghz: @tr("{} GHz", "{}");
@@ -447,6 +451,9 @@ export component AppWindow inherits Window {
         if (key == "pin") {
             if (v >= 1000) { root.set-pin = "" + round(v); root.setting-changed("pin", root.set-pin); }
         }
+        else if (key == "pid-temp") { root.pid-temp = v; }
+        else if (key == "pid-bed-temp") { root.pid-bed-temp = v; }
+        else if (key == "pid-fan") { root.pid-fan = v; }
         else if (key == "pa-smooth") { root.run-gcode("SET_PRESSURE_ADVANCE SMOOTH_TIME=" + Format.fixed(v, 3)); }
         else if (key == "limit:cruise") { root.set-limit("cruise", v / 100); }
         else if (key == "limit:velocity" || key == "limit:accel" || key == "limit:corner") { root.set-limit(key == "limit:velocity" ? "velocity" : key == "limit:accel" ? "accel" : "corner", v); }
@@ -566,6 +573,9 @@ export component AppWindow inherits Window {
     in property <string> ver-rivet-sub;
     // A newer Rivet release Moonraker can install, and what to say about it.
     in property <bool> rivet-update;
+    // Checking for updates now, and what the last check found.
+    in property <bool> update-checking;
+    in property <string> update-check-sub;
     in property <string> rivet-update-sub;
     in property <string> ver-mainsail;
     in property <string> ver-mainsail-sub;
@@ -624,7 +634,9 @@ export component AppWindow inherits Window {
     in property <float> pa-smooth;
     in-out property <int> pid-heater;
     in-out property <float> pid-temp: 220;
-    in-out property <int> pid-fan: 1;
+    in-out property <float> pid-bed-temp: 60;
+    // Part fan during the nozzle's test, percent (as when printing: PETG 20–40).
+    in-out property <float> pid-fan: 50;
     in-out property <int> shaper-axes;
     // Vibrations: the last SHAPER_CALIBRATE (X, Y) and the belt check.
     in property <bool> calib-corexy;
@@ -957,7 +969,7 @@ export component AppWindow inherits Window {
                 if (key == "probe") { root.screen = "probe"; }
                 if (key == "shaper") { root.screen = "shaper"; }
                 if (key == "belts") { root.screen = "belts"; }
-                if (key == "pid") { root.pid-temp = root.pid-heater == 0 ? 220 : 60; root.screen = "pid"; }
+                if (key == "pid") { root.screen = "pid"; }
                 if (key == "pa") { root.screen = "pa"; }
                 if (key == "tmc") { root.screen = "tmc"; }
                 if (key == "tare") { root.calibrate("LOAD_CELL_TARE"); }
@@ -1045,29 +1057,34 @@ export component AppWindow inherits Window {
         if root.ready && root.screen == "pid": PidForm {
             heater-sel: root.pid-heater;
             temp-num: root.pid-temp;
-            fan-sel: root.pid-fan;
+            bed-temp-num: root.pid-bed-temp;
+            fan-num: root.pid-fan;
+            temp-shown: root.pid-heater != 1;
+            bed-temp-shown: root.pid-heater != 0;
             fan-shown: root.pid-heater != 1;
             now-value: root.pid-heater == 1 ? root.pid-bed : root.pid-nozzle;
             run-enabled: !root.calib-busy && !root.busy;
-            run-sub: root.calib-busy ? (root.pid-heater == 2 ? @tr("running: the nozzle, then the bed at 60°, about 20 minutes") : @tr("running: the heater cycles, about 5 minutes"))
-                : root.pid-heater == 2 ? @tr("the nozzle first, then the bed at 60°") : @tr("the heater switches on and off several times");
+            run-sub: root.calib-busy ? (root.pid-heater == 2 ? @tr("running: the nozzle, then the bed, about 20 minutes") : @tr("running: the heater cycles, about 5 minutes"))
+                : root.pid-heater == 2 ? @tr("the nozzle first, then the bed") : @tr("the heater switches on and off several times");
             back => { root.screen = "calibrate"; }
-            picked(key, i) => {
-                if (key == "heater") { root.pid-heater = i; root.pid-temp = i == 1 ? 60 : 220; }
-                if (key == "fan") { root.pid-fan = i; }
+            picked(key, i) => { if (key == "heater") { root.pid-heater = i; } }
+            set-value(key, v) => {
+                if (key == "temp") { root.pid-temp = v; }
+                if (key == "bed-temp") { root.pid-bed-temp = v; }
+                if (key == "fan") { root.pid-fan = v; }
             }
-            set-value(key, v) => { if (key == "temp") { root.pid-temp = v; } }
+            edit-number(key, t, lo, hi, v, d) => { root.open-number("pid-" + key, t, lo, hi, v, d); }
             activate(key) => {
                 if (key == "run") {
                     // Nozzle (with the part fan as when printing), bed, or both in a row.
                     root.calibrate(
                         (root.pid-heater != 1
-                            ? "M106 S" + (root.pid-fan == 0 ? 0 : root.pid-fan == 1 ? 128 : 255)
+                            ? "M106 S" + round(root.pid-fan * 2.55)
                               + "\nPID_CALIBRATE HEATER=extruder TARGET=" + round(root.pid-temp) + "\nM107"
                             : "")
                         + (root.pid-heater == 2 ? "\n" : "")
                         + (root.pid-heater != 0
-                            ? "PID_CALIBRATE HEATER=heater_bed TARGET=" + (root.pid-heater == 1 ? round(root.pid-temp) : 60)
+                            ? "PID_CALIBRATE HEATER=heater_bed TARGET=" + round(root.pid-bed-temp)
                             : ""));
                 }
             }
@@ -1375,6 +1392,8 @@ export component AppWindow inherits Window {
             fluidd-value: root.ver-fluidd;
             fluidd-sub: root.ver-fluidd-sub;
             web-shown: root.ver-mainsail != "" || root.ver-fluidd != "";
+            check-enabled: !root.update-checking;
+            check-sub: root.update-checking ? @tr("checking…") : root.update-check-sub;
             back => { root.screen = "settings"; }
             activate(key) => {
                 if (key == "check") { root.system-action("check-updates"); }

@@ -548,8 +548,9 @@ def build():
     ])
     form('PidCal', 'Нагрев (PID)', 'tools', 'Calibrate.dc.html', [
         SG('Нагреватель', '', ['Сопло', 'Стол', 'Оба'], 0, src='heaters.available_heaters'),
-        ST('Температура', 'как при обычной печати', 220, 40, 350, 5, '°', src='max: configfile.settings.<heater>.max_temp'),
-        SG('Обдув во время', 'как при печати', ['Выкл.', '50%', '100%'], 1),
+        ST('Температура сопла', 'как при обычной печати', 220, 40, 350, 5, '°', src='max: configfile.settings.extruder.max_temp'),
+        ST('Температура стола', 'как при обычной печати', 60, 30, 120, 5, '°', src='max: configfile.settings.heater_bed.max_temp'),
+        ST('Обдув во время', 'как при печати, для сопла', 50, 0, 100, 5, '%'),
         I('Текущие', 'Kp 22.3 · Ki 1.1 · Kd 114', '', src='configfile.settings.extruder.pid_kp/ki/kd'),
         A('Запустить', 'нагреватель несколько раз включится и выключится', tone='accent'),
     ])

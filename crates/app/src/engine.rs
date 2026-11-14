@@ -2910,15 +2910,42 @@ async fn execute(
                     restart_for_update();
                 }
                 "check-updates" => {
-                    client
+                    // Seen while it runs (it takes a while: GitHub, every component).
+                    let _ = ui.upgrade_in_event_loop(|ui| {
+                        ui.set_update_checking(true);
+                        ui.set_update_check_sub("".into());
+                    });
+                    let refreshed = client
                         .call_timeout(
                             "machine.update.refresh",
                             json!({}),
                             Duration::from_secs(120),
                         )
-                        .await
-                        .map(drop)?;
+                        .await;
                     system_info(client, ui).await;
+                    let status = client
+                        .call_timeout("machine.update.status", json!({}), SETUP_TIMEOUT)
+                        .await
+                        .unwrap_or(Value::Null);
+                    let any = status["version_info"].as_object().is_some_and(|apps| {
+                        apps.values().any(|v| {
+                            let (have, new) = (v["version"].as_str(), v["remote_version"].as_str());
+                            matches!((have, new), (Some(h), Some(n)) if !n.is_empty() && n != "?" && h != n)
+                        })
+                    });
+                    let failed = refreshed.is_err();
+                    let _ = ui.upgrade_in_event_loop(move |ui| {
+                        let words = slint::ComponentHandle::global::<crate::Strings>(&ui);
+                        ui.set_update_checking(false);
+                        ui.set_update_check_sub(if failed {
+                            words.get_check_failed()
+                        } else if any {
+                            words.get_updates_found()
+                        } else {
+                            words.get_no_updates()
+                        });
+                    });
+                    refreshed.map(drop)?;
                 }
                 "reset" => {
                     let keys = client
