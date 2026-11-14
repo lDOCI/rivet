@@ -480,7 +480,7 @@ def build():
     # ---------- Control children ----------
     form('Extruder', 'Экструдер', 'control', 'Control.dc.html', [
         I('Сопло', '240° / 240°', 'для выдавливания нужно ≥ 170°', src='extruder.temperature/target; extruder.can_extrude; configfile.settings.extruder.min_extrude_temp'),
-        SG('Длина', 'за одно нажатие', ['5 мм', '10 мм', '25 мм', '50 мм', '100 мм'], 2, src='max: configfile.settings.extruder.max_extrude_only_distance'),
+        SG('Длина', 'за одно нажатие', ['10 мм', '25 мм', '50 мм', '100 мм', 'Своя…'], 1, src='max: configfile.settings.extruder.max_extrude_only_distance'),
         SG('Скорость', 'мм/с', ['2', '5', '10', '15'], 1, src='max: configfile.settings.extruder.max_extrude_only_velocity'),
         A('Выдавить', 'выбранную длину', tone='accent'),
         A('Втянуть', 'обратно в экструдер'),
@@ -585,6 +585,7 @@ def build():
     form('Sensors', 'Датчики', 'tools', 'Tools.dc.html', [
         S('ФИЛАМЕНТ'),
         T('Датчик обрыва', 'сейчас: пруток есть', True, src='filament_switch_sensor runout_sensor.enabled/filament_detected'),
+        T('Датчик движения', 'сейчас: пруток есть', True, src='filament_motion_sensor <name>.enabled/filament_detected'),
         S('ДРУГИЕ ДАТЧИКИ'),
         I('Качество воздуха', 'нет данных', 'AD5M Pro · TVOC, CO₂, формальдегид', src='flashforge_tvoc.tvoc/co2/hcho/status (status "unknown" until the sensor reports)'),
         I('Тензодатчик', '−40 г', 'нагрузка на сопло', src='flashforge_loadcell.force_g'),

@@ -22,27 +22,37 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
   <dc-import name="NavRail" active="tools" hint-size="88px,480px"></dc-import>
   <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px; display: flex; flex-direction: column; gap: 12px">
     <div style="height: 64px; flex: none; display: flex; align-items: center; gap: 14px"><a href="Calibrate.dc.html" aria-label="Назад" style="width: 64px; height: 64px; flex: none; border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></a><h1 style="margin: 0; flex: 1; font-size: 26px; font-weight: 800; letter-spacing: -0.02em">Винты стола</h1></div>
-    <div style="flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 230px; gap: 14px">
-      <div role="img" aria-label="Стол сверху: задний левый опорный, задний правый четверть оборота по часовой, передний левый треть оборота против, передний правый ровно" style="position: relative; border-radius: 24px; background: #15181d">
-        <div aria-hidden="true" style="position: absolute; inset: 40px 70px; border-radius: 14px; border: 2px dashed #2a3038"></div>
-        <span aria-hidden="true" style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 13px; color: #66707b">стол, вид сверху</span>
-        <div style="position: absolute; left: 14px; top: 14px; width: 150px; border-radius: 16px; background: #1f242b; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px">
-          <span style="font-size: 13px; color: #98a1ac">Задний левый</span><span style="font-size: 20px; font-weight: 800; color: #98a1ac; font-variant-numeric: tabular-nums">опорный</span><span style="font-size: 12px; color: #98a1ac">не крутить</span>
+    <div style="flex: 1; min-height: 0; display: grid; grid-template-columns: 420px 1fr; gap: 16px">
+      <div role="img" aria-label="Стол сверху: на каждом винте сектор показывает, на сколько повернуть; красный по часовой, зелёный против. Сектор растёт 2,5 с, пауза 1,2 с" style="position: relative; border-radius: 24px; background: #15181d">
+        <span aria-hidden="true" style="position: absolute; top: 8px; left: 0; right: 0; text-align: center; font-size: 12px; color: #66707b">сзади</span>
+        <span aria-hidden="true" style="position: absolute; bottom: 8px; left: 0; right: 0; text-align: center; font-size: 12px; color: #66707b">спереди</span>
+        <div style="position: absolute; left: 6px; top: 14px; width: 150px; display: flex; flex-direction: column; align-items: center; gap: 4px">
+          <span style="font-size: 13px; color: #98a1ac">Задний левый</span>
+          <svg width="72" height="72" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="48" fill="none" stroke="#2a3038" stroke-width="3"/><path d="M 50 50 L 50 4 A 46 46 0 0 0 6.3 35.8 Z" fill="#34d399" fill-opacity="0.4"/><circle cx="50" cy="50" r="7" fill="#34d399"/></svg>
+          <span style="font-size: 17px; font-weight: 800; font-variant-numeric: tabular-nums">12′ (72°)</span><span style="font-size: 12px; color: #98a1ac">против часовой</span>
         </div>
-        <div style="position: absolute; right: 14px; top: 14px; width: 150px; border-radius: 16px; background: #123a35; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px">
-          <span style="font-size: 13px; color: #98a1ac">Задний правый</span><span style="font-size: 20px; font-weight: 800; color: #5eead4; font-variant-numeric: tabular-nums">↻ ¼</span><span style="font-size: 12px; color: #98a1ac">по часовой</span>
+        <div style="position: absolute; right: 6px; top: 14px; width: 150px; display: flex; flex-direction: column; align-items: center; gap: 4px">
+          <span style="font-size: 13px; color: #98a1ac">Задний правый</span>
+          <svg width="72" height="72" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="48" fill="none" stroke="#2a3038" stroke-width="3"/><path d="M 50 50 L 50 4 A 46 46 0 0 1 84.2 80.8 Z" fill="#f87171" fill-opacity="0.4"/><circle cx="50" cy="50" r="7" fill="#f87171"/></svg>
+          <span style="font-size: 17px; font-weight: 800; font-variant-numeric: tabular-nums">22′ (132°)</span><span style="font-size: 12px; color: #98a1ac">по часовой</span>
         </div>
-        <div style="position: absolute; left: 14px; bottom: 14px; width: 150px; border-radius: 16px; background: #123a35; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px">
-          <span style="font-size: 13px; color: #98a1ac">Передний левый</span><span style="font-size: 20px; font-weight: 800; color: #5eead4; font-variant-numeric: tabular-nums">↺ ⅓</span><span style="font-size: 12px; color: #98a1ac">против часовой</span>
+        <div style="position: absolute; left: 6px; bottom: 14px; width: 150px; display: flex; flex-direction: column; align-items: center; gap: 4px">
+          <span style="font-size: 13px; color: #98a1ac">Передний левый</span>
+          <svg width="72" height="72" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="48" fill="none" stroke="#2a3038" stroke-width="3"/><path d="M 50 50 L 50 4 A 46 46 0 0 0 15.8 80.8 Z" fill="#34d399" fill-opacity="0.4"/><circle cx="50" cy="50" r="7" fill="#34d399"/></svg>
+          <span style="font-size: 17px; font-weight: 800; font-variant-numeric: tabular-nums">22′ (132°)</span><span style="font-size: 12px; color: #98a1ac">против часовой</span>
         </div>
-        <div style="position: absolute; right: 14px; bottom: 14px; width: 150px; border-radius: 16px; background: #182320; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px">
-          <span style="font-size: 13px; color: #98a1ac">Передний правый</span><span style="font-size: 20px; font-weight: 800; color: #98a1ac; font-variant-numeric: tabular-nums">✓</span><span style="font-size: 12px; color: #98a1ac">ровно</span>
+        <div style="position: absolute; right: 6px; bottom: 14px; width: 150px; display: flex; flex-direction: column; align-items: center; gap: 4px">
+          <span style="font-size: 13px; color: #98a1ac">Передний правый</span>
+          <svg width="72" height="72" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="48" fill="none" stroke="#2a3038" stroke-width="3"/><path d="M 50 50 L 50 4 A 46 46 0 0 1 93.7 35.8 Z" fill="#f87171" fill-opacity="0.4"/><circle cx="50" cy="50" r="7" fill="#f87171"/></svg>
+          <span style="font-size: 17px; font-weight: 800; font-variant-numeric: tabular-nums">12′ (72°)</span><span style="font-size: 12px; color: #98a1ac">по часовой</span>
         </div>
       </div>
       <div style="display: flex; flex-direction: column; gap: 10px">
-        <span style="font-size: 15px; line-height: 1.5; color: #c7cdd4">Подкрутите винты на столько, сколько показано, и проверьте снова. Повторять, пока все не станут «ровно».</span>
+        <span style="font-size: 20px; font-weight: 800">Разброс 0.52 → 0.08 мм</span>
+        <span style="font-size: 15px; line-height: 1.45; color: #c7cdd4">Придерживайте гайку снизу ключом, крутите винт сверху шестигранником. По часовой опускает угол, против часовой поднимает. Потом снимите карту снова.</span>
         <div style="flex: 1"></div>
-        <a href="Screws.dc.html" style="height: 80px; border-radius: 22px; background: #2dd4bf; color: #042f2a; font-size: 18px; font-weight: 800; display: flex; flex-direction: column; align-items: center; justify-content: center"><span>Проверить снова</span><span style="font-size: 12px; font-weight: 600; opacity: 0.75">датчик коснётся у каждого винта</span></a>
+        <a href="Screws.dc.html" style="height: 72px; border-radius: 22px; background: #15181d; color: #f4f6f8; font-size: 18px; font-weight: 700; display: flex; align-items: center; padding: 0 18px; gap: 10px"><span style="flex: 1">Нагрев стола</span><span style="color: #c7cdd4">60°</span><span style="color: #66707b">›</span></a>
+        <a href="Screws.dc.html" style="height: 80px; border-radius: 22px; background: #2dd4bf; color: #042f2a; font-size: 18px; font-weight: 800; display: flex; flex-direction: column; align-items: center; justify-content: center"><span>Снять заново</span><span style="font-size: 12px; font-weight: 600; opacity: 0.75">нагрев, чистка сопла, карта</span></a>
       </div>
     </div>
   </main>

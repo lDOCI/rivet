@@ -1,6 +1,8 @@
 //! Printer state built from Moonraker's `printer.objects.subscribe` result
 //! and the partial updates that follow in `notify_status_update`.
 
+pub mod screws;
+
 use std::collections::HashMap;
 
 use serde_json::{json, Value};
@@ -304,8 +306,10 @@ pub struct Snapshot {
     pub filament_out: bool,
     /// Objects of the print (`exclude_object`), when the slicer labelled them.
     pub objects: Vec<PrintObject>,
-    /// The first runout sensor: its name, switched on, sees filament.
+    /// The first switch runout sensor: its name, switched on, sees filament.
     pub runout: Option<(String, bool, bool)>,
+    /// The first motion sensor (`filament_motion_sensor`), the same way.
+    pub motion: Option<(String, bool, bool)>,
     /// Air quality (AD5M Pro): TVOC, CO₂, formaldehyde; `None` until it reports.
     pub air: Option<[f64; 3]>,
     /// The load cell under the bed (AD5M), grams.
@@ -858,6 +862,9 @@ pub struct CalibInfo {
     pub mesh_profiles: Vec<String>,
     /// Probed heights, rows from the front (min Y) to the back.
     pub mesh: Vec<Vec<f64>>,
+    /// Where the mesh's corner points sit (`bed_mesh.mesh_min` / `mesh_max`), mm.
+    pub mesh_min: [f64; 2],
+    pub mesh_max: [f64; 2],
     pub has_screws: bool,
     /// Screws: name, X, Y, and the last result (turn "CW"/"CCW", "HH:MM", base).
     pub screws: Vec<Screw>,
@@ -875,6 +882,9 @@ pub struct CalibInfo {
     /// Stepper drivers: section ("tmc2209 stepper_x"), run current, quiet mode.
     pub drivers: Vec<(String, f64, bool)>,
     pub has_tare: bool,
+    /// The firmware's bed mesh with heating and nozzle cleaning: Z-Mod's
+    /// `AUTO_FULL_BED_LEVEL`, Klipper Mod's `AUTO_BED_LEVEL`; empty when neither.
+    pub mesh_macro: String,
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -920,6 +930,11 @@ impl CalibInfo {
                     .collect()
             })
             .unwrap_or_default();
+        let corner = |key: &str| {
+            let v = &mesh_status[key];
+            [v[0].as_f64().unwrap_or(0.0), v[1].as_f64().unwrap_or(0.0)]
+        };
+        let (mesh_min, mesh_max) = (corner("mesh_min"), corner("mesh_max"));
         let results = &status["screws_tilt_adjust"]["results"];
         let screws = (1..=8)
             .filter_map(|i| {
@@ -976,6 +991,8 @@ impl CalibInfo {
                 .to_owned(),
             mesh_profiles: profiles,
             mesh,
+            mesh_min,
+            mesh_max,
             has_screws: has("screws_tilt_adjust"),
             screws,
             pid: [pid("extruder"), pid("heater_bed")],
@@ -1007,7 +1024,37 @@ impl CalibInfo {
             },
             drivers,
             has_tare: has("gcode_macro LOAD_CELL_TARE"),
+            mesh_macro: ["AUTO_FULL_BED_LEVEL", "AUTO_BED_LEVEL"]
+                .into_iter()
+                .find(|m| has(&format!("gcode_macro {m}")))
+                .unwrap_or_default()
+                .to_owned(),
         }
+    }
+}
+
+/// Nozzle heat for wiping it clean before probing: soft enough for PLA, PETG
+/// and ABS (Z-Mod's own default).
+pub const CLEAN_NOZZLE_TEMP: u32 = 230;
+
+/// A bed mesh as a calibration should be taken: the bed at `bed` °C, the
+/// nozzle wiped clean, the load cell zeroed. The firmware's own macro when it
+/// has one (it heats, wipes the nozzle on the bed's edge, lets it cool, zeroes
+/// the load cell and probes): Z-Mod's `AUTO_FULL_BED_LEVEL`, Klipper Mod's
+/// `AUTO_BED_LEVEL`. Otherwise heat, home, zero and probe, with no wipe.
+pub fn level_gcode(mesh_macro: &str, has_tare: bool, bed: u32) -> String {
+    let nozzle = CLEAN_NOZZLE_TEMP;
+    match mesh_macro {
+        // SAVE=0: Z-Mod would SAVE_CONFIG and restart Klipper; the mesh stays
+        // in use until then either way, as Klipper Mod's does.
+        "AUTO_FULL_BED_LEVEL" => {
+            format!("AUTO_FULL_BED_LEVEL BED_TEMP={bed} EXTRUDER_TEMP={nozzle} SAVE=0")
+        }
+        "AUTO_BED_LEVEL" => format!("AUTO_BED_LEVEL BED_TEMP={bed} EXTRUDER_TEMP={nozzle}"),
+        _ => format!(
+            "M190 S{bed}\nG28\nG90\nG1 Z5 F1800\n{}BED_MESH_CALIBRATE",
+            if has_tare { "LOAD_CELL_TARE\n" } else { "" }
+        ),
     }
 }
 
@@ -1932,6 +1979,21 @@ impl PrinterState {
     }
 
     /// First three numbers of an `[x, y, z, e]` array.
+    /// The first filament sensor of a kind (`prefix` ends with a space): its name,
+    /// switched on, sees filament. Klipper leaves `enabled` out until it changes.
+    fn filament_sensor(&self, prefix: &str) -> Option<(String, bool, bool)> {
+        let (n, v) = self
+            .status
+            .as_object()?
+            .iter()
+            .find(|(n, _)| n.starts_with(prefix))?;
+        Some((
+            n[prefix.len()..].to_owned(),
+            v["enabled"].as_bool().unwrap_or(true),
+            v["filament_detected"].as_bool().unwrap_or(false),
+        ))
+    }
+
     fn axes(&self, object: &str, field: &str) -> [f64; 3] {
         let mut out = [0.0; 3];
         if let Some(a) = self.field(object, field).and_then(Value::as_array) {
@@ -2186,20 +2248,8 @@ impl PrinterState {
                 .and_then(Value::as_bool)
                 .unwrap_or(false),
             objects: self.print_objects(),
-            runout: self.status.as_object().and_then(|objects| {
-                objects
-                    .iter()
-                    .find(|(n, _)| is_filament_sensor(n))
-                    .map(|(n, v)| {
-                        (
-                            n.split_once(' ')
-                                .map_or(n.as_str(), |(_, name)| name)
-                                .to_owned(),
-                            v["enabled"].as_bool().unwrap_or(true),
-                            v["filament_detected"].as_bool().unwrap_or(false),
-                        )
-                    })
-            }),
+            runout: self.filament_sensor("filament_switch_sensor "),
+            motion: self.filament_sensor("filament_motion_sensor "),
             air: self
                 .status
                 .get("flashforge_tvoc")
@@ -2508,6 +2558,44 @@ mod tests {
             "filament_switch_sensor runout_sensor": { "enabled": false }
         }));
         assert!(!st.snapshot().filament_out);
+    }
+
+    #[test]
+    fn leveling_uses_the_firmware_macro_with_the_bed_heat() {
+        assert_eq!(
+            level_gcode("AUTO_BED_LEVEL", true, 70),
+            "AUTO_BED_LEVEL BED_TEMP=70 EXTRUDER_TEMP=230"
+        );
+        assert_eq!(
+            level_gcode("AUTO_FULL_BED_LEVEL", true, 80),
+            "AUTO_FULL_BED_LEVEL BED_TEMP=80 EXTRUDER_TEMP=230 SAVE=0"
+        );
+        let plain = level_gcode("", true, 60);
+        assert!(
+            plain.starts_with("M190 S60\nG28")
+                && plain.ends_with("LOAD_CELL_TARE\nBED_MESH_CALIBRATE")
+        );
+    }
+
+    #[test]
+    fn switch_and_motion_sensors_each() {
+        let mut st = PrinterState::default();
+        st.apply_status(serde_json::json!({
+            "filament_switch_sensor runout_sensor": { "enabled": true, "filament_detected": true },
+            "filament_motion_sensor encoder": { "enabled": false, "filament_detected": true }
+        }));
+        let s = st.snapshot();
+        assert_eq!(s.runout, Some(("runout_sensor".into(), true, true)));
+        assert_eq!(s.motion, Some(("encoder".into(), false, true)));
+        st = PrinterState::default();
+        st.apply_status(serde_json::json!({
+            "filament_motion_sensor encoder": { "filament_detected": true }
+        }));
+        let s = st.snapshot();
+        assert_eq!(
+            (s.runout, s.motion),
+            (None, Some(("encoder".into(), true, true)))
+        );
     }
 
     #[test]

@@ -2,17 +2,19 @@
 
 use slint::{Color, ModelRc, SharedString, VecModel};
 
-use crate::{AppWindow, FormRow, MeshCell, ScrewRow};
+use crate::{AppWindow, FormRow, MeshCell, ScrewDial};
 
 pub fn show(ui: &AppWindow, info: model::CalibInfo) {
     ui.set_calib_has_probe(info.has_probe);
     ui.set_calib_has_mesh(info.has_mesh);
-    ui.set_calib_has_screws(info.has_screws && !info.screws.is_empty());
+    // Screws are planned from a mesh: any printer with a probe and a mesh.
+    ui.set_calib_has_screws(info.has_mesh && info.has_probe);
     ui.set_calib_has_accel(info.has_accel);
     ui.set_calib_corexy(info.corexy);
     crate::resonance::set_range(info.freq_range.0, info.freq_range.1);
     ui.set_sweep_minutes((info.sweep_seconds / 60.0).ceil().max(1.0) as i32);
     ui.set_calib_has_tare(info.has_tare);
+    ui.set_calib_mesh_macro(info.mesh_macro.clone().into());
     ui.set_probe_z_saved(info.z_offset.map_or(-999.0, |z| z as f32));
     ui.set_probe_offset(format!("{} / {}", info.probe_offset[0], info.probe_offset[1]).into());
     ui.set_probe_samples(info.probe_samples as i32);
@@ -52,33 +54,29 @@ pub fn show(ui: &AppWindow, info: model::CalibInfo) {
         .collect();
     ui.set_mesh_profiles(ModelRc::new(VecModel::from(profiles)));
 
-    // Screws placed as they sit on the bed.
-    let (x0, x1, y0, y1) = info.screws.iter().fold(
-        (f64::MAX, f64::MIN, f64::MAX, f64::MIN),
-        |(a, b, c, d), s| (a.min(s.x), b.max(s.x), c.min(s.y), d.max(s.y)),
+    // Screws from the mesh, as the calibration assistant plans them.
+    let plan = model::screws::plan(
+        &info.mesh,
+        info.mesh_min,
+        info.mesh_max,
+        &model::screws::ScrewOptions::default(),
     );
-    let screws: Vec<ScrewRow> = info
-        .screws
-        .iter()
-        .map(|s| {
-            let (state, amount) = match (&s.turn, s.base) {
-                (_, true) => ("base", String::new()),
-                (None, _) => ("none", String::new()),
-                (Some((sign, adjust)), _) => match turn(adjust) {
-                    None => ("level", String::new()),
-                    Some(t) => (if sign == "CW" { "cw" } else { "ccw" }, t),
-                },
-            };
-            ScrewRow {
-                name: s.name.as_str().into(),
-                x: ((s.x - x0) / (x1 - x0).max(1.0)) as f32,
-                y: ((y1 - s.y) / (y1 - y0).max(1.0)) as f32,
-                state: state.into(),
-                amount: amount.into(),
-            }
+    let dials: Vec<ScrewDial> = plan
+        .as_ref()
+        .map(|p| {
+            p.turns
+                .iter()
+                .map(|t| ScrewDial {
+                    minutes: t.minutes as i32,
+                    cw: t.clockwise,
+                    limited: t.limited,
+                })
+                .collect()
         })
-        .collect();
-    ui.set_screws(ModelRc::new(VecModel::from(screws)));
+        .unwrap_or_default();
+    ui.set_screw_dials(ModelRc::new(VecModel::from(dials)));
+    ui.set_screws_before(plan.as_ref().map_or(-1.0, |p| p.range_before as f32));
+    ui.set_screws_after(plan.as_ref().map_or(-1.0, |p| p.range_after as f32));
 
     let pid = |p: Option<[f64; 3]>| {
         p.map(|[kp, ki, kd]| format!("Kp {kp:.1} · Ki {ki:.2} · Kd {kd:.0}"))
@@ -142,35 +140,6 @@ fn mesh_color(t: f64) -> Color {
     }
 }
 
-/// Klipper's "HH:MM" (whole turns : minutes of a 60-minute turn) as a person
-/// turns: "¼", "1 ½". None when it is level already.
-pub fn turn(adjust: &str) -> Option<String> {
-    let (h, m) = adjust.split_once(':')?;
-    let (h, m): (u32, u32) = (h.trim().parse().ok()?, m.trim().parse().ok()?);
-    let marks = [
-        (0, ""),
-        (8, "⅛"),
-        (15, "¼"),
-        (20, "⅓"),
-        (30, "½"),
-        (40, "⅔"),
-        (45, "¾"),
-        (53, "⅞"),
-        (60, ""),
-    ];
-    let (mark, frac) = marks
-        .iter()
-        .min_by_key(|(at, _)| (i64::from(*at) - i64::from(m)).abs())
-        .copied()?;
-    let whole = h + u32::from(mark == 60);
-    match (whole, frac) {
-        (0, "") => None,
-        (0, f) => Some(f.to_owned()),
-        (w, "") => Some(w.to_string()),
-        (w, f) => Some(format!("{w} {f}")),
-    }
-}
-
 /// "stepper_x" → "X", "extruder" → "Extruder": how drivers are named on screen.
 fn stepper_title(stepper: &str) -> String {
     match stepper.strip_prefix("stepper_") {
@@ -187,15 +156,6 @@ fn stepper_title(stepper: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn screw_turns() {
-        assert_eq!(turn("00:15").as_deref(), Some("¼"));
-        assert_eq!(turn("00:20").as_deref(), Some("⅓"));
-        assert_eq!(turn("01:30").as_deref(), Some("1 ½"));
-        assert_eq!(turn("00:02"), None);
-        assert_eq!(turn("00:58").as_deref(), Some("1"));
-    }
 
     #[test]
     fn numbers_and_names() {

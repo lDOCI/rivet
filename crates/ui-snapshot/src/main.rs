@@ -66,6 +66,9 @@ const ALL: &[&str] = &[
     "messages",
     "heat-presets",
     "filament",
+    "filament-purge",
+    "filament-own",
+    "extruder-own",
     "calibrate",
     "bed-mesh",
     "screws",
@@ -655,18 +658,16 @@ fn show(ui: &AppWindow, name: &str) {
             let mesh: Vec<Vec<f64>> = (0..5)
                 .map(|r| {
                     (0..5)
-                        .map(|c| -0.09 + 0.02 * (c as f64) + 0.02 * (r as f64))
+                        .map(|c| {
+                            -0.3 + 0.12 * (c as f64) + 0.05 * (r as f64)
+                                - 0.04 * ((c * r) as f64 / 4.0)
+                        })
                         .collect()
                 })
                 .collect();
             let status = serde_json::json!({
-                "bed_mesh": { "profile_name": "default", "profiles": { "default": {}, "PETG-80": {} }, "probed_matrix": mesh },
-                "screws_tilt_adjust": { "results": {
-                    "screw1": { "sign": "CCW", "adjust": "00:20", "is_base": false },
-                    "screw2": { "sign": "CW", "adjust": "00:00", "is_base": false },
-                    "screw3": { "sign": "CW", "adjust": "00:15", "is_base": false },
-                    "screw4": { "sign": "CW", "adjust": "00:00", "is_base": true }
-                } }
+                "bed_mesh": { "profile_name": "default", "profiles": { "default": {}, "PETG-80": {} }, "probed_matrix": mesh,
+                    "mesh_min": [-105.0, -105.0], "mesh_max": [105.0, 105.0] }
             });
             let info = model::CalibInfo::read(&cfg, &status, &objects);
             rivet::calib::show(ui, info);
@@ -745,6 +746,8 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_runout_name("runout_sensor".into());
             ui.set_runout_enabled(true);
             ui.set_runout_sees(true);
+            ui.set_motion_name("encoder".into());
+            ui.set_motion_enabled(false);
             ui.set_has_air(true);
             ui.set_has_load_cell(true);
             ui.set_load_g(-40);
@@ -797,6 +800,23 @@ fn show(ui: &AppWindow, name: &str) {
         "filament" => {
             ui.set_screen("filament".into());
             ui.set_filament_step(1);
+        }
+        "filament-purge" => {
+            ui.set_screen("filament".into());
+            ui.set_filament_step(3);
+        }
+        "filament-own" => {
+            ui.set_screen("filament".into());
+            ui.set_filament_step(3);
+            ui.set_filament_purge(150);
+        }
+        "extruder-own" => {
+            ui.set_screen("extruder".into());
+            ui.set_can_extrude(true);
+            ui.set_extruder_temp(240.0);
+            ui.set_extruder_target(240.0);
+            ui.set_extrude_length(4);
+            ui.set_extrude_custom(120);
         }
         "temp-graph" => {
             ui.set_screen("temp-graph".into());

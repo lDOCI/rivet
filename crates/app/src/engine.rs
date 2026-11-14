@@ -300,8 +300,8 @@ pub enum Command {
         key: String,
         value: f32,
     },
-    /// Switch the runout sensor on or off.
-    SetRunout(bool),
+    /// Switch a filament sensor (by its Klipper name) on or off.
+    SetSensor(String, bool),
     ListHistory,
     ClearHistory,
     /// Service intervals from print hours; a part replaced (or greased) now.
@@ -1123,23 +1123,6 @@ async fn calib_info(client: &Client, ui: &slint::Weak<AppWindow>) {
 /// Run a G-code line and wait for Klipper's answer.
 async fn gcode(client: &Client, script: &str) -> Result<(), moonraker::Error> {
     client.gcode(script).await
-}
-
-/// The runout sensor's name, from the printer's objects.
-async fn runout_name(client: &Client) -> Option<String> {
-    let list = client
-        .call_timeout("printer.objects.list", json!({}), SETUP_TIMEOUT)
-        .await
-        .ok()?;
-    list["objects"]
-        .as_array()?
-        .iter()
-        .filter_map(Value::as_str)
-        .find_map(|n| {
-            n.strip_prefix("filament_switch_sensor ")
-                .or_else(|| n.strip_prefix("filament_motion_sensor "))
-                .map(str::to_owned)
-        })
 }
 
 /// Hours printed in all, from Moonraker's history totals.
@@ -2206,6 +2189,7 @@ async fn load_settings(
         number("jog_xy_speed", 100.0),
         number("jog_z_speed", 10.0),
     );
+    let level_bed = number("level_bed", 60.0);
     // Heat presets the user changed; the built-in ones otherwise.
     let presets: Vec<(String, i32, i32)> = saved["heat_presets"]
         .as_array()
@@ -2289,6 +2273,7 @@ async fn load_settings(
         ui.set_invert_z(invert[2]);
         ui.set_jog_xy_speed(jog_xy);
         ui.set_jog_z_speed(jog_z);
+        ui.set_level_bed(level_bed.round() as i32);
     });
     // A drying session survives a restart of Rivet; a finished one switches the bed off.
     if let (Some(until), Some(temp)) = (saved["dryer_until"].as_f64(), saved["dryer_temp"].as_f64())
@@ -2577,16 +2562,23 @@ fn gcode_for(cmd: &Command) -> Option<String> {
             length,
             speed,
             heat,
-        } => format!(
-            "{}SAVE_GCODE_STATE NAME=RIVET\nM83\nG1 E{length:.1} F{:.0}\nRESTORE_GCODE_STATE NAME=RIVET",
-            if *heat > 0.0 {
-                // Heat and wait, then move the filament.
-                format!("M109 S{heat:.0}\n")
-            } else {
-                String::new()
-            },
-            speed * 60.0
-        ),
+        } => {
+            // Klipper refuses one extrude-only move longer than max_extrude_only_distance
+            // (50 mm unless the config raises it): a long purge goes in 50 mm moves.
+            let moves = (length.abs() / 50.0).ceil().max(1.0);
+            let step = length / moves;
+            let feed = speed * 60.0;
+            format!(
+                "{}SAVE_GCODE_STATE NAME=RIVET\nM83\n{}RESTORE_GCODE_STATE NAME=RIVET",
+                if *heat > 0.0 {
+                    // Heat and wait, then move the filament.
+                    format!("M109 S{heat:.0}\n")
+                } else {
+                    String::new()
+                },
+                format!("G1 E{step:.1} F{feed:.0}\n").repeat(moves as usize)
+            )
+        }
         Command::SetFan { object, percent } => match object.split_once(' ') {
             // `fan_generic NAME` is set by name; the part fan takes M106.
             Some((_, name)) => format!(
@@ -2996,10 +2988,7 @@ async fn execute(
             };
             gcode(client, &format!("SET_VELOCITY_LIMIT {arg}")).await
         }
-        Command::SetRunout(on) => {
-            let name = runout_name(client)
-                .await
-                .unwrap_or_else(|| "runout_sensor".into());
+        Command::SetSensor(name, on) => {
             gcode(
                 client,
                 &format!("SET_FILAMENT_SENSOR SENSOR={name} ENABLE={}", u8::from(*on)),
@@ -3337,6 +3326,10 @@ fn push(ui: &slint::Weak<AppWindow>, s: Snapshot) {
         ui.set_runout_name(name.into());
         ui.set_runout_enabled(enabled);
         ui.set_runout_sees(sees);
+        let (name, enabled, sees) = s.motion.clone().unwrap_or_default();
+        ui.set_motion_name(name.into());
+        ui.set_motion_enabled(enabled);
+        ui.set_motion_sees(sees);
         ui.set_has_air(s.caps.air_sensor);
         ui.set_air_text(
             s.air
@@ -3541,6 +3534,21 @@ mod tests {
         })
         .unwrap();
         assert!(code.starts_with("M109 S215\n") && code.contains("G1 E10.0 F300"));
+        // Longer than Klipper's default 50 mm: several moves.
+        let code = gcode_for(&Command::Extrude {
+            length: 150.0,
+            speed: 5.0,
+            heat: 0.0,
+        })
+        .unwrap();
+        assert_eq!(code.matches("G1 E50.0 F300").count(), 3);
+        let code = gcode_for(&Command::Extrude {
+            length: 120.0,
+            speed: 5.0,
+            heat: 0.0,
+        })
+        .unwrap();
+        assert_eq!(code.matches("G1 E40.0 F300").count(), 3);
         assert_eq!(gcode_for(&Command::MotorsOff).unwrap(), "M84");
     }
 

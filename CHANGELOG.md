@@ -2,6 +2,34 @@
 
 Each release's section is also its description on GitHub. [Русский — ниже в каждом разделе.]
 
+## v0.1.6-alpha
+
+- Bed mesh and bed screws are probed as the firmware's own leveling does: the bed at the
+  heat set on the screen, the nozzle heated to 230 °C and wiped on the bed's edge, then
+  cooled, the load cell zeroed (Z-Mod's `AUTO_FULL_BED_LEVEL`, Klipper Mod's
+  `AUTO_BED_LEVEL`). They used to probe a cold bed with whatever was on the nozzle.
+- Bed screws are worked out from the mesh, as the Flashforge Calibration Assistant does:
+  minutes to turn each screw, and on each screw head a wedge that grows to the angle (red
+  clockwise lowers the corner, green anticlockwise raises it).
+- Probe accuracy: the load cell is zeroed and the check starts 5 mm over the middle of the
+  bed. Unzeroed, it triggered in the air while the bed was coming up (a spread of 219 mm).
+- Sensors: the runout switch and the motion sensor each have their own switch; only the
+  first one showed before.
+- Purging: 25/50/100 mm in the load wizard and 10–100 mm on the Extruder screen, and any
+  length up to 500 mm on the keypad (*Custom…*).
+
+**Русский.** Карта стола и винты снимаются так же, как это делает сама прошивка: стол
+нагревается до температуры, заданной на экране, сопло нагревается до 230 °C, вытирается о
+край стола и остывает, тензодатчик обнуляется (`AUTO_FULL_BED_LEVEL` в Z-Mod, `AUTO_BED_LEVEL`
+в Klipper Mod). Раньше снимались на холодном столе с тем, что осталось на сопле. Винты
+считаются по карте, как в Flashforge Calibration Assistant: сколько минут крутить каждый, и
+на каждом винте растёт сектор до нужного угла (красный по часовой опускает угол, зелёный
+против часовой поднимает). Проверка точности датчика: тензодатчик обнуляется, проверка
+начинается в 5 мм над серединой стола; без обнуления он срабатывал в воздухе, пока стол ехал
+(разброс 219 мм). Датчики: у датчика обрыва и датчика движения свои переключатели, раньше был
+виден только первый. Протяжка: 25/50/100 мм в мастере загрузки, 10–100 мм на экране
+экструдера и любая длина до 500 мм с клавиатуры («Своя…»).
+
 ## v0.1.5-alpha
 
 - Brightness at 100 % switched the screen off (the panel goes dark at the top of the driver's

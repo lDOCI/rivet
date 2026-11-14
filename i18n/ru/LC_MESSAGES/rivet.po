@@ -570,6 +570,15 @@ msgstr "10 мм"
 msgid "100 mm"
 msgstr "100 мм"
 
+msgid "Custom…"
+msgstr "Своя…"
+
+msgid "custom: {} mm"
+msgstr "своя: {} мм"
+
+msgid "Length, mm"
+msgstr "Длина, мм"
+
 msgid "25 mm"
 msgstr "25 мм"
 
@@ -1416,6 +1425,9 @@ msgstr "Температура MCU и хоста"
 
 msgid "Runout sensor"
 msgstr "Датчик обрыва"
+
+msgid "Motion sensor"
+msgstr "Датчик движения"
 
 msgid "OTHER SENSORS"
 msgstr "ДРУГИЕ ДАТЧИКИ"
@@ -2361,3 +2373,42 @@ msgstr "проверено: есть обновления, см. выше"
 
 msgid "could not check: no connection to GitHub?"
 msgstr "не удалось проверить: нет связи с GitHub?"
+
+msgid "Bed heat"
+msgstr "Нагрев стола"
+
+msgid "heats, wipes the nozzle, probes"
+msgstr "нагрев, чистка сопла, карта"
+
+msgid "back"
+msgstr "сзади"
+
+msgid "front"
+msgstr "спереди"
+
+msgid "Front left"
+msgstr "Передний левый"
+
+msgid "Front right"
+msgstr "Передний правый"
+
+msgid "Back left"
+msgstr "Задний левый"
+
+msgid "Back right"
+msgstr "Задний правый"
+
+msgid "Spread {} → {} mm"
+msgstr "Разброс {} → {} мм"
+
+msgid "Level: nothing to turn"
+msgstr "Ровно, крутить не нужно"
+
+msgid "Hold the nut under the bed with a spanner, turn the screw from above. Clockwise lowers the corner, anticlockwise raises it. Then probe again."
+msgstr "Придерживайте гайку снизу ключом, крутите винт сверху шестигранником. По часовой опускает угол, против часовой поднимает. Потом снимите карту снова."
+
+msgid "A screw is far out: turn as shown and probe again."
+msgstr "Винт сильно не на месте: поверните, как показано, и снимите карту снова."
+
+msgid "Probe the bed"
+msgstr "Снять карту"
