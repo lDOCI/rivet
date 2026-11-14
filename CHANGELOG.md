@@ -2,6 +2,18 @@
 
 Each release's section is also its description on GitHub. [Русский — ниже в каждом разделе.]
 
+## v0.1.8-alpha
+
+- Rivet crashed on the "printer has stopped" screen: Klipper's message was set in a
+  monospace font the printer does not have. With Klipper shut down, Rivet restarted and
+  crashed again until Klipper came back, and the watchdog rolled the update back. A test
+  now keeps the screens to the font built into Rivet.
+
+**Русский.** Rivet падал на экране «Принтер остановлен»: сообщение Klipper было набрано
+моноширинным шрифтом, которого на принтере нет. Пока Klipper стоял, Rivet перезапускался
+и падал снова, а сторож откатывал обновление. Теперь тест следит, чтобы экраны
+использовали только встроенный в Rivet шрифт.
+
 ## v0.1.7-alpha
 
 - Moving the head or the bed by hand stops at the endstop. Klipper Mod's AD5M allows X and
