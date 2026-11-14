@@ -1028,7 +1028,15 @@ export component AppWindow inherits Window {
             back => { root.screen = "calibrate"; }
             activate(key) => {
                 if (key == "tune") { root.tune-z-start = root.z-offset; root.screen = "zoffset"; }
-                if (key == "accuracy") { root.calibrate("G28\nPROBE_ACCURACY SAMPLES=10"); }
+                // As Klipper Mod probes: over the middle of the bed, 5 mm above it, the
+                // AD5M's load cell zeroed (unzeroed, it triggers at random), then probe.
+                if (key == "accuracy") {
+                    root.calibrate("G28\nG90\n"
+                        + (root.axis-max-x > root.axis-min-x ? "G1 X" + round((root.axis-min-x + root.axis-max-x) / 2) + " Y" + round((root.axis-min-y + root.axis-max-y) / 2) + " F6000\n" : "")
+                        + "G1 Z5 F1800\n"
+                        + (root.calib-has-tare ? "LOAD_CELL_TARE\n" : "")
+                        + "PROBE_ACCURACY SAMPLES=10");
+                }
             }
         }
         if root.ready && root.screen == "shaper": ShaperForm {
