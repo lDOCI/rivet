@@ -658,18 +658,16 @@ fn show(ui: &AppWindow, name: &str) {
             let mesh: Vec<Vec<f64>> = (0..5)
                 .map(|r| {
                     (0..5)
-                        .map(|c| -0.09 + 0.02 * (c as f64) + 0.02 * (r as f64))
+                        .map(|c| {
+                            -0.3 + 0.12 * (c as f64) + 0.05 * (r as f64)
+                                - 0.04 * ((c * r) as f64 / 4.0)
+                        })
                         .collect()
                 })
                 .collect();
             let status = serde_json::json!({
-                "bed_mesh": { "profile_name": "default", "profiles": { "default": {}, "PETG-80": {} }, "probed_matrix": mesh },
-                "screws_tilt_adjust": { "results": {
-                    "screw1": { "sign": "CCW", "adjust": "00:20", "is_base": false },
-                    "screw2": { "sign": "CW", "adjust": "00:00", "is_base": false },
-                    "screw3": { "sign": "CW", "adjust": "00:15", "is_base": false },
-                    "screw4": { "sign": "CW", "adjust": "00:00", "is_base": true }
-                } }
+                "bed_mesh": { "profile_name": "default", "profiles": { "default": {}, "PETG-80": {} }, "probed_matrix": mesh,
+                    "mesh_min": [-105.0, -105.0], "mesh_max": [105.0, 105.0] }
             });
             let info = model::CalibInfo::read(&cfg, &status, &objects);
             rivet::calib::show(ui, info);

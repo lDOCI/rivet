@@ -21,7 +21,10 @@ export component BedMeshScreen inherits Rectangle {
     in property <bool> busy;
     // A print is running: no probing then.
     in property <bool> printing;
+    // The bed's heat for probing, °C.
+    in property <int> bed-temp: 60;
     callback probe;
+    callback edit-bed;
     callback open-profiles;
     callback back;
     property <int> rows: root.cols > 0 ? ceil(root.cells.length / root.cols) : 0;
@@ -95,10 +98,15 @@ export component BedMeshScreen inherits Rectangle {
                 wrap: word-wrap;
             }
             Rectangle { vertical-stretch: 1; }
+            LinkRow {
+                title: @tr("Bed heat");
+                value: root.bed-temp + "°";
+                clicked => { root.edit-bed(); }
+            }
             PrimaryButton {
                 min-height: 80px;
                 text: root.busy ? @tr("Probing…") : @tr("Probe again");
-                sub: root.printing ? @tr("after the print") : "";
+                sub: root.printing ? @tr("after the print") : @tr("heats, wipes the nozzle, probes");
                 enabled: !root.busy && !root.printing;
                 clicked => { root.probe(); }
             }
@@ -137,69 +145,179 @@ export component MeshProfilesScreen inherits VerticalLayout {
     }
 }
 
-// One screw: where it is on the bed (0..1, y from the back), its name, what to
-// do ("none" not checked, "base", "level", "cw", "ccw") and how far ("¼").
-export struct ScrewRow { name: string, x: float, y: float, state: string, amount: string }
+// One bed screw, planned from the mesh (the calibration assistant's way): clock
+// minutes to turn (60 = a full turn, 0 = leave it), clockwise or not (holding
+// the nut, turning the screw from above), more than the 2 mm it may ask for.
+// Four of them: front left, front right, back left, back right.
+export struct ScrewDial { minutes: int, cw: bool, limited: bool }
+
+// A wedge of a 72 px circle from 12 o'clock, `sweep` degrees either way.
+component Wedge inherits Path {
+    in property <float> sweep;
+    in property <bool> cw;
+    property <angle> end: (root.cw ? root.sweep - 90 : -90 - root.sweep) * 1deg;
+    width: 72px;
+    height: 72px;
+    viewbox-width: 100;
+    viewbox-height: 100;
+    MoveTo { x: 50; y: 50; }
+    LineTo { x: 50; y: 4; }
+    ArcTo {
+        x: 50 + 46 * cos(root.end);
+        y: 50 + 46 * sin(root.end);
+        radius-x: 46;
+        radius-y: 46;
+        large-arc: root.sweep > 180;
+        sweep: root.cw;
+    }
+    Close { }
+}
+
+// A screw head from above: a wedge grows to the angle to turn, red clockwise
+// (lowers the corner), green anticlockwise (raises it); past a full turn a
+// darker second layer. Vector paths over a small square: cheap to redraw.
+component ScrewHead inherits Rectangle {
+    in property <string> name;
+    in property <ScrewDial> dial;
+    in property <float> progress;
+    property <color> tone: root.dial.cw ? #f87171 : #34d399;
+    property <float> deg: root.dial.minutes * 6;
+    property <float> shown: root.deg * root.progress;
+    width: 150px;
+    height: 150px;
+    VerticalLayout {
+        alignment: center;
+        spacing: 4px;
+        Text { text: root.name; color: Tokens.text-dim; font-size: 13px; horizontal-alignment: center; }
+        HorizontalLayout {
+            alignment: center;
+            Rectangle {
+                width: 72px;
+                height: 72px;
+                border-radius: 36px;
+                border-width: 2px;
+                border-color: Tokens.surface-3;
+                if root.dial.minutes > 0 && root.shown > 0.5: Wedge {
+                    sweep: min(root.shown, 359.9);
+                    cw: root.dial.cw;
+                    fill: root.tone.with-alpha(0.4);
+                }
+                if root.shown > 360.5: Wedge {
+                    sweep: min(root.shown - 360, 359.9);
+                    cw: root.dial.cw;
+                    fill: root.tone.with-alpha(0.75);
+                }
+                Rectangle {
+                    width: 10px;
+                    height: 10px;
+                    border-radius: 5px;
+                    background: root.dial.minutes > 0 ? root.tone : Tokens.accent;
+                }
+            }
+        }
+        Text {
+            text: root.dial.minutes > 0 ? root.dial.minutes + "′ (" + root.deg + "°)" : "✓";
+            color: root.dial.minutes > 0 ? Tokens.text : Tokens.accent;
+            font-size: 17px;
+            font-weight: 800;
+            horizontal-alignment: center;
+        }
+        Text {
+            text: root.dial.minutes == 0 ? @tr("level") : root.dial.cw ? @tr("clockwise") : @tr("anticlockwise");
+            color: Tokens.text-dim;
+            font-size: 12px;
+            horizontal-alignment: center;
+        }
+    }
+}
 
 export component ScrewsScreen inherits Rectangle {
     horizontal-stretch: 1;
-    in property <[ScrewRow]> screws;
+    in property <[ScrewDial]> dials;
+    // The mesh's spread now and after the turns, mm; -1 without a mesh.
+    in property <float> before: -1;
+    in property <float> after: -1;
+    in property <int> bed-temp: 60;
     in property <bool> busy;
     in property <bool> printing;
     callback check;
+    callback edit-bed;
     callback back;
+    property <bool> turning: root.dials.length == 4 && (root.dials[0].minutes + root.dials[1].minutes + root.dials[2].minutes + root.dials[3].minutes) > 0;
+    // 2.5 s growing, 1.2 s still, at about 15 frames a second; it opens on the
+    // full turn, so the answer is there at once.
+    property <int> ms: 2500;
+    property <float> progress: min(1, root.ms / 2500);
+    Timer {
+        interval: 66ms;
+        running: root.turning && !root.busy;
+        triggered => { root.ms = mod(root.ms + 66, 3700); }
+    }
     HorizontalLayout {
         padding: Tokens.pad;
-        spacing: 20px;
+        spacing: 16px;
         VerticalLayout {
-            width: 432px;
+            width: 420px;
             spacing: 12px;
             Header { title: @tr("Bed screws"); back-clicked => { root.back(); } }
             plate := Rectangle {
                 vertical-stretch: 1;
                 border-radius: 24px;
                 background: Tokens.surface-1;
-                Text { text: @tr("the bed from above"); color: Tokens.text-faint; font-size: 13px; horizontal-alignment: center; vertical-alignment: center; }
-                for s in root.screws: Rectangle {
-                    width: 172px;
-                    height: 78px;
-                    x: 14px + s.x * (parent.width - 28px - self.width);
-                    y: 14px + s.y * (parent.height - 28px - self.height);
-                    border-radius: 16px;
-                    background: s.state == "cw" || s.state == "ccw" ? Tokens.accent.with-alpha(0.25) : Tokens.surface-2;
-                    VerticalLayout {
-                        padding: 12px;
-                        spacing: 2px;
-                        Text { text: s.name; color: Tokens.text-2; font-size: 14px; overflow: elide; }
-                        Text {
-                            text: s.state == "none" ? "—" : s.state == "base" ? @tr("base") : s.state == "level" ? "✓" : (s.state == "cw" ? "↻ " : "↺ ") + s.amount;
-                            color: s.state == "base" ? Tokens.text : Tokens.accent;
-                            font-size: 20px;
-                            font-weight: 800;
-                        }
-                        Text {
-                            text: s.state == "none" ? @tr("not checked yet") : s.state == "base" ? @tr("don't turn") : s.state == "level" ? @tr("level") : s.state == "cw" ? @tr("clockwise") : @tr("anticlockwise");
-                            color: Tokens.text-dim;
-                            font-size: 13px;
-                        }
-                    }
+                accessible-role: image;
+                accessible-label: @tr("the bed from above");
+                Text { y: 8px; text: @tr("back"); color: Tokens.text-faint; font-size: 12px; horizontal-alignment: center; width: parent.width; }
+                Text { y: parent.height - 22px; text: @tr("front"); color: Tokens.text-faint; font-size: 12px; horizontal-alignment: center; width: parent.width; }
+                if root.dials.length == 0: Text {
+                    text: @tr("No mesh yet");
+                    color: Tokens.text-dim;
+                    font-size: Tokens.body;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+                // Front at the bottom, as the printer stands before you.
+                for d[i] in root.dials: ScrewHead {
+                    x: mod(i, 2) == 0 ? 6px : parent.width - self.width - 6px;
+                    y: i < 2 ? parent.height - self.height - 14px : 14px;
+                    name: [@tr("Front left"), @tr("Front right"), @tr("Back left"), @tr("Back right")][i];
+                    dial: d;
+                    progress: root.progress;
                 }
             }
         }
         VerticalLayout {
             horizontal-stretch: 1;
-            padding-top: 76px;
-            Text {
-                text: @tr("Turn the screws as far as shown and check again. Repeat until all are “level”.");
+            spacing: 10px;
+            padding-top: 4px;
+            if root.before >= 0: Text {
+                text: root.turning ? @tr("Spread {} → {} mm", Format.fixed(root.before, 2), Format.fixed(root.after, 2)) : @tr("Level: nothing to turn");
                 color: Tokens.text;
-                font-size: 16px;
+                font-size: 20px;
+                font-weight: 800;
+                wrap: word-wrap;
+            }
+            Text {
+                text: @tr("Hold the nut under the bed with a spanner, turn the screw from above. Clockwise lowers the corner, anticlockwise raises it. Then probe again.");
+                color: Tokens.text-2;
+                font-size: 15px;
+                wrap: word-wrap;
+            }
+            if root.dials.length == 4 && (root.dials[0].limited || root.dials[1].limited || root.dials[2].limited || root.dials[3].limited): Text {
+                text: @tr("A screw is far out: turn as shown and probe again.");
+                color: Tokens.warn;
+                font-size: 14px;
                 wrap: word-wrap;
             }
             Rectangle { vertical-stretch: 1; }
+            LinkRow {
+                title: @tr("Bed heat");
+                value: root.bed-temp + "°";
+                clicked => { root.edit-bed(); }
+            }
             PrimaryButton {
                 min-height: 80px;
-                text: root.busy ? @tr("Checking…") : @tr("Check again");
-                sub: root.printing ? @tr("after the print") : @tr("the probe touches near each screw");
+                text: root.busy ? @tr("Probing…") : root.before >= 0 ? @tr("Probe again") : @tr("Probe the bed");
+                sub: root.printing ? @tr("after the print") : @tr("heats, wipes the nozzle, probes");
                 enabled: !root.busy && !root.printing;
                 clicked => { root.check(); }
             }

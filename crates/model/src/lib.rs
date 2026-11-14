@@ -1,6 +1,8 @@
 //! Printer state built from Moonraker's `printer.objects.subscribe` result
 //! and the partial updates that follow in `notify_status_update`.
 
+pub mod screws;
+
 use std::collections::HashMap;
 
 use serde_json::{json, Value};
@@ -860,6 +862,9 @@ pub struct CalibInfo {
     pub mesh_profiles: Vec<String>,
     /// Probed heights, rows from the front (min Y) to the back.
     pub mesh: Vec<Vec<f64>>,
+    /// Where the mesh's corner points sit (`bed_mesh.mesh_min` / `mesh_max`), mm.
+    pub mesh_min: [f64; 2],
+    pub mesh_max: [f64; 2],
     pub has_screws: bool,
     /// Screws: name, X, Y, and the last result (turn "CW"/"CCW", "HH:MM", base).
     pub screws: Vec<Screw>,
@@ -877,6 +882,9 @@ pub struct CalibInfo {
     /// Stepper drivers: section ("tmc2209 stepper_x"), run current, quiet mode.
     pub drivers: Vec<(String, f64, bool)>,
     pub has_tare: bool,
+    /// The firmware's bed mesh with heating and nozzle cleaning: Z-Mod's
+    /// `AUTO_FULL_BED_LEVEL`, Klipper Mod's `AUTO_BED_LEVEL`; empty when neither.
+    pub mesh_macro: String,
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -922,6 +930,11 @@ impl CalibInfo {
                     .collect()
             })
             .unwrap_or_default();
+        let corner = |key: &str| {
+            let v = &mesh_status[key];
+            [v[0].as_f64().unwrap_or(0.0), v[1].as_f64().unwrap_or(0.0)]
+        };
+        let (mesh_min, mesh_max) = (corner("mesh_min"), corner("mesh_max"));
         let results = &status["screws_tilt_adjust"]["results"];
         let screws = (1..=8)
             .filter_map(|i| {
@@ -978,6 +991,8 @@ impl CalibInfo {
                 .to_owned(),
             mesh_profiles: profiles,
             mesh,
+            mesh_min,
+            mesh_max,
             has_screws: has("screws_tilt_adjust"),
             screws,
             pid: [pid("extruder"), pid("heater_bed")],
@@ -1009,7 +1024,37 @@ impl CalibInfo {
             },
             drivers,
             has_tare: has("gcode_macro LOAD_CELL_TARE"),
+            mesh_macro: ["AUTO_FULL_BED_LEVEL", "AUTO_BED_LEVEL"]
+                .into_iter()
+                .find(|m| has(&format!("gcode_macro {m}")))
+                .unwrap_or_default()
+                .to_owned(),
         }
+    }
+}
+
+/// Nozzle heat for wiping it clean before probing: soft enough for PLA, PETG
+/// and ABS (Z-Mod's own default).
+pub const CLEAN_NOZZLE_TEMP: u32 = 230;
+
+/// A bed mesh as a calibration should be taken: the bed at `bed` °C, the
+/// nozzle wiped clean, the load cell zeroed. The firmware's own macro when it
+/// has one (it heats, wipes the nozzle on the bed's edge, lets it cool, zeroes
+/// the load cell and probes): Z-Mod's `AUTO_FULL_BED_LEVEL`, Klipper Mod's
+/// `AUTO_BED_LEVEL`. Otherwise heat, home, zero and probe, with no wipe.
+pub fn level_gcode(mesh_macro: &str, has_tare: bool, bed: u32) -> String {
+    let nozzle = CLEAN_NOZZLE_TEMP;
+    match mesh_macro {
+        // SAVE=0: Z-Mod would SAVE_CONFIG and restart Klipper; the mesh stays
+        // in use until then either way, as Klipper Mod's does.
+        "AUTO_FULL_BED_LEVEL" => {
+            format!("AUTO_FULL_BED_LEVEL BED_TEMP={bed} EXTRUDER_TEMP={nozzle} SAVE=0")
+        }
+        "AUTO_BED_LEVEL" => format!("AUTO_BED_LEVEL BED_TEMP={bed} EXTRUDER_TEMP={nozzle}"),
+        _ => format!(
+            "M190 S{bed}\nG28\nG90\nG1 Z5 F1800\n{}BED_MESH_CALIBRATE",
+            if has_tare { "LOAD_CELL_TARE\n" } else { "" }
+        ),
     }
 }
 
@@ -2513,6 +2558,23 @@ mod tests {
             "filament_switch_sensor runout_sensor": { "enabled": false }
         }));
         assert!(!st.snapshot().filament_out);
+    }
+
+    #[test]
+    fn leveling_uses_the_firmware_macro_with_the_bed_heat() {
+        assert_eq!(
+            level_gcode("AUTO_BED_LEVEL", true, 70),
+            "AUTO_BED_LEVEL BED_TEMP=70 EXTRUDER_TEMP=230"
+        );
+        assert_eq!(
+            level_gcode("AUTO_FULL_BED_LEVEL", true, 80),
+            "AUTO_FULL_BED_LEVEL BED_TEMP=80 EXTRUDER_TEMP=230 SAVE=0"
+        );
+        let plain = level_gcode("", true, 60);
+        assert!(
+            plain.starts_with("M190 S60\nG28")
+                && plain.ends_with("LOAD_CELL_TARE\nBED_MESH_CALIBRATE")
+        );
     }
 
     #[test]

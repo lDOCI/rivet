@@ -88,7 +88,21 @@ impl Sim {
                 "fan_generic external_fan": { "speed": 0.0 },
                 "heater_fan hotend_fan": { "speed": 0.0 },
                 "controller_fan stepper_driver_fan": { "speed": 0.0 },
-                "configfile": { "settings": { "heater_fan hotend_fan": { "heater_temp": 50.0 } } },
+                "configfile": { "settings": {
+                    "heater_fan hotend_fan": { "heater_temp": 50.0 },
+                    "probe": { "z_offset": -0.25, "x_offset": 0.0, "y_offset": 0.0, "samples": 1 },
+                    "bed_mesh": { "mesh_min": [-105.0, -105.0], "mesh_max": [105.0, 105.0], "probe_count": [5, 5] }
+                } },
+                "probe": { "last_query": false },
+                // A bed tilted a long way to the right and a little to the back: past
+                // a full turn on two screws, to see the Screws screen's second layer.
+                "bed_mesh": {
+                    "profile_name": "default",
+                    "profiles": { "default": {} },
+                    "mesh_min": [-105.0, -105.0],
+                    "mesh_max": [105.0, 105.0],
+                    "probed_matrix": (0..5).map(|r| (0..5).map(|c| -1.0 + 0.4 * c as f64 + 0.05 * r as f64).collect::<Vec<f64>>()).collect::<Vec<_>>()
+                },
             }),
             files: mock_files(),
             queue: Vec::new(),

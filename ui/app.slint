@@ -79,9 +79,9 @@ export { FileItem, FileInfo, ConsoleLine, FanRow }
 import { MessagesScreen, MessageRow } from "screens/messages.slint";
 import { FilamentScreen } from "screens/filament.slint";
 import { LockScreen } from "screens/lock.slint";
-import { BedMeshScreen, MeshProfilesScreen, ScrewsScreen, MeshCell, ScrewRow, ShaperResultScreen, BeltsScreen, ShaperAxis, ShaperRow, BeltsResult } from "screens/calib.slint";
+import { BedMeshScreen, MeshProfilesScreen, ScrewsScreen, MeshCell, ScrewDial, ShaperResultScreen, BeltsScreen, ShaperAxis, ShaperRow, BeltsResult } from "screens/calib.slint";
 export { ShaperAxis, ShaperRow, BeltsResult }
-export { MeshCell, ScrewRow }
+export { MeshCell, ScrewDial }
 import { LimitsScreen, ServiceScreen, ServiceItem, CameraScreen } from "screens/tools-extra.slint";
 export { ServiceItem }
 import { HeatPresetsScreen, HeatPreset, TempGraphScreen, GraphLine } from "screens/heat-extra.slint";
@@ -458,6 +458,7 @@ export component AppWindow inherits Window {
         else if (key == "pid-bed-temp") { root.pid-bed-temp = v; }
         else if (key == "pid-fan") { root.pid-fan = v; }
         else if (key == "extrude-custom") { root.extrude-custom = v; }
+        else if (key == "level-bed") { root.level-bed = v; root.save-number("level_bed", v); }
         else if (key == "filament-purge") { root.filament-purge = v; }
         else if (key == "pa-smooth") { root.run-gcode("SET_PRESSURE_ADVANCE SMOOTH_TIME=" + Format.fixed(v, 3)); }
         else if (key == "limit:cruise") { root.set-limit("cruise", v / 100); }
@@ -634,7 +635,14 @@ export component AppWindow inherits Window {
     in property <string> mesh-profile;
     in property <string> mesh-profiles-text;
     in property <[string]> mesh-profiles;
-    in property <[ScrewRow]> screws;
+    // Bed screws planned from the mesh: front left, front right, back left, back right.
+    in property <[ScrewDial]> screw-dials;
+    in property <float> screws-before: -1;
+    in property <float> screws-after: -1;
+    // Bed heat for a mesh or the screws, °C; the firmware's macro or plain G-code for it.
+    in-out property <int> level-bed: 60;
+    in property <string> calib-mesh-macro;
+    pure callback level-gcode(int) -> string;
     in property <string> pid-nozzle;
     in property <string> pid-bed;
     in property <string> shaper-x;
@@ -999,7 +1007,9 @@ export component AppWindow inherits Window {
             profiles-text: root.mesh-profiles-text;
             busy: root.calib-busy;
             printing: root.busy;
-            probe => { root.calibrate("BED_MESH_CALIBRATE"); }
+            bed-temp: root.level-bed;
+            probe => { root.calibrate(root.level-gcode(root.level-bed)); }
+            edit-bed => { root.open-number("level-bed", @tr("Bed, °C"), 40, root.bed-limit, root.level-bed, 0); }
             open-profiles => { root.screen = "mesh-profiles"; }
             back => { root.screen = "calibrate"; }
         }
@@ -1010,10 +1020,14 @@ export component AppWindow inherits Window {
             back => { root.screen = "bed-mesh"; }
         }
         if root.ready && root.screen == "screws": ScrewsScreen {
-            screws: root.screws;
+            dials: root.screw-dials;
+            before: root.screws-before;
+            after: root.screws-after;
+            bed-temp: root.level-bed;
             busy: root.calib-busy;
             printing: root.busy;
-            check => { root.calibrate("SCREWS_TILT_CALCULATE"); }
+            check => { root.calibrate(root.level-gcode(root.level-bed)); }
+            edit-bed => { root.open-number("level-bed", @tr("Bed, °C"), 40, root.bed-limit, root.level-bed, 0); }
             back => { root.screen = "calibrate"; }
         }
         if root.ready && root.screen == "probe": ProbeForm {

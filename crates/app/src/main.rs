@@ -659,6 +659,21 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
             ui.set_heat_choices(slint::ModelRc::new(slint::VecModel::from(choices)));
         });
     }
+    // A bed mesh as a calibration takes it: heated, nozzle wiped, load cell zeroed.
+    {
+        let weak = ui.as_weak();
+        ui.on_level_gcode(move |bed| {
+            let Some(ui) = weak.upgrade() else {
+                return Default::default();
+            };
+            model::level_gcode(
+                &ui.get_calib_mesh_macro(),
+                ui.get_calib_has_tare(),
+                bed.max(0) as u32,
+            )
+            .into()
+        });
+    }
     // The nozzle temperature of a material's heat preset (0 when it has none).
     {
         let weak = ui.as_weak();
