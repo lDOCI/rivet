@@ -549,8 +549,8 @@ msgstr "Подсветка"
 msgid "Brightness"
 msgstr "Яркость"
 
-msgid "Turn on at startup"
-msgstr "Включать при старте"
+msgid "Turn on when the printer starts"
+msgstr "Включать при включении принтера"
 
 msgid "heating · ~{} s left"
 msgstr "нагревается · ещё ~{} с"
@@ -2412,3 +2412,12 @@ msgstr "Винт сильно не на месте: поверните, как �
 
 msgid "Probe the bed"
 msgstr "Снять карту"
+
+msgid "Bed ↑ {}"
+msgstr "Стол ↑ {}"
+
+msgid "Bed ↓ {}"
+msgstr "Стол ↓ {}"
+
+msgid "switches off in {} min"
+msgstr "остынет само через {} мин"

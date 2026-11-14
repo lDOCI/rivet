@@ -739,7 +739,7 @@ def build():
     form('Light', 'Свет', 'control', 'Control.dc.html', [
         T('Подсветка', '', True, src='led chamber_led.color_data'),
         SL('Яркость', '', 80, 0, 100, 5, '%', src='led chamber_led.color_data[0][3]', fmt='off0'),
-        T('Включать при старте', '', True),
+        T('Включать при включении принтера', '', True, src='hidden when a [led] section has initial_* > 0: Klipper does it'),
     ])
     form('Speed', 'Скорость и поток', 'control', 'Control.dc.html', [
         FS('Скорость', 'от слайсера', 100, 10, 300, [10, 1], src='gcode_move.speed_factor'),

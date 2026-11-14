@@ -41,10 +41,10 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
       <div style="height: 64px; border-radius: 20px; background: #15181d; display: flex; align-items: center; justify-content: space-around; font-size: 15px; color: #98a1ac; font-variant-numeric: tabular-nums">
         <sc-if value="{{free}}" hint-placeholder-val="{{ false }}"><span style="color: #fcd34d; font-weight: 600">Моторы свободны · сначала парковка ⌂</span></sc-if><sc-if value="{{homed}}" hint-placeholder-val="{{ true }}"><span>X <b style="color: #f4f6f8">{{x}}</b></span><span>Y <b style="color: #f4f6f8">{{y}}</b></span><span>Z <b style="color: #f4f6f8">{{z}}</b></span></sc-if>
       </div>
-      <button type="button" onClick="{{z10}}" aria-label="Стол вниз на 10 мм" style="flex: 1; border: 0; border-radius: 20px; background: #252a31; color: #f4f6f8; font: 700 18px Inter, system-ui, sans-serif; cursor: pointer">Стол ↓ 10</button>
-      <button type="button" onClick="{{z1}}" aria-label="Стол вниз на 1 мм" style="flex: 1; border: 0; border-radius: 20px; background: #181c21; color: #c7cdd4; font: 600 17px Inter, system-ui, sans-serif; cursor: pointer">↓ 1</button>
-      <button type="button" onClick="{{zm1}}" aria-label="Стол вверх на 1 мм" style="flex: 1; border: 0; border-radius: 20px; background: #181c21; color: #c7cdd4; font: 600 17px Inter, system-ui, sans-serif; cursor: pointer">↑ 1</button>
       <button type="button" onClick="{{zm10}}" aria-label="Стол вверх на 10 мм" style="flex: 1; border: 0; border-radius: 20px; background: #252a31; color: #f4f6f8; font: 700 18px Inter, system-ui, sans-serif; cursor: pointer">Стол ↑ 10</button>
+      <button type="button" onClick="{{zm1}}" aria-label="Стол вверх на 1 мм" style="flex: 1; border: 0; border-radius: 20px; background: #181c21; color: #c7cdd4; font: 600 17px Inter, system-ui, sans-serif; cursor: pointer">↑ 1</button>
+      <button type="button" onClick="{{z1}}" aria-label="Стол вниз на 1 мм" style="flex: 1; border: 0; border-radius: 20px; background: #181c21; color: #c7cdd4; font: 600 17px Inter, system-ui, sans-serif; cursor: pointer">↓ 1</button>
+      <button type="button" onClick="{{z10}}" aria-label="Стол вниз на 10 мм" style="flex: 1; border: 0; border-radius: 20px; background: #252a31; color: #f4f6f8; font: 700 18px Inter, system-ui, sans-serif; cursor: pointer">Стол ↓ 10</button>
       <div style="height: 64px; flex: none; display: grid; grid-template-columns: 1.3fr 1fr; gap: 7px">
         <button type="button" onClick="{{motorsOff}}" style="height: 64px; border: 0; border-radius: 20px; background: #15181d; color: #c7cdd4; font: 600 16px Inter, system-ui, sans-serif; white-space: nowrap; cursor: pointer">Моторы выкл.</button>
         <a href="MotionAdvanced.dc.html" style="border-radius: 20px; background: #15181d; color: #f4f6f8; font-size: 16px; font-weight: 600; display: flex; align-items: center; justify-content: center">Ещё…</a>
@@ -66,7 +66,7 @@ class Component extends DCLogic {
       return function () {
         if (s.free) return;
         var n = {};
-        var lim = { x: [-110, 110], y: [-110, 110], z: [-10, 230] }[axis];
+        var lim = { x: [-112, 110], y: [-112, 110], z: [-10, 220] }[axis];
         n[axis] = Math.min(lim[1], Math.max(lim[0], s[axis] + d));
         self.setState(n);
       };

@@ -143,10 +143,12 @@ export component MotionScreen inherits Rectangle {
                     Text { text: "Z " + (root.homed-z ? Format.signed(root.pos-z, 1) : "—"); color: Tokens.text; font-size: 15px; font-weight: 700; vertical-alignment: center; }
                 }
             }
-            MoveButton { vertical-stretch: 1; text: "Z +" + root.big-step; big: true; enabled: root.homed-z; clicked => { root.move-axis(2, root.big-step); } }
-            MoveButton { vertical-stretch: 1; text: "Z +1"; enabled: root.homed-z; clicked => { root.move-axis(2, 1); } }
-            MoveButton { vertical-stretch: 1; text: "Z −1"; enabled: root.homed-z; clicked => { root.move-axis(2, -1); } }
-            MoveButton { vertical-stretch: 1; text: "Z −" + root.big-step; big: true; enabled: root.homed-z; clicked => { root.move-axis(2, -root.big-step); } }
+            // The AD5M moves the bed: Z− brings it up, so "up" sits at the top, the
+            // way the bed goes (the prototype's Motion).
+            MoveButton { vertical-stretch: 1; text: @tr("Bed ↑ {}", root.big-step); big: true; enabled: root.homed-z; clicked => { root.move-axis(2, -root.big-step); } }
+            MoveButton { vertical-stretch: 1; text: "↑ 1"; enabled: root.homed-z; clicked => { root.move-axis(2, -1); } }
+            MoveButton { vertical-stretch: 1; text: "↓ 1"; enabled: root.homed-z; clicked => { root.move-axis(2, 1); } }
+            MoveButton { vertical-stretch: 1; text: @tr("Bed ↓ {}", root.big-step); big: true; enabled: root.homed-z; clicked => { root.move-axis(2, root.big-step); } }
             HorizontalLayout {
                 spacing: 7px;
                 SecondaryButton { text: @tr("Motors off"); min-height: 64px; clicked => { root.motors-off(); } }

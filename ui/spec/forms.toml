@@ -10,7 +10,7 @@
 [Light]
 component = "LightForm"
 rows = { r0 = "light", r1 = "brightness", r2 = "on-start" }
-en = { "Подсветка" = "Lights", "Яркость" = "Brightness", "Включать при старте" = "Turn on at startup" }
+en = { "Подсветка" = "Lights", "Яркость" = "Brightness", "Включать при включении принтера" = "Turn on when the printer starts" }
 
 [Speed]
 component = "SpeedForm"

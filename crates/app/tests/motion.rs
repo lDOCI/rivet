@@ -34,7 +34,7 @@ fn motion_and_extruder() {
     ui.set_homed_x(true);
     tap(&ui, "X +10");
     tap(&ui, "Y +10");
-    tap(&ui, "Z −1");
+    tap(&ui, "↑ 1");
     assert_eq!(*moves.borrow(), [(0, 10.0)]);
 
     // Extruder: cold nozzle, then hot with the default 25 mm at 5 mm/s.

@@ -251,6 +251,7 @@ export component Keypad inherits Rectangle {
     property <float> value: (self.neg ? -1 : 1) * self.mantissa / self.scale;
     property <bool> in-range: self.typed && self.value >= root.minimum && self.value <= root.maximum;
     property <bool> out-of-range: self.typed && !self.in-range;
+    property <bool> current-ok: root.current.is-float() && root.current.to-float() >= root.minimum && root.current.to-float() <= root.maximum;
 
     function digit(d: int) {
         if (self.mantissa < 100000 && (!self.dot || self.decimals < 3)) {
@@ -327,10 +328,11 @@ export component Keypad inherits Rectangle {
                     wrap: word-wrap;
                 }
                 Rectangle { vertical-stretch: 1; }
+                // Nothing typed: Done keeps the value shown (the last one), when it fits.
                 PrimaryButton {
                     text: @tr("Done");
-                    enabled: root.in-range;
-                    clicked => { root.done(root.value); }
+                    enabled: root.typed ? root.in-range : root.current-ok;
+                    clicked => { root.done(root.typed ? root.value : root.current.to-float()); }
                 }
                 SecondaryButton { text: @tr("Cancel"); clicked => { root.cancelled(); } }
             }
