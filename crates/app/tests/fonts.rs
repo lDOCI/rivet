@@ -34,5 +34,9 @@ fn only_the_built_in_font_is_asked_for() {
             }
         }
     }
-    assert!(bad.is_empty(), "fonts the printer does not have:\n{}", bad.join("\n"));
+    assert!(
+        bad.is_empty(),
+        "fonts the printer does not have:\n{}",
+        bad.join("\n")
+    );
 }
