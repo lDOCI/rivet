@@ -2434,5 +2434,5 @@ msgstr "Избранные"
 msgid "All macros"
 msgstr "Все"
 
-msgid "No favourites yet. Tap ☆ beside a macro under “All macros”."
-msgstr "Избранных пока нет. Нажмите ☆ у макроса во вкладке «Все»."
+msgid "No favourites yet. Star the macros you need under “All macros”."
+msgstr "Избранных пока нет. Отметьте звёздочкой нужные макросы во вкладке «Все»."
