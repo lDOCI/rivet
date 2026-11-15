@@ -674,6 +674,23 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
             .into()
         });
     }
+    // A star on the macro list: favourites first, kept on the printer.
+    {
+        let weak = ui.as_weak();
+        let tx = tx.clone();
+        ui.on_toggle_favorite_macro(move |name| {
+            let Some(ui) = weak.upgrade() else { return };
+            let now: Vec<String> = slint::Model::iter(&ui.get_favorite_macros())
+                .map(|s| s.to_string())
+                .collect();
+            let next = rivet::macros::toggled(&now, &name);
+            rivet::macros::set_favorites(&ui, &next);
+            let _ = tx.send(Command::SaveSetting {
+                key: "favorite_macros".into(),
+                value: serde_json::json!(next),
+            });
+        });
+    }
     // The nozzle temperature of a material's heat preset (0 when it has none).
     {
         let weak = ui.as_weak();

@@ -8,6 +8,7 @@ pub mod config;
 pub mod engine;
 pub mod files;
 pub mod logfile;
+pub mod macros;
 pub mod resonance;
 pub mod theme;
 pub mod thumbs;

@@ -370,6 +370,10 @@ pub async fn run(
     // last extrusion, so it is not left hot and forgotten.
     let mut cool_at: Option<Instant> = None;
     let mut cool_shown_minutes = -1;
+    // Motors still after homing: off after two minutes (see model::MotorIdle).
+    let mut motors_idle = model::MotorIdle::default();
+    // The last motion from Rivet was parking (G28); a move by hand clears it.
+    let mut parked = false;
     let mut last_print_state = String::new();
     // Reconnecting: which attempt failed last and when the next one comes.
     let mut retry_at: Option<(u32, Instant)> = None;
@@ -446,6 +450,12 @@ pub async fn run(
                 {
                     cool_at = Some(Instant::now() + NOZZLE_AUTO_OFF);
                 }
+                match &cmd {
+                    Command::HomeAll => parked = true,
+                    Command::Gcode(g) if g.trim_start().starts_with("G28") && !g.contains('\n') => parked = true,
+                    Command::Move { .. } | Command::GoTo { .. } => parked = false,
+                    _ => {}
+                }
                 let cmd = match cmd {
                     Command::Move { axis, delta, speed } => {
                         match clamp_move(&state.snapshot(), axis, delta) {
@@ -514,6 +524,7 @@ pub async fn run(
                         let rows: Vec<slint::SharedString> =
                             names.into_iter().map(Into::into).collect();
                         ui.set_macros(slint::ModelRc::new(slint::VecModel::from(rows)));
+                        crate::macros::show(&ui);
                     });
                 }
                 // "attempt 7 · next in 3 s" while there is no link.
@@ -652,6 +663,21 @@ pub async fn run(
                     cool_at = None;
                     tracing::info!("nozzle left hot after extruding: switching it off");
                     spawn_gcode(&client, "M104 S0".to_owned());
+                }
+                let busy = matches!(snap.print_state.as_str(), "printing" | "paused")
+                    || snap.gcode_running
+                    || snap.manual_probe
+                    || snap.klippy != Klippy::Ready;
+                if motors_idle.update(
+                    started.elapsed().as_secs_f64(),
+                    snap.position,
+                    !snap.homed_axes.is_empty(),
+                    busy,
+                    parked,
+                ) {
+                    tracing::info!(parked, "motors still outside a print: switching them off");
+                    parked = false;
+                    spawn_gcode(&client, "M84".to_owned());
                 }
                 let cool_minutes = cool_at.map_or(-1, |at| {
                     at.saturating_duration_since(Instant::now()).as_secs().div_ceil(60) as i32
@@ -2227,6 +2253,14 @@ async fn load_settings(
         number("jog_z_speed", 10.0),
     );
     let level_bed = number("level_bed", 60.0);
+    let favorite_macros: Vec<String> = saved["favorite_macros"]
+        .as_array()
+        .map(|a| {
+            a.iter()
+                .filter_map(|v| v.as_str().map(str::to_owned))
+                .collect()
+        })
+        .unwrap_or_default();
     let purge = (
         number("extrude_length", 1.0),
         number("extrude_custom", 150.0),
@@ -2316,6 +2350,7 @@ async fn load_settings(
         ui.set_jog_xy_speed(jog_xy);
         ui.set_jog_z_speed(jog_z);
         ui.set_level_bed(level_bed.round() as i32);
+        crate::macros::set_favorites(&ui, &favorite_macros);
         ui.set_extrude_length((purge.0.round() as i32).clamp(0, 4));
         ui.set_extrude_custom((purge.1.round() as i32).clamp(1, 500));
         ui.set_filament_purge((purge.2.round() as i32).clamp(1, 500));

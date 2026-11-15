@@ -30,7 +30,7 @@ component Preset inherits Rectangle {
 }
 
 // Nozzle / Bed switch: one plate, the chosen side filled (the prototype's tabs).
-component HeaterTabs inherits Rectangle {
+export component HeaterTabs inherits Rectangle {
     in property <[string]> options;
     in-out property <int> selected;
     height: Tokens.header;

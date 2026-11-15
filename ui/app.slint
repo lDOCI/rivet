@@ -64,7 +64,8 @@ import { Toast } from "kit/toast.slint";
 import { HomeScreen } from "screens/home.slint";
 import { HeatingScreen } from "screens/heating.slint";
 import { MotionScreen } from "screens/motion.slint";
-import { ToolsScreen, ConsoleScreen, MacrosScreen, ConsoleLine, PickScreen } from "screens/tools.slint";
+import { ToolsScreen, ConsoleScreen, MacrosScreen, ConsoleLine, PickScreen, MacroRow } from "screens/tools.slint";
+export { MacroRow }
 import { FilesScreen, FileScreen, FileItem, FileInfo, FindScreen, RenameScreen, MoveScreen } from "screens/files.slint";
 import { WifiJoinScreen } from "screens/wifi.slint";
 import { TouchCalScreen } from "screens/touchcal.slint";
@@ -309,6 +310,13 @@ export component AppWindow inherits Window {
     // Rivet's own settings, saved in Moonraker's database.
     callback save-flag(string, bool);
     callback save-number(string, float);
+    // The macro list with the favourites first, and the favourites themselves
+    // (kept on the printer).
+    in property <[MacroRow]> macro-rows;
+    // The favourites this printer has (a starred macro may be gone).
+    in property <[MacroRow]> favorite-macro-rows;
+    in-out property <[string]> favorite-macros;
+    callback toggle-favorite-macro(string);
     in property <bool> can-extrude;
     in property <float> min-extrude-temp;
     callback set-fan(string, float);
@@ -1228,7 +1236,9 @@ export component AppWindow inherits Window {
             apply-key(t, k) => { return root.apply-key(t, k); }
         }
         if root.ready && root.screen == "macros": MacrosScreen {
-            macros: root.macros;
+            rows: root.macro-rows;
+            favorite-rows: root.favorite-macro-rows;
+            toggle-favorite(name) => { root.toggle-favorite-macro(name); }
             back => { root.screen = "tools"; }
             // Rust looks for parameters first: with some, their screen; else as before.
             pick(name) => { root.macro-pending = name; root.macro-open(name); }

@@ -35,6 +35,7 @@ const ALL: &[&str] = &[
     "console",
     "console-keyboard",
     "macros",
+    "macros-all",
     "motion",
     "light",
     "speed",
@@ -539,13 +540,31 @@ fn show(ui: &AppWindow, name: &str) {
             ui.set_z_offset(-0.12);
             ui.set_tune_z_start(-0.12);
         }
-        "tools" | "macros" | "console" | "console-keyboard" => {
-            ui.set_screen(name.trim_end_matches("-keyboard").into());
-            let macros: Vec<slint::SharedString> = ["BELTS_TEST", "PAUSE", "RESUME", "START_PRINT"]
-                .iter()
-                .map(|m| (*m).into())
-                .collect();
+        "tools" | "macros" | "macros-all" | "console" | "console-keyboard" => {
+            ui.set_screen(
+                name.trim_end_matches("-keyboard")
+                    .trim_end_matches("-all")
+                    .into(),
+            );
+            let macros: Vec<slint::SharedString> = [
+                "AUTO_BED_LEVEL",
+                "BELTS_TEST",
+                "LOAD_FILAMENT",
+                "PAUSE",
+                "PURGE_FILAMENT",
+                "RESUME",
+            ]
+            .iter()
+            .map(|m| (*m).into())
+            .collect();
             ui.set_macros(slint::ModelRc::new(slint::VecModel::from(macros)));
+            // "macros": the favourites tab; "macros-all": none starred yet, so all of them.
+            let favorites: Vec<String> = if name == "macros" {
+                vec!["LOAD_FILAMENT".into(), "AUTO_BED_LEVEL".into()]
+            } else {
+                Vec::new()
+            };
+            rivet::macros::set_favorites(ui, &favorites);
             let lines = [
                 ("> G28", 0),
                 ("ok", 1),

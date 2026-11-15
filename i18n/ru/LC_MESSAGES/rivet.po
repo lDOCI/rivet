@@ -2421,3 +2421,18 @@ msgstr "Стол ↓ {}"
 
 msgid "switches off in {} min"
 msgstr "остынет само через {} мин"
+
+msgid "Add {} to favourites"
+msgstr "Добавить {} в избранные"
+
+msgid "Remove {} from favourites"
+msgstr "Убрать {} из избранных"
+
+msgid "Favourites"
+msgstr "Избранные"
+
+msgid "All macros"
+msgstr "Все"
+
+msgid "No favourites yet. Star the macros you need under “All macros”."
+msgstr "Избранных пока нет. Отметьте звёздочкой нужные макросы во вкладке «Все»."

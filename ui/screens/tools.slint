@@ -1,7 +1,8 @@
 // Tools: the hub, the console and the macro list.
 import { Tokens } from "../kit/tokens.slint";
 import { Icons } from "../kit/icons.slint";
-import { Header, PrimaryButton, SecondaryButton } from "../kit/controls.slint";
+import { Header, PrimaryButton, SecondaryButton, Icon, BackButton } from "../kit/controls.slint";
+import { HeaterTabs } from "heating.slint";
 import { Tile, ActionRow } from "../kit/rows.slint";
 import { ScrollList } from "../kit/scroll.slint";
 import { Keyboard } from "../kit/keyboard.slint";
@@ -148,20 +149,70 @@ export component ConsoleScreen inherits VerticalLayout {
     }
 }
 
+// One macro of the list, starred when it is a favourite.
+export struct MacroRow { name: string, fav: bool }
+
+// Macros in two tabs: the favourites (starred) and all of them. It opens on
+// the favourites when there are any.
 export component MacrosScreen inherits VerticalLayout {
     horizontal-stretch: 1;
-    in property <[string]> macros;
+    in property <[MacroRow]> rows;
+    in property <[MacroRow]> favorite-rows;
+    property <bool> has-favorites: root.favorite-rows.length > 0;
+    in-out property <int> tab: root.has-favorites ? 0 : 1;
     callback back;
     callback pick(string);
+    callback toggle-favorite(string);
     padding: Tokens.pad;
     padding-bottom: 0;
     spacing: Tokens.gap-s;
-    Header { title: @tr("Macros"); back-clicked => { root.back(); } }
-    ScrollList {
+    HorizontalLayout {
+        height: Tokens.header;
+        spacing: 14px;
+        BackButton { clicked => { root.back(); } }
+        HeaterTabs {
+            horizontal-stretch: 1;
+            options: [@tr("Favourites"), @tr("All macros")];
+            selected <=> root.tab;
+        }
+    }
+    if root.tab == 0 && !root.has-favorites: VerticalLayout {
         vertical-stretch: 1;
-        for name in root.macros: ActionRow {
-            title: name;
-            clicked => { root.pick(name); }
+        alignment: center;
+        Text {
+            text: @tr("No favourites yet. Star the macros you need under “All macros”.");
+            color: Tokens.text-dim;
+            font-size: Tokens.body;
+            horizontal-alignment: center;
+            wrap: word-wrap;
+        }
+    }
+    if root.tab == 1 || root.has-favorites: ScrollList {
+        vertical-stretch: 1;
+        for r in root.tab == 0 ? root.favorite-rows : root.rows: HorizontalLayout {
+            padding-bottom: 8px;
+            spacing: 8px;
+            ActionRow {
+                horizontal-stretch: 1;
+                title: r.name;
+                clicked => { root.pick(r.name); }
+            }
+            // The star: into the favourites and out again.
+            Rectangle {
+                width: Tokens.touch;
+                border-radius: Tokens.r-m;
+                background: star-ta.pressed ? Tokens.surface-2 : Tokens.surface-1;
+                accessible-role: button;
+                accessible-label: r.fav ? @tr("Remove {} from favourites", r.name) : @tr("Add {} to favourites", r.name);
+                accessible-action-default => { root.toggle-favorite(r.name); }
+                Icon {
+                    d: "M12 2.8l2.8 5.7 6.3.9-4.5 4.4 1.1 6.2L12 17.1l-5.6 2.9 1.1-6.2-4.5-4.4 6.3-.9z";
+                    size: 24px;
+                    filled: r.fav;
+                    color: r.fav ? Tokens.warn : Tokens.text-dim;
+                }
+                star-ta := TouchArea { clicked => { root.toggle-favorite(r.name); } }
+            }
         }
     }
 }

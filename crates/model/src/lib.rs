@@ -53,6 +53,8 @@ pub fn subscription() -> Value {
             "gcode_move": null,
             "fan": null,
             "motion_report": ["live_velocity"],
+            // "Printing" while G-code runs (a PID test, a mesh), for the motors' idle switch-off.
+            "idle_timeout": ["state"],
         }
     })
 }
@@ -150,6 +152,10 @@ pub fn subscription_for(available: &[String]) -> Value {
                 || is_board_sensor(n)
         }) {
             objects.insert(name.clone(), Value::Null);
+        }
+        // A Z test with paper (PROBE_CALIBRATE, Z_ENDSTOP_CALIBRATE) waits with the motors on.
+        if available.iter().any(|n| n == "manual_probe") {
+            objects.insert("manual_probe".to_owned(), json!(["is_active"]));
         }
         for name in [
             "firmware_retraction",
@@ -298,6 +304,10 @@ pub struct Snapshot {
     pub gcode_z: f64,
     /// Axes Klipper knows the position of, e.g. `"xy"`; empty after motors off.
     pub homed_axes: String,
+    /// Klipper runs G-code now (`idle_timeout.state == "Printing"`): a test, a mesh.
+    pub gcode_running: bool,
+    /// A paper test of Z is open (`manual_probe.is_active`).
+    pub manual_probe: bool,
     pub axis_min: [f64; 3],
     pub axis_max: [f64; 3],
     /// Klipper's own answer: nozzle hot enough to extrude.
@@ -1579,6 +1589,55 @@ pub fn parse_wpa_status(text: &str) -> std::collections::HashMap<String, String>
 /// The most layers a reading may move the count on (two seconds of printing).
 const MAX_LAYER_STEP: u32 = 3;
 
+/// How long the motors may hold still before Rivet switches them off: after
+/// parking with nothing moved since, and after moving by hand (kept longer, so
+/// the position is not lost between taps).
+pub const MOTORS_OFF_AFTER_PARK_SECS: f64 = 10.0;
+pub const MOTORS_IDLE_OFF_SECS: f64 = 120.0;
+
+/// Motors left on after homing, outside a print: Klipper Mod switches them off
+/// only after 10 minutes without any command, and heating, extruding or a PID
+/// test each start that over, so the steppers kept whining. This watches the
+/// toolhead: still for two minutes, nothing running, no paper test of Z open:
+/// time for `M84`.
+#[derive(Debug, Default, Clone)]
+pub struct MotorIdle {
+    last: Option<([f64; 3], f64)>,
+}
+
+impl MotorIdle {
+    /// A reading at `t` seconds; true once, when the motors should go off.
+    /// `parked`: the last motion was parking (G28), nothing moved by hand since.
+    pub fn update(
+        &mut self,
+        t: f64,
+        position: [f64; 3],
+        homed: bool,
+        busy: bool,
+        parked: bool,
+    ) -> bool {
+        let limit = if parked {
+            MOTORS_OFF_AFTER_PARK_SECS
+        } else {
+            MOTORS_IDLE_OFF_SECS
+        };
+        if !homed || busy {
+            self.last = None;
+            return false;
+        }
+        match self.last {
+            Some((at, since)) if at.iter().zip(&position).all(|(a, b)| (a - b).abs() < 0.001) => {
+                if t - since >= limit {
+                    self.last = None;
+                    return true;
+                }
+            }
+            _ => self.last = Some((position, t)),
+        }
+        false
+    }
+}
+
 /// Layers of a print whose slicer does not tell Klipper about them (no
 /// `SET_PRINT_STATS_INFO` at layer changes): worked out from the height the
 /// G-code sets and the file's first-layer and layer heights.
@@ -2282,6 +2341,11 @@ impl PrinterState {
                 .and_then(Value::as_f64)
                 .unwrap_or(0.0),
             homed_axes: self.str("toolhead", "homed_axes").to_owned(),
+            gcode_running: self.str("idle_timeout", "state") == "Printing",
+            manual_probe: self
+                .field("manual_probe", "is_active")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
             axis_min: self.axes("toolhead", "axis_minimum"),
             axis_max: self.axes("toolhead", "axis_maximum"),
             can_extrude: self
@@ -2616,6 +2680,43 @@ mod tests {
             plain.starts_with("M190 S60\nG28")
                 && plain.ends_with("LOAD_CELL_TARE\nBED_MESH_CALIBRATE")
         );
+    }
+
+    #[test]
+    fn motors_go_off_after_two_still_minutes_only() {
+        let at = [0.0, 0.0, 10.0];
+        let mut m = MotorIdle::default();
+        assert!(!m.update(0.0, at, true, false, false));
+        assert!(!m.update(119.0, at, true, false, false));
+        assert!(m.update(120.0, at, true, false, false));
+        // Once: then Klipper reports no homed axes.
+        assert!(!m.update(121.0, at, false, false, false));
+        // A move starts the two minutes over.
+        let mut m = MotorIdle::default();
+        m.update(0.0, at, true, false, false);
+        m.update(100.0, [5.0, 0.0, 10.0], true, false, false);
+        assert!(!m.update(200.0, [5.0, 0.0, 10.0], true, false, false));
+        assert!(m.update(220.0, [5.0, 0.0, 10.0], true, false, false));
+        // Busy (printing, a test running, a paper test open): never.
+        let mut m = MotorIdle::default();
+        m.update(0.0, at, true, true, false);
+        assert!(!m.update(500.0, at, true, true, false));
+        // Parked and left alone: ten seconds.
+        let mut m = MotorIdle::default();
+        m.update(0.0, at, true, false, true);
+        assert!(!m.update(9.0, at, true, false, true));
+        assert!(m.update(10.0, at, true, false, true));
+    }
+
+    #[test]
+    fn idle_state_and_manual_probe_are_read() {
+        let mut st = PrinterState::default();
+        st.apply_status(serde_json::json!({
+            "idle_timeout": { "state": "Printing" },
+            "manual_probe": { "is_active": true }
+        }));
+        let s = st.snapshot();
+        assert!(s.gcode_running && s.manual_probe);
     }
 
     #[test]
