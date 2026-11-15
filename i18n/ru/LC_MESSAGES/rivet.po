@@ -2421,3 +2421,15 @@ msgstr "Стол ↓ {}"
 
 msgid "switches off in {} min"
 msgstr "остынет само через {} мин"
+
+msgid "FAVOURITES"
+msgstr "ИЗБРАННЫЕ"
+
+msgid "ALL"
+msgstr "ВСЕ"
+
+msgid "Add {} to favourites"
+msgstr "Добавить {} в избранные"
+
+msgid "Remove {} from favourites"
+msgstr "Убрать {} из избранных"

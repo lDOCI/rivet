@@ -1,7 +1,7 @@
 // Tools: the hub, the console and the macro list.
 import { Tokens } from "../kit/tokens.slint";
 import { Icons } from "../kit/icons.slint";
-import { Header, PrimaryButton, SecondaryButton } from "../kit/controls.slint";
+import { Header, PrimaryButton, SecondaryButton, SectionLabel, Icon } from "../kit/controls.slint";
 import { Tile, ActionRow } from "../kit/rows.slint";
 import { ScrollList } from "../kit/scroll.slint";
 import { Keyboard } from "../kit/keyboard.slint";
@@ -148,20 +148,54 @@ export component ConsoleScreen inherits VerticalLayout {
     }
 }
 
+// A row of the macro list: a group title (section "fav" or "all") or a macro
+// (section ""), starred when it is a favourite. Rust puts the favourites first
+// (rivet::macros).
+export struct MacroRow { section: string, name: string, fav: bool }
+
 export component MacrosScreen inherits VerticalLayout {
     horizontal-stretch: 1;
-    in property <[string]> macros;
+    in property <[MacroRow]> rows;
     callback back;
     callback pick(string);
+    callback toggle-favorite(string);
     padding: Tokens.pad;
     padding-bottom: 0;
     spacing: Tokens.gap-s;
     Header { title: @tr("Macros"); back-clicked => { root.back(); } }
     ScrollList {
         vertical-stretch: 1;
-        for name in root.macros: ActionRow {
-            title: name;
-            clicked => { root.pick(name); }
+        for r in root.rows: VerticalLayout {
+            padding-bottom: 8px;
+            if r.section != "": HorizontalLayout {
+                padding-top: 6px;
+                padding-left: 4px;
+                SectionLabel { text: r.section == "fav" ? @tr("FAVOURITES") : @tr("ALL"); }
+            }
+            if r.section == "": HorizontalLayout {
+                spacing: 8px;
+                ActionRow {
+                    horizontal-stretch: 1;
+                    title: r.name;
+                    clicked => { root.pick(r.name); }
+                }
+                // The star: into the favourites (top of the list) and out again.
+                Rectangle {
+                    width: Tokens.touch;
+                    border-radius: Tokens.r-m;
+                    background: star-ta.pressed ? Tokens.surface-2 : Tokens.surface-1;
+                    accessible-role: button;
+                    accessible-label: r.fav ? @tr("Remove {} from favourites", r.name) : @tr("Add {} to favourites", r.name);
+                    accessible-action-default => { root.toggle-favorite(r.name); }
+                    Icon {
+                        d: "M12 2.8l2.8 5.7 6.3.9-4.5 4.4 1.1 6.2L12 17.1l-5.6 2.9 1.1-6.2-4.5-4.4 6.3-.9z";
+                        size: 24px;
+                        filled: r.fav;
+                        color: r.fav ? Tokens.warn : Tokens.text-dim;
+                    }
+                    star-ta := TouchArea { clicked => { root.toggle-favorite(r.name); } }
+                }
+            }
         }
     }
 }

@@ -30,6 +30,7 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
             <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 16px; font-weight: 700; font-family: ui-monospace, Menlo, monospace">{{m.name}}</span><span style="font-size: 14px; color: #98a1ac">{{m.desc}}</span></span>
             <sc-if value="{{m.hasParams}}" hint-placeholder-val="{{ false }}"><a href="MacroRun.dc.html" aria-label="{{m.openAria}}" style="height: 56px; padding: 0 16px; border-radius: 16px; background: #1f242b; color: #f4f6f8; font-size: 15px; font-weight: 700; display: flex; align-items: center">Параметры ›</a></sc-if>
             <sc-if value="{{m.simple}}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{m.run}}" aria-label="{{m.runAria}}" style="height: 56px; padding: 0 18px; border: 0; border-radius: 16px; background: rgba(45, 212, 191, 0.13); color: #2dd4bf; font: 800 15px Inter, system-ui, sans-serif; cursor: pointer">Запустить</button></sc-if>
+            <button type="button" onClick="{{m.star}}" aria-label="{{m.starAria}}" style="width: 56px; height: 56px; flex: none; border: 0; border-radius: 16px; background: #1f242b; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="24" height="24" viewBox="0 0 24 24" fill="{{m.starFill}}" stroke="{{m.starColor}}" stroke-width="1.9" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.8l2.8 5.7 6.3.9-4.5 4.4 1.1 6.2L12 17.1l-5.6 2.9 1.1-6.2-4.5-4.4 6.3-.9z"></path></svg></button>
           </div>
         </sc-for>
       </sc-for>
@@ -54,10 +55,12 @@ class Component extends DCLogic {
   constructor(props) { super(props); this.state = { pending: null }; }
   renderVals() {
     var self = this;
-    var fav = [['LOAD_FILAMENT', 'Manual filament loading', false], ['AUTO_BED_LEVEL', 'BED_TEMP · EXTRUDER_TEMP · PROFILE', true]];
+    var fav = [['LOAD_FILAMENT', 'Manual filament loading', false, true], ['AUTO_BED_LEVEL', 'BED_TEMP · EXTRUDER_TEMP · PROFILE', true, true]];
     var all = [['AIR_CIRCULATION_INTERNAL', 'Turn on internal air circulation', false], ['PURGE_FILAMENT', 'выдавить 25 мм', false], ['LCD_ON', 'BACKLIGHT', true], ['PLAY_MIDI', 'FILE', true]];
     function map(list) { return list.map(function (m) { return { name: m[0], desc: m[1], hasParams: m[2], simple: !m[2],
-      openAria: m[0] + ': параметры', runAria: 'Запустить ' + m[0], run: function () { self.setState({ pending: m[0] }); } }; }); }
+      openAria: m[0] + ': параметры', runAria: 'Запустить ' + m[0], run: function () { self.setState({ pending: m[0] }); },
+      starAria: (m[3] ? 'Убрать ' + m[0] + ' из избранных' : 'Добавить ' + m[0] + ' в избранные'),
+      starFill: m[3] ? '#fbbf24' : 'none', starColor: m[3] ? '#fbbf24' : '#98a1ac', star: function () {} }; }); }
     return {
       groups: [{ title: 'ИЗБРАННЫЕ', items: map(fav) }, { title: 'ВСЕ', items: map(all) }],
       confirmOpen: !!this.state.pending, pending: this.state.pending || '',

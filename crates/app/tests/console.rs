@@ -40,6 +40,8 @@ fn console_keyboard_and_macros() {
         SharedString::from("PAUSE"),
         SharedString::from("BELTS"),
     ])));
+    // As the engine does when the list comes: favourites first (none here).
+    rivet::macros::show(&ui);
     ui.set_screen("console".into());
     ui.show().unwrap();
 
