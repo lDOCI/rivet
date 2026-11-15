@@ -2,6 +2,27 @@
 
 Each release's section is also its description on GitHub. [Русский — ниже в каждом разделе.]
 
+## v0.1.10-alpha
+
+- Favourite macros: a star on each macro, and a Favourites tab beside All; it opens on
+  the favourites when there are any. Kept on the printer.
+- Motors switch off by themselves outside a print: 10 seconds after parking from Rivet's
+  menu with nothing moved since, 2 minutes after moving by hand. Klipper Mod waits 10
+  minutes without any command, and heating, extruding or a PID test start that over, so
+  the steppers kept whining. Never while printing or paused, while Klipper runs G-code, or
+  with a paper test of Z open.
+- A test checks that every character the screens show is in the font built into Rivet
+  (the printer has no other).
+
+**Русский.** Избранные макросы: звёздочка у каждого макроса и вкладка «Избранные» рядом со
+«Все»; открывается на избранных, если они есть. Хранится на принтере. Моторы отключаются
+сами вне печати: через 10 секунд после парковки из меню Rivet, если с тех пор ничего не
+двигали, и через 2 минуты после движения кнопками. Klipper Mod ждёт 10 минут без команд,
+а нагрев, выдавливание или PID начинают отсчёт заново, и шаговики пищали. Не отключаются
+во время печати и паузы, пока Klipper выполняет команды и пока открыта ручная подстройка
+Z. Тест следит, чтобы все символы на экранах были во встроенном шрифте (другого на
+принтере нет).
+
 ## v0.1.9-alpha
 
 - A dialog or the number keypad no longer lets the screen under it show through: the
