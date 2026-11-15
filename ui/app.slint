@@ -313,6 +313,8 @@ export component AppWindow inherits Window {
     // The macro list with the favourites first, and the favourites themselves
     // (kept on the printer).
     in property <[MacroRow]> macro-rows;
+    // The favourites this printer has (a starred macro may be gone).
+    in property <[MacroRow]> favorite-macro-rows;
     in-out property <[string]> favorite-macros;
     callback toggle-favorite-macro(string);
     in property <bool> can-extrude;
@@ -1235,6 +1237,7 @@ export component AppWindow inherits Window {
         }
         if root.ready && root.screen == "macros": MacrosScreen {
             rows: root.macro-rows;
+            favorite-rows: root.favorite-macro-rows;
             toggle-favorite(name) => { root.toggle-favorite-macro(name); }
             back => { root.screen = "tools"; }
             // Rust looks for parameters first: with some, their screen; else as before.

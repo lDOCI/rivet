@@ -1,26 +1,15 @@
-//! The macro list with the favourites first, and the favourites themselves.
+//! The macro list, each with its star, and the favourites themselves.
 
 use slint::{Model, ModelRc, SharedString, VecModel};
 
 use crate::{AppWindow, MacroRow};
 
-/// Rows for the list: with favourites, a "fav" group of them (in the list's own
-/// order) and an "all" group of the rest; without, just the macros. A favourite
+/// Every macro in the list's order, and whether it is a favourite. A favourite
 /// the printer no longer has is not shown.
-pub fn rows(all: &[String], favorites: &[String]) -> Vec<(&'static str, String, bool)> {
-    let fav: Vec<&String> = all.iter().filter(|m| favorites.contains(m)).collect();
-    if fav.is_empty() {
-        return all.iter().map(|m| ("", m.clone(), false)).collect();
-    }
-    let mut out = vec![("fav", String::new(), false)];
-    out.extend(fav.iter().map(|m| ("", (*m).clone(), true)));
-    out.push(("all", String::new(), false));
-    out.extend(
-        all.iter()
-            .filter(|m| !favorites.contains(m))
-            .map(|m| ("", m.clone(), false)),
-    );
-    out
+pub fn rows(all: &[String], favorites: &[String]) -> Vec<(String, bool)> {
+    all.iter()
+        .map(|m| (m.clone(), favorites.contains(m)))
+        .collect()
 }
 
 /// Star or unstar `name`: the new list of favourites.
@@ -40,17 +29,17 @@ fn strings(model: &ModelRc<SharedString>) -> Vec<String> {
 
 /// Rebuild the list from the window's macros and favourites.
 pub fn show(ui: &AppWindow) {
-    let rows: Vec<MacroRow> = rows(
-        &strings(&ui.get_macros()),
-        &strings(&ui.get_favorite_macros()),
-    )
-    .into_iter()
-    .map(|(section, name, fav)| MacroRow {
-        section: section.into(),
-        name: name.into(),
-        fav,
-    })
-    .collect();
+    let all = strings(&ui.get_macros());
+    let favorites = strings(&ui.get_favorite_macros());
+    let rows: Vec<MacroRow> = rows(&all, &favorites)
+        .into_iter()
+        .map(|(name, fav)| MacroRow {
+            name: name.into(),
+            fav,
+        })
+        .collect();
+    let starred: Vec<MacroRow> = rows.iter().filter(|r| r.fav).cloned().collect();
+    ui.set_favorite_macro_rows(ModelRc::new(VecModel::from(starred)));
     ui.set_macro_rows(ModelRc::new(VecModel::from(rows)));
 }
 
@@ -70,26 +59,11 @@ mod tests {
     }
 
     #[test]
-    fn favourites_first_then_the_rest() {
+    fn each_macro_with_its_star() {
         let all = s(&["A", "B", "C"]);
         assert_eq!(
-            rows(&all, &[]),
-            vec![
-                ("", "A".into(), false),
-                ("", "B".into(), false),
-                ("", "C".into(), false)
-            ]
-        );
-        let r = rows(&all, &s(&["C", "GONE"]));
-        assert_eq!(
-            r,
-            vec![
-                ("fav", String::new(), false),
-                ("", "C".into(), true),
-                ("all", String::new(), false),
-                ("", "A".into(), false),
-                ("", "B".into(), false),
-            ]
+            rows(&all, &s(&["C", "GONE"])),
+            vec![("A".into(), false), ("B".into(), false), ("C".into(), true)]
         );
     }
 

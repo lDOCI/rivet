@@ -21,10 +21,9 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
 <div style="position: relative; width: 800px; height: 480px; display: flex; background: #0b0d10; color: #f4f6f8; font-family: Inter, system-ui, sans-serif; overflow: hidden">
   <dc-import name="NavRail" active="tools" hint-size="88px,480px"></dc-import>
   <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 16px 16px 0; display: flex; flex-direction: column; gap: 10px">
-    <div style="height: 64px; flex: none; display: flex; align-items: center; gap: 14px"><a href="Tools.dc.html" aria-label="Назад" style="width: 64px; height: 64px; flex: none; border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></a><h1 style="margin: 0; flex: 1; font-size: 26px; font-weight: 800; letter-spacing: -0.02em">Макросы</h1></div>
+    <div style="height: 64px; flex: none; display: flex; align-items: center; gap: 14px"><a href="Tools.dc.html" aria-label="Назад" style="width: 64px; height: 64px; flex: none; border-radius: 20px; background: #15181d; color: #f4f6f8; display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></a><div role="tablist" aria-label="Макросы" style="flex: 1; height: 64px; border-radius: 20px; background: #15181d; padding: 5px; box-sizing: border-box; display: flex; gap: 4px"><button type="button" role="tab" aria-selected="{{favOn}}" onClick="{{showFav}}" style="flex: 1; border: 0; border-radius: 15px; background: {{favBg}}; color: {{favFg}}; font: 700 17px Inter, system-ui, sans-serif; cursor: pointer">Избранные</button><button type="button" role="tab" aria-selected="{{allOn}}" onClick="{{showAll}}" style="flex: 1; border: 0; border-radius: 15px; background: {{allBg}}; color: {{allFg}}; font: 700 17px Inter, system-ui, sans-serif; cursor: pointer">Все</button></div></div>
     <div class="scroll" style="flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; padding-bottom: 16px">
       <sc-for list="{{groups}}" as="g" hint-placeholder-count="2">
-        <span style="margin: 6px 4px 0; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; color: #66707b">{{g.title}}</span>
         <sc-for list="{{g.items}}" as="m" hint-placeholder-count="3">
           <div style="min-height: 72px; flex: none; border-radius: 20px; background: #15181d; display: flex; align-items: center; gap: 10px; padding: 0 8px 0 18px">
             <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 16px; font-weight: 700; font-family: ui-monospace, Menlo, monospace">{{m.name}}</span><span style="font-size: 14px; color: #98a1ac">{{m.desc}}</span></span>
@@ -52,7 +51,7 @@ a{color:#2dd4bf;text-decoration:none}a:hover{color:#5eead4}
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 800, "height": 480}}'>
 class Component extends DCLogic {
-  constructor(props) { super(props); this.state = { pending: null }; }
+  constructor(props) { super(props); this.state = { pending: null, tab: 'fav' }; }
   renderVals() {
     var self = this;
     var fav = [['LOAD_FILAMENT', 'Manual filament loading', false, true], ['AUTO_BED_LEVEL', 'BED_TEMP · EXTRUDER_TEMP · PROFILE', true, true]];
@@ -62,7 +61,12 @@ class Component extends DCLogic {
       starAria: (m[3] ? 'Убрать ' + m[0] + ' из избранных' : 'Добавить ' + m[0] + ' в избранные'),
       starFill: m[3] ? '#fbbf24' : 'none', starColor: m[3] ? '#fbbf24' : '#98a1ac', star: function () {} }; }); }
     return {
-      groups: [{ title: 'ИЗБРАННЫЕ', items: map(fav) }, { title: 'ВСЕ', items: map(all) }],
+      // Two tabs: the starred ones, and all of them (starred ones keep their star).
+      groups: [{ items: this.state.tab === 'fav' ? map(fav) : map(fav.concat(all).sort()) }],
+      favOn: this.state.tab === 'fav' ? 'true' : 'false', allOn: this.state.tab === 'all' ? 'true' : 'false',
+      favBg: this.state.tab === 'fav' ? '#2dd4bf' : 'transparent', favFg: this.state.tab === 'fav' ? '#042f2a' : '#c7cdd4',
+      allBg: this.state.tab === 'all' ? '#2dd4bf' : 'transparent', allFg: this.state.tab === 'all' ? '#042f2a' : '#c7cdd4',
+      showFav: function () { self.setState({ tab: 'fav' }); }, showAll: function () { self.setState({ tab: 'all' }); },
       confirmOpen: !!this.state.pending, pending: this.state.pending || '',
       cancel: function () { self.setState({ pending: null }); },
       confirm: function () { self.setState({ pending: null }); }
