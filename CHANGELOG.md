@@ -2,6 +2,26 @@
 
 Each release's section is also its description on GitHub. [Русский — ниже в каждом разделе.]
 
+## v0.1.11-alpha
+
+- Rivet skips its extra completion sound when END_PRINT or one of its helper macros
+  already contains audio playback, avoiding competing tunes on the same buzzer.
+  Conditional firmware audio keeps the firmware's own mute policy.
+- Turning Sounds off and on restores Rivet's completion sound without a restart;
+  the master switch and completion-sound preference are kept separately.
+- Test sound uses the firmware's default PLAY_MIDI when available, with M300 as a
+  fallback. Physical playback has not yet been verified; the cause of silent M300
+  playback remains unconfirmed.
+
+**Русский.** Rivet не добавляет свой сигнал окончания, если звук уже предусмотрен в
+END_PRINT или вызываемых им вспомогательных макросах. Это предотвращает конкуренцию
+двух мелодий за одну пищалку; условный звук остаётся под управлением прошивки.
+После выключения и включения «Звуков» сигнал Rivet восстанавливается без перезапуска:
+общий переключатель и настройка сигнала окончания теперь независимы.
+«Проверить звук» использует PLAY_MIDI с мелодией по умолчанию прошивки, если макрос
+доступен, иначе M300. Воспроизведение на принтере пока не проверено; причина тишины
+при M300 ещё не подтверждена.
+
 ## v0.1.10-alpha
 
 - Favourite macros: a star on each macro, and a Favourites tab beside All; it opens on
