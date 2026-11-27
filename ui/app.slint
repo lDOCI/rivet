@@ -154,6 +154,7 @@ export component AppWindow inherits Window {
     callback set-pressure-advance(float);
     callback set-light-level(float);
     callback run-gcode(string);
+    callback test-sound();
     callback clear-console();
     callback apply-key(string, string) -> string;
     in property <[ConsoleLine]> console-lines;
@@ -1336,7 +1337,7 @@ export component AppWindow inherits Window {
                 if (key == "sounds") { root.set-sounds = on; root.setting-changed("sounds", on ? "1" : "0"); }
                 if (key == "tune") { root.set-tune = on; root.setting-changed("end_tune", on ? "1" : "0"); }
             }
-            activate(key) => { if (key == "test") { root.run-gcode("M300 S1000 P200"); } }
+            activate(key) => { if (key == "test") { root.test-sound(); } }
         }
         if root.ready && root.screen == "set-language": LangTimeForm {
             lang-sel: root.russian ? 0 : 1;

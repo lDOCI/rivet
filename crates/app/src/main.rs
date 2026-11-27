@@ -389,6 +389,7 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
             }
         });
     }
+    ui.on_test_sound(send(Command::TestSound));
     ui.on_clear_console(send(Command::ClearConsole));
     // Typing is plain string editing, done here: Slint has no string slicing.
     ui.on_apply_key(|text, key| rivet::apply_key(&text, &key).into());
@@ -525,7 +526,7 @@ fn wire_callbacks(ui: &AppWindow, tx: &mpsc::UnboundedSender<Command>) {
                 "awake_print" => prefs::set(&prefs::AWAKE_PRINT, on),
                 "clock_12h" => prefs::set(&prefs::CLOCK_12, on),
                 "end_tune" => prefs::set(&prefs::END_TUNE, on),
-                "sounds" if !on => prefs::set(&prefs::END_TUNE, false),
+                "sounds" => prefs::set(&prefs::SOUNDS, on),
                 #[cfg(feature = "fbdev")]
                 "brightness" => {
                     fbdev_platform::screen::set_brightness(value.parse().unwrap_or(75));
