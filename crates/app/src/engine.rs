@@ -403,6 +403,12 @@ pub async fn run(
             cmd = cmds.recv() => {
                 let Some(cmd) = cmd else { break };
                 tracing::debug!(?cmd, "command from the UI");
+                // Check the engine state before the throttled UI catches up.
+                if blocked_by_prompt(&state, &cmd) {
+                    tracing::warn!(?cmd, "finish the printer dialog before starting a new print");
+                    push_prompt(&ui, state.prompt.clone());
+                    continue;
+                }
                 match &cmd {
                     Command::ClearConsole => {
                         state.clear_console();
@@ -853,6 +859,14 @@ enum Internal {
     LayerPlan(String, Option<(f64, f64, u32)>),
 }
 
+fn blocked_by_prompt(state: &PrinterState, cmd: &Command) -> bool {
+    state.has_pending_prompt()
+        && matches!(
+            cmd,
+            Command::StartPrint(_) | Command::QueueRun(true) | Command::QueueAdd(_)
+        )
+}
+
 /// A macro's prompt to the dialog, or close it.
 fn push_prompt(ui: &slint::Weak<AppWindow>, prompt: Option<model::Prompt>) {
     let _ = ui.upgrade_in_event_loop(move |ui| {
@@ -870,6 +884,11 @@ fn push_prompt(ui: &slint::Weak<AppWindow>, prompt: Option<model::Prompt>) {
         ui.set_prompt_title(prompt.title.into());
         ui.set_prompt_text(prompt.text.join("\n").into());
         ui.set_prompt_buttons(slint::ModelRc::new(slint::VecModel::from(buttons)));
+        if shown {
+            // A firmware dialog takes priority over file confirmations/keypads.
+            ui.set_overlay("".into());
+            ui.set_ambient(false);
+        }
         ui.set_prompt_shown(shown);
     });
 }
@@ -3541,6 +3560,41 @@ fn push(ui: &slint::Weak<AppWindow>, s: Snapshot) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn pending_firmware_prompt_blocks_starts_but_allows_answers_and_stops() {
+        let mut state = PrinterState::default();
+        let start = Command::StartPrint("next.gcode".into());
+        assert!(!blocked_by_prompt(&state, &start));
+        state.prompt_line("// action:prompt_begin Interrupted print");
+        // The engine must block even before prompt_show reaches the UI.
+        assert!(state.prompt.is_none());
+        assert!(blocked_by_prompt(&state, &start));
+        state.prompt_line("// action:prompt_button Restore|_ZRESTORE_OK|primary");
+        state.prompt_line("// action:prompt_show");
+        assert!(blocked_by_prompt(&state, &start));
+        assert!(blocked_by_prompt(&state, &Command::QueueRun(true)));
+        // Adding to a running queue may immediately start the new file.
+        assert!(blocked_by_prompt(
+            &state,
+            &Command::QueueAdd(vec!["next.gcode".into()])
+        ));
+        for cmd in [
+            Command::Gcode("_ZRESTORE_DEL".into()),
+            Command::Gcode("_ZRESTORE_OK".into()),
+            Command::EmergencyStop,
+            Command::Cancel,
+            Command::QueueRun(false),
+        ] {
+            assert!(!blocked_by_prompt(&state, &cmd));
+        }
+        // A status update is not an acknowledgement of the dialog.
+        state.apply_status(json!({"print_stats": {"state": "printing"}}));
+        assert!(blocked_by_prompt(&state, &start));
+        state.prompt_line("// action:prompt_end");
+        assert!(!blocked_by_prompt(&state, &start));
+        assert!(!blocked_by_prompt(&state, &Command::QueueRun(true)));
+    }
 
     #[test]
     fn tuning_commands_are_plain_gcode() {
