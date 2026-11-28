@@ -2013,6 +2013,11 @@ impl PrinterState {
         self.console_revision += 1;
     }
 
+    /// A prompt also blocks starts while its lines are still being assembled.
+    pub fn has_pending_prompt(&self) -> bool {
+        self.prompt.is_some() || self.prompt_draft.is_some()
+    }
+
     /// Follow a macro's `action:prompt_*` lines. Returns true when the shown
     /// prompt changed.
     pub fn prompt_line(&mut self, line: &str) -> bool {

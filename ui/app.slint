@@ -708,7 +708,7 @@ export component AppWindow inherits Window {
     // renderer's partial redraws paint a changing path (the heating dial, an
     // icon) over whatever covers it: seen on the AD5M as the dial through the
     // keypad, a key wiped out. A dialog sits on the plain dark background.
-    property <bool> covered: (root.ambient && root.busy) || root.overlay != "" || (root.locked && root.ready);
+    property <bool> covered: (root.ambient && root.busy) || root.overlay != "" || (root.locked && root.ready) || (root.prompt-shown && root.ready);
 
     HorizontalLayout {
         visible: !root.covered;
@@ -1752,6 +1752,8 @@ export component AppWindow inherits Window {
         title: root.prompt-title;
         text: root.prompt-text;
         buttons: root.prompt-buttons;
+        hold-stop: root.set-hold-stop;
+        emergency-stop => { root.emergency-stop(); }
         pressed(gcode) => { root.run-gcode(gcode); }
         // Closing without an answer ends the prompt for every screen, as Mainsail does.
         closed => { root.run-gcode("RESPOND TYPE=command MSG=action:prompt_end"); }

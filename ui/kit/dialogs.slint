@@ -134,8 +134,10 @@ export component PromptDialog inherits Rectangle {
     in property <string> title;
     in property <string> text;
     in property <[PromptButton]> buttons;
+    in property <bool> hold-stop: true;
     callback pressed(string);
     callback closed;
+    callback emergency-stop;
     Backdrop { }
     Rectangle {
         width: 608px;
@@ -149,6 +151,18 @@ export component PromptDialog inherits Rectangle {
             spacing: 0;
             HorizontalLayout {
                 Text { text: @tr("FROM A MACRO"); color: Tokens.text-faint; font-size: 13px; font-weight: 700; letter-spacing: 0.5px; vertical-alignment: center; horizontal-stretch: 1; }
+                Rectangle {
+                    width: 40px;
+                    height: 40px;
+                    border-radius: 14px;
+                    background: stop-ta.pressed ? Tokens.surface-3 : Tokens.danger-soft;
+                    accessible-role: button;
+                    accessible-label: @tr("Emergency stop");
+                    accessible-action-default => { root.emergency-stop(); }
+                    Icon { d: "M8 2.5h8l5.5 5.5v8L16 21.5H8L2.5 16V8z M12 7.5v5.5 M12 16.5v.5"; size: 24px; color: Tokens.danger; }
+                    stop-ta := TouchArea { clicked => { if (!root.hold-stop) { root.emergency-stop(); } } }
+                    Timer { interval: 1s; running: root.hold-stop && stop-ta.pressed; triggered => { root.emergency-stop(); } }
+                }
                 Rectangle {
                     width: 40px;
                     height: 40px;

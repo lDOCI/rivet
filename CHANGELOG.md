@@ -2,6 +2,26 @@
 
 Each release's section is also its description on GitHub. [Русский — ниже в каждом разделе.]
 
+## v0.1.13-alpha
+
+- Firmware dialogs, including Z-Mod's interrupted-print recovery prompt, now hide
+  the changing screen underneath. This prevents the heating dial and print screen
+  from being redrawn through the dialog on the printer's software renderer.
+- While a firmware prompt is pending, Rivet blocks new file/repeat-print requests,
+  starting the queue and adding jobs to a queue that could immediately run them.
+  It waits for Klipper's prompt_end acknowledgement before allowing new starts.
+  Recovery actions, cancellation and emergency stop remain available.
+- Firmware dialogs include an emergency-stop button with the configured hold
+  behavior, since the normal navigation rail is hidden behind the dialog.
+
+**Русский.** Окна макросов, включая восстановление прерванной печати Z-Mod, теперь
+скрывают обновляющийся экран под ними: кольцо нагрева и экран печати больше не
+перерисовываются поверх окна. Пока диалог не закрыт Klipper, Rivet блокирует запуск
+файла, повторную печать, запуск очереди и добавление в неё заданий. Кнопки диалога,
+отмена и аварийная остановка остаются доступны. В самом окне добавлена аварийная
+остановка с учётом настройки удержания. Защита относится к запросам из Rivet;
+команды, отправленные другими клиентами, остаются под управлением прошивки.
+
 ## v0.1.12-alpha
 
 - Save Z-offset now follows Z-Mod's own persistence: adjustments are already saved
