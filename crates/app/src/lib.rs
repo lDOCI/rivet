@@ -10,6 +10,7 @@ pub mod files;
 pub mod logfile;
 pub mod macros;
 pub mod resonance;
+pub mod sound;
 pub mod theme;
 pub mod thumbs;
 pub mod timezone;

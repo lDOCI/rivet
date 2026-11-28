@@ -267,6 +267,8 @@ pub enum Command {
     SetActiveSpool(i32),
     /// G-code typed in the console or a macro to run.
     Gcode(String),
+    /// Preview the firmware's sound using its supported playback command.
+    TestSound,
     ClearConsole,
     /// Reload the list of G-code files.
     /// The files of one storage: the printer's, or the USB stick (`usb/`).
@@ -624,12 +626,21 @@ pub async fn run(
                 if snap.print_state != last_print_state {
                     let running = |s: &str| matches!(s, "printing" | "paused");
                     if running(&last_print_state) && !running(&snap.print_state) {
-                        if snap.print_state == "complete" && prefs::get(&prefs::END_TUNE) {
-                            // A short rising tune on the printer's beeper (KlipperMod's M300).
-                            spawn_gcode(
-                                &client,
-                                "M300 S1047 P150\nM300 S1319 P150\nM300 S1568 P300".to_owned(),
-                            );
+                        if snap.print_state == "complete" && prefs::sound_enabled() {
+                            let client = client.clone();
+                            tokio::spawn(async move {
+                                // Firmware END_PRINT may start a background MIDI player.
+                                // A second tune would fight it for the same PWM device.
+                                match sound_config(&client).await {
+                                    Ok(cfg) if !crate::sound::end_print_has_sound(&cfg) => {
+                                        if let Err(err) = play_sound(&client, &cfg).await {
+                                            tracing::warn!(%err, "end-of-print sound failed");
+                                        }
+                                    }
+                                    Ok(_) => tracing::debug!("end-of-print sound belongs to firmware"),
+                                    Err(err) => tracing::warn!(%err, "cannot check firmware sound; skipping extra tune"),
+                                }
+                            });
                         }
                         if off_after_print && snap.print_state == "complete" {
                             spawn_gcode(&client, "AUTO_SHUTDOWN".to_owned());
@@ -2153,8 +2164,13 @@ pub mod prefs {
     pub static AWAKE_PRINT: AtomicBool = AtomicBool::new(true);
     /// Clocks as 12-hour "3:20 PM".
     pub static CLOCK_12: AtomicBool = AtomicBool::new(false);
+    /// Master sound switch, independent of the saved end-tune choice.
+    pub static SOUNDS: AtomicBool = AtomicBool::new(true);
     /// A tune on the beeper when a print completes.
     pub static END_TUNE: AtomicBool = AtomicBool::new(true);
+    pub fn sound_enabled() -> bool {
+        get(&SOUNDS) && get(&END_TUNE)
+    }
     pub fn set(flag: &AtomicBool, on: bool) {
         flag.store(on, Ordering::Relaxed);
     }
@@ -2296,7 +2312,8 @@ async fn load_settings(
     );
     prefs::set(&prefs::AWAKE_PRINT, awake);
     prefs::set(&prefs::CLOCK_12, clock12);
-    prefs::set(&prefs::END_TUNE, sounds && tune);
+    prefs::set(&prefs::SOUNDS, sounds);
+    prefs::set(&prefs::END_TUNE, tune);
     let language = text("language");
     // Nothing set for Rivet: the language the web interface was set to.
     let web_language = web_ui_language(&client).await;
@@ -2426,6 +2443,24 @@ fn hex_color(hex: &str) -> slint::Color {
         Ok(v) => slint::Color::from_rgb_u8((v >> 16) as u8, (v >> 8) as u8, v as u8),
         Err(_) => slint::Color::from_rgb_u8(0x4a, 0x52, 0x5c),
     }
+}
+
+/// Read current macros: firmware updates and user edits can change audio ownership.
+async fn sound_config(client: &Client) -> Result<Value, moonraker::Error> {
+    let result = client
+        .call_timeout(
+            "printer.objects.query",
+            json!({ "objects": { "configfile": ["settings"] } }),
+            SETUP_TIMEOUT,
+        )
+        .await?;
+    Ok(result["status"]["configfile"]["settings"].clone())
+}
+
+async fn play_sound(client: &Client, cfg: &Value) -> Result<(), moonraker::Error> {
+    let code = crate::sound::test_gcode(cfg);
+    tracing::info!(%code, "playing printer sound");
+    client.gcode(code).await
 }
 
 /// Send G-code without waiting; a failure only goes to the log.
@@ -2726,6 +2761,10 @@ async fn execute(
             .await
             .map(drop),
         Command::Gcode(script) => client.gcode(script).await,
+        Command::TestSound => {
+            let cfg = sound_config(client).await?;
+            play_sound(client, &cfg).await
+        }
         Command::SetTimelapse(on) => {
             client
                 .call("machine.timelapse.post_settings", json!({ "enabled": on }))
