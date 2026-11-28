@@ -2,6 +2,24 @@
 
 Each release's section is also its description on GitHub. [Русский — ниже в каждом разделе.]
 
+## v0.1.12-alpha
+
+- Save Z-offset now follows Z-Mod's own persistence: adjustments are already saved
+  by its SET_GCODE_OFFSET wrapper, and Save enables LOAD_ZOFFSET for the next
+  START_PRINT. It no longer applies the offset to the probe or endstop, calls
+  SAVE_CONFIG or schedules a restart on Z-Mod. This avoids the reported
+  position_endstop conflict with an included configuration value.
+- Klipper Mod keeps its existing save path, including deferring SAVE_CONFIG until
+  printing ends. Regression tests cover both firmware paths and probe homing.
+
+**Русский.** «Сохранить Z-offset» теперь использует механизм Z-Mod: коррекция уже
+записывается его SET_GCODE_OFFSET, а кнопка включает LOAD_ZOFFSET для загрузки при
+следующем START_PRINT. На Z-Mod больше не меняется калибровка датчика или концевика,
+не вызывается SAVE_CONFIG и не планируется перезапуск после печати. Это устраняет
+путь, приводивший к конфликту position_endstop со значением во включённом конфиге.
+Для Klipper Mod прежнее сохранение оставлено, включая отложенный SAVE_CONFIG после
+печати. Проверки покрывают оба варианта прошивки и парковку Z по датчику.
+
 ## v0.1.11-alpha
 
 - Rivet skips its extra completion sound when END_PRINT or one of its helper macros
