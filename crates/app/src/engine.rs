@@ -425,13 +425,8 @@ pub async fn run(
                         continue;
                     }
                     Command::SaveZOffset => {
-                        let apply = state.caps.z_offset_apply.clone();
-                        let code = if printing {
-                            save_config_pending = true;
-                            apply
-                        } else {
-                            format!("{apply}\nSAVE_CONFIG")
-                        };
+                        let (code, save_after_print) = state.caps.save_z_offset(printing);
+                        save_config_pending |= save_after_print;
                         spawn_gcode(&client, code);
                         continue;
                     }

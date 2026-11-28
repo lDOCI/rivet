@@ -94,6 +94,8 @@ pub struct Caps {
     /// The command that keeps a live Z offset: `Z_OFFSET_APPLY_PROBE` when Z homes
     /// on the probe, else `Z_OFFSET_APPLY_ENDSTOP`.
     pub z_offset_apply: String,
+    /// Z-Mod's SET_GCODE_OFFSET wrapper already saves to its global variables.
+    pub z_offset_auto_saved: bool,
     pub timelapse: bool,
     pub spoolman: bool,
     pub power_devices: bool,
@@ -119,12 +121,26 @@ impl Caps {
                 "Z_OFFSET_APPLY_ENDSTOP"
             }
             .to_owned(),
+            z_offset_auto_saved: macro_("SET_GCODE_OFFSET") && macro_("LOAD_GCODE_OFFSET"),
             timelapse: component("timelapse"),
             spoolman: component("spoolman"),
             power_devices: component("power"),
             job_queue: component("job_queue"),
             load_filament: macro_("LOAD_FILAMENT") && macro_("UNLOAD_FILAMENT"),
             air_sensor: has("flashforge_tvoc"),
+        }
+    }
+
+    /// Save script and whether SAVE_CONFIG must wait until printing ends.
+    pub fn save_z_offset(&self, printing: bool) -> (String, bool) {
+        if self.z_offset_auto_saved {
+            // The adjustment is already in Z-Mod's variables. Enable reloading
+            // it in START_PRINT without changing probe/endstop calibration.
+            ("SAVE_ZMOD_DATA LOAD_ZOFFSET=1".to_owned(), false)
+        } else if printing {
+            (self.z_offset_apply.clone(), true)
+        } else {
+            (format!("{}\nSAVE_CONFIG", self.z_offset_apply), false)
         }
     }
 }
